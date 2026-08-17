@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ChevronDown, ChevronLeft, FolderOpen, Pencil, Plus, Trash2 } from "lucide-react";
-import { deleteCategory } from "@/lib/actions/admin";
-import { formatPrice } from "@/lib/constants";
+import { ChevronDown, ChevronLeft, FolderOpen, Pencil, Plus, Trash2, PauseCircle, PlayCircle } from "lucide-react";
+import type { Status, Tier } from "@/db/schema";
+import { deleteCategory, toggleCategoryStatus } from "@/lib/actions/admin";
+import { TIERS, formatPrice } from "@/lib/constants";
 import { CategoryForm } from "./category-form";
 
 export type TreeNode = {
@@ -18,6 +19,8 @@ export type TreeNode = {
   color: string | null;
   sort: number;
   bundlePrice: number | null;
+  status: Status;
+  minTier: Tier;
   materialsCount: number;
   children: TreeNode[];
 };
@@ -54,6 +57,13 @@ function Node({ node, depth }: { node: TreeNode; depth: number }) {
   const hasChildren = node.children.length > 0;
   const total = subtreeMaterials(node);
 
+  const onToggle = () => {
+    startTransition(async () => {
+      const r = await toggleCategoryStatus(node.id);
+      if (r?.error) setErr(r.error);
+    });
+  };
+
   const onDelete = () => {
     const msg =
       `למחוק את "${node.title}"?` +
@@ -87,7 +97,18 @@ function Node({ node, depth }: { node: TreeNode; depth: number }) {
         </button>
 
         <span className="text-lg leading-none">{node.icon ?? (depth === 0 ? "📁" : "")}</span>
-        <span className="font-semibold">{node.title}</span>
+        <span className={`font-semibold ${node.status !== "active" ? "line-through opacity-70" : ""}`}>{node.title}</span>
+        {node.status === "suspended" && <span className="chip bg-red-100 text-red-700">מושהה</span>}
+        {node.status === "draft" && <span className="chip bg-gray-100 text-gray-700">טיוטה</span>}
+        {node.minTier !== "none" && (
+          <span
+            className="chip"
+            style={{ background: TIERS[node.minTier].color + "22", color: TIERS[node.minTier].color }}
+            title="רמת פרימיום מינימלית לתיקייה"
+          >
+            {TIERS[node.minTier].icon} {TIERS[node.minTier].label}+
+          </span>
+        )}
         <span className="font-mono text-[11px] text-muted" dir="ltr">
           /{node.slug}
         </span>
@@ -113,6 +134,16 @@ function Node({ node, depth }: { node: TreeNode; depth: number }) {
           >
             <FolderOpen className="h-3.5 w-3.5" /> חומרים
           </Link>
+          <button
+            type="button"
+            className="btn btn-ghost text-xs py-1 px-2.5"
+            onClick={onToggle}
+            disabled={pending}
+            title={node.status === "active" ? "השהיית התיקייה וכל תוכנה" : "הפעלת התיקייה"}
+          >
+            {node.status === "active" ? <PauseCircle className="h-3.5 w-3.5" /> : <PlayCircle className="h-3.5 w-3.5" />}
+            {node.status === "active" ? " השהיה" : " הפעלה"}
+          </button>
           <button
             type="button"
             className="btn btn-ghost text-xs py-1 px-2.5"

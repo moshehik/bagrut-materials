@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { CloudUpload, FileCheck2, X } from "lucide-react";
-import type { MaterialKind, Tier } from "@/db/schema";
+import type { Access, MaterialKind, Status, Tier } from "@/db/schema";
 import { MATERIAL_KINDS, TIERS } from "@/lib/constants";
 import {
   ALLOWED_UPLOAD_TYPES,
@@ -32,6 +32,8 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
   const [price, setPrice] = useState("15");
   const [premiumOnly, setPremiumOnly] = useState(false);
   const [minTier, setMinTier] = useState<Tier>("none");
+  const [access, setAccess] = useState<Access>("paid");
+  const [status, setStatus] = useState<Status>("active");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
@@ -95,6 +97,8 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
           price: price === "" ? undefined : Number(price),
           premiumOnly,
           minTier,
+          access,
+          status,
         });
         if (r?.error) throw new Error(r.error);
         patch(it.key, { status: "done" });
@@ -155,7 +159,24 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <label className="text-sm">
+          <span className="block mb-1 font-medium">דירוג גישה</span>
+          <select value={access} onChange={(e) => setAccess(e.target.value as Access)} className="input">
+            <option value="free">חינם</option>
+            <option value="paid">בתשלום</option>
+            <option value="tier">לפי רמה</option>
+            <option value="premium">פרימיום בלבד</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="block mb-1 font-medium">סטטוס</span>
+          <select value={status} onChange={(e) => setStatus(e.target.value as Status)} className="input">
+            <option value="active">פעיל</option>
+            <option value="draft">טיוטה</option>
+            <option value="suspended">מושהה</option>
+          </select>
+        </label>
         <label className="text-sm">
           <span className="block mb-1 font-medium">מחיר הורדה בודדת (₪)</span>
           <input

@@ -8,15 +8,11 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { createSession, destroySession } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
+import { logAudit } from "@/lib/audit";
+import { getBool } from "@/lib/settings";
+import { genPersonalCode } from "@/lib/auth-utils";
 
 export type ActionState = { error?: string } | undefined;
-
-function genPersonalCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < 8; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return `${s.slice(0, 4)}-${s.slice(4)}`;
-}
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "שם קצר מדי").max(120),
@@ -25,6 +21,7 @@ const registerSchema = z.object({
 });
 
 export async function registerAction(_: ActionState, form: FormData): Promise<ActionState> {
+  if (!(await getBool("registration_open"))) return { error: "ההרשמה סגורה כרגע" };
   const parsed = registerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { name, email, password } = parsed.data;
@@ -82,10 +79,28 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
 
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (!u || !(await bcrypt.compare(password, u.passwordHash))) {
+    await logAudit({
+      actorId: u?.id ?? null,
+      action: "login.failed",
+      entityType: "user",
+      entityId: u?.id ?? null,
+      details: { email },
+    });
     return { error: "מייל או סיסמה שגויים" };
   }
+  if (u.suspended) {
+    await logAudit({
+      actorId: u.id,
+      action: "login.failed",
+      entityType: "user",
+      entityId: u.id,
+      details: { reason: "suspended" },
+    });
+    return { error: "החשבון מושהה. פני למנהלת האתר." };
+  }
   await createSession(u.id);
-  redirect(next && next.startsWith("/") ? next : "/account");
+  await logAudit({ actorId: u.id, action: "login", entityType: "user", entityId: u.id });
+  redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/account");
 }
 
 export async function logoutAction() {

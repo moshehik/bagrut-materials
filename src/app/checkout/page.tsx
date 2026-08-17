@@ -8,7 +8,8 @@ import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getCategoryChain, chainToHref, getDescendantIds, getRootSubjects } from "@/lib/data";
-import { PLANS, PREMIUM_ADDON_PRICE, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
+import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
+import { getPlanPrices } from "@/lib/pricing";
 import { CheckoutForm, type CheckoutFormProps, type CheckoutSubject } from "@/components/checkout-form";
 
 export const metadata: Metadata = { title: "השלמת הזמנה" };
@@ -51,6 +52,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   if (!user) redirect(`/login?next=${encodeURIComponent(`/checkout${qs ? `?${qs}` : ""}`)}`);
 
   const premiumDefault = sp.premium === "1" || sp.premium === "on";
+  const prices = await getPlanPrices();
 
   let heading = "";
   let summary: ReactNode = null;
@@ -128,6 +130,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     formProps = { kind: "bundle", categoryId: c.id, basePrice: price, months: 1, premiumDefault };
   } else if (planKey === "subject_monthly" || planKey === "custom_monthly" || planKey === "yearly") {
     const def = PLANS[planKey];
+    const planPrice = prices.plans[planKey];
     const days = def.days ?? 30;
     const months = Math.max(1, Math.round(days / 30));
     await loadSubjects();
@@ -161,7 +164,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <span className="ms-auto font-display font-bold text-xl text-blue-deep whitespace-nowrap">
-          {formatPrice(def.price ?? 0)}
+          {formatPrice(planPrice)}
         </span>
       </div>
     );
@@ -171,7 +174,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       categoryId: planKey === "subject_monthly" && scopeTitle ? catId : undefined,
       subjects,
       preselected: pre,
-      basePrice: def.price ?? 0,
+      basePrice: planPrice,
       months,
       premiumDefault,
     };
@@ -190,11 +193,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <span className="ms-auto font-display font-bold text-xl text-blue-deep whitespace-nowrap">
-          {formatPrice(PREMIUM_ADDON_PRICE)}
+          {formatPrice(prices.premiumAddon)}
         </span>
       </div>
     );
-    formProps = { kind: "premium", basePrice: PREMIUM_ADDON_PRICE, months: 1, allowPremium: false };
+    formProps = { kind: "premium", basePrice: prices.premiumAddon, months: 1, allowPremium: false };
   }
 
   if (!formProps) {
@@ -239,7 +242,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </div>
         </section>
         <section className="card p-5 sm:p-6 animate-fade-up [animation-delay:100ms]">
-          <CheckoutForm {...formProps} />
+          <CheckoutForm {...formProps} addonPrice={prices.premiumAddon} />
         </section>
       </div>
     </div>

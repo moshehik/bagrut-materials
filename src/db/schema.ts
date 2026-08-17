@@ -30,6 +30,11 @@ export const materialKindEnum = pgEnum("material_kind", [
   "ideas", // רעיונות, חידות וסיפורים
   "other",
 ]);
+export const accessEnum = pgEnum("access", ["free", "paid", "tier", "premium"]);
+export const statusEnum = pgEnum("status", ["active", "suspended", "draft"]);
+export const purchaseStatusEnum = pgEnum("purchase_status", ["active", "cancelled", "refunded", "expired"]);
+export const txTypeEnum = pgEnum("tx_type", ["charge", "refund", "manual", "adjustment"]);
+
 export const planEnum = pgEnum("plan", [
   "single", // הורדה בודדת
   "bundle", // קובץ מורחב (תיקייה)
@@ -49,10 +54,26 @@ export const users = pgTable(
     tier: tierEnum("tier").notNull().default("none"),
     /** מספר אישי – מוטבע על כל קובץ שהמשתמשת מורידה */
     personalCode: varchar("personal_code", { length: 16 }).notNull(),
+    /** התחברות עם גוגל */
+    googleId: varchar("google_id", { length: 64 }),
+    avatarUrl: text("avatar_url"),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    /** חשבון מושהה – לא יכול להתחבר/להוריד */
+    suspended: boolean("suspended").notNull().default(false),
+    suspendReason: text("suspend_reason"),
+    /** נוכחות */
+    lastSeenAt: timestamp("last_seen_at"),
+    lastIp: varchar("last_ip", { length: 64 }),
+    lastPath: varchar("last_path", { length: 500 }),
+    /** הגבלת הורדות יומית אישית (null = ברירת מחדל מההגדרות) */
+    dailyDownloadLimit: integer("daily_download_limit"),
+    notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("users_email_idx").on(t.email),
+    index("users_google_idx").on(t.googleId),
+    index("users_last_seen_idx").on(t.lastSeenAt),
     uniqueIndex("users_code_idx").on(t.personalCode),
   ],
 );
@@ -73,6 +94,10 @@ export const categories = pgTable(
     sort: integer("sort").notNull().default(0),
     /** מחיר הורדת כל התיקייה כקובץ מורחב (באגורות). null = לא זמין */
     bundlePrice: integer("bundle_price"),
+    /** השהיית דף/תיקייה – מוסתרת מהמשתמשות (מנהלת רואה) */
+    status: statusEnum("status").notNull().default("active"),
+    /** הגבלת גישה לכל התיקייה לרמת פרימיום מינימלית */
+    minTier: tierEnum("min_tier").notNull().default("none"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
@@ -103,6 +128,17 @@ export const materials = pgTable(
     minTier: tierEnum("min_tier").notNull().default("none"),
     sort: integer("sort").notNull().default(0),
     downloads: integer("downloads").notNull().default(0),
+    views: integer("views").notNull().default(0),
+    /** דירוג גישה: free = חינם למחוברות, paid = רכישה/מנוי, tier = לפי minTier, premium = פרימיום בלבד */
+    access: accessEnum("access").notNull().default("paid"),
+    /** השהיית דף – לא מוצג ולא ניתן להורדה */
+    status: statusEnum("status").notNull().default("active"),
+    /** האם ניתן להוריד (אחרת: צפייה בלבד באתר) */
+    allowDownload: boolean("allow_download").notNull().default(true),
+    /** האם מותר לצפות בתצוגה מקדימה (עמוד ראשון) ללא רכישה */
+    allowPreview: boolean("allow_preview").notNull().default(false),
+    /** מגבלת הורדות לכל משתמשת לחומר זה (null = ללא) */
+    maxDownloadsPerUser: integer("max_downloads_per_user"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("materials_category_idx").on(t.categoryId)],
@@ -130,6 +166,8 @@ export const purchases = pgTable(
     endsAt: timestamp("ends_at"),
     premium: boolean("premium").notNull().default(false),
     paymentRef: varchar("payment_ref", { length: 120 }),
+    status: purchaseStatusEnum("status").notNull().default("active"),
+    notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("purchases_user_idx").on(t.userId)],
@@ -146,9 +184,13 @@ export const downloads = pgTable(
       .notNull()
       .references(() => materials.id, { onDelete: "cascade" }),
     watermark: varchar("watermark", { length: 64 }).notNull(),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: text("user_agent"),
+    /** דרך מה הותרה ההורדה: admin/single/bundle/subscription/free */
+    via: varchar("via", { length: 20 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("downloads_user_idx").on(t.userId)],
+  (t) => [index("downloads_user_idx").on(t.userId), index("downloads_created_idx").on(t.createdAt)],
 );
 
 export const forumThreads = pgTable("forum_threads", {
@@ -216,6 +258,106 @@ export const emailLogs = pgTable(
   (t) => [index("email_logs_sent_idx").on(t.sentAt)],
 );
 
+/** היסטוריית גלישה – כל צפייה בדף */
+export const pageViews = pgTable(
+  "page_views",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** מזהה סשן אנונימי (עוגייה) */
+    sessionId: varchar("session_id", { length: 64 }),
+    path: varchar("path", { length: 500 }).notNull(),
+    referer: text("referer"),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: text("user_agent"),
+    /** משך שהייה בשניות (מתעדכן ב-heartbeat) */
+    duration: integer("duration").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("page_views_user_idx").on(t.userId),
+    index("page_views_created_idx").on(t.createdAt),
+    index("page_views_path_idx").on(t.path),
+  ],
+);
+
+/** לוג פעולות (audit) – פעולות מנהל ופעולות מערכת חשובות */
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: serial("id").primaryKey(),
+    actorId: integer("actor_id").references(() => users.id, { onDelete: "set null" }),
+    action: varchar("action", { length: 60 }).notNull(),
+    entityType: varchar("entity_type", { length: 40 }),
+    entityId: integer("entity_id"),
+    details: text("details"),
+    ip: varchar("ip", { length: 64 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("audit_logs_created_idx").on(t.createdAt), index("audit_logs_actor_idx").on(t.actorId)],
+);
+
+/** הגדרות מערכת – מפתח/ערך */
+export const settings = pgTable("settings", {
+  key: varchar("key", { length: 80 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedById: integer("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+});
+
+/** עגלת קניות – פריט = חומר בודד או תיקייה (bundle) או מסלול */
+export const cartItems = pgTable(
+  "cart_items",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    materialId: integer("material_id").references(() => materials.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id").references(() => categories.id, { onDelete: "cascade" }),
+    plan: planEnum("plan"),
+    premium: boolean("premium").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("cart_user_idx").on(t.userId)],
+);
+
+/** תנועות כספיות – חיובים, זיכויים, תשלומים ידניים */
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    purchaseId: integer("purchase_id").references(() => purchases.id, { onDelete: "set null" }),
+    type: txTypeEnum("type").notNull().default("charge"),
+    /** באגורות; זיכוי = שלילי */
+    amount: integer("amount").notNull(),
+    method: varchar("method", { length: 40 }),
+    reference: varchar("reference", { length: 120 }),
+    note: text("note"),
+    createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("transactions_created_idx").on(t.createdAt), index("transactions_user_idx").on(t.userId)],
+);
+
+/** טוקנים לאיפוס סיסמה / אימות מייל */
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: varchar("token", { length: 128 }).notNull(),
+    purpose: varchar("purpose", { length: 20 }).notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("auth_tokens_token_idx").on(t.token)],
+);
+
 export const categoriesRelations =relations(categories, ({ one, many }) => ({
   parent: one(categories, {
     fields: [categories.parentId],
@@ -253,3 +395,11 @@ export type Purchase = typeof purchases.$inferSelect;
 export type Tier = (typeof tierEnum.enumValues)[number];
 export type MaterialKind = (typeof materialKindEnum.enumValues)[number];
 export type Plan = (typeof planEnum.enumValues)[number];
+export type Access = (typeof accessEnum.enumValues)[number];
+export type Status = (typeof statusEnum.enumValues)[number];
+export type PurchaseStatus = (typeof purchaseStatusEnum.enumValues)[number];
+export type PageView = typeof pageViews.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type Setting = typeof settings.$inferSelect;
+export type CartItem = typeof cartItems.$inferSelect;
+export type Transaction = typeof transactions.$inferSelect;

@@ -1,12 +1,50 @@
 import Link from "next/link";
-import { count, desc, eq, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, sum } from "drizzle-orm";
+import { Radio, Download, Activity, Wallet, BarChart3, ScrollText } from "lucide-react";
 import { db } from "@/db";
-import { users, categories, materials, downloads, purchases } from "@/db/schema";
+import { users, categories, materials, downloads, purchases, pageViews, transactions } from "@/db/schema";
 import { formatPrice } from "@/lib/constants";
+import { getNumber } from "@/lib/settings";
+import { daysAgo, minutesAgo, startOfToday } from "@/lib/admin-analytics";
 
 export const dynamic = "force-dynamic";
 
+async function safeCount(p: Promise<{ n: number }[]>): Promise<number> {
+  try {
+    const [r] = await p;
+    return Number(r?.n ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 export default async function AdminDashboard() {
+  const windowMin = Math.max(1, await getNumber("online_window_minutes"));
+  const since = minutesAgo(windowMin);
+  const today = startOfToday();
+  const d30 = daysAgo(30);
+
+  const [onlineNow, dlToday, viewsToday, revenue30] = await Promise.all([
+    safeCount(db.select({ n: count() }).from(users).where(gte(users.lastSeenAt, since))),
+    safeCount(db.select({ n: count() }).from(downloads).where(gte(downloads.createdAt, today))),
+    safeCount(db.select({ n: count() }).from(pageViews).where(gte(pageViews.createdAt, today))),
+    db
+      .select({ s: sum(transactions.amount) })
+      .from(transactions)
+      .where(and(inArray(transactions.type, ["charge", "manual"]), gte(transactions.createdAt, d30)))
+      .then(([r]) => Number(r?.s ?? 0))
+      .catch(() => 0),
+  ]);
+
+  const quick = [
+    { label: "מחוברות עכשיו", value: onlineNow, href: "/admin/online", icon: Radio, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "הורדות היום", value: dlToday, href: "/admin/downloads", icon: Download, tone: "bg-gold-soft text-gold" },
+    { label: "צפיות היום", value: viewsToday, href: "/admin/activity", icon: Activity, tone: "bg-pink-soft text-pink" },
+    { label: "הכנסות 30 יום", value: formatPrice(revenue30), href: "/admin/finance", icon: Wallet, tone: "bg-blue-soft text-blue-deep" },
+    { label: "סטטיסטיקות", value: "→", href: "/admin/stats", icon: BarChart3, tone: "bg-oak-soft text-oak-deep" },
+    { label: "לוג פעולות", value: "→", href: "/admin/logs", icon: ScrollText, tone: "bg-violet-50 text-violet-700" },
+  ];
+
   const [[u], [c], [m], [d], [p], [rev], latest] = await Promise.all([
     db.select({ n: count() }).from(users),
     db.select({ n: count() }).from(categories),
@@ -54,6 +92,24 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-2xl font-bold">לוח בקרה</h2>
+
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+        {quick.map((q) => {
+          const Icon = q.icon;
+          return (
+            <Link key={q.href} href={q.href} className="card card-hover p-4 flex items-center gap-3">
+              <span className={`chip ${q.tone} !p-2 rounded-xl`}>
+                <Icon className="h-4 w-4" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs text-muted truncate">{q.label}</span>
+                <span className="block text-xl font-bold font-display tabular-nums">{q.value}</span>
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className="card card-hover p-4">

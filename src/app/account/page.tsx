@@ -18,6 +18,7 @@ import {
 import { db } from "@/db";
 import { categories, downloads, materials, purchases } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { userHasPremium, getCategoryChain, chainToHref } from "@/lib/data";
 import { PLANS, TIERS, MATERIAL_KINDS, formatPrice } from "@/lib/constants";
 
@@ -30,9 +31,9 @@ const fmtDate = (d: Date | null) =>
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ purchased?: string }>;
+  searchParams: Promise<{ purchased?: string; verified?: string; limit?: string }>;
 }) {
-  const { purchased } = await searchParams;
+  const { purchased, verified, limit } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
 
@@ -88,6 +89,17 @@ export default async function AccountPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-14 space-y-8">
+      {limit && (
+        <div className="card p-4 border-amber-200 bg-amber-50 text-amber-900 text-sm">
+          הגעת למכסת ההורדות היומית. נסי שוב מחר או פני למנהלת האתר.
+        </div>
+      )}
+      <VerifyEmailBanner
+        verified={user.emailVerified}
+        email={user.email}
+        justVerified={verified === "1"}
+        failed={verified === "0"}
+      />
       {purchased && (
         <div className="card p-4 flex items-center gap-3 border-emerald-200 bg-emerald-50 text-emerald-900 animate-pop">
           <CheckCircle2 className="h-5 w-5 shrink-0" />

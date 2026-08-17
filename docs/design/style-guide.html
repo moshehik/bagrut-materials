@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>חומרים לבגרות — דף בית (דגם עיצוב)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&family=Noto+Sans+Hebrew:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+/* =====================================================================
+   טוקנים — שפת העיצוב של sariberlinsky.co.il (פילים, זכוכית, רדיוסים
+   ענקיים, בועות עם צל, גרדיאנטים רכים) — בפלטה חמה ושמחה יותר:
+   טורקיז → תכלת חי, אפור-כחלחל → אפרסק/שמיים בהירים, + צהוב שמש.
+   ===================================================================== */
+:root{
+  --white:#FFFFFF;
+  --ink:#232C33;
+  --text:#2A2A2A;
+  --text-2:#3B3B3B;
+  --gray:#54595F;
+
+  /* פאנלים גדולים — במקום #E8EEF2 האפרפר */
+  --peach:#FFF1E6;
+  --peach-2:#FFE4D1;
+  --skypanel:#E7F7FF;
+
+  /* אלמוג / ורוד — כמו אצלה */
+  --coral:#F4647E;
+  --coral-2:#E9536C;
+  --coral-3:#F15650;
+  --coral-dark:#CC3366;
+  --salmon:#FF9C9C;
+  --pink-soft:#FFD6E6;
+  --pink-blog:#F491A4;
+
+  /* תכלת חי — במקום הטורקיז (#00B9AA / #00FFEA / #28E4DA / #42E9E0) */
+  --sky:#00AEEF;
+  --sky-light:#6EE7FF;
+  --sky-2:#2FC8FF;
+  --sky-3:#5AD6FF;
+  --sky-deep:#0793D0;
+
+  /* צהוב שמש — דגש חדש */
+  --sun:#FFC94D;
+  --sun-light:#FFE29A;
+  --sun-deep:#F5A700;
+
+  --font:'ראג','RAG Sans','Rubik','Noto Sans Hebrew',sans-serif;
+  --shadow-card:rgba(50,50,93,.10) 0 30px 60px -12px, rgba(0,0,0,.10) 0 18px 36px -18px;
+  --shadow-card-hover:rgba(50,50,93,.20) 0 30px 60px -12px, rgba(0,0,0,.20) 0 18px 36px -18px;
+  --shadow-pill:rgba(50,50,93,.25) 0 15px 30px -6px, rgba(0,0,0,.20) 0 8px 16px -8px;
+  --shadow-bubble:rgba(0,0,0,.11) 6px 20px 10px -3px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;background:var(--white);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;}
+a{color:inherit;text-decoration:none;}
+img{display:block;max-width:100%;}
+h1,h2,h3,h4,p,ul{margin:0;}
+.wrap{max-width:1265px;margin:0 auto;padding:0 40px;}
+.wrap-narrow{max-width:1180px;margin:0 auto;padding:0 20px;}
+.wrap-wide{max-width:1265px;margin:0 auto;padding:0 20px;}
+
+/* placeholder לתמונות */
+.ph{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.ph::after{content:attr(data-label);position:absolute;bottom:12px;left:14px;background:rgba(255,255,255,.8);padding:.25rem .7rem;border-radius:100px;font-size:.75rem;color:var(--ink);font-weight:600;}
+.ph svg{width:100%;height:100%;position:absolute;inset:0;}
+
+/* כפתור בסיס */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:0;cursor:pointer;font-family:inherit;font-weight:600;border-radius:100px;color:#fff;transition:.3s;white-space:nowrap;line-height:1;text-align:center;}
+.btn:hover{transform:translateY(-1px);}
+
+/* ===== 1) פס עליון ===== */
+.topbar{height:160px;display:flex;align-items:flex-start;}
+.topbar .wrap-narrow{display:flex;align-items:center;gap:20px;padding-top:34px;}
+.topbar h3{font-size:1.1rem;font-weight:400;color:var(--gray);line-height:1.2;}
+.topbar .btn{background:rgba(237,237,237,.51);color:#333;font-weight:500;font-size:15px;padding:6px 12px;}
+
+/* ===== 2) הדר ===== */
+.header{background:var(--white);position:sticky;top:0;z-index:50;}
+.header-bar{position:relative;height:60px;border-radius:15px;padding:0 40px 0 20px;background:linear-gradient(-90deg,var(--sky) 0%,var(--sky-light) 100%);display:flex;align-items:center;gap:20px;}
+.logo{position:absolute;right:0;top:-40px;width:128px;height:128px;}
+.logo .disc{width:100%;height:100%;border-radius:50%;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:var(--shadow-bubble);}
+.logo .disc b{font-size:1.25rem;font-weight:800;color:var(--ink);line-height:1;}
+.logo .disc small{font-size:.62rem;font-weight:600;color:var(--sky-deep);margin-top:4px;}
+.logo .disc i{font-style:normal;font-size:1.4rem;line-height:1;}
+.nav{margin-right:150px;display:flex;gap:26px;}
+.nav a{color:#fff;font-size:1.14rem;font-weight:600;padding:13px 0;transition:.2s;}
+.nav a:hover{opacity:.8;}
+.spacer{flex:1;}
+.mini-btn{min-width:71px;padding:5px 9px;font-size:.7rem;font-weight:600;line-height:1.05;flex-direction:column;color:#fff;}
+.mini-btn span{display:block;font-size:.62rem;font-weight:400;opacity:.9;}
+.mini-btn.dark{background:linear-gradient(132deg,#232C33 0%,#1B2329 53%,#0E1418 100%);}
+.mini-btn.coral{background:linear-gradient(132deg,#F4647E 0%,#EA667E 53%,#D9506A 100%);}
+.cart{position:fixed;left:20px;bottom:20px;width:52px;height:52px;border-radius:100px;background:var(--sun);color:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-bubble);z-index:60;}
+.cart svg{width:22px;height:22px;}
+.cart b{position:absolute;top:-4px;right:-4px;width:20px;height:20px;border-radius:50%;background:var(--coral);color:#fff;font-size:.7rem;display:flex;align-items:center;justify-content:center;}
+
+/* ===== 3) HERO ===== */
+.hero{padding-top:10px;}
+.hero-img{height:432px;border-radius:15px 15px 100px 100px;overflow:hidden;position:relative;}
+.hero-bubble{position:absolute;right:44px;top:33px;width:506px;height:365px;padding:70px 70px 70px 40px;display:flex;align-items:center;justify-content:center;}
+.hero-bubble::before{content:"";position:absolute;inset:0;background:rgba(255,255,255,.93);border-radius:52% 48% 55% 45% / 45% 55% 45% 55%;box-shadow:var(--shadow-bubble);}
+.hero-bubble p{position:relative;font-size:1.5rem;line-height:1.1;text-align:center;color:var(--text);}
+.hero-bubble p b{font-weight:600;color:var(--sky-deep);}
+.hearts svg{position:absolute;}
+.pill-row{position:relative;z-index:2;margin:-80px auto 0;width:744px;max-width:100%;border-radius:200px;padding:20px 35px 10px 30px;background:linear-gradient(rgba(255,244,230,.55) 0%,rgba(255,236,220,.85) 100%);border:1px solid rgba(255,255,255,.7);box-shadow:var(--shadow-pill);backdrop-filter:blur(8px);display:flex;justify-content:center;}
+.pill-item{padding:10px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:150px;}
+.pill-item .btn{background:var(--sky);font-size:.95rem;padding:8px 14px 6px;min-width:90px;}
+.pill-item h2{font-size:.9rem;font-weight:400;line-height:1.1;color:var(--text);}
+
+/* ===== 4) מקצועות — בועות עגולות (שפת הבועות שלה) ===== */
+.subjects{padding:90px 0 20px;text-align:center;}
+.subjects h2{font-size:2.9rem;font-weight:800;color:var(--ink);line-height:1;}
+.subjects p.sub{margin-top:10px;font-size:1.2rem;color:var(--text);}
+.subj-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:34px 28px;margin-top:44px;}
+.subj{width:128px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.subj .disc{width:110px;height:110px;border-radius:50%;background:#FCFCFC;box-shadow:var(--shadow-bubble);display:flex;align-items:center;justify-content:center;font-size:2.4rem;transition:.3s;position:relative;}
+.subj .disc::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px dashed transparent;transition:.3s;}
+.subj:hover .disc{transform:translateY(-6px) rotate(-6deg);}
+.subj:hover .disc::after{border-color:var(--sky-2);}
+.subj b{font-size:1.05rem;font-weight:600;color:var(--ink);}
+.subj small{font-size:.75rem;color:var(--gray);}
+.subj.s1 .disc{background:linear-gradient(150deg,#FFF 40%,var(--skypanel));}
+.subj.s2 .disc{background:linear-gradient(150deg,#FFF 40%,var(--peach));}
+.subj.s3 .disc{background:linear-gradient(150deg,#FFF 40%,var(--pink-soft));}
+.subj.s4 .disc{background:linear-gradient(150deg,#FFF 40%,var(--sun-light));}
+
+/* ===== 5) איך זה עובד + אקורדיון "מה יש בכל קובץ" ===== */
+.about{padding:80px 0 60px;text-align:center;}
+.about .lead{max-width:775px;margin:0 auto;font-size:1.3rem;line-height:1.25;color:var(--text);}
+.about .lead b{font-weight:600;}
+.about .lead p+p{margin-top:1rem;}
+.steps{display:flex;justify-content:center;gap:24px;margin:36px auto 0;max-width:900px;}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.step .n{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;color:#fff;box-shadow:var(--shadow-bubble);}
+.step:nth-child(1) .n{background:linear-gradient(135deg,var(--sky-2),var(--sky-deep));}
+.step:nth-child(2) .n{background:linear-gradient(135deg,var(--coral),var(--coral-dark));}
+.step:nth-child(3) .n{background:linear-gradient(135deg,var(--sun),var(--sun-deep));}
+.step b{font-size:1.15rem;color:var(--ink);}
+.step span{font-size:.95rem;color:var(--text);line-height:1.2;}
+.accordion{max-width:650px;margin:40px auto 0;text-align:right;}
+.accordion details{border-bottom:1px solid rgba(35,44,51,.15);}
+.accordion summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;padding:14px 4px;font-size:1.05rem;font-weight:600;color:var(--ink);}
+.accordion summary::-webkit-details-marker{display:none;}
+.accordion summary::after{content:"+";font-size:1.5rem;font-weight:300;color:var(--sky-deep);}
+.accordion details[open] summary::after{content:"–";}
+.accordion .panel{padding:0 4px 18px;font-size:1.15rem;line-height:1.3;color:var(--text);}
+.accordion .panel ul{list-style:none;padding:0;}
+.accordion .panel li{padding:6px 0;display:flex;gap:10px;align-items:flex-start;}
+.accordion .panel li b{font-weight:600;color:var(--ink);}
+.accordion .panel li .em{font-size:1.3rem;line-height:1;}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--sun-light);color:#7A5B00;margin-right:6px;vertical-align:middle;}
+
+/* ===== 6) מסלולים ומחירים — קופסה אפרסק רדיוס 100 ===== */
+.panel-box{background:var(--peach);border-radius:100px;padding:20px 0 40px;}
+.panel-box>h2{font-size:2.9rem;font-weight:800;color:var(--ink);text-align:center;padding:23px 0 0;line-height:1;}
+.product{display:grid;grid-template-columns:400px 1fr;gap:40px;padding:110px 40px 0;align-items:start;position:relative;}
+.product .info h2{font-size:3.2rem;font-weight:600;color:var(--text);line-height:1;}
+.product .desc{font-size:1.2rem;line-height:1.15;color:#000;margin-top:14px;}
+.link-plain{display:inline-block;margin-top:14px;font-size:1rem;font-weight:700;color:#000;border-bottom:2px solid transparent;}
+.link-plain:hover{border-color:var(--coral);}
+.buy{display:flex;align-items:center;margin-top:18px;}
+.buy .btn{background:var(--coral);font-size:1.2rem;font-weight:700;height:50px;padding:0 24px;}
+.buy .btn:hover{background:var(--coral-dark);}
+.plans{position:relative;height:414px;}
+.plan{position:absolute;background:#FCFCFC;border-radius:100px;box-shadow:var(--shadow-bubble);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-weight:600;color:var(--text);line-height:1.05;}
+.plan small{font-size:.8rem;font-weight:400;color:var(--gray);margin-top:4px;}
+.plan .price{font-size:1.6rem;font-weight:800;color:var(--ink);}
+.plan.p1{width:170px;height:170px;right:40px;top:20px;transform:rotate(-8deg);background:linear-gradient(160deg,#FFF,var(--skypanel));}
+.plan.p2{width:190px;height:190px;right:250px;top:110px;transform:rotate(5deg);background:linear-gradient(160deg,#FFF,var(--sun-light));}
+.plan.p3{width:210px;height:210px;right:60px;top:200px;transform:rotate(-4deg);background:linear-gradient(160deg,#FFF,var(--pink-soft));}
+.plan.p4{width:130px;height:130px;right:470px;top:20px;transform:rotate(10deg);background:linear-gradient(160deg,#FFF,var(--peach-2));}
+.plan.p5{width:120px;height:120px;right:480px;top:280px;transform:rotate(-12deg);background:var(--coral);color:#fff;}
+.plan.p5 .price{color:#fff;}
+.plan.p5 small{color:rgba(255,255,255,.9);}
+
+/* ===== 7) חדש במאגר — כרטיסי זכוכית ===== */
+.blog{padding:70px 0 0;}
+.blog>h2{font-size:3.7rem;font-weight:600;color:var(--text-2);text-align:center;line-height:1;margin-bottom:60px;}
+.cards{display:grid;grid-template-columns:repeat(4,290px);justify-content:space-between;gap:20px;}
+.card{border-radius:30px;padding:0 0 40px;background:linear-gradient(rgba(255,255,255,.55) 0%,rgba(255,255,255,.45) 100%);backdrop-filter:blur(20px) saturate(150%);box-shadow:var(--shadow-card);transition:.3s;display:flex;flex-direction:column;}
+.card:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-3px);}
+.card .ph{height:110px;border-radius:30px 30px 0 0;}
+.card .crumb{padding:12px 20px 0;font-size:.78rem;color:var(--gray);font-weight:600;}
+.card h2{padding:6px 20px 0;font-size:1.9rem;font-weight:600;line-height:1.7rem;}
+.card .excerpt{padding:0 20px;margin-top:12px;font-size:1.05rem;font-weight:600;line-height:1.15rem;color:var(--text);}
+.card .kinds{padding:0 20px;margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;flex:1;align-content:flex-start;}
+.card .kinds span{font-size:.75rem;background:rgba(255,255,255,.9);border-radius:100px;padding:3px 9px;font-weight:600;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.05);}
+.card .kinds span.pr{background:var(--sun-light);color:#7A5B00;}
+.card .btn{align-self:center;margin-top:24px;font-size:15px;padding:12px 24px;}
+.c1 h2{color:var(--coral-3);}   .c1 .btn{background:linear-gradient(132deg,#F35852 0%,#FC615B 45%,#FF7C77 100%);box-shadow:rgba(255,132,127,.2) 0 20px 20px,rgba(253,106,100,.2) 0 10px 15px;}
+.c2 h2{color:var(--sky-deep);}  .c2 .btn{background:linear-gradient(354deg,var(--sky-2) 4%,#9BE9FF 106%);color:var(--ink);box-shadow:rgba(47,200,255,.25) 0 20px 30px,rgba(47,200,255,.2) 0 20px 20px;}
+.c3 h2{color:var(--sun-deep);}  .c3 .btn{border-radius:50px;background:linear-gradient(166deg,var(--sun-light) 10%,var(--sun) 50%,var(--sun-deep) 100%);color:var(--ink);box-shadow:rgba(245,167,0,.18) 0 20px 20px,rgba(245,167,0,.15) 0 20px 50px;}
+.c4 h2{color:var(--pink-blog);} .c4 .btn{border-radius:50px;background:linear-gradient(354deg,#E88598 4%,#FD9BAE 59%,#FDA9B9 106%);box-shadow:rgba(246,162,179,.39) 0 20px 30px,rgba(235,178,189,.47) 0 20px 20px;}
+.all-btn-wrap{text-align:center;padding:74px 0 0;}
+.all-btn{background:var(--ink);font-size:1.8rem;font-weight:400;padding:20px 40px;}
+.all-btn:hover{background:#0E1418;}
+
+/* ===== 8) פרימיום — קופסה שמיים רדיוס 60 ===== */
+.course{margin-top:148px;}
+.course-box{background:var(--skypanel);border-radius:60px;padding:100px 0;text-align:center;position:relative;}
+.course-hero{height:400px;margin:0 auto;position:relative;max-width:1000px;}
+.tiers{display:flex;justify-content:center;align-items:flex-end;gap:36px;height:100%;padding-bottom:20px;}
+.tier{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.tier .disc{border-radius:50%;background:#FCFCFC;box-shadow:var(--shadow-bubble);display:flex;align-items:center;justify-content:center;font-size:2.4rem;transition:.3s;}
+.tier:hover .disc{transform:translateY(-8px) rotate(-6deg);}
+.tier b{font-size:1.15rem;font-weight:700;}
+.tier small{font-size:.8rem;color:var(--gray);}
+.tier.t1 .disc{width:120px;height:120px;border:5px solid #9CA3AF;}
+.tier.t2 .disc{width:140px;height:140px;border:5px solid #C77A2C;}
+.tier.t3 .disc{width:160px;height:160px;border:5px solid #B8C2CC;}
+.tier.t4 .disc{width:180px;height:180px;border:5px solid var(--sun);}
+.tier.t5 .disc{width:200px;height:200px;border:5px solid var(--sky-2);font-size:3rem;}
+.sticker{position:absolute;width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;line-height:1.1;box-shadow:var(--shadow-bubble);}
+.sticker.a{right:-20px;top:-40px;background:var(--coral);color:#fff;font-size:1.15rem;transform:rotate(8deg);}
+.sticker.b{left:-20px;top:-10px;background:var(--sun);color:var(--ink);font-size:1.05rem;transform:rotate(-10deg);}
+.course h1{font-size:3.6rem;font-weight:600;color:var(--ink);line-height:1;margin-top:40px;}
+.course h2{font-size:2.3rem;font-weight:400;color:var(--ink);line-height:1;margin-top:20px;}
+.course .txt{max-width:646px;margin:40px auto 0;font-size:1.2rem;line-height:1.6rem;color:var(--ink);}
+.course .txt p+p{margin-top:.9rem;}
+.course .btn{margin-top:40px;font-size:1.7rem;padding:20px 40px;background:linear-gradient(-90deg,var(--sky) 0%,var(--sky-light) 100%);box-shadow:rgba(0,174,239,.25) 0 20px 30px;}
+
+/* ===== 9) אבטחה — גליל זכוכית ===== */
+.secure{margin:100px auto 0;width:900px;max-width:100%;border-radius:200px;padding:28px 50px;background:linear-gradient(rgba(255,244,230,.55) 0%,rgba(255,236,220,.85) 100%);border:1px solid rgba(255,255,255,.7);box-shadow:var(--shadow-pill);display:flex;align-items:center;gap:26px;}
+.secure .ic{width:74px;height:74px;border-radius:50%;background:var(--white);box-shadow:var(--shadow-bubble);display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;}
+.secure h3{font-size:1.4rem;font-weight:600;color:var(--ink);}
+.secure p{font-size:1rem;color:var(--text);line-height:1.25;margin-top:4px;}
+.secure .btn{background:var(--ink);padding:14px 26px;font-size:1rem;margin-right:auto;}
+
+/* ===== 10) פוטר ===== */
+.footer{margin-top:60px;}
+.footer-box{background:var(--coral-2);border-radius:60px;padding:60px;display:grid;grid-template-columns:1fr 1fr;color:#fff;}
+.footer-menus{display:grid;grid-template-columns:repeat(3,auto);justify-content:end;gap:0 30px;align-content:start;}
+.footer-menus ul{list-style:none;padding:0;}
+.footer-menus li a{display:block;font-size:1.05rem;font-weight:600;color:#fff;padding:2px 0;line-height:1.5;}
+.footer-menus li a:hover{color:var(--ink);}
+.footer-cta{grid-column:1/-1;display:flex;flex-direction:column;align-items:flex-end;gap:14px;margin-top:30px;}
+.footer-cta .btn{font-size:1.1rem;padding:20px 30px;color:var(--text-2);width:100%;max-width:533px;}
+.footer-cta .b1{background:#fff;color:var(--ink);}
+.footer-cta .b2{background:var(--pink-soft);}
+.footer-cta .b3{background:var(--sun-light);}
+.form-box{background:var(--salmon);border-radius:30px;padding:50px;box-shadow:rgba(0,0,0,.02) 15px 15px 43px 12px;width:533px;max-width:100%;}
+.form-box h3{font-size:1.4rem;font-weight:600;color:var(--ink);margin-bottom:14px;}
+.form-box label{display:block;font-size:.95rem;font-weight:600;color:var(--ink);margin:0 0 4px;}
+.form-box .f{margin-bottom:12px;}
+.form-box input,.form-box textarea{width:100%;border:0;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:.95rem;background:#fff;color:var(--ink);}
+.form-box textarea{min-height:70px;resize:vertical;}
+.form-box .consent{font-size:.72rem;color:var(--ink);margin:6px 0 12px;line-height:1.3;}
+.form-box .send{width:100%;height:44px;border:0;border-radius:10px;background:var(--coral-2);color:#fff;font-family:inherit;font-weight:700;font-size:19px;cursor:pointer;}
+.form-box .send:hover{background:var(--coral-dark);}
+.bottom{padding:14px 10px 30px;text-align:center;font-size:.8rem;color:var(--gray);}
+.bottom a{margin:0 8px;}
+
+@media (max-width:1000px){
+  .cards{grid-template-columns:repeat(2,1fr);}
+  .product{grid-template-columns:1fr;}
+  .plans{height:460px;}
+  .footer-box{grid-template-columns:1fr;}
+  .footer-menus{justify-content:start;}
+  .hero-bubble{width:80%;height:auto;right:10%;top:20px;padding:50px 30px;}
+  .nav{display:none;}
+  .pill-row,.secure{flex-wrap:wrap;border-radius:60px;}
+  .tiers{gap:14px;}
+  .tier .disc{transform:scale(.8);}
+  .steps{flex-direction:column;}
+}
+@media (max-width:640px){
+  .cards{grid-template-columns:1fr;}
+  .wrap{padding:0 16px;}
+  .panel-box,.course-box,.footer-box{border-radius:40px;}
+  .hero-img{border-radius:15px 15px 60px 60px;height:360px;}
+  .blog>h2,.course h1,.product .info h2,.subjects h2{font-size:2.3rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- 1. פס עליון -->
+<div class="topbar">
+  <div class="wrap-narrow">
+    <h3>חדש: מפת הבגרות המלאה בתרשים זרימה — כל מקצוע, כל יחידה, כל פרק.</h3>
+    <a class="btn" href="#">🗺️ לצפייה במפה</a>
+  </div>
+</div>
+
+<!-- 2. הדר -->
+<header class="header">
+  <div class="wrap">
+    <div class="header-bar">
+      <a class="logo" href="#"><div class="disc"><i>📚</i><b>חומרים לבגרות</b><small>למורות במחוז החרדי</small></div></a>
+      <nav class="nav">
+        <a href="#subjects">המקצועות</a>
+        <a href="#">מפת הבגרות</a>
+        <a href="#pricing">מסלולים ומחירים</a>
+        <a href="#">הפורום</a>
+        <a href="#">למכור חומרים</a>
+        <a href="#contact">צור קשר</a>
+      </nav>
+      <div class="spacer"></div>
+      <a class="btn mini-btn dark" href="#">לפי תיקיות<span>מקצוע ← פרק</span></a>
+      <a class="btn mini-btn coral" href="#">לפי תרשים<span>מפת זרימה</span></a>
+    </div>
+  </div>
+</header>
+<a class="cart" href="#" title="החשבון שלי / סל">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+  <b>0</b>
+</a>
+
+<!-- 3. HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-img ph" data-label="תמונה ראשית 1185×432 — שולחן מורה: מחברת, דפי שכפול, קפה, אור חם">
+      <svg viewBox="0 0 1185 432" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#FFE9D6"/><stop offset=".55" stop-color="#FFF6EE"/><stop offset="1" stop-color="#E4F6FF"/></linearGradient></defs>
+        <rect width="1185" height="432" fill="url(#g1)"/>
+        <ellipse cx="330" cy="390" rx="300" ry="60" fill="#fff" opacity=".55"/>
+        <rect x="120" y="215" width="230" height="160" rx="14" fill="#fff" transform="rotate(-4 235 295)"/>
+        <rect x="145" y="240" width="180" height="8" rx="4" fill="#BFE7FA"/><rect x="145" y="264" width="140" height="8" rx="4" fill="#BFE7FA"/><rect x="145" y="288" width="160" height="8" rx="4" fill="#FFC9D3"/><rect x="145" y="312" width="120" height="8" rx="4" fill="#FFE29A"/>
+        <rect x="360" y="235" width="230" height="160" rx="14" fill="#fff" opacity=".9" transform="rotate(5 475 315)"/>
+        <rect x="385" y="262" width="170" height="8" rx="4" fill="#E9E9E9"/><rect x="385" y="286" width="150" height="8" rx="4" fill="#E9E9E9"/><rect x="385" y="310" width="120" height="8" rx="4" fill="#E9E9E9"/>
+        <circle cx="470" cy="150" r="46" fill="#fff"/><circle cx="470" cy="150" r="34" fill="#C89B7B"/><path d="M520 140 q30 0 30 25 q0 25 -30 25" stroke="#fff" stroke-width="8" fill="none"/>
+        <circle cx="120" cy="120" r="26" fill="#FFC94D" opacity=".8"/>
+      </svg>
+      <div class="hearts">
+        <svg style="left:255px;top:236px" width="69" height="48" viewBox="0 0 69 48"><path d="M34 46 C10 30 2 20 6 10 C10 0 24 0 34 12 C44 0 58 0 62 10 C66 20 58 30 34 46Z" fill="var(--sky-2)"/></svg>
+        <svg style="left:310px;top:236px" width="49" height="49" viewBox="0 0 49 49"><path d="M24 44 C6 30 0 20 4 12 C8 4 18 4 24 12 C30 4 40 4 44 12 C48 20 42 30 24 44Z" fill="var(--coral)"/></svg>
+      </div>
+      <div class="hero-bubble">
+        <p>ברוכה הבאה למורה שנכנסת לכיתה רגועה.<br/><b>שיעור מוכן לכל פרק —<br/>בלחיצה אחת.</b><br/>הקפה שלך מוכן? מוזמנת להתחיל.</p>
+      </div>
+    </div>
+
+    <div class="pill-row">
+      <div class="pill-item"><a class="btn" href="#">📝 לתלמידה</a><h2>דף שכפול —<br/>משפטים להשלמה</h2></div>
+      <div class="pill-item"><a class="btn" href="#">👩‍🏫 למורה</a><h2>דף מלא עם תשובות,<br/>סיפורים וחידות</h2></div>
+      <div class="pill-item"><a class="btn" href="#">🖥️ מצגת</a><h2>מצגת מלווה<br/>למקרן / ללוח</h2></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. המקצועות -->
+<section class="subjects wrap" id="subjects">
+  <h2>המקצועות</h2>
+  <p class="sub">בחרי מקצוע ופתחי את התיקיות עד לפרק שאת מלמדת מחר.</p>
+  <div class="subj-grid">
+    <a class="subj s1" href="#"><div class="disc">📜</div><b>תורה</b><small>יחידות · פרשות</small></a>
+    <a class="subj s2" href="#"><div class="disc">🕊️</div><b>נביא</b><small>ספרים · פרקים</small></a>
+    <a class="subj s3" href="#"><div class="disc">🎼</div><b>כתובים</b><small>תהילים · משלי</small></a>
+    <a class="subj s4" href="#"><div class="disc">✒️</div><b>לשון</b><small>הבנה · הבעה</small></a>
+    <a class="subj s1" href="#"><div class="disc">📖</div><b>ספרות</b><small>שירה · סיפור</small></a>
+    <a class="subj s2" href="#"><div class="disc">🔤</div><b>אנגלית</b><small>Modules</small></a>
+    <a class="subj s3" href="#"><div class="disc">🕯️</div><b>יהדות</b><small>מחשבה · מועדים</small></a>
+    <a class="subj s4" href="#"><div class="disc">➗</div><b>מתמטיקה</b><small>3 · 4 · 5 יח״ל</small></a>
+    <a class="subj s1" href="#"><div class="disc">⚖️</div><b>דינים</b><small>הלכה</small></a>
+    <a class="subj s2" href="#"><div class="disc">🏛️</div><b>היסטוריה</b><small>פנימי · חיצוני</small></a>
+    <a class="subj s3" href="#"><div class="disc">🏛</div><b>אזרחות</b><small>יסודות</small></a>
+    <a class="subj s4" href="#"><div class="disc">💬</div><b>שיחה</b><small>וחברה</small></a>
+  </div>
+</section>
+
+<!-- 5. איך זה עובד + מה יש בכל קובץ -->
+<section class="about">
+  <div class="wrap-narrow">
+    <div class="lead">
+      <p>נעים מאוד, אנחנו <b>חומרים לבגרות</b> — מאגר שיעורים מוכנים למורות במחוז החרדי.<br/>כל פרק מגיע כערכה שלמה: דף שכפול לתלמידה, דף מלא למורה, מצגת מלווה,<br/>שאלות מבגרויות קודמות וטיפים מהשטח — מסודר לפי מקצוע, יחידות, פנימי/חיצוני ופרקים.<br/>כדי שאת נכנסת לכיתה רגועה ומוכנה.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><b>בוחרים מקצוע</b><span>תורה, נביא, לשון, אנגלית, מתמטיקה, היסטוריה ועוד</span></div>
+      <div class="step"><div class="n">2</div><b>יורדים עד לפרק</b><span>יחידות ← פנימי/חיצוני ← נושא ← פרשה/פרק</span></div>
+      <div class="step"><div class="n">3</div><b>מורידים ומלמדים</b><span>הקבצים מוטבעים במספר האישי שלך</span></div>
+    </div>
+    <div class="accordion">
+      <details open>
+        <summary>מה יש בכל קובץ שיעור?</summary>
+        <div class="panel">
+          <ul>
+            <li><span class="em">📝</span><div><b>דף שכפול לתלמידה</b> — משפטים חסרים להשלמה במהלך השיעור.</div></li>
+            <li><span class="em">👩‍🏫</span><div><b>דף שכפול למורה</b> — מערך מלא עם תשובות, סיפורים, שאלות לחידוד וחידות.</div></li>
+            <li><span class="em">🖥️</span><div><b>מצגת מלווה</b> <span class="tag">פרימיום</span> — לליווי השיעור.</div></li>
+            <li><span class="em">📚</span><div><b>שאלות מבגרויות קודמות</b> <span class="tag">פרימיום</span> — לפי פרקים, עם פתרונות.</div></li>
+            <li><span class="em">💡</span><div><b>טיפים למסירת הפרק</b> <span class="tag">פרימיום</span> — עצות פרקטיות מהשטח.</div></li>
+            <li><span class="em">🎲</span><div><b>רעיונות, חידות וסיפורים</b> <span class="tag">פרימיום</span> — להפיכת השיעור למעניין.</div></li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>איך שומרים על היוצרות ועל המחירים הנמוכים?</summary>
+        <div class="panel"><p>בכל הורדה מוטבעים בקובץ המספר האישי של המורידה והודעת זכויות יוצרים. העברת הקובץ הלאה חושפת את המעבירה לתביעה.</p></div>
+      </details>
+      <details>
+        <summary>גם לי יש חומרים — אפשר למכור דרככם?</summary>
+        <div class="panel"><p>כן! מורות שכתבו מערכים יכולות להציע אותם למכירה במאגר ולקבל תמלוגים על כל הורדה. עמוד ״למכור חומרים״ מסביר הכול.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- 6. מסלולים ומחירים -->
+<section class="wrap" id="pricing">
+  <div class="panel-box">
+    <h2>מסלולים ומחירים</h2>
+    <div class="product">
+      <div class="info">
+        <h2>מנוי חודשי לפי המערכת שלך</h2>
+        <p class="desc">מותאם למערכת השעות שלך — עד 3 מקצועות, 60 הורדות בחודש. אפשר גם מנוי למקצוע אחד (30 הורדות), מנוי שנתי לכל המקצועות (400 הורדות), או פשוט הורדה בודדת של פרק / קובץ מורחב של תיקייה שלמה.</p>
+        <a class="link-plain" href="#">להשוואת כל המסלולים</a>
+        <div class="buy"><a class="btn" href="#">לבחירת מסלול</a></div>
+        <br/>
+        <a class="link-plain" href="#">+ תוספת פרימיום ₪29 לחודש — מצגות, בגרויות קודמות, טיפים, רעיונות והפורום</a>
+      </div>
+      <div class="plans">
+        <div class="plan p1"><span>מנוי חודשי<br/>למקצוע</span><span class="price">₪69</span><small>30 הורדות</small></div>
+        <div class="plan p2"><span>מנוי חודשי<br/>לפי מערכת</span><span class="price">₪149</span><small>3 מקצועות · 60 הורדות</small></div>
+        <div class="plan p3"><span>מנוי שנתי<br/>לכל המקצועות</span><span class="price">₪890</span><small>400 הורדות</small></div>
+        <div class="plan p4"><span>הורדה<br/>בודדת</span><small>פרק אחד</small></div>
+        <div class="plan p5"><span>פרימיום</span><span class="price">₪29</span><small>לחודש</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. חדש במאגר -->
+<section class="blog wrap-wide">
+  <h2>חדש במאגר</h2>
+  <div class="cards">
+    <article class="card c1">
+      <div class="ph" data-label="תמונה 290×110"><svg viewBox="0 0 290 110" preserveAspectRatio="none"><rect width="290" height="110" fill="#FFE1DF"/><circle cx="60" cy="60" r="34" fill="#F35852" opacity=".45"/><rect x="150" y="30" width="110" height="60" rx="10" fill="#fff" opacity=".8"/></svg></div>
+      <div class="crumb">תורה › 2 יח״ל › פנימי › בראשית</div>
+      <h2><a href="#">פרשת לך לך</a></h2>
+      <p class="excerpt">ערכה מלאה: ״וַיֹּאמֶר ה' אֶל ______ לֶךְ לְךָ״ — משפטים להשלמה, דף למורה עם התשובות, ומצגת.</p>
+      <div class="kinds"><span>📝 לתלמידה</span><span>👩‍🏫 למורה</span><span class="pr">🖥️ מצגת</span><span class="pr">📚 בגרויות</span></div>
+      <a class="btn" href="#">לפתיחת התיקייה</a>
+    </article>
+    <article class="card c2">
+      <div class="ph" data-label="תמונה 290×110"><svg viewBox="0 0 290 110" preserveAspectRatio="none"><rect width="290" height="110" fill="#DDF4FF"/><rect x="180" y="20" width="80" height="70" rx="12" fill="#2FC8FF" opacity=".45"/></svg></div>
+      <div class="crumb">לשון › הבעה › שם המספר</div>
+      <h2><a href="#">שם המספר — זכר ונקבה</a></h2>
+      <p class="excerpt">״שלושה ילדים / שלוש ילדות״ — הכלל, החריגים, ותרגול שנשאל בבגרות.</p>
+      <div class="kinds"><span>📝 לתלמידה</span><span>👩‍🏫 למורה</span><span class="pr">💡 טיפים</span></div>
+      <a class="btn" href="#">לפתיחת התיקייה</a>
+    </article>
+    <article class="card c3">
+      <div class="ph" data-label="תמונה 290×110"><svg viewBox="0 0 290 110" preserveAspectRatio="none"><rect width="290" height="110" fill="#FFF3D1"/><path d="M0 90 Q70 30 145 70 T290 50 V110 H0Z" fill="#FFC94D" opacity=".5"/></svg></div>
+      <div class="crumb">היסטוריה › חיצוני › עולם ישן</div>
+      <h2><a href="#">מהפכת הדפוס</a></h2>
+      <p class="excerpt">גוטנברג, ההשפעה על אירופה, ומקור היסטורי לניתוח — עם שאלות בסגנון בגרות.</p>
+      <div class="kinds"><span>📝 לתלמידה</span><span>👩‍🏫 למורה</span><span class="pr">📚 בגרויות</span><span class="pr">🎲 חידות</span></div>
+      <a class="btn" href="#">לפתיחת התיקייה</a>
+    </article>
+    <article class="card c4">
+      <div class="ph" data-label="תמונה 290×110"><svg viewBox="0 0 290 110" preserveAspectRatio="none"><rect width="290" height="110" fill="#FFE6EC"/><circle cx="230" cy="40" r="50" fill="#F491A4" opacity=".4"/></svg></div>
+      <div class="crumb">אנגלית › 4–5 יח״ל › Module C</div>
+      <h2><a href="#">Unseen — Reading Strategies</a></h2>
+      <p class="excerpt">שלושה שלבים לקריאת קטע ארוך בלי להיתקע: סריקה, מיפוי שאלות, קריאה מעמיקה.</p>
+      <div class="kinds"><span>📝 לתלמידה</span><span>👩‍🏫 למורה</span><span class="pr">🖥️ מצגת</span></div>
+      <a class="btn" href="#">לפתיחת התיקייה</a>
+    </article>
+  </div>
+  <div class="all-btn-wrap"><a class="btn all-btn" href="#">לכל המקצועות</a></div>
+</section>
+
+<!-- 8. סולם הפרימיום -->
+<section class="course wrap">
+  <div class="course-box">
+    <div class="course-hero">
+      <div class="sticker a">תוספת<br/>פרימיום<br/>₪29 לחודש</div>
+      <div class="sticker b">פותח את<br/>הפורום</div>
+      <div class="tiers">
+        <div class="tier t1"><div class="disc">🛡️</div><b>ברזל</b><small>רמה 1</small></div>
+        <div class="tier t2"><div class="disc">🥉</div><b>נחושת</b><small>רמה 2</small></div>
+        <div class="tier t3"><div class="disc">🥈</div><b>כסף</b><small>רמה 3</small></div>
+        <div class="tier t4"><div class="disc">🥇</div><b>זהב</b><small>רמה 4</small></div>
+        <div class="tier t5"><div class="disc">💎</div><b>יהלום</b><small>רמה 5</small></div>
+      </div>
+    </div>
+    <h1>סולם הפרימיום: מברזל ועד יהלום</h1>
+    <h2>ככל שאת פעילה יותר — הרמה עולה וההטבות מתרחבות</h2>
+    <div class="txt">
+      <p>פרימיום פותח את המצגות, שאלות הבגרויות הקודמות, הטיפים, הרעיונות והפורום. כל הורדה, כל תשובה בפורום וכל חומר שאת משתפת מקדמים אותך בסולם.</p>
+      <p>ברמות הגבוהות: הורדות נוספות בחינם, גישה מוקדמת לחומרים חדשים, והנחה על מכירת החומרים שלך במאגר.</p>
+    </div>
+    <a class="btn" href="#">מעניין אותי</a>
+  </div>
+</section>
+
+<!-- 9. אבטחה -->
+<div class="wrap">
+  <div class="secure">
+    <div class="ic">🛡️</div>
+    <div>
+      <h3>כל קובץ מוטבע במספר האישי שלך</h3>
+      <p>בכל הורדה מוטבעים בקובץ המספר האישי של המורידה והודעת זכויות יוצרים. כך אנחנו שומרות על היוצרות — ועל המחירים הנמוכים.</p>
+    </div>
+    <a class="btn" href="#">לתנאי השימוש</a>
+  </div>
+</div>
+
+<!-- 10. פוטר -->
+<footer class="footer wrap" id="contact">
+  <div class="footer-box">
+    <div>
+      <div class="form-box">
+        <h3>צור קשר</h3>
+        <div class="f"><label>שם</label><input type="text"/></div>
+        <div class="f"><label>טלפון</label><input type="tel"/></div>
+        <div class="f"><label>אימייל</label><input type="email"/></div>
+        <div class="f"><label>הודעה</label><textarea placeholder="שאלה על מסלול? חומר שחסר? נשמח לשמוע"></textarea></div>
+        <p class="consent">עם שליחת הטופס את מסכימה ליצירת קשר וקבלת דיוור בהתאם למדיניות הפרטיות שלנו</p>
+        <button class="send" type="button">שליחה</button>
+      </div>
+    </div>
+    <div>
+      <div class="footer-menus">
+        <ul><li><a href="#">דף הבית</a></li><li><a href="#">המקצועות</a></li><li><a href="#">מפת הבגרות</a></li><li><a href="#">מסלולים ומחירים</a></li></ul>
+        <ul><li><a href="#">הפורום</a></li><li><a href="#">למכור חומרים</a></li><li><a href="#">החשבון שלי</a></li><li><a href="#">הרשמה / התחברות</a></li></ul>
+        <ul><li><a href="#">תנאי שימוש</a></li><li><a href="#">הצהרת נגישות</a></li><li><a href="#">מדיניות פרטיות</a></li><li><a href="#">צור קשר</a></li></ul>
+      </div>
+      <div class="footer-cta">
+        <a class="btn b1" href="#">לקבל עדכונים על חומרים חדשים במייל</a>
+        <a class="btn b2" href="#">להצטרף לפורום המורות</a>
+        <a class="btn b3" href="#">יש לך חומרים? להצטרפות למוכרות</a>
+      </div>
+    </div>
+  </div>
+  <div class="bottom">© חומרים לבגרות · <a href="#">הצהרת נגישות</a> · <a href="#">מדיניות פרטיות</a> · <a href="#">תנאי שימוש</a></div>
+</footer>
+
+</body>
+</html>

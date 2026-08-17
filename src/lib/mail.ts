@@ -226,4 +226,27 @@ export const templates = {
       html: layoutHtml(subject, `<div style="white-space:pre-wrap">${esc(body)}</div>`),
     };
   },
+  passwordReset(name: string, url: string) {
+    return {
+      subject: `איפוס סיסמה – ${SITE_NAME}`,
+      text: `שלום ${name},\n\nקיבלנו בקשה לאיפוס הסיסמה שלך באתר ${SITE_NAME}.\nלבחירת סיסמה חדשה היכנסי לקישור (בתוקף לשעה):\n${url}\n\nאם לא ביקשת איפוס – אפשר להתעלם מהודעה זו, הסיסמה שלך נשארת ללא שינוי.`,
+      html: layoutHtml(
+        "איפוס סיסמה",
+        `<p>שלום ${esc(name)},</p><p>קיבלנו בקשה לאיפוס הסיסמה שלך. לחצי על הכפתור לבחירת סיסמה חדשה. הקישור בתוקף <b>לשעה אחת</b>.</p>
+         <p style="color:#64748b;font-size:13px">אם לא ביקשת איפוס – אפשר להתעלם מהודעה זו, הסיסמה שלך נשארת ללא שינוי.</p>`,
+        { label: "לבחירת סיסמה חדשה", href: url },
+      ),
+    };
+  },
+  verifyEmail(name: string, url: string) {
+    return {
+      subject: `אימות כתובת המייל – ${SITE_NAME}`,
+      text: `שלום ${name},\n\nכדי לאמת את כתובת המייל שלך באתר ${SITE_NAME} היכנסי לקישור (בתוקף ל-24 שעות):\n${url}\n\nתודה!`,
+      html: layoutHtml(
+        "אימות כתובת המייל",
+        `<p>שלום ${esc(name)},</p><p>לחצי על הכפתור כדי לאמת את כתובת המייל שלך. הקישור בתוקף ל-24 שעות.</p>`,
+        { label: "אימות המייל שלי", href: url },
+      ),
+    };
+  },
 };

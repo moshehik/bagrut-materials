@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FolderTree, GitBranch } from "lucide-react";
 import { getRootSubjects, countMaterialsUnder } from "@/lib/data";
+import { getCurrentUser } from "@/lib/session";
 import { SUBJECT_ICONS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
@@ -13,7 +14,8 @@ export const dynamic = "force-dynamic";
 
 async function load(): Promise<{ subject: Category; count: number }[]> {
   try {
-    const subjects = await getRootSubjects();
+    const user = await getCurrentUser().catch(() => null);
+    const subjects = await getRootSubjects(user?.role === "admin");
     return Promise.all(
       subjects.map(async (subject) => ({
         subject,

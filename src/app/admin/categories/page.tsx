@@ -29,6 +29,8 @@ export default async function AdminCategoriesPage() {
       color: c.color,
       sort: c.sort,
       bundlePrice: c.bundlePrice,
+      status: c.status,
+      minTier: c.minTier,
       materialsCount: countMap.get(c.id) ?? 0,
       children: [],
     };

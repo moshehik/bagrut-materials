@@ -23,6 +23,8 @@ export type CheckoutFormProps = {
   premiumDefault?: boolean;
   /** האם ניתן להוסיף פרימיום */
   allowPremium?: boolean;
+  /** מחיר תוסף פרימיום לחודש באגורות (ברירת מחדל מהקבועים) */
+  addonPrice?: number;
 };
 
 export function CheckoutForm(props: CheckoutFormProps) {
@@ -37,6 +39,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
     months,
     premiumDefault = false,
     allowPremium = true,
+    addonPrice = PREMIUM_ADDON_PRICE,
   } = props;
 
   const [state, action, pending] = useActionState(purchaseAction, undefined);
@@ -47,7 +50,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
   const needsSelect = kind === "plan" && plan === "subject_monthly" && !categoryId;
   const needsMulti = kind === "plan" && plan === "custom_monthly";
 
-  const addon = premium && allowPremium && kind !== "premium" ? PREMIUM_ADDON_PRICE * months : 0;
+  const addon = premium && allowPremium && kind !== "premium" ? addonPrice * months : 0;
   const total = basePrice + addon;
 
   const canSubmit = useMemo(() => {
@@ -172,7 +175,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
               <Sparkles className="h-4 w-4 text-gold" />
               הוסיפי פרימיום
               <span className="chip bg-gold-soft text-[#8a6500] ms-auto">
-                +{formatPrice(PREMIUM_ADDON_PRICE)} לחודש
+                +{formatPrice(addonPrice)} לחודש
               </span>
             </span>
             <span className="block text-sm text-muted mt-1">

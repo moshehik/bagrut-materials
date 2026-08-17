@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles } from "lucide-react";
+import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles, Eye, PauseCircle, Gift } from "lucide-react";
 import type { Material } from "@/db/schema";
+import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { Entitlement } from "@/lib/data";
 import { MATERIAL_KINDS, PREMIUM_KINDS, TIERS, formatPrice } from "@/lib/constants";
 
@@ -33,7 +34,7 @@ function formatSize(bytes: number) {
 
 export function MaterialCard({ material: m, entitlement, loggedIn, currentPath = "/subjects" }: Props) {
   const kind = MATERIAL_KINDS[m.kind] ?? MATERIAL_KINDS.other;
-  const isPremium = m.premiumOnly || PREMIUM_KINDS.includes(m.kind);
+  const isPremium = m.premiumOnly || m.access === "premium" || PREMIUM_KINDS.includes(m.kind);
   const ft = fileType(m);
   const size = formatSize(m.size);
 
@@ -63,7 +64,21 @@ export function MaterialCard({ material: m, entitlement, loggedIn, currentPath =
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
         <span className={`chip ${ft.className}`}>{ft.label}</span>
         {size && <span className="chip bg-gray-100 text-gray-600">{size}</span>}
-        <span className="chip bg-gold-soft text-[#7a5b00]">{formatPrice(m.price)}</span>
+        {m.access === "free" ? (
+          <span className="chip bg-green-100 text-green-800">
+            <Gift className="h-3 w-3" aria-hidden /> חינם
+          </span>
+        ) : (
+          <span className="chip bg-gold-soft text-[#7a5b00]">{formatPrice(m.price)}</span>
+        )}
+        {m.access === "tier" && <span className="chip bg-blue-soft text-blue-deep">לפי רמה</span>}
+        {m.access === "premium" && !isPremium && <span className="chip bg-pink-soft text-pink">פרימיום</span>}
+        {!m.allowDownload && (
+          <span className="chip bg-gray-100 text-gray-700">
+            <Eye className="h-3 w-3" aria-hidden /> צפייה בלבד
+          </span>
+        )}
+        {m.status !== "active" && <span className="chip bg-red-100 text-red-700">מושהה</span>}
         {m.minTier !== "none" && (
           <span
             className="chip"
@@ -96,26 +111,51 @@ function Actions({
   currentPath: string;
 }) {
   if (entitlement.ok) {
+    const viaLabel =
+      entitlement.via === "admin"
+        ? "גישת מנהלת"
+        : entitlement.via === "single"
+          ? "נרכש"
+          : entitlement.via === "bundle"
+            ? "כלול בתיקייה שרכשת"
+            : entitlement.via === "subscription"
+              ? "כלול במנוי שלך"
+              : entitlement.via === "free"
+                ? "חינם"
+                : entitlement.via === "tier"
+                  ? "כלול ברמת הפרימיום שלך"
+                  : "";
+    if (!m.allowDownload && entitlement.via !== "admin") {
+      return (
+        <>
+          <span className="inline-flex items-center gap-1 text-sm text-muted font-medium">
+            <Eye className="h-4 w-4" aria-hidden /> צפייה בלבד – לא ניתן להורדה
+          </span>
+          {viaLabel && <span className="text-xs text-muted">{viaLabel}</span>}
+        </>
+      );
+    }
     return (
       <>
         <a
           href={`/api/download/${m.id}`}
-          className="btn btn-primary text-sm py-2"
+          className={`btn text-sm py-2 ${entitlement.via === "free" ? "btn-oak" : "btn-primary"}`}
           title="הקובץ יוטבע במספר האישי שלך"
         >
           <Download className="h-4 w-4" aria-hidden /> הורדה
         </a>
-        <span className="text-xs text-muted">
-          {entitlement.via === "admin" && "גישת מנהלת"}
-          {entitlement.via === "single" && "נרכש"}
-          {entitlement.via === "bundle" && "כלול בתיקייה שרכשת"}
-          {entitlement.via === "subscription" && "כלול במנוי שלך"}
-        </span>
+        {viaLabel && <span className="text-xs text-muted">{viaLabel}</span>}
       </>
     );
   }
 
   switch (entitlement.reason) {
+    case "suspended":
+      return (
+        <span className="inline-flex items-center gap-1 text-sm text-red-700 font-medium">
+          <PauseCircle className="h-4 w-4" aria-hidden /> הדף מושהה זמנית
+        </span>
+      );
     case "login":
       return (
         <Link
@@ -137,6 +177,7 @@ function Actions({
           <Link href={`/checkout?material=${m.id}`} className="btn btn-primary text-sm py-2">
             <ShoppingBag className="h-4 w-4" aria-hidden /> רכישה בודדת {formatPrice(m.price)}
           </Link>
+          <AddToCartButton materialId={m.id} small />
           <Link href="/pricing" className="btn btn-ghost text-sm py-2">
             למנויים
           </Link>

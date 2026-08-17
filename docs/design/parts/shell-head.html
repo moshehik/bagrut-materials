@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>בגרות+ — 50 סגנונות עיצוב</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Alef:wght@400;700&family=Amatic+SC:wght@400;700&family=Arimo:ital,wght@0,400;0,700;1,400&family=Assistant:wght@200;300;400;600;700;800&family=Bellefair&family=Bona+Nova:wght@400;700&family=Cousine:wght@400;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@300;400;500;700;900&family=Fredoka:wght@300;400;500;600;700&family=Heebo:wght@100;200;300;400;500;600;700;800;900&family=Karantina:wght@300;400;700&family=Miriam+Libre:wght@400;700&family=Noto+Rashi+Hebrew:wght@400;700&family=Noto+Sans+Hebrew:wght@300;400;600;700;900&family=Noto+Serif+Hebrew:wght@300;400;600;700;900&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,900&family=Secular+One&family=Suez+One&family=Tinos:ital,wght@0,400;0,700;1,400&family=Varela+Round&display=swap" rel="stylesheet" />
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Rubik,Heebo,system-ui,sans-serif;background:#0b0b0f;color:#e8e8ee;overflow-x:hidden}
+img{max-width:100%}
+a{color:inherit}
+h1,h2,h3,h4,p,ul,figure{margin:0}
+ul{padding:0;list-style:none}
+button{font:inherit;cursor:pointer}
+
+/* ===== Shell ===== */
+#shell-bar{position:fixed;top:0;inset-inline:0;height:52px;background:rgba(10,10,14,.92);backdrop-filter:blur(10px);border-bottom:1px solid #2a2a35;display:flex;align-items:center;gap:12px;padding:0 14px;z-index:9999;font-family:Rubik,sans-serif;font-size:14px}
+#shell-bar .brand{font-weight:800;letter-spacing:.5px;color:#fff;white-space:nowrap}
+#shell-bar .brand b{color:#ffd166}
+#shell-bar .sep{width:1px;height:26px;background:#2a2a35}
+#shell-bar .cur{flex:1;min-width:0;display:flex;align-items:baseline;gap:10px;overflow:hidden}
+#shell-bar .cur .num{font-variant-numeric:tabular-nums;color:#ffd166;font-weight:700}
+#shell-bar .cur .name{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#shell-bar .cur .desc{color:#9a9ab0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+#shell-bar button{background:#1b1b24;color:#fff;border:1px solid #33333f;border-radius:8px;padding:6px 12px;font-weight:600}
+#shell-bar button:hover{background:#26263a;border-color:#ffd166}
+#shell-bar select{background:#1b1b24;color:#fff;border:1px solid #33333f;border-radius:8px;padding:6px 10px;font:inherit;max-width:260px}
+#shell-bar .kbd{color:#7a7a90;font-size:11.5px;white-space:nowrap}
+#shell-bar .kbd kbd{border:1px solid #3a3a48;border-radius:4px;padding:0 5px;background:#15151d;font-family:inherit}
+#shell-bar .grid-toggle.on{background:#ffd166;color:#111;border-color:#ffd166}
+
+/* one style at a time */
+main{padding-top:52px}
+section.style{display:none;position:relative;min-height:calc(100vh - 52px)}
+section.style.active{display:block}
+
+/* gallery (all thumbs) */
+#gallery{display:none;padding:70px 20px 40px;max-width:1500px;margin:0 auto}
+body.gallery-mode #gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+body.gallery-mode main{display:none}
+#gallery .thumb{background:#15151d;border:1px solid #2a2a35;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+#gallery .thumb:hover{transform:translateY(-3px);border-color:#ffd166}
+#gallery .thumb .frame{height:190px;overflow:hidden;position:relative;background:#000}
+#gallery .thumb iframe{width:1280px;height:820px;transform:scale(.234);transform-origin:top right;border:0;pointer-events:none;position:absolute;top:0;right:0}
+#gallery .thumb .cap{padding:10px 12px;display:flex;gap:8px;align-items:baseline}
+#gallery .thumb .cap .n{color:#ffd166;font-weight:700;font-variant-numeric:tabular-nums}
+#gallery .thumb .cap .t{font-weight:700;color:#fff}
+#gallery .thumb .cap .d{color:#9a9ab0;font-size:12px;margin-inline-start:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+
+/* floating dots nav */
+#dots{position:fixed;inset-inline-end:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:3px;z-index:9998;background:rgba(10,10,14,.75);padding:6px 4px;border-radius:12px;backdrop-filter:blur(6px);max-height:calc(100vh - 80px);overflow:auto;scrollbar-width:none}
+#dots button{width:20px;height:11px;border:0;border-radius:3px;background:#3a3a48;padding:0;font-size:0}
+#dots button:hover{background:#7a7a90}
+#dots button.on{background:#ffd166}
+@media (max-width:900px){#shell-bar .kbd,#shell-bar .cur .desc{display:none}#dots{display:none}}
+</style>
+</head>
+<body>
+<div id="shell-bar">
+  <div class="brand">בגרות<b>+</b> · 50 סגנונות</div>
+  <div class="sep"></div>
+  <button id="prev" title="הקודם (→)">→ הקודם</button>
+  <button id="next" title="הבא (←)">הבא ←</button>
+  <select id="jump" aria-label="קפיצה לסגנון"></select>
+  <div class="cur"><span class="num" id="curNum"></span><span class="name" id="curName"></span><span class="desc" id="curDesc"></span></div>
+  <button id="rand" title="אקראי (R)">🎲 אקראי</button>
+  <button id="galleryBtn" class="grid-toggle" title="גלריה (G)">▦ גלריה</button>
+  <div class="kbd"><kbd>←</kbd>/<kbd>→</kbd> ניווט · <kbd>G</kbd> גלריה · <kbd>R</kbd> אקראי · <kbd>1-9</kbd> קפיצה</div>
+</div>
+<div id="dots"></div>
+<div id="gallery"></div>
+<main id="styles">

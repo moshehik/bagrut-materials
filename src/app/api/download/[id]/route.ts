@@ -1,10 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import { and, count, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { downloads, materials, purchases } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf } from "@/lib/watermark";
+import { logAudit, requestMeta } from "@/lib/audit";
+import { getNumber } from "@/lib/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,8 +56,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!material) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   const user = await getCurrentUser();
-  const ent = await checkEntitlement(user, material);
   const origin = req.nextUrl.origin;
+  const isAdmin = user?.role === "admin";
+
+  if (user?.suspended) {
+    return NextResponse.redirect(new URL("/login?suspended=1", origin));
+  }
+  if (material.status !== "active" && !isAdmin) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  if (material.allowDownload === false && !isAdmin) {
+    return NextResponse.json({ error: "צפייה בלבד" }, { status: 403 });
+  }
+
+  const ent = await checkEntitlement(user, material);
 
   if (!ent.ok) {
     switch (ent.reason) {
@@ -71,8 +85,39 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         return NextResponse.redirect(new URL(`/pricing?reason=${ent.reason}`, origin));
     }
   }
-  // user קיים בהכרח כאשר ent.ok
-  const u = user!;
+  // הורדה חופשית ללא התחברות (free_downloads_require_login=false): אין מספר אישי להטביע → מפנים להתחברות
+  if (!user) return NextResponse.redirect(new URL(`/login?next=/api/download/${id}`, origin));
+  const u = user;
+
+  // מגבלות הורדה (לא חלות על מנהלת)
+  if (!isAdmin) {
+    try {
+      const globalLimit = await getNumber("daily_download_limit");
+      const dailyLimit = u.dailyDownloadLimit ?? globalLimit;
+      if (dailyLimit > 0) {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const [row] = await db
+          .select({ n: count() })
+          .from(downloads)
+          .where(and(eq(downloads.userId, u.id), gte(downloads.createdAt, startOfDay)));
+        if (Number(row?.n ?? 0) >= dailyLimit) {
+          return NextResponse.redirect(new URL("/account?limit=1", origin));
+        }
+      }
+      if (material.maxDownloadsPerUser !== null && material.maxDownloadsPerUser > 0) {
+        const [row] = await db
+          .select({ n: count() })
+          .from(downloads)
+          .where(and(eq(downloads.userId, u.id), eq(downloads.materialId, material.id)));
+        if (Number(row?.n ?? 0) >= material.maxDownloadsPerUser) {
+          return NextResponse.redirect(new URL("/account?limit=1&material=" + material.id, origin));
+        }
+      }
+    } catch (e) {
+      console.error("download limit check failed", e);
+    }
+  }
 
   const file = await fetchFile(material.fileUrl);
   if (!file) {
@@ -120,10 +165,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   // תיעוד ההורדה
   try {
+    const { ip, userAgent } = await requestMeta();
     await db.insert(downloads).values({
       userId: u.id,
       materialId: material.id,
       watermark: u.personalCode,
+      ip,
+      userAgent,
+      via: ent.via,
+    });
+    void logAudit({
+      actorId: u.id,
+      action: "download",
+      entityType: "material",
+      entityId: material.id,
+      details: { via: ent.via, title: material.title },
     });
     await db
       .update(materials)

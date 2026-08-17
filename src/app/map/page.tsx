@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GitBranch, FolderTree } from "lucide-react";
-import { getRootSubjects, getChildren, chainToHref } from "@/lib/data";
+import { getRootSubjects, getVisibleChildren, chainToHref } from "@/lib/data";
 import { SUBJECT_ICONS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
@@ -17,7 +17,7 @@ async function buildTree(depth: number): Promise<Node[]> {
     const expand = async (cat: Category, chain: Category[], level: number): Promise<Node> => {
       const me = [...chain, cat];
       if (level >= depth) return { cat, chain: me, children: [] };
-      const kids = await getChildren(cat.id).catch(() => []);
+      const kids = await getVisibleChildren(cat.id, false).catch(() => []);
       const children = await Promise.all(kids.map((k) => expand(k, me, level + 1)));
       return { cat, chain: me, children };
     };

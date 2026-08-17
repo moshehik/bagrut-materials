@@ -6,6 +6,9 @@ import { getCurrentUser } from "@/lib/session";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { AccessibilityWidget } from "@/components/accessibility-widget";
+import { SiteNotices } from "@/components/site-notices";
+import { Tracker } from "@/components/tracker";
+import { Suspense } from "react";
 
 const heebo = Heebo({
   variable: "--font-heebo",
@@ -40,10 +43,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           user={user ? { name: user.name, role: user.role, tier: user.tier } : null}
         />
         <main id="main" className="flex-1">
-          {children}
+          <SiteNotices>{children}</SiteNotices>
         </main>
         <Footer />
         <AccessibilityWidget />
+        <Suspense fallback={null}>
+          <Tracker />
+        </Suspense>
       </body>
     </html>
   );

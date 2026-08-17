@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { FolderOpen, Package, ArrowRight, Crown } from "lucide-react";
 import {
   resolvePath,
-  getChildren,
-  getMaterials,
+  getVisibleChildren,
+  getVisibleMaterials,
+  chainSuspended,
   chainToHref,
   countMaterialsUnder,
   checkEntitlement,
@@ -62,10 +63,29 @@ export default async function CategoryPage({ params }: Props) {
   const root = chain[0];
   const here = chainToHref(chain);
 
-  const [children, mats, user] = await Promise.all([
-    getChildren(category.id),
-    getMaterials(category.id),
-    getCurrentUser(),
+  const user = await getCurrentUser();
+  const isAdmin = user?.role === "admin";
+
+  // תיקייה מושהית – מוסתרת מהמשתמשות (מנהלת רואה)
+  if (!isAdmin && chainSuspended(chain)) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+        <Breadcrumbs chain={chain.filter((c) => c.status === "active")} />
+        <div className="card mt-10 p-12 text-center animate-pop">
+          <div className="text-6xl">⏸️</div>
+          <h1 className="mt-4 text-2xl font-bold">הדף מושהה זמנית</h1>
+          <p className="mt-2 text-muted">התיקייה הזו אינה זמינה כרגע. נסי שוב מאוחר יותר.</p>
+          <Link href="/subjects" className="btn btn-ghost mt-6">
+            <ArrowRight className="h-4 w-4" aria-hidden /> לכל המקצועות
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const [children, mats] = await Promise.all([
+    getVisibleChildren(category.id, isAdmin),
+    getVisibleMaterials(category.id, isAdmin),
   ]);
 
   const childCounts = await Promise.all(
@@ -109,6 +129,11 @@ export default async function CategoryPage({ params }: Props) {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-3xl font-black md:text-4xl">{category.title}</h1>
+                {category.status !== "active" && (
+                  <span className="chip bg-red-100 text-red-700" title="מוצג רק למנהלת">
+                    {category.status === "suspended" ? "מושהה" : "טיוטה"} · מוסתר מהמשתמשות
+                  </span>
+                )}
                 {category.questionnaireCode && (
                   <span className="chip bg-oak-soft text-oak-deep">
                     סמל שאלון {category.questionnaireCode}

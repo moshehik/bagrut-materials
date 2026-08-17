@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, Crown, FileDown, FolderDown, Store, Sparkles, MessageSquare } from "lucide-react";
-import { PLANS, TIERS, PREMIUM_ADDON_PRICE, MATERIAL_KINDS, formatPrice } from "@/lib/constants";
+import { PLANS, TIERS, MATERIAL_KINDS, formatPrice } from "@/lib/constants";
+import { getPlanPrices } from "@/lib/pricing";
 import type { Tier } from "@/db/schema";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 
 export const metadata: Metadata = { title: "מסלולים ומחירים" };
+export const dynamic = "force-dynamic";
 
 const TIER_ORDER: Tier[] = ["iron", "copper", "silver", "gold", "diamond"];
 
@@ -18,7 +20,8 @@ const TIER_PERKS: Record<Tier, string[]> = {
   diamond: ["כל הטבות זהב", "גישה מוקדמת לחומרים חדשים", "בקשות פרקים מותאמות אישית"],
 };
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const prices = await getPlanPrices();
   const subs = [
     { key: "subject_monthly", tone: "from-blue to-blue-deep", badge: null },
     { key: "custom_monthly", tone: "from-pink to-[#db2777]", badge: "הכי משתלם" },
@@ -95,7 +98,7 @@ export default function PricingPage() {
                   )}
                   <h3 className="font-display mt-2 text-2xl font-bold">{p.label}</h3>
                   <div className="mt-2 text-4xl font-black">
-                    {formatPrice(p.price ?? 0)}
+                    {formatPrice(prices.plans[key])}
                     <span className="text-sm font-medium opacity-90">
                       {" "}
                       / {p.days === 365 ? "שנה" : "חודש"}
@@ -137,7 +140,7 @@ export default function PricingPage() {
                 <Sparkles className="h-3.5 w-3.5" aria-hidden /> תוספת פרימיום
               </span>
               <h2 id="premium-h" className="font-display mt-3 text-3xl font-bold">
-                <span className="gold-text">פרימיום</span> – {formatPrice(PREMIUM_ADDON_PRICE)} לחודש
+                <span className="gold-text">פרימיום</span> – {formatPrice(prices.premiumAddon)} לחודש
               </h2>
               <p className="mt-2 max-w-2xl text-muted">
                 מתווסף לכל מנוי ופותח את החומרים המיוחדים: פורום מורות, רעיונות וחידות, שאלות

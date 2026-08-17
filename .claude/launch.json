@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "bagrut-dev",
+      "name": "design-static",
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
-      "runtimeArgs": ["--use-system-ca", "node_modules\\next\\dist\\bin\\next", "dev"],
-      "port": 3000
+      "runtimeArgs": ["docs/design/parts/serve.mjs", "5178"],
+      "port": 5178
     }
   ]
 }

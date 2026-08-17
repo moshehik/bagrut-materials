@@ -2,21 +2,28 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LogIn, ShieldCheck, Download, Sparkles } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
+import { getBool } from "@/lib/settings";
+import { googleConfigured } from "@/lib/google-oauth";
 import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "@/components/auth-forms";
 
 export const metadata: Metadata = { title: "התחברות" };
+export const dynamic = "force-dynamic";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; suspended?: string; reset?: string; verified?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, error, suspended, reset } = await searchParams;
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
 
   const user = await getCurrentUser();
   if (user) redirect(safeNext ?? "/account");
+
+  const googleEnabled = googleConfigured() && (await getBool("google_login_enabled"));
+  const urlError = suspended === "1" ? "suspended" : error || undefined;
+  const notice = reset === "1" ? "הסיסמה עודכנה – אפשר להתחבר עם הסיסמה החדשה." : undefined;
 
   return (
     <AuthShell
@@ -59,7 +66,7 @@ export default async function LoginPage({
         </div>
       }
     >
-      <LoginForm next={safeNext} />
+      <LoginForm next={safeNext} googleEnabled={googleEnabled} urlError={urlError} notice={notice} />
     </AuthShell>
   );
 }

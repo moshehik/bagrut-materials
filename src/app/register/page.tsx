@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { UserPlus, Check } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
+import { getBool } from "@/lib/settings";
+import { googleConfigured } from "@/lib/google-oauth";
 import { AuthShell } from "@/components/auth-shell";
 import { RegisterForm } from "@/components/auth-forms";
 
 export const metadata: Metadata = { title: "הצטרפות" };
+export const dynamic = "force-dynamic";
 
 const PERKS = [
   "גישה לכל עץ המקצועות והפרקים של הבגרות במחוז החרדי",
@@ -14,9 +17,16 @@ const PERKS = [
   "מספר אישי ייחודי לשמירה על זכויות היוצרים",
 ];
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
   const user = await getCurrentUser();
-  if (user) redirect("/account");
+  if (user) redirect(safeNext ?? "/account");
+  const googleEnabled = googleConfigured() && (await getBool("google_login_enabled"));
 
   return (
     <AuthShell
@@ -39,7 +49,7 @@ export default async function RegisterPage() {
         </div>
       }
     >
-      <RegisterForm />
+      <RegisterForm next={safeNext} googleEnabled={googleEnabled} />
     </AuthShell>
   );
 }

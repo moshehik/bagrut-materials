@@ -1,0 +1,1574 @@
+<section class="style" id="s01" data-name="ניאו-ברוטליזם" data-desc="גבולות שחורים עבים, צללים קשים, צהוב חומצי ופוקסיה — טיפוגרפיה ענקית ואלמנטים מוטים">
+<style>
+#s01{--yl:#f9f900;--pk:#ff2d95;--bk:#111;--wh:#fff;background:var(--wh);color:var(--bk);font-family:'Rubik',sans-serif;min-height:100vh;overflow:hidden;position:relative}
+#s01 *{box-sizing:border-box}
+#s01 .wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+#s01 .nav{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 24px;border-bottom:4px solid var(--bk);background:var(--yl)}
+#s01 .logo{font-family:'Secular One',sans-serif;font-size:34px;letter-spacing:-1px;background:var(--bk);color:var(--yl);padding:4px 14px;transform:rotate(-2deg);display:inline-block;box-shadow:6px 6px 0 var(--pk)}
+#s01 .nav ul{list-style:none;display:flex;gap:6px;margin:0;padding:0}
+#s01 .nav li a{display:block;padding:10px 16px;font-weight:700;text-decoration:none;color:var(--bk);border:3px solid transparent;transition:.15s}
+#s01 .nav li a:hover{border-color:var(--bk);background:var(--wh);box-shadow:4px 4px 0 var(--bk)}
+#s01 .btn{display:inline-block;padding:14px 26px;font-weight:900;font-size:18px;text-decoration:none;color:var(--bk);background:var(--wh);border:4px solid var(--bk);box-shadow:8px 8px 0 var(--bk);transition:.12s;cursor:pointer}
+#s01 .btn:hover{transform:translate(4px,4px);box-shadow:2px 2px 0 var(--bk)}
+#s01 .btn.pk{background:var(--pk);color:var(--wh)}
+#s01 .btn.yl{background:var(--yl)}
+#s01 .hero{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center;padding:70px 0 60px;position:relative}
+#s01 .hero h1{font-family:'Secular One',sans-serif;font-size:clamp(52px,8vw,110px);line-height:.92;margin:0 0 24px;letter-spacing:-2px}
+#s01 .hero h1 span{background:var(--pk);color:var(--wh);padding:0 12px;display:inline-block;transform:rotate(1.5deg)}
+#s01 .hero h1 em{font-style:normal;background:var(--yl);padding:0 12px;display:inline-block;transform:rotate(-1deg)}
+#s01 .hero p{font-size:22px;font-weight:500;max-width:520px;line-height:1.5;border-inline-start:8px solid var(--bk);padding-inline-start:18px}
+#s01 .hero .acts{display:flex;gap:18px;flex-wrap:wrap;margin-top:34px}
+#s01 .visual{position:relative;height:520px}
+#s01 .visual img{position:absolute;border:4px solid var(--bk);object-fit:cover;box-shadow:12px 12px 0 var(--bk);filter:contrast(1.2) saturate(1.3)}
+#s01 .visual .i1{width:70%;height:75%;top:0;inset-inline-start:0;transform:rotate(-3deg)}
+#s01 .visual .i2{width:45%;height:45%;bottom:0;inset-inline-end:0;transform:rotate(4deg);box-shadow:12px 12px 0 var(--pk)}
+#s01 .visual .badge{position:absolute;top:-20px;inset-inline-end:10px;background:var(--yl);border:4px solid var(--bk);padding:14px 20px;font-family:'Secular One';font-size:22px;transform:rotate(8deg);box-shadow:6px 6px 0 var(--bk);animation:s01-wobble 3s ease-in-out infinite}
+@keyframes s01-wobble{0%,100%{transform:rotate(8deg)}50%{transform:rotate(3deg) translateY(-6px)}}
+#s01 .stats{display:grid;grid-template-columns:repeat(4,1fr);border:4px solid var(--bk);background:var(--bk);gap:4px;margin:20px 0 70px}
+#s01 .stats div{background:var(--wh);padding:28px 20px;text-align:center}
+#s01 .stats div:nth-child(2){background:var(--yl)}
+#s01 .stats div:nth-child(4){background:var(--pk);color:var(--wh)}
+#s01 .stats b{display:block;font-family:'Secular One';font-size:52px;line-height:1}
+#s01 .stats span{font-weight:700;font-size:15px}
+#s01 h2.sec{font-family:'Secular One';font-size:clamp(40px,5vw,72px);margin:0 0 30px;line-height:1;display:inline-block;background:var(--bk);color:var(--wh);padding:6px 20px;transform:rotate(-1deg)}
+#s01 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-bottom:80px}
+#s01 .card{border:4px solid var(--bk);background:var(--wh);box-shadow:10px 10px 0 var(--bk);padding:0;position:relative;transition:.15s}
+#s01 .card:hover{transform:translate(-4px,-4px);box-shadow:14px 14px 0 var(--pk)}
+#s01 .card img{width:100%;height:150px;object-fit:cover;border-bottom:4px solid var(--bk);filter:grayscale(1) contrast(1.4)}
+#s01 .card .body{padding:20px}
+#s01 .card h3{font-family:'Secular One';font-size:28px;margin:0 0 6px}
+#s01 .card p{margin:0 0 14px;font-weight:500}
+#s01 .card .tag{position:absolute;top:12px;inset-inline-start:12px;background:var(--yl);border:3px solid var(--bk);padding:4px 10px;font-weight:900;font-size:13px;transform:rotate(-4deg)}
+#s01 .card .cnt{font-weight:900;color:var(--pk)}
+#s01 .card:nth-child(odd) .tag{background:var(--pk);color:var(--wh)}
+#s01 .bundle{display:grid;grid-template-columns:1fr 1fr;border:4px solid var(--bk);background:var(--yl);margin-bottom:80px;box-shadow:16px 16px 0 var(--bk)}
+#s01 .bundle .txt{padding:50px 44px}
+#s01 .bundle h2{font-family:'Secular One';font-size:56px;margin:0 0 14px;line-height:1}
+#s01 .bundle ul{list-style:none;padding:0;margin:20px 0;font-weight:700;font-size:18px}
+#s01 .bundle li::before{content:'■ ';color:var(--pk)}
+#s01 .bundle .price{font-family:'Secular One';font-size:80px;line-height:1;display:flex;align-items:baseline;gap:12px}
+#s01 .bundle .price s{font-size:30px;color:#555}
+#s01 .bundle .pic{position:relative;border-inline-start:4px solid var(--bk);overflow:hidden;min-height:380px}
+#s01 .bundle .pic img{width:100%;height:100%;object-fit:cover;filter:saturate(0) contrast(1.3);mix-blend-mode:multiply}
+#s01 .bundle .pic::after{content:'';position:absolute;inset:0;background:var(--pk);mix-blend-mode:screen;opacity:.6}
+#s01 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-bottom:80px}
+#s01 .q{border:4px solid var(--bk);padding:26px;background:var(--wh);box-shadow:8px 8px 0 var(--bk);position:relative}
+#s01 .q:nth-child(2){transform:rotate(1.5deg);background:var(--pk);color:var(--wh)}
+#s01 .q:nth-child(3){transform:rotate(-1deg)}
+#s01 .q p{font-size:19px;font-weight:500;line-height:1.5;margin:0 0 16px}
+#s01 .q b{font-family:'Secular One';font-size:18px}
+#s01 .q::before{content:'"';font-family:'Secular One';font-size:120px;position:absolute;top:-40px;inset-inline-end:14px;line-height:1;color:var(--yl);-webkit-text-stroke:3px var(--bk)}
+#s01 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:4px solid var(--bk);margin-bottom:80px}
+#s01 .steps div{padding:36px 28px;border-inline-end:4px solid var(--bk)}
+#s01 .steps div:last-child{border:0}
+#s01 .steps .n{font-family:'Secular One';font-size:90px;line-height:.8;color:var(--wh);-webkit-text-stroke:3px var(--bk);display:block;margin-bottom:12px}
+#s01 .steps h3{font-size:26px;margin:0 0 8px}
+#s01 .marq{border-top:4px solid var(--bk);border-bottom:4px solid var(--bk);background:var(--bk);color:var(--yl);overflow:hidden;white-space:nowrap;padding:14px 0;font-family:'Secular One';font-size:28px}
+#s01 .marq span{display:inline-block;animation:s01-marq 18s linear infinite;padding-inline-start:100%}
+@keyframes s01-marq{to{transform:translateX(100%)}}
+#s01 footer{background:var(--yl);border-top:4px solid var(--bk);padding:40px 24px 30px}
+#s01 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1240px;margin:0 auto}
+#s01 footer h4{font-family:'Secular One';font-size:22px;margin:0 0 10px}
+#s01 footer a{display:block;color:var(--bk);text-decoration:none;font-weight:700;margin-bottom:6px}
+#s01 footer a:hover{background:var(--bk);color:var(--yl)}
+#s01 footer .copy{max-width:1240px;margin:30px auto 0;border-top:3px solid var(--bk);padding-top:14px;font-weight:700}
+@media(max-width:900px){#s01 .hero,#s01 .stats,#s01 .subjects,#s01 .bundle,#s01 .quotes,#s01 .steps,#s01 footer .cols{grid-template-columns:1fr}#s01 .nav ul{display:none}#s01 .visual{height:380px}#s01 .steps div{border-inline-end:0;border-bottom:4px solid var(--bk)}}
+</style>
+<nav class="nav">
+  <a class="logo">בגרות+</a>
+  <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">מורים</a></li><li><a href="#">עלינו</a></li></ul>
+  <a class="btn pk" href="#">התחברות</a>
+</nav>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <h1>הבגרות <span>לא</span><br>מפחידה<br><em>אף אחד</em></h1>
+      <p>סיכומים, פתרונות מלאים ומבחני תרגול שכתבו תלמידים שכבר עברו את זה — ומורים שבודקים אותם. בלי בלה-בלה, רק מה שנכנס למבחן.</p>
+      <div class="acts"><a class="btn yl" href="#">לקטלוג המקצועות ←</a><a class="btn" href="#">איך זה עובד?</a></div>
+    </div>
+    <div class="visual">
+      <img class="i1" src="https://picsum.photos/seed/bagrut-brut-1/900/700" alt="תלמידים לומדים יחד לבגרות" loading="lazy">
+      <img class="i2" src="https://picsum.photos/seed/bagrut-brut-2/600/600" alt="מחברת סיכומים פתוחה" loading="lazy">
+      <div class="badge">100 נק' חדש!</div>
+    </div>
+  </header>
+  <div class="stats">
+    <div><b>12,400</b><span>תלמידים פעילים</span></div>
+    <div><b>3,800</b><span>קבצים מאומתים</span></div>
+    <div><b>94%</b><span>שביעות רצון</span></div>
+    <div><b>27</b><span>מקצועות בגרות</span></div>
+  </div>
+  <h2 class="sec">בחרו מקצוע. תתחילו.</h2>
+  <div class="subjects">
+    <div class="card"><span class="tag">חם!</span><img src="https://picsum.photos/seed/brut-math/600/300" alt="מתמטיקה" loading="lazy"><div class="body"><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581/582, פתרונות שלב-אחר-שלב.</p><span class="cnt">412 קבצים</span></div></div>
+    <div class="card"><span class="tag">חדש</span><img src="https://picsum.photos/seed/brut-eng/600/300" alt="אנגלית" loading="lazy"><div class="body"><h3>אנגלית</h3><p>Module E/F/G, אוצר מילים, unseen מתורגלים.</p><span class="cnt">298 קבצים</span></div></div>
+    <div class="card"><span class="tag">פופולרי</span><img src="https://picsum.photos/seed/brut-lash/600/300" alt="לשון והבעה" loading="lazy"><div class="body"><h3>לשון והבעה</h3><p>תחביר, מערכת הצורות, שם המספר, הבנת הנקרא.</p><span class="cnt">176 קבצים</span></div></div>
+    <div class="card"><span class="tag">מעודכן</span><img src="https://picsum.photos/seed/brut-hist/600/300" alt="היסטוריה" loading="lazy"><div class="body"><h3>היסטוריה</h3><p>לאומיות, שואה, מלחמת העולם — כל הפרקים בסיכום אחד.</p><span class="cnt">231 קבצים</span></div></div>
+    <div class="card"><span class="tag">בסיס</span><img src="https://picsum.photos/seed/brut-civ/600/300" alt="אזרחות" loading="lazy"><div class="body"><h3>אזרחות</h3><p>מושגים, גישות, אירועים — כולל דוגמאות שהופיעו בבחינה.</p><span class="cnt">143 קבצים</span></div></div>
+    <div class="card"><span class="tag">5 יח"ל</span><img src="https://picsum.photos/seed/brut-phys/600/300" alt="פיזיקה" loading="lazy"><div class="body"><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר. מעבדות מסוכמות.</p><span class="cnt">188 קבצים</span></div></div>
+    <div class="card"><span class="tag">חדש</span><img src="https://picsum.photos/seed/brut-bio/600/300" alt="ביולוגיה" loading="lazy"><div class="body"><h3>ביולוגיה</h3><p>גוף האדם, אקולוגיה, תא — עם תרשימים.</p><span class="cnt">164 קבצים</span></div></div>
+    <div class="card"><span class="tag">ספרות</span><img src="https://picsum.photos/seed/brut-lit/600/300" alt="ספרות" loading="lazy"><div class="body"><h3>ספרות</h3><p>שירה, סיפור קצר, דרמה ורומן — ניתוחים מלאים.</p><span class="cnt">121 קבצים</span></div></div>
+    <div class="card"><span class="tag">חובה</span><img src="https://picsum.photos/seed/brut-cs/600/300" alt="מדעי המחשב" loading="lazy"><div class="body"><h3>מדעי המחשב</h3><p>Java, מבני נתונים, שאלוני עבר עם פתרונות.</p><span class="cnt">97 קבצים</span></div></div>
+  </div>
+  <div class="bundle">
+    <div class="txt">
+      <h2>חבילת "הכול בפנים"</h2>
+      <p style="font-size:19px;font-weight:500">כל המקצועות, כל הקבצים, כל העדכונים — לשנת לימודים אחת שלמה.</p>
+      <ul><li>גישה בלתי מוגבלת ל-3,800+ קבצים</li><li>עדכונים אוטומטיים אחרי כל מועד</li><li>הורדה עם סימן מים אישי</li><li>גישה לפורום התלמידים הסגור</li></ul>
+      <div class="price">₪149 <s>₪290</s></div>
+      <a class="btn pk" href="#" style="margin-top:20px">קונים עכשיו</a>
+    </div>
+    <div class="pic"><img src="https://picsum.photos/seed/brut-bundle/800/700" alt="ערימת מחברות וספרים" loading="lazy"></div>
+  </div>
+  <h2 class="sec">מה אומרים עלינו</h2>
+  <div class="quotes">
+    <div class="q"><p>הורדתי את הפתרונות למתמטיקה יומיים לפני המבחן. יצאתי עם 96. אין לי מילים.</p><b>— נועה ב', כפר סבא</b></div>
+    <div class="q"><p>הסיכום בהיסטוריה חסך לי שבועיים של קריאה בספר. שווה כל שקל.</p><b>— איתי ר', באר שבע</b></div>
+    <div class="q"><p>הפורום פשוט מטורף. שאלתי שאלה בפיזיקה בעשר בלילה וקיבלתי תשובה תוך רבע שעה.</p><b>— מאיה ל', חיפה</b></div>
+  </div>
+  <h2 class="sec">איך זה עובד</h2>
+  <div class="steps">
+    <div><span class="n">01</span><h3>בוחרים מקצוע</h3><p>מסננים לפי שאלון, יחידות ושנה. כל קובץ מדורג על ידי תלמידים.</p></div>
+    <div><span class="n">02</span><h3>משלמים או מעלים</h3><p>קונים קובץ בודד או חבילה, או מעלים סיכום משלכם ומרוויחים.</p></div>
+    <div><span class="n">03</span><h3>מורידים ולומדים</h3><p>PDF נקי עם סימן מים אישי, זמין מכל מכשיר.</p></div>
+  </div>
+</div>
+<div class="marq"><span>★ מועד חורף נפתח להרשמה ★ 3,800 קבצים חדשים ★ פתרונות 582 מועד קיץ עלו ★ הצטרפו ל-12,400 תלמידים ★</span></div>
+<footer>
+  <div class="cols">
+    <div><h4>בגרות+</h4><p style="font-weight:500;max-width:340px">פלטפורמת חומרי הלימוד הגדולה בישראל. נבנתה על ידי תלמידים, נבדקת על ידי מורים.</p></div>
+    <div><h4>מקצועות</h4><a href="#">מתמטיקה</a><a href="#">אנגלית</a><a href="#">היסטוריה</a><a href="#">כל המקצועות</a></div>
+    <div><h4>קהילה</h4><a href="#">פורום</a><a href="#">מוכרים</a><a href="#">בלוג</a></div>
+    <div><h4>עזרה</h4><a href="#">שאלות נפוצות</a><a href="#">צור קשר</a><a href="#">תנאי שימוש</a></div>
+  </div>
+  <div class="copy">© 2026 בגרות+ · כל הזכויות שמורות · נעשה באהבה ובהרבה קפה</div>
+</footer>
+</section>
+<section class="style" id="s02" data-name="יוקרה שחור-זהב" data-desc="שחור עמוק, זהב מטאלי, סריף אצילי, טקסטורות שיש וקווי הפרדה דקים">
+<style>
+#s02{--gold:#d4af37;--g1:#f5d67a;--g2:#b8860b;--bg:#070707;--bg2:#111;--tx:#e9e4d6;--mut:#9a9385;background:var(--bg);color:var(--tx);font-family:'Frank Ruhl Libre',serif;min-height:100vh;position:relative}
+#s02 *{box-sizing:border-box}
+#s02 .grad{background:linear-gradient(135deg,var(--g1),var(--g2) 60%,var(--g1));-webkit-background-clip:text;background-clip:text;color:transparent}
+#s02 .wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+#s02 .nav{display:flex;align-items:center;justify-content:space-between;padding:26px 32px;border-bottom:1px solid rgba(212,175,55,.35)}
+#s02 .logo{font-family:'Bellefair',serif;font-size:36px;letter-spacing:4px}
+#s02 .nav ul{list-style:none;display:flex;gap:36px;margin:0;padding:0}
+#s02 .nav a{color:var(--tx);text-decoration:none;font-size:16px;letter-spacing:1px;position:relative}
+#s02 .nav ul a::after{content:'';position:absolute;bottom:-6px;inset-inline-start:0;width:0;height:1px;background:var(--gold);transition:.3s}
+#s02 .nav ul a:hover::after{width:100%}
+#s02 .btn{display:inline-block;padding:14px 34px;border:1px solid var(--gold);color:var(--g1);text-decoration:none;letter-spacing:2px;font-size:15px;transition:.3s;background:transparent}
+#s02 .btn:hover{background:var(--gold);color:#000}
+#s02 .btn.fill{background:linear-gradient(135deg,var(--g1),var(--g2));color:#000;border-color:transparent;font-weight:700}
+#s02 .btn.fill:hover{filter:brightness(1.1)}
+#s02 .hero{position:relative;min-height:80vh;display:flex;align-items:center;overflow:hidden}
+#s02 .hero .bg{position:absolute;inset:0;background:url('https://picsum.photos/seed/bagrut-gold-marble/1600/1000') center/cover;filter:grayscale(1) contrast(1.4) brightness(.35);z-index:0}
+#s02 .hero .bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to left,rgba(7,7,7,.2),var(--bg) 85%)}
+#s02 .hero .in{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:100px 32px;width:100%}
+#s02 .hero .kick{letter-spacing:6px;font-size:14px;color:var(--gold);margin-bottom:24px;text-transform:uppercase}
+#s02 .hero h1{font-family:'Bellefair',serif;font-size:clamp(50px,7vw,96px);line-height:1.05;margin:0 0 26px;font-weight:400;max-width:760px}
+#s02 .hero p{font-size:21px;line-height:1.7;color:var(--mut);max-width:560px;margin-bottom:40px}
+#s02 .hero .acts{display:flex;gap:20px;flex-wrap:wrap}
+#s02 .line{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0 auto;max-width:1200px}
+#s02 .stats{display:flex;justify-content:space-around;padding:56px 32px;max-width:1200px;margin:0 auto;gap:20px}
+#s02 .stats div{text-align:center;position:relative;padding:0 30px}
+#s02 .stats div+div::before{content:'';position:absolute;inset-inline-start:0;top:10%;height:80%;width:1px;background:rgba(212,175,55,.35)}
+#s02 .stats b{font-family:'Bellefair',serif;font-size:60px;font-weight:400;display:block;line-height:1}
+#s02 .stats span{color:var(--mut);letter-spacing:2px;font-size:14px}
+#s02 h2.sec{font-family:'Bellefair',serif;font-size:54px;font-weight:400;text-align:center;margin:80px 0 12px}
+#s02 .sub{text-align:center;color:var(--mut);margin:0 0 50px;letter-spacing:1px}
+#s02 .orn{text-align:center;color:var(--gold);letter-spacing:8px;font-size:18px;margin-bottom:40px}
+#s02 .subjects{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:rgba(212,175,55,.25);border:1px solid rgba(212,175,55,.35)}
+#s02 .card{background:var(--bg);padding:38px 28px;position:relative;transition:.4s;overflow:hidden}
+#s02 .card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(212,175,55,.12),transparent 60%);opacity:0;transition:.4s}
+#s02 .card:hover::before{opacity:1}
+#s02 .card .num{font-family:'Bellefair';font-size:14px;color:var(--gold);letter-spacing:3px}
+#s02 .card h3{font-family:'Bellefair';font-size:30px;font-weight:400;margin:14px 0 8px}
+#s02 .card p{color:var(--mut);font-size:15px;line-height:1.6;margin:0 0 20px}
+#s02 .card a{color:var(--g1);text-decoration:none;font-size:14px;letter-spacing:2px}
+#s02 .card .ico{width:44px;height:44px;border:1px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:'Bellefair';font-size:20px;margin-bottom:8px}
+#s02 .feature{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center;margin:100px 0}
+#s02 .feature .imgs{position:relative;height:520px}
+#s02 .feature img{position:absolute;object-fit:cover;filter:grayscale(1) contrast(1.3) brightness(.85);border:1px solid rgba(212,175,55,.5)}
+#s02 .feature .a{width:75%;height:85%;top:0;inset-inline-start:0}
+#s02 .feature .b{width:45%;height:50%;bottom:0;inset-inline-end:0;outline:12px solid var(--bg)}
+#s02 .feature .frame{position:absolute;inset:-18px 40px 40px -18px;border:1px solid var(--gold);z-index:-1}
+#s02 .feature h2{font-family:'Bellefair';font-size:50px;font-weight:400;margin:0 0 20px;line-height:1.1}
+#s02 .feature p{color:var(--mut);font-size:18px;line-height:1.8}
+#s02 .feature .price{font-family:'Bellefair';font-size:64px;margin:26px 0 8px}
+#s02 .feature .price small{font-size:20px;color:var(--mut);font-family:'Frank Ruhl Libre'}
+#s02 .feature ul{list-style:none;padding:0;margin:20px 0 30px;color:var(--tx)}
+#s02 .feature li{padding:10px 0;border-bottom:1px solid rgba(212,175,55,.2)}
+#s02 .feature li::before{content:'✦ ';color:var(--gold)}
+#s02 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin:0 0 100px}
+#s02 .q{text-align:center;padding:40px 30px;border:1px solid rgba(212,175,55,.3);position:relative;background:var(--bg2)}
+#s02 .q::before{content:'❝';font-size:60px;color:var(--gold);line-height:1;display:block;margin-bottom:10px;font-family:serif}
+#s02 .q p{font-size:18px;line-height:1.7;font-style:italic;margin:0 0 20px}
+#s02 .q b{font-weight:400;letter-spacing:2px;font-size:14px;color:var(--gold)}
+#s02 .q .stars{color:var(--gold);letter-spacing:4px;margin-top:8px}
+#s02 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-bottom:100px;text-align:center}
+#s02 .steps .n{font-family:'Bellefair';font-size:70px;line-height:1;display:block;margin-bottom:12px}
+#s02 .steps h3{font-family:'Bellefair';font-size:26px;font-weight:400;margin:0 0 10px}
+#s02 .steps p{color:var(--mut);line-height:1.7}
+#s02 .gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-bottom:100px}
+#s02 .gallery img{width:100%;height:220px;object-fit:cover;filter:grayscale(1) contrast(1.3) sepia(.4) brightness(.8);transition:.5s}
+#s02 .gallery img:hover{filter:grayscale(0) sepia(.6) contrast(1.2)}
+#s02 footer{border-top:1px solid rgba(212,175,55,.35);padding:60px 32px 30px;background:#030303}
+#s02 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1200px;margin:0 auto}
+#s02 footer h4{font-family:'Bellefair';font-size:20px;letter-spacing:3px;color:var(--gold);font-weight:400;margin:0 0 14px}
+#s02 footer a{display:block;color:var(--mut);text-decoration:none;margin-bottom:8px;font-size:15px}
+#s02 footer a:hover{color:var(--g1)}
+#s02 footer .copy{max-width:1200px;margin:40px auto 0;text-align:center;color:var(--mut);font-size:13px;letter-spacing:2px;border-top:1px solid rgba(212,175,55,.2);padding-top:20px}
+@media(max-width:900px){#s02 .subjects,#s02 .feature,#s02 .quotes,#s02 .steps,#s02 footer .cols{grid-template-columns:1fr}#s02 .gallery{grid-template-columns:1fr 1fr}#s02 .nav ul{display:none}#s02 .stats{flex-wrap:wrap}#s02 .stats div+div::before{display:none}}
+</style>
+<nav class="nav">
+  <div class="logo grad">בגרות+</div>
+  <ul><li><a href="#">הקטלוג</a></li><li><a href="#">חבילות פרימיום</a></li><li><a href="#">הקהילה</a></li><li><a href="#">מורים שותפים</a></li><li><a href="#">אודות</a></li></ul>
+  <a class="btn" href="#">כניסה</a>
+</nav>
+<header class="hero">
+  <div class="bg"></div>
+  <div class="in">
+    <div class="kick">מהדורת תשפ"ז · חומרי לימוד מובחרים</div>
+    <h1>הצטיינות היא <span class="grad">בחירה.</span><br>אנחנו רק מקצרים את הדרך.</h1>
+    <p>ספרייה אצורה של סיכומים, פתרונות ומבחני תרגול — כל אחד נבדק ידנית על ידי מורה מוסמך. לתלמידים שלא מתפשרים.</p>
+    <div class="acts"><a class="btn fill" href="#">לספרייה המלאה</a><a class="btn" href="#">צפייה בדוגמה</a></div>
+  </div>
+</header>
+<div class="line"></div>
+<div class="stats">
+  <div><b class="grad">12,400</b><span>תלמידים</span></div>
+  <div><b class="grad">3,800</b><span>קבצים אצורים</span></div>
+  <div><b class="grad">94%</b><span>שביעות רצון</span></div>
+  <div><b class="grad">4.9</b><span>דירוג ממוצע</span></div>
+</div>
+<div class="line"></div>
+<div class="wrap">
+  <h2 class="sec">מקצועות הליבה</h2>
+  <p class="sub">כל מקצוע — ספרייה משלו, בעריכה קפדנית</p>
+  <div class="orn">✦ ✦ ✦</div>
+  <div class="subjects">
+    <div class="card"><div class="ico">∑</div><span class="num">I</span><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581, 582 — פתרונות מלאים בכתב יד מוקלד ומוסבר.</p><a href="#">412 קבצים ←</a></div>
+    <div class="card"><div class="ico">A</div><span class="num">II</span><h3>אנגלית</h3><p>Module E–G, מאמרים לדוגמה, אוצר מילים לפי נושא.</p><a href="#">298 קבצים ←</a></div>
+    <div class="card"><div class="ico">א</div><span class="num">III</span><h3>לשון והבעה</h3><p>תחביר, תורת הצורות, חיבור — עם מחוונים.</p><a href="#">176 קבצים ←</a></div>
+    <div class="card"><div class="ico">⌛</div><span class="num">IV</span><h3>היסטוריה</h3><p>סיכומי פרקים, ציר זמן, שאלות מועדי עבר.</p><a href="#">231 קבצים ←</a></div>
+    <div class="card"><div class="ico">⚖</div><span class="num">V</span><h3>אזרחות</h3><p>מושגון מלא, שאלות אירוע, גישות ומודלים.</p><a href="#">143 קבצים ←</a></div>
+    <div class="card"><div class="ico">Φ</div><span class="num">VI</span><h3>פיזיקה</h3><p>מכניקה, חשמל ומגנטיות, קרינה וחומר.</p><a href="#">188 קבצים ←</a></div>
+    <div class="card"><div class="ico">✿</div><span class="num">VII</span><h3>ביולוגיה</h3><p>תא, גוף האדם, אקולוגיה — עם ביו-חקר.</p><a href="#">164 קבצים ←</a></div>
+    <div class="card"><div class="ico">✎</div><span class="num">VIII</span><h3>ספרות</h3><p>שירה, סיפורת ודרמה — ניתוח לפי המחוון.</p><a href="#">121 קבצים ←</a></div>
+  </div>
+  <div class="feature">
+    <div class="imgs">
+      <div class="frame"></div>
+      <img class="a" src="https://picsum.photos/seed/gold-lib-1/800/900" alt="ספרייה קלאסית" loading="lazy">
+      <img class="b" src="https://picsum.photos/seed/gold-lib-2/600/500" alt="עט נובע על נייר" loading="lazy">
+    </div>
+    <div>
+      <div class="kick" style="letter-spacing:5px;color:var(--gold);font-size:13px;margin-bottom:14px">מנוי פרימיום</div>
+      <h2>חבילת <span class="grad">הזהב</span></h2>
+      <p>גישה מלאה לכל הספרייה, לכל המקצועות, לכל השנה. כולל עדכונים אחרי כל מועד בחינה וגישה למפגשי הכנה מקוונים.</p>
+      <ul><li>3,800+ קבצים בעריכה מוקפדת</li><li>הורדה ללא הגבלה, עם סימן מים אישי</li><li>מענה מורים בפורום הפרימיום</li><li>ארכיון מועדי עבר משנת 2010</li></ul>
+      <div class="price"><span class="grad">₪189</span> <small>/ שנה</small></div>
+      <a class="btn fill" href="#">הצטרפות</a>
+    </div>
+  </div>
+  <h2 class="sec">מילים של בוגרים</h2>
+  <div class="orn">✦ ✦ ✦</div>
+  <div class="quotes">
+    <div class="q"><p>הרמה של הסיכומים כאן שונה מכל מה שראיתי. אין טעויות, אין קיצורי דרך — רק חומר מדויק.</p><b>עמית ש. · 100 במתמטיקה</b><div class="stars">★★★★★</div></div>
+    <div class="q"><p>הבת שלי השתמשה בחבילת הזהב לאורך כל י"ב. הציונים דיברו בעד עצמם.</p><b>רונית ג. · אמא לתלמידה</b><div class="stars">★★★★★</div></div>
+    <div class="q"><p>אני מורה לפיזיקה ומעלה לכאן פתרונות. הקהל רציני, התשלום הוגן, והפלטפורמה מכובדת.</p><b>ד"ר יואב מ. · מורה שותף</b><div class="stars">★★★★★</div></div>
+  </div>
+  <h2 class="sec">שלושה צעדים להצטיינות</h2>
+  <div class="orn">✦ ✦ ✦</div>
+  <div class="steps">
+    <div><span class="n grad">١</span><h3>בוחרים</h3><p>מסננים לפי מקצוע, שאלון ויחידות. כל קובץ מוצג עם דירוג, תצוגה מקדימה ושם העורך.</p></div>
+    <div><span class="n grad">٢</span><h3>רוכשים</h3><p>קובץ בודד או מנוי שנתי. תשלום מאובטח, חשבונית מיידית, החזר כספי תוך 14 יום.</p></div>
+    <div><span class="n grad">٣</span><h3>מצטיינים</h3><p>מורידים PDF מעוצב, לומדים במכשיר המועדף, ומגיעים לבחינה רגועים.</p></div>
+  </div>
+  <div class="gallery">
+    <img src="https://picsum.photos/seed/gold-g1/500/400" alt="ארכיטקטורה קלאסית" loading="lazy">
+    <img src="https://picsum.photos/seed/gold-g2/500/400" alt="שולחן כתיבה" loading="lazy">
+    <img src="https://picsum.photos/seed/gold-g3/500/400" alt="ספרים עתיקים" loading="lazy">
+    <img src="https://picsum.photos/seed/gold-g4/500/400" alt="אולם לימוד" loading="lazy">
+  </div>
+</div>
+<footer>
+  <div class="cols">
+    <div><div class="logo grad" style="font-size:30px;margin-bottom:12px">בגרות+</div><p style="color:var(--mut);line-height:1.7;max-width:320px">חומרי לימוד ברמה אחרת. נוסד ב-2021 על ידי בוגרי הטכניון ומורים ותיקים.</p></div>
+    <div><h4>הספרייה</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">מועדי עבר</a></div>
+    <div><h4>קהילה</h4><a href="#">פורום פרימיום</a><a href="#">מורים שותפים</a><a href="#">העלאת חומר</a></div>
+    <div><h4>שירות</h4><a href="#">שאלות ותשובות</a><a href="#">יצירת קשר</a><a href="#">מדיניות פרטיות</a></div>
+  </div>
+  <div class="copy">© MMXXVI · בגרות+ · כל הזכויות שמורות</div>
+</footer>
+</section>
+<section class="style" id="s03" data-name="גלאסמורפיזם אורורה" data-desc="רקע אורורה נע בסגול-טורקיז-ורוד, כרטיסי זכוכית מטושטשת ו-blobs צפים">
+<style>
+#s03{--c1:#7c3aed;--c2:#06b6d4;--c3:#ec4899;--c4:#1e1b4b;--tx:#fff;font-family:'Heebo',sans-serif;color:var(--tx);min-height:100vh;position:relative;overflow:hidden;background:linear-gradient(-45deg,#1e1b4b,#4c1d95,#0e7490,#831843,#1e1b4b);background-size:400% 400%;animation:s03-aurora 18s ease infinite}
+@keyframes s03-aurora{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+#s03 *{box-sizing:border-box}
+#s03 .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;pointer-events:none;animation:s03-float 14s ease-in-out infinite}
+#s03 .b1{width:520px;height:520px;background:var(--c3);top:-120px;inset-inline-start:-100px}
+#s03 .b2{width:460px;height:460px;background:var(--c2);top:40%;inset-inline-end:-140px;animation-delay:-5s}
+#s03 .b3{width:380px;height:380px;background:var(--c1);bottom:5%;inset-inline-start:30%;animation-delay:-9s}
+@keyframes s03-float{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-50px) scale(1.12)}}
+#s03 .glass{background:rgba(255,255,255,.1);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.28);border-radius:22px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+#s03 .wrap{max-width:1200px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+#s03 .nav{margin:22px auto 0;max-width:1200px;display:flex;align-items:center;justify-content:space-between;padding:14px 26px;position:relative;z-index:2;border-radius:999px}
+#s03 .logo{font-weight:900;font-size:28px;display:flex;align-items:center;gap:10px}
+#s03 .logo i{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--c3),var(--c2));display:inline-block;box-shadow:0 0 24px rgba(236,72,153,.6)}
+#s03 .nav ul{list-style:none;display:flex;gap:8px;margin:0;padding:0}
+#s03 .nav a{color:#fff;text-decoration:none;padding:9px 16px;border-radius:999px;transition:.2s;font-weight:500}
+#s03 .nav ul a:hover{background:rgba(255,255,255,.15)}
+#s03 .btn{display:inline-block;padding:14px 30px;border-radius:999px;text-decoration:none;color:#fff;font-weight:700;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(10px);transition:.25s}
+#s03 .btn:hover{background:rgba(255,255,255,.25);transform:translateY(-2px)}
+#s03 .btn.solid{background:linear-gradient(135deg,var(--c3),var(--c1));border-color:transparent;box-shadow:0 10px 30px rgba(236,72,153,.4)}
+#s03 .hero{text-align:center;padding:100px 0 60px}
+#s03 .hero .pill{display:inline-block;padding:6px 18px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);font-size:14px;margin-bottom:24px}
+#s03 .hero h1{font-size:clamp(46px,7vw,92px);font-weight:900;line-height:1.05;margin:0 auto 22px;max-width:900px;letter-spacing:-1px}
+#s03 .hero h1 span{background:linear-gradient(90deg,#f0abfc,#67e8f9,#fbcfe8);-webkit-background-clip:text;background-clip:text;color:transparent}
+#s03 .hero p{font-size:21px;line-height:1.6;opacity:.85;max-width:640px;margin:0 auto 36px}
+#s03 .hero .acts{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:60px}
+#s03 .mock{max-width:980px;margin:0 auto;padding:22px;display:grid;grid-template-columns:2fr 1fr;gap:18px}
+#s03 .mock img{width:100%;height:100%;object-fit:cover;border-radius:16px;filter:hue-rotate(250deg) saturate(1.4) brightness(.9);mix-blend-mode:luminosity;opacity:.85}
+#s03 .mock .side{display:flex;flex-direction:column;gap:14px}
+#s03 .mock .side div{padding:18px;border-radius:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
+#s03 .mock .side b{font-size:32px;display:block}
+#s03 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin:60px 0 90px}
+#s03 .stats div{padding:28px 20px;text-align:center}
+#s03 .stats b{display:block;font-size:46px;font-weight:900;background:linear-gradient(90deg,#fff,#a5f3fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+#s03 .stats span{opacity:.8}
+#s03 h2.sec{font-size:44px;font-weight:900;text-align:center;margin:0 0 12px}
+#s03 .sub{text-align:center;opacity:.8;margin:0 0 44px;font-size:18px}
+#s03 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-bottom:90px}
+#s03 .card{padding:26px;transition:.3s;position:relative;overflow:hidden}
+#s03 .card:hover{transform:translateY(-6px);background:rgba(255,255,255,.18)}
+#s03 .card .em{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px;background:linear-gradient(135deg,rgba(255,255,255,.3),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.3)}
+#s03 .card h3{margin:0 0 6px;font-size:22px}
+#s03 .card p{margin:0 0 14px;opacity:.8;font-size:15px;line-height:1.5}
+#s03 .card .meta{display:flex;justify-content:space-between;font-size:14px;opacity:.9}
+#s03 .card .bar{height:6px;border-radius:99px;background:rgba(255,255,255,.15);margin-top:10px;overflow:hidden}
+#s03 .card .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--c2),var(--c3));border-radius:99px}
+#s03 .bundle{display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;margin-bottom:90px}
+#s03 .bundle .txt{padding:50px 46px}
+#s03 .bundle h2{font-size:42px;font-weight:900;margin:0 0 14px}
+#s03 .bundle p{opacity:.85;font-size:17px;line-height:1.7}
+#s03 .bundle .price{font-size:64px;font-weight:900;margin:20px 0 4px}
+#s03 .bundle .price small{font-size:18px;opacity:.7;font-weight:400}
+#s03 .bundle .chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 28px}
+#s03 .bundle .chips span{padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);font-size:14px}
+#s03 .bundle .pic{position:relative;min-height:420px}
+#s03 .bundle .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:hue-rotate(200deg) saturate(1.5) contrast(1.1)}
+#s03 .bundle .pic::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(124,58,237,.35),rgba(6,182,212,.35))}
+#s03 .bundle .pic .float{position:absolute;bottom:26px;inset-inline-start:26px;padding:16px 20px;z-index:1;animation:s03-float 8s ease-in-out infinite}
+#s03 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-bottom:90px}
+#s03 .q{padding:28px}
+#s03 .q .av{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+#s03 .q .av img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.5)}
+#s03 .q .av b{display:block}
+#s03 .q .av small{opacity:.7}
+#s03 .q p{margin:0;line-height:1.6;opacity:.9}
+#s03 .forum{padding:36px;margin-bottom:90px}
+#s03 .forum h2{font-size:34px;font-weight:900;margin:0 0 20px}
+#s03 .thread{display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;background:rgba(255,255,255,.08);margin-bottom:10px;transition:.2s}
+#s03 .thread:hover{background:rgba(255,255,255,.16)}
+#s03 .thread .t{flex:1}
+#s03 .thread .t b{display:block}
+#s03 .thread .t small{opacity:.7}
+#s03 .thread .c{padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,var(--c2),var(--c1));font-size:13px;font-weight:700}
+#s03 footer{position:relative;z-index:1;margin:0 28px 28px;padding:40px}
+#s03 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1140px;margin:0 auto}
+#s03 footer h4{margin:0 0 12px;font-size:17px}
+#s03 footer a{display:block;color:#fff;text-decoration:none;opacity:.75;margin-bottom:8px}
+#s03 footer a:hover{opacity:1}
+#s03 footer .copy{text-align:center;opacity:.6;margin-top:30px;font-size:14px}
+@media(max-width:900px){#s03 .stats,#s03 .subjects,#s03 .bundle,#s03 .quotes,#s03 .mock,#s03 footer .cols{grid-template-columns:1fr}#s03 .nav ul{display:none}}
+</style>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<nav class="nav glass">
+  <div class="logo"><i></i>בגרות+</div>
+  <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">למוכרים</a></li><li><a href="#">בלוג</a></li></ul>
+  <a class="btn" href="#">כניסה</a>
+</nav>
+<div class="wrap">
+  <header class="hero">
+    <span class="pill">✨ מעל 3,800 קבצים חדשים לשנת תשפ"ז</span>
+    <h1>ללמוד לבגרות<br><span>בבהירות מלאה</span></h1>
+    <p>סיכומים שקופים, פתרונות ברורים ופורום שעונה בזמן אמת. כל מה שצריך כדי לראות דרך הערפל של החומר.</p>
+    <div class="acts"><a class="btn solid" href="#">התחילו בחינם</a><a class="btn" href="#">סיור בקטלוג</a></div>
+    <div class="mock glass">
+      <img src="https://picsum.photos/seed/aurora-hero/1000/620" alt="תצוגת קטלוג החומרים" loading="lazy">
+      <div class="side">
+        <div><b>+124</b>קבצים השבוע</div>
+        <div><b>4.9★</b>דירוג ממוצע</div>
+        <div><b>15 דק'</b>זמן מענה בפורום</div>
+      </div>
+    </div>
+  </header>
+  <div class="stats">
+    <div class="glass"><b>12,400</b><span>תלמידים</span></div>
+    <div class="glass"><b>3,800</b><span>קבצים</span></div>
+    <div class="glass"><b>94%</b><span>שביעות רצון</span></div>
+    <div class="glass"><b>27</b><span>מקצועות</span></div>
+  </div>
+  <h2 class="sec">מקצועות</h2>
+  <p class="sub">בחרו מקצוע וגלו כמה חומר כבר מחכה לכם</p>
+  <div class="subjects">
+    <div class="card glass"><div class="em">∫</div><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581/582, פתרונות שלב-אחר-שלב עם הסברים.</p><div class="meta"><span>412 קבצים</span><span>4.9★</span></div><div class="bar"><i style="width:92%"></i></div></div>
+    <div class="card glass"><div class="em">🅰</div><h3>אנגלית</h3><p>Module E/F/G, אוצר מילים ו-unseen מתורגלים.</p><div class="meta"><span>298 קבצים</span><span>4.8★</span></div><div class="bar"><i style="width:80%"></i></div></div>
+    <div class="card glass"><div class="em">א</div><h3>לשון והבעה</h3><p>תחביר, תורת הצורות, שם המספר והבנת הנקרא.</p><div class="meta"><span>176 קבצים</span><span>4.7★</span></div><div class="bar"><i style="width:64%"></i></div></div>
+    <div class="card glass"><div class="em">⏳</div><h3>היסטוריה</h3><p>כל הפרקים בסיכום אחד, כולל שאלות מועדי עבר.</p><div class="meta"><span>231 קבצים</span><span>4.8★</span></div><div class="bar"><i style="width:72%"></i></div></div>
+    <div class="card glass"><div class="em">⚖</div><h3>אזרחות</h3><p>מושגים, גישות, שאלות אירוע — עם דוגמאות.</p><div class="meta"><span>143 קבצים</span><span>4.6★</span></div><div class="bar"><i style="width:55%"></i></div></div>
+    <div class="card glass"><div class="em">⚛</div><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר. מעבדות מסוכמות.</p><div class="meta"><span>188 קבצים</span><span>4.9★</span></div><div class="bar"><i style="width:68%"></i></div></div>
+    <div class="card glass"><div class="em">🧬</div><h3>ביולוגיה</h3><p>תא, גוף האדם, אקולוגיה — עם תרשימים צבעוניים.</p><div class="meta"><span>164 קבצים</span><span>4.8★</span></div><div class="bar"><i style="width:60%"></i></div></div>
+    <div class="card glass"><div class="em">📖</div><h3>תנ"ך</h3><p>בראשית, שמות, נביאים — סיכומי פרקים ופרשנות.</p><div class="meta"><span>109 קבצים</span><span>4.7★</span></div><div class="bar"><i style="width:48%"></i></div></div>
+    <div class="card glass"><div class="em">⌨</div><h3>מדעי המחשב</h3><p>Java, מבני נתונים, שאלוני עבר עם פתרונות מלאים.</p><div class="meta"><span>97 קבצים</span><span>4.9★</span></div><div class="bar"><i style="width:44%"></i></div></div>
+  </div>
+  <div class="bundle glass">
+    <div class="txt">
+      <h2>חבילת האורורה</h2>
+      <p>מנוי שנתי לכל הספרייה: כל המקצועות, כל הקבצים, כל העדכונים. פלוס גישה לפורום הפרימיום ולמפגשי זום לפני כל מועד.</p>
+      <div class="chips"><span>3,800+ קבצים</span><span>עדכונים שוטפים</span><span>פורום סגור</span><span>סימן מים אישי</span></div>
+      <div class="price">₪159 <small>/ שנה</small></div>
+      <a class="btn solid" href="#">מצטרפים עכשיו</a>
+    </div>
+    <div class="pic"><img src="https://picsum.photos/seed/aurora-bundle/800/700" alt="נוף צפוני עם זוהר" loading="lazy"><div class="float glass"><b>+2,300</b> נרשמו החודש</div></div>
+  </div>
+  <h2 class="sec">תלמידים מספרים</h2>
+  <p class="sub">בלי פילטרים (טוב, חוץ מהפילטר על התמונות)</p>
+  <div class="quotes">
+    <div class="q glass"><div class="av"><img src="https://picsum.photos/seed/aurora-av1/100/100" alt="תמונת פרופיל" loading="lazy"><div><b>שירה כהן</b><small>י"ב, רעננה</small></div></div><p>הפורום פה זה משהו אחר. שאלתי שאלה בכימיה בשעה 23:40 וקיבלתי הסבר עם תרשים לפני חצות.</p></div>
+    <div class="q glass"><div class="av"><img src="https://picsum.photos/seed/aurora-av2/100/100" alt="תמונת פרופיל" loading="lazy"><div><b>דניאל אברהם</b><small>י"א, אשדוד</small></div></div><p>סיכומי ההיסטוריה חסכו לי את כל הספר. יצאתי מהבחינה בטוח לראשונה בחיים.</p></div>
+    <div class="q glass"><div class="av"><img src="https://picsum.photos/seed/aurora-av3/100/100" alt="תמונת פרופיל" loading="lazy"><div><b>ליאור פרץ</b><small>י"ב, נהריה</small></div></div><p>העליתי סיכום שכתבתי בביולוגיה והרווחתי 640 שקל בחודשיים. מטורף.</p></div>
+  </div>
+  <div class="forum glass">
+    <h2>חם בפורום עכשיו</h2>
+    <div class="thread"><div class="t"><b>מישהו הבין את שאלה 5 בשאלון 582 מועד קיץ?</b><small>מתמטיקה · לפני 8 דקות · 14 תגובות</small></div><span class="c">נענה</span></div>
+    <div class="thread"><div class="t"><b>איך מסכמים את פרק הלאומיות בלי להשתגע</b><small>היסטוריה · לפני 22 דקות · 31 תגובות</small></div><span class="c">חם</span></div>
+    <div class="thread"><div class="t"><b>מחפשת פרטנרית ללימוד פיזיקה בזום</b><small>קהילה · לפני שעה · 6 תגובות</small></div><span class="c">פתוח</span></div>
+  </div>
+</div>
+<footer class="glass">
+  <div class="cols">
+    <div><div class="logo" style="margin-bottom:10px"><i></i>בגרות+</div><p style="opacity:.75;max-width:320px;line-height:1.6">פלטפורמת חומרי הלימוד השקופה ביותר בישראל. תלמידים כותבים, מורים בודקים, כולם מרוויחים.</p></div>
+    <div><h4>ניווט</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">פורום</a></div>
+    <div><h4>קהילה</h4><a href="#">למוכרים</a><a href="#">בלוג</a><a href="#">אירועים</a></div>
+    <div><h4>תמיכה</h4><a href="#">שאלות נפוצות</a><a href="#">צור קשר</a><a href="#">תנאי שימוש</a></div>
+  </div>
+  <div class="copy">© 2026 בגרות+ · נבנה עם זכוכית ובלי סדקים</div>
+</footer>
+</section>
+<section class="style" id="s04" data-name="סוויסי / אינטרנשיונל" data-desc="גריד קשיח, אדום-שחור-לבן, כותרות ענקיות אסימטריות, מספור וקווים אופקיים — אפס קישוט">
+<style>
+#s04{--red:#e30613;--bk:#000;--wh:#fff;--gr:#f2f2f2;background:var(--wh);color:var(--bk);font-family:'Heebo',sans-serif;min-height:100vh}
+#s04 *{box-sizing:border-box}
+#s04 .g{max-width:1320px;margin:0 auto;padding:0 40px}
+#s04 .nav{display:grid;grid-template-columns:1fr 3fr 1fr;align-items:center;padding:24px 0;border-bottom:2px solid var(--bk)}
+#s04 .logo{font-weight:800;font-size:22px;letter-spacing:-.5px}
+#s04 .logo b{color:var(--red)}
+#s04 .nav ul{list-style:none;display:flex;gap:32px;margin:0;padding:0;justify-content:center}
+#s04 .nav a{color:var(--bk);text-decoration:none;font-size:15px;font-weight:500}
+#s04 .nav ul a:hover{color:var(--red)}
+#s04 .btn{display:inline-block;padding:14px 28px;background:var(--bk);color:var(--wh);text-decoration:none;font-weight:700;font-size:15px;transition:.2s}
+#s04 .btn:hover{background:var(--red)}
+#s04 .btn.out{background:transparent;color:var(--bk);border:2px solid var(--bk)}
+#s04 .btn.out:hover{border-color:var(--red);color:var(--red);background:transparent}
+#s04 .nav .btn{justify-self:end}
+#s04 .hero{display:grid;grid-template-columns:repeat(12,1fr);gap:24px;padding:80px 0 60px;border-bottom:1px solid var(--bk)}
+#s04 .hero .num{grid-column:1/2;font-size:14px;font-weight:700;padding-top:14px}
+#s04 .hero .txt{grid-column:2/9}
+#s04 .hero h1{font-size:clamp(56px,9vw,132px);font-weight:800;line-height:.9;letter-spacing:-4px;margin:0 0 40px}
+#s04 .hero h1 span{color:var(--red)}
+#s04 .hero p{font-size:20px;line-height:1.5;max-width:520px;margin:0 0 36px}
+#s04 .hero .acts{display:flex;gap:16px}
+#s04 .hero .pic{grid-column:9/13;position:relative}
+#s04 .hero .pic img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.2);min-height:420px}
+#s04 .hero .pic::after{content:'';position:absolute;top:0;inset-inline-start:0;width:60px;height:60px;background:var(--red)}
+#s04 .stats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--bk)}
+#s04 .stats div{padding:34px 0;border-inline-end:1px solid var(--bk);padding-inline-start:20px}
+#s04 .stats div:last-child{border:0}
+#s04 .stats b{font-size:56px;font-weight:800;letter-spacing:-2px;display:block;line-height:1}
+#s04 .stats span{font-size:14px;font-weight:500}
+#s04 .stats div:nth-child(3) b{color:var(--red)}
+#s04 .head{display:grid;grid-template-columns:1fr 3fr;padding:70px 0 30px;border-bottom:1px solid var(--bk);align-items:end}
+#s04 .head small{font-size:14px;font-weight:700}
+#s04 .head h2{font-size:clamp(36px,4.5vw,64px);font-weight:800;letter-spacing:-2px;margin:0;line-height:1}
+#s04 .subjects{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--bk)}
+#s04 .card{padding:32px 24px 32px 0;border-inline-end:1px solid var(--bk);border-bottom:1px solid var(--bk);padding-inline-start:20px;position:relative;transition:.2s}
+#s04 .card:nth-child(4n){border-inline-end:0}
+#s04 .card:nth-child(n+5){border-bottom:0}
+#s04 .card:hover{background:var(--gr)}
+#s04 .card .n{font-size:13px;font-weight:700;color:var(--red);display:block;margin-bottom:40px}
+#s04 .card h3{font-size:26px;font-weight:800;letter-spacing:-1px;margin:0 0 8px;line-height:1.1}
+#s04 .card p{font-size:14px;line-height:1.5;margin:0 0 20px;color:#333}
+#s04 .card .cnt{font-size:13px;font-weight:700;border-top:1px solid var(--bk);padding-top:10px;display:flex;justify-content:space-between}
+#s04 .card img{width:100%;height:110px;object-fit:cover;filter:grayscale(1) contrast(1.3);margin-bottom:16px}
+#s04 .bundle{display:grid;grid-template-columns:repeat(12,1fr);gap:24px;padding:80px 0;border-bottom:1px solid var(--bk)}
+#s04 .bundle .l{grid-column:1/4}
+#s04 .bundle .l small{font-weight:700;font-size:14px;display:block;margin-bottom:10px}
+#s04 .bundle .l .price{font-size:96px;font-weight:800;letter-spacing:-5px;line-height:.9;color:var(--red)}
+#s04 .bundle .l .per{font-size:15px;font-weight:500}
+#s04 .bundle .m{grid-column:4/9}
+#s04 .bundle .m h2{font-size:44px;font-weight:800;letter-spacing:-2px;margin:0 0 18px;line-height:1}
+#s04 .bundle .m p{font-size:17px;line-height:1.6;margin:0 0 20px}
+#s04 .bundle .m ol{padding-inline-start:20px;margin:0 0 30px;font-weight:500;line-height:1.9}
+#s04 .bundle .r{grid-column:9/13}
+#s04 .bundle .r img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.4)}
+#s04 .quotes{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--bk)}
+#s04 .q{padding:48px 24px 48px 0;padding-inline-start:20px;border-inline-end:1px solid var(--bk)}
+#s04 .q:last-child{border:0}
+#s04 .q .mark{font-size:80px;line-height:.5;color:var(--red);font-weight:800;display:block;margin-bottom:26px}
+#s04 .q p{font-size:20px;line-height:1.45;font-weight:500;margin:0 0 20px;letter-spacing:-.3px}
+#s04 .q b{font-size:13px;font-weight:700;display:block}
+#s04 .q small{font-size:12px;color:#555}
+#s04 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:2px solid var(--bk)}
+#s04 .steps div{padding:50px 24px 50px 0;padding-inline-start:20px;border-inline-end:1px solid var(--bk)}
+#s04 .steps div:last-child{border:0}
+#s04 .steps .n{font-size:100px;font-weight:800;letter-spacing:-6px;line-height:.8;display:block;margin-bottom:24px}
+#s04 .steps div:nth-child(2) .n{color:var(--red)}
+#s04 .steps h3{font-size:22px;font-weight:800;margin:0 0 8px}
+#s04 .steps p{font-size:15px;line-height:1.6;margin:0}
+#s04 .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+#s04 .strip img{width:100%;height:200px;object-fit:cover;filter:grayscale(1) contrast(1.3)}
+#s04 .strip img:nth-child(2){filter:grayscale(1) contrast(1.3) sepia(1) hue-rotate(-50deg) saturate(6)}
+#s04 footer{padding:50px 0 30px;border-top:2px solid var(--bk);margin-top:0}
+#s04 footer .cols{display:grid;grid-template-columns:repeat(12,1fr);gap:24px}
+#s04 footer .cols>div:first-child{grid-column:1/5}
+#s04 footer .cols>div{grid-column:span 2}
+#s04 footer h4{font-size:13px;font-weight:700;margin:0 0 12px;text-transform:uppercase}
+#s04 footer a{display:block;color:var(--bk);text-decoration:none;font-size:14px;margin-bottom:6px}
+#s04 footer a:hover{color:var(--red)}
+#s04 footer .copy{font-size:12px;margin-top:40px;padding-top:14px;border-top:1px solid var(--bk);display:flex;justify-content:space-between}
+@media(max-width:900px){#s04 .hero,#s04 .stats,#s04 .subjects,#s04 .bundle,#s04 .quotes,#s04 .steps,#s04 .head,#s04 footer .cols,#s04 .nav{grid-template-columns:1fr}#s04 .hero>*,#s04 .bundle>*,#s04 footer .cols>div{grid-column:1/-1!important}#s04 .nav ul{display:none}#s04 .card,#s04 .q,#s04 .steps div,#s04 .stats div{border-inline-end:0;border-bottom:1px solid var(--bk)}#s04 .strip{grid-template-columns:1fr 1fr}#s04 .nav .btn{justify-self:start}}
+</style>
+<div class="g">
+  <nav class="nav">
+    <div class="logo">בגרות<b>+</b></div>
+    <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">למוכרים</a></li><li><a href="#">אודות</a></li></ul>
+    <a class="btn" href="#">כניסה</a>
+  </nav>
+  <header class="hero">
+    <div class="num">01 —</div>
+    <div class="txt">
+      <h1>חומר.<br>סדר.<br><span>ציון.</span></h1>
+      <p>מאגר חומרי הלימוד המסודר ביותר לבגרות: 3,800 קבצים, 27 מקצועות, מערכת אחת. בלי רעש.</p>
+      <div class="acts"><a class="btn" href="#">לקטלוג</a><a class="btn out" href="#">איך זה עובד</a></div>
+    </div>
+    <div class="pic"><img src="https://picsum.photos/seed/swiss-hero/700/900" alt="ארכיטקטורה מודרנית" loading="lazy"></div>
+  </header>
+  <div class="stats">
+    <div><b>12,400</b><span>תלמידים רשומים</span></div>
+    <div><b>3,800</b><span>קבצים מאומתים</span></div>
+    <div><b>94%</b><span>שביעות רצון</span></div>
+    <div><b>27</b><span>מקצועות</span></div>
+  </div>
+  <div class="head"><small>02 — מקצועות</small><h2>בחירת מקצוע לפי שאלון, יחידות ומועד</h2></div>
+  <div class="subjects">
+    <div class="card"><span class="n">2.01</span><img src="https://picsum.photos/seed/swiss-m/500/250" alt="מתמטיקה" loading="lazy"><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581/582 — פתרונות מלאים.</p><div class="cnt"><span>412 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.02</span><img src="https://picsum.photos/seed/swiss-e/500/250" alt="אנגלית" loading="lazy"><h3>אנגלית</h3><p>Module E–G, unseen, כתיבה.</p><div class="cnt"><span>298 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.03</span><img src="https://picsum.photos/seed/swiss-l/500/250" alt="לשון" loading="lazy"><h3>לשון והבעה</h3><p>תחביר, צורות, הבנת הנקרא.</p><div class="cnt"><span>176 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.04</span><img src="https://picsum.photos/seed/swiss-h/500/250" alt="היסטוריה" loading="lazy"><h3>היסטוריה</h3><p>כל הפרקים, ציר זמן, מועדי עבר.</p><div class="cnt"><span>231 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.05</span><img src="https://picsum.photos/seed/swiss-c/500/250" alt="אזרחות" loading="lazy"><h3>אזרחות</h3><p>מושגון, גישות, שאלות אירוע.</p><div class="cnt"><span>143 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.06</span><img src="https://picsum.photos/seed/swiss-p/500/250" alt="פיזיקה" loading="lazy"><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר.</p><div class="cnt"><span>188 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.07</span><img src="https://picsum.photos/seed/swiss-b/500/250" alt="ביולוגיה" loading="lazy"><h3>ביולוגיה</h3><p>תא, גוף האדם, אקולוגיה.</p><div class="cnt"><span>164 קבצים</span><span>→</span></div></div>
+    <div class="card"><span class="n">2.08</span><img src="https://picsum.photos/seed/swiss-ch/500/250" alt="כימיה" loading="lazy"><h3>כימיה</h3><p>מבנה וקישור, חמצון-חיזור, אנרגטיקה.</p><div class="cnt"><span>132 קבצים</span><span>→</span></div></div>
+  </div>
+  <div class="bundle">
+    <div class="l"><small>03 — חבילה שנתית</small><div class="price">₪149</div><div class="per">לשנה · כולל מע"מ</div></div>
+    <div class="m">
+      <h2>הכול. במקום אחד. במחיר אחד.</h2>
+      <p>מנוי שנתי לכל הספרייה: כל המקצועות, כל הקבצים, כל העדכונים לאחר כל מועד. פשוט כמו שזה נשמע.</p>
+      <ol><li>גישה ל-3,800+ קבצים ללא הגבלה</li><li>עדכונים אוטומטיים אחרי מועדי חורף וקיץ</li><li>הורדת PDF עם סימן מים אישי</li><li>גישה לפורום התלמידים</li></ol>
+      <a class="btn" href="#">רכישה</a>
+    </div>
+    <div class="r"><img src="https://picsum.photos/seed/swiss-bundle/600/700" alt="מדרגות בטון" loading="lazy"></div>
+  </div>
+  <div class="head"><small>04 — עדויות</small><h2>מה אומרים</h2></div>
+  <div class="quotes">
+    <div class="q"><span class="mark">„</span><p>אין פה שום דבר מיותר. נכנסים, מוצאים, מורידים. ככה זה צריך להיות.</p><b>יובל ד.</b><small>י"ב · תל אביב · 5 יח"ל מתמטיקה</small></div>
+    <div class="q"><span class="mark">„</span><p>העליתי שני סיכומים בלשון והרווחתי יותר ממה שציפיתי. המערכת שקופה עד הסוף.</p><b>תמר ק.</b><small>סטודנטית · מוכרת מאומתת</small></div>
+    <div class="q"><span class="mark">„</span><p>אני שולח את התלמידים שלי לכאן. החומר מדויק והתצוגה המקדימה חוסכת אכזבות.</p><b>אורי ב.</b><small>מורה להיסטוריה · ירושלים</small></div>
+  </div>
+  <div class="head"><small>05 — תהליך</small><h2>שלושה שלבים</h2></div>
+  <div class="steps">
+    <div><span class="n">1</span><h3>סינון</h3><p>מקצוע → שאלון → יחידות → מועד. ארבעה קליקים ואתם מול הקובץ הנכון.</p></div>
+    <div><span class="n">2</span><h3>רכישה</h3><p>קובץ בודד או מנוי. תשלום מאובטח, חשבונית במייל, בלי מנויים נסתרים.</p></div>
+    <div><span class="n">3</span><h3>הורדה</h3><p>PDF נקי עם סימן מים אישי. זמין מכל מכשיר, לתמיד.</p></div>
+  </div>
+  <div class="strip">
+    <img src="https://picsum.photos/seed/swiss-s1/500/300" alt="גיאומטריה עירונית" loading="lazy">
+    <img src="https://picsum.photos/seed/swiss-s2/500/300" alt="קווים אדומים" loading="lazy">
+    <img src="https://picsum.photos/seed/swiss-s3/500/300" alt="מרחב לימוד" loading="lazy">
+    <img src="https://picsum.photos/seed/swiss-s4/500/300" alt="דפים לבנים" loading="lazy">
+  </div>
+  <footer>
+    <div class="cols">
+      <div><div class="logo" style="margin-bottom:10px">בגרות<b>+</b></div><p style="font-size:14px;line-height:1.6;max-width:300px">מאגר חומרי לימוד לבגרות. תלמידים כותבים. מורים בודקים. אתם מצליחים.</p></div>
+      <div><h4>מקצועות</h4><a href="#">מתמטיקה</a><a href="#">אנגלית</a><a href="#">היסטוריה</a><a href="#">הכול</a></div>
+      <div><h4>קהילה</h4><a href="#">פורום</a><a href="#">מוכרים</a><a href="#">בלוג</a></div>
+      <div><h4>עזרה</h4><a href="#">שאלות</a><a href="#">קשר</a><a href="#">תנאים</a></div>
+      <div><h4>חברתי</h4><a href="#">אינסטגרם</a><a href="#">טיקטוק</a><a href="#">טלגרם</a></div>
+    </div>
+    <div class="copy"><span>© 2026 בגרות+</span><span>עוצב לפי גריד 12 עמודות</span></div>
+  </footer>
+</div>
+</section>
+<section class="style" id="s05" data-name="סינת'ווייב 80s" data-desc="שקיעה סגול-כתום, גריד פרספקטיבה ניאון, טקסט כרום זוהר, שמש מפוספסת, ציאן ומג'נטה">
+<style>
+#s05{--mg:#ff2bd6;--cy:#00f0ff;--pu:#1a0533;--or:#ff8c42;--tx:#fff;background:linear-gradient(180deg,#0b0220 0%,#2a0a4a 40%,#7b1e6e 70%,#ff5f6d 100%);color:var(--tx);font-family:'Rubik',sans-serif;min-height:100vh;position:relative;overflow:hidden}
+#s05 *{box-sizing:border-box}
+#s05 .grid{position:absolute;inset-inline:0;bottom:0;height:46vh;background:linear-gradient(transparent 0,transparent calc(100% - 2px),var(--mg) 100%),linear-gradient(90deg,transparent 0,transparent calc(100% - 2px),var(--mg) 100%);background-size:100% 40px,80px 100%;transform:perspective(500px) rotateX(62deg);transform-origin:bottom;opacity:.55;pointer-events:none;animation:s05-grid 3s linear infinite;-webkit-mask-image:linear-gradient(transparent,#000 40%);mask-image:linear-gradient(transparent,#000 40%)}
+@keyframes s05-grid{to{background-position:0 40px,0 0}}
+#s05 .sun{position:absolute;top:60px;inset-inline-end:8%;width:340px;height:340px;border-radius:50%;background:linear-gradient(180deg,#ffe36e,#ff8c42 45%,var(--mg));-webkit-mask:repeating-linear-gradient(#000 0 22px,transparent 22px 30px),linear-gradient(#000 55%,transparent 55%);-webkit-mask-composite:source-in;mask:repeating-linear-gradient(#000 0 22px,transparent 22px 30px);box-shadow:0 0 80px rgba(255,140,66,.7);pointer-events:none;animation:s05-pulse 5s ease-in-out infinite}
+@keyframes s05-pulse{0%,100%{box-shadow:0 0 80px rgba(255,140,66,.7)}50%{box-shadow:0 0 140px rgba(255,43,214,.8)}}
+#s05 .stars{position:absolute;inset:0;background-image:radial-gradient(#fff 1px,transparent 1px),radial-gradient(#fff 1px,transparent 1px);background-size:120px 120px,70px 70px;background-position:0 0,35px 40px;opacity:.35;height:50%;pointer-events:none}
+#s05 .wrap{max-width:1180px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+#s05 .nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:1px solid rgba(0,240,255,.4)}
+#s05 .logo{font-family:'Suez One',serif;font-size:34px;font-style:italic;background:linear-gradient(180deg,#fff 30%,var(--cy) 50%,#fff 55%,var(--mg));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 8px var(--cy))}
+#s05 .nav ul{list-style:none;display:flex;gap:28px;margin:0;padding:0}
+#s05 .nav ul a{color:var(--cy);text-decoration:none;font-weight:500;letter-spacing:1px;text-shadow:0 0 8px var(--cy);transition:.2s}
+#s05 .nav ul a:hover{color:var(--mg);text-shadow:0 0 12px var(--mg)}
+#s05 .btn{display:inline-block;padding:14px 32px;text-decoration:none;color:#fff;font-weight:700;border:2px solid var(--cy);box-shadow:0 0 14px var(--cy),inset 0 0 14px rgba(0,240,255,.3);text-shadow:0 0 6px #fff;transition:.2s;letter-spacing:1px;text-transform:uppercase}
+#s05 .btn:hover{background:rgba(0,240,255,.15);transform:translateY(-2px)}
+#s05 .btn.mg{border-color:var(--mg);box-shadow:0 0 14px var(--mg),inset 0 0 14px rgba(255,43,214,.3);background:linear-gradient(90deg,rgba(255,43,214,.4),rgba(255,140,66,.4))}
+#s05 .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:90px 0 120px;min-height:80vh}
+#s05 .hero h1{font-family:'Suez One',serif;font-size:clamp(54px,8vw,108px);line-height:1;margin:0 0 20px;font-style:italic;background:linear-gradient(180deg,#fff 0%,#e0f7ff 40%,var(--cy) 50%,#5f5fff 52%,#fff 65%,var(--mg) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(0,240,255,.7)) drop-shadow(4px 4px 0 rgba(255,43,214,.7))}
+#s05 .hero .sub{font-size:22px;letter-spacing:4px;color:var(--mg);text-shadow:0 0 12px var(--mg);text-transform:uppercase;margin-bottom:22px;font-weight:700}
+#s05 .hero p{font-size:19px;line-height:1.6;opacity:.9;max-width:520px;margin-bottom:34px}
+#s05 .hero .acts{display:flex;gap:18px;flex-wrap:wrap}
+#s05 .hero .vis{position:relative}
+#s05 .hero .vis img{width:100%;height:440px;object-fit:cover;border:2px solid var(--cy);box-shadow:0 0 30px var(--cy),12px 12px 0 var(--mg);filter:saturate(2) hue-rotate(280deg) contrast(1.2)}
+#s05 .hero .vis::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(255,43,214,.5));pointer-events:none}
+#s05 .hero .vis .tag{position:absolute;top:-16px;inset-inline-start:-16px;padding:8px 16px;background:var(--pu);border:2px solid var(--mg);color:var(--mg);text-shadow:0 0 8px var(--mg);font-weight:700;letter-spacing:2px;box-shadow:0 0 14px var(--mg)}
+#s05 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:0 0 90px}
+#s05 .stats div{padding:26px;text-align:center;border:1px solid var(--cy);background:rgba(10,2,32,.6);box-shadow:0 0 18px rgba(0,240,255,.4),inset 0 0 20px rgba(0,240,255,.1);position:relative}
+#s05 .stats b{font-family:'Suez One';font-size:52px;display:block;line-height:1;color:#fff;text-shadow:0 0 12px var(--cy),0 0 30px var(--cy)}
+#s05 .stats span{color:var(--mg);text-shadow:0 0 6px var(--mg);letter-spacing:2px;font-size:13px;text-transform:uppercase}
+#s05 h2.sec{font-family:'Suez One';font-size:56px;text-align:center;margin:0 0 10px;font-style:italic;color:#fff;text-shadow:0 0 10px var(--mg),0 0 30px var(--mg),4px 4px 0 #6d00c9}
+#s05 .sub2{text-align:center;color:var(--cy);letter-spacing:4px;text-transform:uppercase;font-size:14px;margin:0 0 44px;text-shadow:0 0 8px var(--cy)}
+#s05 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:100px}
+#s05 .card{background:linear-gradient(180deg,rgba(26,5,51,.85),rgba(80,10,90,.7));border:2px solid;border-image:linear-gradient(135deg,var(--cy),var(--mg)) 1;padding:26px;position:relative;transition:.25s}
+#s05 .card:hover{transform:translateY(-6px);box-shadow:0 0 30px rgba(255,43,214,.5)}
+#s05 .card .ic{font-family:'Suez One';font-size:36px;color:var(--cy);text-shadow:0 0 12px var(--cy);margin-bottom:10px;line-height:1}
+#s05 .card h3{font-size:24px;margin:0 0 6px;text-transform:uppercase;letter-spacing:1px}
+#s05 .card p{margin:0 0 16px;opacity:.85;font-size:15px;line-height:1.5}
+#s05 .card .cnt{color:var(--mg);text-shadow:0 0 6px var(--mg);font-weight:700;letter-spacing:1px}
+#s05 .card::before{content:'';position:absolute;top:8px;inset-inline-end:8px;width:24px;height:24px;border-top:2px solid var(--mg);border-inline-end:2px solid var(--mg)}
+#s05 .bundle{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:100px;border:2px solid var(--mg);box-shadow:0 0 40px rgba(255,43,214,.5);background:rgba(10,2,32,.75)}
+#s05 .bundle .pic{position:relative;min-height:400px;overflow:hidden}
+#s05 .bundle .pic img{width:100%;height:100%;object-fit:cover;filter:saturate(2.5) hue-rotate(300deg) contrast(1.3)}
+#s05 .bundle .pic::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 2px,transparent 2px 4px)}
+#s05 .bundle .txt{padding:50px 44px}
+#s05 .bundle .lbl{color:var(--cy);letter-spacing:4px;font-size:13px;text-transform:uppercase;text-shadow:0 0 8px var(--cy)}
+#s05 .bundle h2{font-family:'Suez One';font-size:52px;font-style:italic;margin:8px 0 14px;line-height:1;text-shadow:0 0 12px var(--mg),3px 3px 0 #6d00c9}
+#s05 .bundle p{opacity:.9;line-height:1.7;margin:0 0 18px}
+#s05 .bundle ul{list-style:none;padding:0;margin:0 0 24px}
+#s05 .bundle li{padding:6px 0;border-bottom:1px dashed rgba(0,240,255,.4)}
+#s05 .bundle li::before{content:'▶ ';color:var(--mg);font-size:11px}
+#s05 .bundle .price{font-family:'Suez One';font-size:74px;line-height:1;color:#fff;text-shadow:0 0 14px var(--cy),0 0 40px var(--cy)}
+#s05 .bundle .price s{font-size:26px;opacity:.6;margin-inline-start:12px}
+#s05 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:100px}
+#s05 .q{padding:28px;background:rgba(10,2,32,.7);border-inline-start:4px solid var(--cy);box-shadow:inset 0 0 30px rgba(0,240,255,.08)}
+#s05 .q:nth-child(2){border-color:var(--mg)}
+#s05 .q p{font-size:17px;line-height:1.6;margin:0 0 16px;font-style:italic}
+#s05 .q b{color:var(--cy);text-shadow:0 0 6px var(--cy);letter-spacing:1px}
+#s05 .q .lvl{display:block;font-size:12px;color:var(--mg);margin-top:4px;letter-spacing:2px}
+#s05 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:100px;text-align:center}
+#s05 .steps div{padding:30px 20px}
+#s05 .steps .n{font-family:'Suez One';font-size:90px;line-height:1;display:block;background:linear-gradient(180deg,#fff,var(--cy) 50%,var(--mg));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 12px var(--cy))}
+#s05 .steps h3{font-size:22px;text-transform:uppercase;letter-spacing:2px;margin:6px 0 10px}
+#s05 .steps p{opacity:.85;line-height:1.6}
+#s05 .imgs{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:100px}
+#s05 .imgs img{width:100%;height:180px;object-fit:cover;border:1px solid var(--cy);filter:saturate(2) hue-rotate(260deg);transition:.3s}
+#s05 .imgs img:hover{filter:saturate(2) hue-rotate(320deg);box-shadow:0 0 20px var(--mg)}
+#s05 footer{position:relative;z-index:1;border-top:2px solid var(--cy);box-shadow:0 -10px 40px rgba(0,240,255,.2);background:rgba(5,1,20,.85);padding:44px 28px 26px}
+#s05 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1180px;margin:0 auto}
+#s05 footer h4{color:var(--mg);text-shadow:0 0 6px var(--mg);letter-spacing:2px;text-transform:uppercase;font-size:14px;margin:0 0 12px}
+#s05 footer a{display:block;color:#fff;opacity:.8;text-decoration:none;margin-bottom:8px}
+#s05 footer a:hover{color:var(--cy);opacity:1;text-shadow:0 0 6px var(--cy)}
+#s05 footer .copy{max-width:1180px;margin:30px auto 0;text-align:center;font-size:13px;letter-spacing:3px;color:var(--cy);opacity:.8}
+@media(max-width:900px){#s05 .hero,#s05 .stats,#s05 .subjects,#s05 .bundle,#s05 .quotes,#s05 .steps,#s05 footer .cols{grid-template-columns:1fr}#s05 .imgs{grid-template-columns:1fr 1fr}#s05 .nav ul{display:none}#s05 .sun{width:200px;height:200px}}
+</style>
+<div class="stars"></div><div class="sun"></div><div class="grid"></div>
+<div class="wrap">
+  <nav class="nav">
+    <div class="logo">בגרות+</div>
+    <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">למוכרים</a></li><li><a href="#">אודות</a></li></ul>
+    <a class="btn" href="#">כניסה</a>
+  </nav>
+  <header class="hero">
+    <div>
+      <div class="sub">// מהדורת 2026</div>
+      <h1>לומדים<br>אל תוך<br>השקיעה</h1>
+      <p>סיכומים זוהרים, פתרונות שנוגעים בכל שאלה, ופורום שלא נרדם. תעלו על הדלוריאן — הבגרות מחכה בעתיד.</p>
+      <div class="acts"><a class="btn mg" href="#">כניסה לקטלוג</a><a class="btn" href="#">צפייה בדמו</a></div>
+    </div>
+    <div class="vis"><span class="tag">NEW WAVE</span><img src="https://picsum.photos/seed/synth-hero/900/700" alt="עיר לילית בניאון" loading="lazy"></div>
+  </header>
+  <div class="stats">
+    <div><b>12,400</b><span>תלמידים</span></div>
+    <div><b>3,800</b><span>קבצים</span></div>
+    <div><b>94%</b><span>שביעות רצון</span></div>
+    <div><b>1985</b><span>ואייב</span></div>
+  </div>
+  <h2 class="sec">המקצועות</h2>
+  <p class="sub2">בחר את המסלול שלך</p>
+  <div class="subjects">
+    <div class="card"><div class="ic">∑</div><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581/582, פתרונות שלב-אחר-שלב עם הסברים.</p><span class="cnt">412 קבצים</span></div>
+    <div class="card"><div class="ic">EN</div><h3>אנגלית</h3><p>Module E/F/G, אוצר מילים ו-unseen מתורגלים.</p><span class="cnt">298 קבצים</span></div>
+    <div class="card"><div class="ic">א</div><h3>לשון והבעה</h3><p>תחביר, מערכת הצורות, שם המספר, הבנת הנקרא.</p><span class="cnt">176 קבצים</span></div>
+    <div class="card"><div class="ic">⧗</div><h3>היסטוריה</h3><p>לאומיות, שואה, מלחמות העולם — סיכום אחד לכל הפרקים.</p><span class="cnt">231 קבצים</span></div>
+    <div class="card"><div class="ic">⚖</div><h3>אזרחות</h3><p>מושגים, גישות, שאלות אירוע עם דוגמאות.</p><span class="cnt">143 קבצים</span></div>
+    <div class="card"><div class="ic">Φ</div><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר. מעבדות מסוכמות.</p><span class="cnt">188 קבצים</span></div>
+    <div class="card"><div class="ic">⚗</div><h3>כימיה</h3><p>מבנה וקישור, סטוכיומטריה, חמצון-חיזור.</p><span class="cnt">132 קבצים</span></div>
+    <div class="card"><div class="ic">{ }</div><h3>מדעי המחשב</h3><p>Java, מבני נתונים, שאלוני עבר עם פתרונות.</p><span class="cnt">97 קבצים</span></div>
+    <div class="card"><div class="ic">ع</div><h3>ערבית</h3><p>דקדוק, טקסטים, תרגום — עם הקלטות.</p><span class="cnt">64 קבצים</span></div>
+  </div>
+  <div class="bundle">
+    <div class="pic"><img src="https://picsum.photos/seed/synth-bundle/800/700" alt="כביש לילי אל האופק" loading="lazy"></div>
+    <div class="txt">
+      <span class="lbl">Ultimate Pack</span>
+      <h2>חבילת האאוטרן</h2>
+      <p>גישה לכל הספרייה למשך שנה: כל המקצועות, כל הקבצים, כל העדכונים אחרי כל מועד — במהירות 88 מייל לשעה.</p>
+      <ul><li>3,800+ קבצים ללא הגבלה</li><li>עדכונים אוטומטיים אחרי כל מועד</li><li>פורום פרימיום 24/7</li><li>ארכיון מועדי עבר מאז 2010</li></ul>
+      <div class="price">₪149<s>₪290</s></div>
+      <a class="btn mg" href="#" style="margin-top:20px">Insert Coin</a>
+    </div>
+  </div>
+  <h2 class="sec">שדרים מהתלמידים</h2>
+  <p class="sub2">Transmission received</p>
+  <div class="quotes">
+    <div class="q"><p>הורדתי את פתרונות 582 בשתיים בלילה, למדתי עד הבוקר, יצאתי עם 97. הפלטפורמה הזאת היא מכונת זמן.</p><b>רועי אלמוג</b><span class="lvl">LEVEL 12 · תל אביב</span></div>
+    <div class="q"><p>הסיכומים בהיסטוריה כתובים כמו שצריך — קצר, ברור, עם כל המושגים שהמורה רצה.</p><b>נטע שמש</b><span class="lvl">LEVEL 11 · חדרה</span></div>
+    <div class="q"><p>העליתי סיכום בכימיה. 400 הורדות ו-1,200 שקל אחר כך — אני מאמין.</p><b>אביב גולן</b><span class="lvl">SELLER · אשקלון</span></div>
+  </div>
+  <h2 class="sec">שלושה שלבים</h2>
+  <p class="sub2">Press start</p>
+  <div class="steps">
+    <div><span class="n">1</span><h3>בוחרים</h3><p>מסננים לפי מקצוע, שאלון ויחידות. כל קובץ עם דירוג ותצוגה מקדימה.</p></div>
+    <div><span class="n">2</span><h3>קונים</h3><p>קובץ בודד או חבילה שנתית. תשלום מאובטח, חשבונית במייל.</p></div>
+    <div><span class="n">3</span><h3>לומדים</h3><p>PDF עם סימן מים אישי. זמין מכל מכשיר, גם מהדלוריאן.</p></div>
+  </div>
+  <div class="imgs">
+    <img src="https://picsum.photos/seed/synth-g1/500/400" alt="גורדי שחקים בלילה" loading="lazy">
+    <img src="https://picsum.photos/seed/synth-g2/500/400" alt="שקיעה מעל הים" loading="lazy">
+    <img src="https://picsum.photos/seed/synth-g3/500/400" alt="מכונית קלאסית" loading="lazy">
+    <img src="https://picsum.photos/seed/synth-g4/500/400" alt="דקלים בערב" loading="lazy">
+  </div>
+</div>
+<footer>
+  <div class="cols">
+    <div><div class="logo" style="margin-bottom:10px">בגרות+</div><p style="opacity:.8;line-height:1.6;max-width:320px">פלטפורמת חומרי הלימוד הזוהרת ביותר בישראל. משדרים מ-1985 ישירות לשנת הבגרות שלכם.</p></div>
+    <div><h4>ניווט</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">פורום</a></div>
+    <div><h4>קהילה</h4><a href="#">למוכרים</a><a href="#">בלוג</a><a href="#">אירועים</a></div>
+    <div><h4>תמיכה</h4><a href="#">שאלות</a><a href="#">קשר</a><a href="#">תנאים</a></div>
+  </div>
+  <div class="copy">© 2026 בגרות+ · SEE YOU IN THE FUTURE</div>
+</footer>
+</section>
+<section class="style" id="s06" data-name="מגזין עריכתי" data-desc="סריף גדול, צילומים שחור-לבן, פריסת עמודות ואות פתיחה, נייר שמנת וקווי hairline">
+<style>
+#s06{--paper:#f6f1e7;--ink:#1a1714;--mut:#6b645a;--rule:#c9c0b0;--acc:#8b1e1e;background:var(--paper);color:var(--ink);font-family:'Frank Ruhl Libre',serif;min-height:100vh}
+#s06 *{box-sizing:border-box}
+#s06 .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+#s06 .top{display:flex;justify-content:space-between;font-size:12px;letter-spacing:3px;text-transform:uppercase;padding:12px 0;border-bottom:1px solid var(--rule);color:var(--mut);font-family:'Heebo',sans-serif}
+#s06 .mast{text-align:center;padding:30px 0 20px;border-bottom:3px double var(--ink)}
+#s06 .mast .logo{font-family:'Noto Serif Hebrew',serif;font-size:clamp(60px,9vw,120px);font-weight:900;line-height:1;letter-spacing:-2px}
+#s06 .mast .tag{font-size:14px;letter-spacing:5px;text-transform:uppercase;color:var(--mut);margin-top:8px;font-family:'Heebo'}
+#s06 .nav{display:flex;justify-content:center;gap:40px;padding:14px 0;border-bottom:1px solid var(--ink);font-family:'Heebo',sans-serif;font-size:13px;letter-spacing:3px;text-transform:uppercase}
+#s06 .nav a{color:var(--ink);text-decoration:none}
+#s06 .nav a:hover{color:var(--acc)}
+#s06 .nav a.sub{color:var(--acc);font-weight:700}
+#s06 .btn{display:inline-block;padding:12px 26px;border:1px solid var(--ink);color:var(--ink);text-decoration:none;font-family:'Heebo';font-size:13px;letter-spacing:3px;text-transform:uppercase;transition:.2s}
+#s06 .btn:hover{background:var(--ink);color:var(--paper)}
+#s06 .btn.fill{background:var(--acc);border-color:var(--acc);color:#fff}
+#s06 .btn.fill:hover{background:var(--ink);border-color:var(--ink)}
+#s06 .hero{display:grid;grid-template-columns:7fr 5fr;gap:44px;padding:50px 0 40px;border-bottom:1px solid var(--rule)}
+#s06 .hero .kick{font-family:'Heebo';font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--acc);margin-bottom:14px}
+#s06 .hero h1{font-family:'Noto Serif Hebrew',serif;font-size:clamp(44px,5.6vw,78px);line-height:1.08;font-weight:800;margin:0 0 20px;letter-spacing:-1px}
+#s06 .hero .dek{font-size:22px;line-height:1.5;color:var(--mut);font-style:italic;margin:0 0 24px}
+#s06 .hero .byline{font-family:'Heebo';font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:26px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:8px 0}
+#s06 .hero .acts{display:flex;gap:14px}
+#s06 .hero figure{margin:0}
+#s06 .hero figure img{width:100%;height:520px;object-fit:cover;filter:grayscale(1) contrast(1.15)}
+#s06 .hero figcaption{font-family:'Heebo';font-size:12px;color:var(--mut);margin-top:8px;border-top:1px solid var(--rule);padding-top:6px}
+#s06 .stats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--ink);font-family:'Heebo'}
+#s06 .stats div{padding:24px 0;text-align:center;border-inline-end:1px solid var(--rule)}
+#s06 .stats div:last-child{border:0}
+#s06 .stats b{font-family:'Noto Serif Hebrew',serif;font-size:46px;font-weight:900;display:block;line-height:1}
+#s06 .stats span{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--mut)}
+#s06 .article{display:grid;grid-template-columns:2fr 1fr;gap:50px;padding:50px 0;border-bottom:1px solid var(--rule)}
+#s06 .article h2{font-family:'Noto Serif Hebrew';font-size:40px;font-weight:800;margin:0 0 20px;line-height:1.15}
+#s06 .article .cols{columns:2;column-gap:36px;column-rule:1px solid var(--rule);font-size:17px;line-height:1.75;text-align:justify}
+#s06 .article .cols p{margin:0 0 16px}
+#s06 .article .cols p:first-child::first-letter{font-family:'Noto Serif Hebrew';font-size:78px;font-weight:900;float:right;line-height:.8;margin-inline-end:10px;margin-top:6px;color:var(--acc)}
+#s06 .article aside{border-inline-start:1px solid var(--ink);padding-inline-start:26px}
+#s06 .article aside h4{font-family:'Heebo';font-size:12px;letter-spacing:4px;text-transform:uppercase;margin:0 0 14px;color:var(--acc)}
+#s06 .article aside img{width:100%;height:220px;object-fit:cover;filter:grayscale(1) contrast(1.2);margin-bottom:10px}
+#s06 .article aside p{font-size:15px;line-height:1.6;color:var(--mut)}
+#s06 .pull{font-family:'Noto Serif Hebrew';font-size:26px;font-weight:700;line-height:1.35;border-top:3px solid var(--ink);border-bottom:1px solid var(--ink);padding:16px 0;margin:20px 0;break-inside:avoid;color:var(--ink)}
+#s06 .sechead{display:flex;align-items:center;gap:20px;padding:50px 0 24px;font-family:'Heebo';font-size:12px;letter-spacing:5px;text-transform:uppercase}
+#s06 .sechead::after{content:'';flex:1;height:1px;background:var(--ink)}
+#s06 .sechead b{font-family:'Noto Serif Hebrew';font-size:34px;letter-spacing:0;text-transform:none;font-weight:800}
+#s06 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:0 36px;border-bottom:1px solid var(--rule);padding-bottom:40px}
+#s06 .card{padding:22px 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:90px 1fr;gap:16px;align-items:start}
+#s06 .card img{width:90px;height:90px;object-fit:cover;filter:grayscale(1) contrast(1.3)}
+#s06 .card small{font-family:'Heebo';font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--acc)}
+#s06 .card h3{font-family:'Noto Serif Hebrew';font-size:22px;font-weight:800;margin:4px 0 6px;line-height:1.15}
+#s06 .card p{margin:0 0 6px;font-size:14px;line-height:1.5;color:var(--mut)}
+#s06 .card .cnt{font-family:'Heebo';font-size:12px;letter-spacing:1px}
+#s06 .bundle{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--ink);margin:50px 0;background:#fff}
+#s06 .bundle .txt{padding:46px 40px;border-inline-end:1px solid var(--ink)}
+#s06 .bundle .lbl{font-family:'Heebo';font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--acc)}
+#s06 .bundle h2{font-family:'Noto Serif Hebrew';font-size:44px;font-weight:900;margin:8px 0 14px;line-height:1.05}
+#s06 .bundle p{font-size:17px;line-height:1.7;color:var(--mut)}
+#s06 .bundle ul{list-style:none;padding:0;margin:18px 0 26px;font-size:16px}
+#s06 .bundle li{padding:7px 0;border-bottom:1px dotted var(--rule)}
+#s06 .bundle .price{font-family:'Noto Serif Hebrew';font-size:60px;font-weight:900;line-height:1;margin-bottom:20px}
+#s06 .bundle .price small{font-family:'Heebo';font-size:13px;letter-spacing:2px;color:var(--mut);font-weight:400}
+#s06 .bundle .pic img{width:100%;height:100%;min-height:400px;object-fit:cover;filter:grayscale(1) contrast(1.2) sepia(.25)}
+#s06 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;padding-bottom:50px;border-bottom:1px solid var(--rule)}
+#s06 .q{border-top:3px solid var(--ink);padding-top:18px}
+#s06 .q p{font-size:19px;line-height:1.55;font-style:italic;margin:0 0 14px}
+#s06 .q b{font-family:'Heebo';font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700}
+#s06 .q small{display:block;font-family:'Heebo';font-size:12px;color:var(--mut)}
+#s06 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;padding-bottom:50px}
+#s06 .steps .n{font-family:'Noto Serif Hebrew';font-size:64px;font-weight:900;color:var(--acc);line-height:1;display:block;border-bottom:1px solid var(--ink);margin-bottom:12px}
+#s06 .steps h3{font-family:'Noto Serif Hebrew';font-size:22px;font-weight:800;margin:0 0 8px}
+#s06 .steps p{font-size:15px;line-height:1.65;color:var(--mut);margin:0}
+#s06 footer{border-top:3px double var(--ink);padding:36px 32px 24px;font-family:'Heebo'}
+#s06 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1180px;margin:0 auto}
+#s06 footer h4{font-size:11px;letter-spacing:4px;text-transform:uppercase;margin:0 0 12px}
+#s06 footer a{display:block;color:var(--ink);text-decoration:none;font-size:14px;margin-bottom:6px}
+#s06 footer a:hover{color:var(--acc)}
+#s06 footer .copy{max-width:1180px;margin:30px auto 0;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--mut);text-align:center;border-top:1px solid var(--rule);padding-top:12px}
+@media(max-width:900px){#s06 .hero,#s06 .stats,#s06 .article,#s06 .subjects,#s06 .bundle,#s06 .quotes,#s06 .steps,#s06 footer .cols{grid-template-columns:1fr}#s06 .article .cols{columns:1}#s06 .nav{flex-wrap:wrap;gap:16px}#s06 .top{display:none}#s06 .bundle .txt{border-inline-end:0;border-bottom:1px solid var(--ink)}}
+</style>
+<div class="wrap">
+  <div class="top"><span>גיליון 47 · אלול תשפ"ו</span><span>המגזין לחומרי בגרות</span><span>₪0 · דיגיטלי</span></div>
+  <div class="mast"><div class="logo">בגרות+</div><div class="tag">כתב־עת ללימוד נבון</div></div>
+  <nav class="nav"><a href="#" class="sub">מקצועות</a><a href="#">חבילות</a><a href="#">הפורום</a><a href="#">מוכרים</a><a href="#">ארכיון</a><a href="#" style="font-weight:700">כניסה →</a></nav>
+  <header class="hero">
+    <div>
+      <div class="kick">כתבת השער</div>
+      <h1>הדור שלמד לבגרות מסיכומים של הדור שלפניו</h1>
+      <p class="dek">איך פלטפורמה שהתחילה בקבוצת וואטסאפ של י"ב הפכה למאגר עם 3,800 קבצים, 12,400 תלמידים ומורים שבודקים כל שורה.</p>
+      <div class="byline">מאת מערכת בגרות+ · צילום: ארכיון · קריאה של 6 דקות</div>
+      <div class="acts"><a class="btn fill" href="#">לקטלוג המלא</a><a class="btn" href="#">להמשך קריאה</a></div>
+    </div>
+    <figure><img src="https://picsum.photos/seed/mag-hero/800/1000" alt="תלמידה קוראת בספרייה" loading="lazy"><figcaption>ספריית בית ספר תיכון, צפון הארץ. תלמידים מדווחים על חיסכון של 40% בזמן הלמידה.</figcaption></figure>
+  </header>
+  <div class="stats">
+    <div><b>12,400</b><span>תלמידים</span></div>
+    <div><b>3,800</b><span>קבצים</span></div>
+    <div><b>94%</b><span>שביעות רצון</span></div>
+    <div><b>27</b><span>מקצועות</span></div>
+  </div>
+  <div class="article">
+    <div>
+      <h2>למה סיכום טוב שווה יותר מספר לימוד</h2>
+      <div class="cols">
+        <p>בכל שנה, בסביבות חודש אדר, מתחיל אותו טקס: תלמידי י"ב פותחים את ספרי הלימוד, מגלים שיש בהם 480 עמודים, ונכנסים לפאניקה. הפאניקה הזאת היא בדיוק הסיבה שבגרות+ קיימת. הרעיון פשוט — תלמיד שכבר עבר את הבחינה יודע בדיוק מה חשוב ומה לא.</p>
+        <p>הסיכומים באתר נכתבים על ידי תלמידים ובוגרים, אבל כאן מגיע החלק שמבדיל: כל קובץ עובר בדיקה של מורה מוסמך לפני שהוא עולה לקטלוג. טעויות מתוקנות, חלקים חסרים מושלמים, ומה שלא ברמה — לא נכנס.</p>
+        <div class="pull">"סיכום טוב הוא לא קיצור של הספר. הוא מפה של מה שהבוחן רוצה לראות."</div>
+        <p>התוצאה היא מאגר שמדורג 4.9 מתוך 5, שבו כל קובץ מלווה בתצוגה מקדימה, בדירוג תלמידים ובשם העורך. הפורום, שפועל לצד הקטלוג, מאפשר לשאול שאלה ולקבל תשובה — לרוב תוך פחות מרבע שעה, גם בשעות הלילה שלפני המבחן.</p>
+        <p>ולמי שכותב סיכומים — יש כאן גם הזדמנות. מוכרים מקבלים 70% מכל מכירה, והמצליחים שבהם מרוויחים אלפי שקלים בשנה מסיכום שכבר כתבו ממילא.</p>
+      </div>
+    </div>
+    <aside>
+      <h4>בתמונה</h4>
+      <img src="https://picsum.photos/seed/mag-aside/500/400" alt="שולחן כתיבה עם מחברות" loading="lazy">
+      <p>שולחן העבודה של אחת המוכרות המובילות באתר. 14 סיכומים, 6,200 הורדות, ומכתב תודה אחד ממנהלת בית ספר.</p>
+      <h4 style="margin-top:26px">מהעורך</h4>
+      <p>אנחנו לא מבטיחים 100. אנחנו מבטיחים שלא תבזבזו זמן על מה שלא נכנס למבחן.</p>
+    </aside>
+  </div>
+  <div class="sechead"><b>המדורים</b><span>27 מקצועות · לפי שאלון ויחידות</span></div>
+  <div class="subjects">
+    <div class="card"><img src="https://picsum.photos/seed/mag-m/200/200" alt="מתמטיקה" loading="lazy"><div><small>מדעים מדויקים</small><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581 ו-582 עם פתרונות מלאים.</p><span class="cnt">412 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-e/200/200" alt="אנגלית" loading="lazy"><div><small>שפות</small><h3>אנגלית</h3><p>Module E–G, unseen, כתיבה מונחית.</p><span class="cnt">298 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-l/200/200" alt="לשון" loading="lazy"><div><small>עברית</small><h3>לשון והבעה</h3><p>תחביר, צורות והבנת הנקרא.</p><span class="cnt">176 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-h/200/200" alt="היסטוריה" loading="lazy"><div><small>רוח</small><h3>היסטוריה</h3><p>כל הפרקים, ציר זמן ומועדי עבר.</p><span class="cnt">231 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-c/200/200" alt="אזרחות" loading="lazy"><div><small>חברה</small><h3>אזרחות</h3><p>מושגון, גישות ושאלות אירוע.</p><span class="cnt">143 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-p/200/200" alt="פיזיקה" loading="lazy"><div><small>מדעים</small><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר.</p><span class="cnt">188 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-lit/200/200" alt="ספרות" loading="lazy"><div><small>רוח</small><h3>ספרות</h3><p>שירה, סיפורת ודרמה לפי המחוון.</p><span class="cnt">121 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-t/200/200" alt="תנך" loading="lazy"><div><small>יהדות</small><h3>תנ"ך</h3><p>סיכומי פרקים ופרשנות מסודרת.</p><span class="cnt">109 קבצים</span></div></div>
+    <div class="card"><img src="https://picsum.photos/seed/mag-b/200/200" alt="ביולוגיה" loading="lazy"><div><small>מדעי החיים</small><h3>ביולוגיה</h3><p>תא, גוף האדם ואקולוגיה.</p><span class="cnt">164 קבצים</span></div></div>
+  </div>
+  <div class="bundle">
+    <div class="txt">
+      <span class="lbl">מנוי שנתי</span>
+      <h2>המהדורה המלאה</h2>
+      <p>כל המקצועות, כל הקבצים, כל העדכונים — במנוי אחד לשנת לימודים שלמה. כמו מנוי למגזין, רק שהוא באמת עוזר בבחינה.</p>
+      <ul><li>גישה ל-3,800+ קבצים ללא הגבלה</li><li>עדכון אוטומטי אחרי מועדי חורף וקיץ</li><li>PDF עם סימן מים אישי</li><li>פורום התלמידים הסגור</li></ul>
+      <div class="price">₪139 <small>לשנה</small></div>
+      <a class="btn fill" href="#">להצטרפות</a>
+    </div>
+    <div class="pic"><img src="https://picsum.photos/seed/mag-bundle/700/800" alt="ערימת מגזינים" loading="lazy"></div>
+  </div>
+  <div class="sechead"><b>מכתבים למערכת</b></div>
+  <div class="quotes">
+    <div class="q"><p>"קניתי את חבילת המתמטיקה שבועיים לפני הבגרות. לראשונה בחיים הבנתי מה רוצים ממני בשאלה על פונקציות."</p><b>הדס מ.</b><small>י"ב, מודיעין</small></div>
+    <div class="q"><p>"אני מורה ותיק. הופתעתי לגלות עד כמה החומר כאן מדויק. אני מפנה תלמידים בלי חשש."</p><b>אלון ש.</b><small>מורה לאזרחות, חיפה</small></div>
+    <div class="q"><p>"העליתי סיכום אחד בספרות. הוא הפך לחומר הנמכר ביותר במקצוע. הרווח שילם על הטיול אחרי הצבא."</p><b>יעל ר.</b><small>בוגרת, מוכרת מאומתת</small></div>
+  </div>
+  <div class="sechead"><b>איך זה עובד</b></div>
+  <div class="steps">
+    <div><span class="n">א</span><h3>מאתרים</h3><p>מסננים לפי מקצוע, שאלון ויחידות. תצוגה מקדימה לפני כל רכישה.</p></div>
+    <div><span class="n">ב</span><h3>רוכשים</h3><p>קובץ בודד או מנוי שנתי. תשלום מאובטח, החזר כספי תוך 14 יום.</p></div>
+    <div><span class="n">ג</span><h3>לומדים</h3><p>מורידים PDF נקי, מדפיסים או קוראים במסך. ומגיעים רגועים.</p></div>
+  </div>
+</div>
+<footer>
+  <div class="cols">
+    <div><div style="font-family:'Noto Serif Hebrew';font-size:30px;font-weight:900;margin-bottom:8px">בגרות+</div><p style="font-size:13px;line-height:1.6;color:var(--mut);max-width:300px">כתב־עת דיגיטלי וספריית חומרי לימוד לבגרות. יוצא לאור מאז 2021.</p></div>
+    <div><h4>מדורים</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">ארכיון</a></div>
+    <div><h4>קהילה</h4><a href="#">הפורום</a><a href="#">מוכרים</a><a href="#">מכתבים</a></div>
+    <div><h4>מערכת</h4><a href="#">אודות</a><a href="#">צור קשר</a><a href="#">תנאים</a></div>
+  </div>
+  <div class="copy">© 2026 בגרות+ · נדפס על נייר דיגיטלי ממוחזר</div>
+</footer>
+</section>
+<section class="style" id="s07" data-name="קליימורפיזם" data-desc="צורות פלסטלינה תפוחות בפסטל לילך-מנטה-אפרסק, צללים רכים כפולים ורדיוס ענק">
+<style>
+#s07{--lil:#c9b8ff;--mint:#b6f0dc;--peach:#ffd1b3;--bg:#f4effe;--tx:#3d2e6b;--mut:#7a6aa6;--white:#fff;background:var(--bg);color:var(--tx);font-family:'Fredoka','Varela Round',sans-serif;min-height:100vh;position:relative;overflow:hidden}
+#s07 *{box-sizing:border-box}
+#s07 .clay{background:var(--white);border-radius:40px;box-shadow:inset -8px -8px 16px rgba(120,90,200,.12),inset 8px 8px 16px rgba(255,255,255,.9),12px 16px 30px rgba(120,90,200,.18)}
+#s07 .clay.lil{background:var(--lil);box-shadow:inset -8px -8px 16px rgba(80,50,180,.25),inset 8px 8px 16px rgba(255,255,255,.55),12px 16px 30px rgba(120,90,200,.25)}
+#s07 .clay.mint{background:var(--mint);box-shadow:inset -8px -8px 16px rgba(30,150,110,.22),inset 8px 8px 16px rgba(255,255,255,.6),12px 16px 30px rgba(60,160,130,.2)}
+#s07 .clay.peach{background:var(--peach);box-shadow:inset -8px -8px 16px rgba(220,120,60,.22),inset 8px 8px 16px rgba(255,255,255,.6),12px 16px 30px rgba(220,140,90,.22)}
+#s07 .wrap{max-width:1180px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+#s07 .shape{position:absolute;border-radius:50%;pointer-events:none;animation:s07-bob 9s ease-in-out infinite}
+#s07 .sh1{width:260px;height:260px;background:var(--lil);top:80px;inset-inline-end:-80px;box-shadow:inset -20px -20px 40px rgba(80,50,180,.25),inset 20px 20px 40px rgba(255,255,255,.6),20px 30px 60px rgba(120,90,200,.25)}
+#s07 .sh2{width:180px;height:180px;background:var(--mint);top:55%;inset-inline-start:-60px;border-radius:40% 60% 55% 45%;animation-delay:-3s;box-shadow:inset -14px -14px 30px rgba(30,150,110,.25),inset 14px 14px 30px rgba(255,255,255,.7),16px 24px 50px rgba(60,160,130,.2)}
+#s07 .sh3{width:130px;height:130px;background:var(--peach);top:30%;inset-inline-start:45%;border-radius:60% 40% 45% 55%;animation-delay:-6s;box-shadow:inset -12px -12px 24px rgba(220,120,60,.25),inset 12px 12px 24px rgba(255,255,255,.7),12px 20px 40px rgba(220,140,90,.22)}
+@keyframes s07-bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-22px) rotate(8deg)}}
+#s07 .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 26px;margin:24px 0 0;border-radius:999px}
+#s07 .logo{font-weight:700;font-size:28px;display:flex;align-items:center;gap:10px}
+#s07 .logo i{width:40px;height:40px;border-radius:14px;background:var(--lil);display:inline-block;box-shadow:inset -4px -4px 8px rgba(80,50,180,.3),inset 4px 4px 8px rgba(255,255,255,.7)}
+#s07 .nav ul{list-style:none;display:flex;gap:6px;margin:0;padding:0}
+#s07 .nav ul a{color:var(--tx);text-decoration:none;padding:10px 18px;border-radius:999px;font-weight:500;transition:.2s}
+#s07 .nav ul a:hover{background:var(--bg);box-shadow:inset 3px 3px 6px rgba(120,90,200,.15)}
+#s07 .btn{display:inline-block;padding:16px 32px;border-radius:999px;text-decoration:none;color:var(--tx);font-weight:700;font-size:17px;background:var(--mint);box-shadow:inset -5px -5px 10px rgba(30,150,110,.25),inset 5px 5px 10px rgba(255,255,255,.7),8px 10px 20px rgba(60,160,130,.25);transition:.2s}
+#s07 .btn:hover{transform:translateY(-3px) scale(1.03)}
+#s07 .btn.lil{background:var(--lil);box-shadow:inset -5px -5px 10px rgba(80,50,180,.3),inset 5px 5px 10px rgba(255,255,255,.6),8px 10px 20px rgba(120,90,200,.3)}
+#s07 .btn.peach{background:var(--peach);box-shadow:inset -5px -5px 10px rgba(220,120,60,.28),inset 5px 5px 10px rgba(255,255,255,.7),8px 10px 20px rgba(220,140,90,.25)}
+#s07 .hero{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;padding:80px 0 60px}
+#s07 .hero h1{font-size:clamp(46px,6.5vw,86px);line-height:1.05;margin:0 0 20px;font-weight:700}
+#s07 .hero h1 span{display:inline-block;padding:2px 22px;border-radius:30px;background:var(--peach);box-shadow:inset -6px -6px 12px rgba(220,120,60,.25),inset 6px 6px 12px rgba(255,255,255,.7);transform:rotate(-2deg)}
+#s07 .hero p{font-size:20px;line-height:1.6;color:var(--mut);max-width:520px;margin:0 0 30px}
+#s07 .hero .acts{display:flex;gap:16px;flex-wrap:wrap}
+#s07 .hero .vis{position:relative;height:500px}
+#s07 .hero .vis .p1{position:absolute;width:75%;height:80%;top:0;inset-inline-start:0;border-radius:48px;overflow:hidden;padding:14px}
+#s07 .hero .vis .p1 img{width:100%;height:100%;object-fit:cover;border-radius:36px;filter:saturate(.7) brightness(1.1) hue-rotate(-20deg)}
+#s07 .hero .vis .p2{position:absolute;width:48%;bottom:0;inset-inline-end:0;padding:22px;border-radius:36px;animation:s07-bob 7s ease-in-out infinite}
+#s07 .hero .vis .p2 b{font-size:40px;display:block}
+#s07 .hero .vis .p3{position:absolute;top:-10px;inset-inline-end:20px;padding:12px 20px;border-radius:999px;font-weight:700;animation:s07-bob 6s ease-in-out infinite;animation-delay:-2s}
+#s07 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin:30px 0 90px}
+#s07 .stats div{padding:30px 20px;text-align:center;border-radius:36px}
+#s07 .stats b{display:block;font-size:46px;font-weight:700;line-height:1}
+#s07 .stats span{color:var(--mut)}
+#s07 h2.sec{font-size:44px;font-weight:700;text-align:center;margin:0 0 10px}
+#s07 .sub{text-align:center;color:var(--mut);font-size:18px;margin:0 0 40px}
+#s07 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-bottom:90px}
+#s07 .card{padding:28px;border-radius:40px;transition:.25s;position:relative}
+#s07 .card:hover{transform:translateY(-8px) rotate(-1deg)}
+#s07 .card .blob{width:64px;height:64px;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px;box-shadow:inset -5px -5px 10px rgba(0,0,0,.08),inset 5px 5px 10px rgba(255,255,255,.8)}
+#s07 .card:nth-child(3n+1) .blob{background:var(--lil)}
+#s07 .card:nth-child(3n+2) .blob{background:var(--mint)}
+#s07 .card:nth-child(3n) .blob{background:var(--peach)}
+#s07 .card h3{margin:0 0 6px;font-size:24px}
+#s07 .card p{margin:0 0 14px;color:var(--mut);line-height:1.5}
+#s07 .card .cnt{display:inline-block;padding:6px 14px;border-radius:999px;background:var(--bg);font-size:14px;font-weight:700;box-shadow:inset 3px 3px 6px rgba(120,90,200,.15)}
+#s07 .bundle{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0;border-radius:52px;margin-bottom:90px;overflow:hidden}
+#s07 .bundle .txt{padding:54px 46px}
+#s07 .bundle h2{font-size:44px;font-weight:700;margin:0 0 12px}
+#s07 .bundle p{font-size:18px;line-height:1.7;color:var(--tx)}
+#s07 .bundle ul{list-style:none;padding:0;margin:20px 0 26px}
+#s07 .bundle li{padding:8px 0 8px 0;display:flex;gap:10px;align-items:center;font-weight:500}
+#s07 .bundle li::before{content:'✓';width:28px;height:28px;border-radius:50%;background:var(--white);display:inline-flex;align-items:center;justify-content:center;font-weight:700;box-shadow:inset -3px -3px 6px rgba(80,50,180,.15),inset 3px 3px 6px #fff}
+#s07 .bundle .price{font-size:66px;font-weight:700;line-height:1;margin-bottom:22px}
+#s07 .bundle .price small{font-size:18px;color:var(--mut);font-weight:400}
+#s07 .bundle .pic{padding:30px}
+#s07 .bundle .pic img{width:100%;height:100%;min-height:400px;object-fit:cover;border-radius:44px;filter:saturate(.8) brightness(1.08) hue-rotate(-30deg);box-shadow:12px 16px 30px rgba(120,90,200,.25)}
+#s07 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-bottom:90px}
+#s07 .q{padding:30px;border-radius:40px}
+#s07 .q .av{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+#s07 .q .av img{width:54px;height:54px;border-radius:20px;object-fit:cover;filter:saturate(.8);box-shadow:6px 8px 14px rgba(120,90,200,.25)}
+#s07 .q .av b{display:block}
+#s07 .q .av small{color:var(--mut)}
+#s07 .q p{margin:0;line-height:1.6}
+#s07 .q .stars{color:#f5a623;margin-top:10px;letter-spacing:2px}
+#s07 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-bottom:90px;text-align:center}
+#s07 .steps div{padding:36px 24px;border-radius:44px}
+#s07 .steps .n{width:80px;height:80px;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;background:var(--white);box-shadow:inset -6px -6px 12px rgba(120,90,200,.15),inset 6px 6px 12px #fff,8px 10px 20px rgba(120,90,200,.15)}
+#s07 .steps h3{margin:0 0 8px;font-size:24px}
+#s07 .steps p{margin:0;color:var(--tx);line-height:1.6;opacity:.85}
+#s07 footer{position:relative;z-index:1;margin:0 28px 28px;padding:44px;border-radius:52px 52px 40px 40px}
+#s07 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1120px;margin:0 auto}
+#s07 footer h4{margin:0 0 12px;font-size:18px}
+#s07 footer a{display:block;color:var(--tx);text-decoration:none;opacity:.8;margin-bottom:8px}
+#s07 footer a:hover{opacity:1;color:#5b3fbf}
+#s07 footer .copy{text-align:center;color:var(--mut);margin-top:30px}
+@media(max-width:900px){#s07 .hero,#s07 .stats,#s07 .subjects,#s07 .bundle,#s07 .quotes,#s07 .steps,#s07 footer .cols{grid-template-columns:1fr}#s07 .nav ul{display:none}#s07 .hero .vis{height:400px}}
+</style>
+<div class="shape sh1"></div><div class="shape sh2"></div><div class="shape sh3"></div>
+<div class="wrap">
+  <nav class="nav clay">
+    <div class="logo"><i></i>בגרות+</div>
+    <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">למוכרים</a></li><li><a href="#">עלינו</a></li></ul>
+    <a class="btn lil" href="#" style="padding:12px 24px;font-size:15px">כניסה</a>
+  </nav>
+  <header class="hero">
+    <div>
+      <h1>ללמוד לבגרות<br>יכול להיות <span>רך</span></h1>
+      <p>סיכומים ידידותיים, פתרונות מוסברים, ופורום חמים של תלמידים שעוזרים אחד לשני. בלי לחץ, בלי פינות חדות.</p>
+      <div class="acts"><a class="btn peach" href="#">בואו נתחיל</a><a class="btn" href="#">איך זה עובד?</a></div>
+    </div>
+    <div class="vis">
+      <div class="p1 clay"><img src="https://picsum.photos/seed/clay-hero/800/700" alt="תלמידים לומדים בשמחה" loading="lazy"></div>
+      <div class="p2 clay mint"><b>4.9★</b>דירוג ממוצע מ-8,200 ביקורות</div>
+      <div class="p3 clay peach">🎉 +124 קבצים השבוע</div>
+    </div>
+  </header>
+  <div class="stats">
+    <div class="clay"><b>12,400</b><span>תלמידים</span></div>
+    <div class="clay lil"><b>3,800</b><span>קבצים</span></div>
+    <div class="clay mint"><b>94%</b><span>שביעות רצון</span></div>
+    <div class="clay peach"><b>27</b><span>מקצועות</span></div>
+  </div>
+  <h2 class="sec">איזה מקצוע נלמד היום?</h2>
+  <p class="sub">לחצו על כרטיס — כולם רכים למגע</p>
+  <div class="subjects">
+    <div class="card clay"><div class="blob">∑</div><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581/582 עם פתרונות שלב-אחר-שלב.</p><span class="cnt">412 קבצים</span></div>
+    <div class="card clay"><div class="blob">🅰</div><h3>אנגלית</h3><p>Module E/F/G, אוצר מילים ו-unseen מתורגלים.</p><span class="cnt">298 קבצים</span></div>
+    <div class="card clay"><div class="blob">א</div><h3>לשון והבעה</h3><p>תחביר, צורות, שם המספר והבנת הנקרא.</p><span class="cnt">176 קבצים</span></div>
+    <div class="card clay"><div class="blob">⏳</div><h3>היסטוריה</h3><p>לאומיות, שואה, מלחמות העולם — בסיכום אחד.</p><span class="cnt">231 קבצים</span></div>
+    <div class="card clay"><div class="blob">⚖</div><h3>אזרחות</h3><p>מושגים, גישות ושאלות אירוע עם דוגמאות.</p><span class="cnt">143 קבצים</span></div>
+    <div class="card clay"><div class="blob">🔬</div><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר. מעבדות מסוכמות.</p><span class="cnt">188 קבצים</span></div>
+    <div class="card clay"><div class="blob">🌱</div><h3>ביולוגיה</h3><p>תא, גוף האדם ואקולוגיה — עם תרשימים.</p><span class="cnt">164 קבצים</span></div>
+    <div class="card clay"><div class="blob">📚</div><h3>ספרות</h3><p>שירה, סיפור קצר, דרמה ורומן — ניתוחים מלאים.</p><span class="cnt">121 קבצים</span></div>
+    <div class="card clay"><div class="blob">🧪</div><h3>כימיה</h3><p>מבנה וקישור, חמצון-חיזור, אנרגטיקה.</p><span class="cnt">132 קבצים</span></div>
+  </div>
+  <div class="bundle clay lil">
+    <div class="txt">
+      <h2>החבילה הרכה</h2>
+      <p>מנוי שנתי לכל הספרייה. כל המקצועות, כל הקבצים, כל העדכונים — ופורום חם עם תלמידים ומורים.</p>
+      <ul><li>3,800+ קבצים ללא הגבלה</li><li>עדכונים אחרי כל מועד</li><li>PDF עם סימן מים אישי</li><li>פורום פרימיום</li></ul>
+      <div class="price">₪149 <small>/ שנה</small></div>
+      <a class="btn peach" href="#">מצטרפים</a>
+    </div>
+    <div class="pic"><img src="https://picsum.photos/seed/clay-bundle/700/700" alt="צורות פסטל רכות" loading="lazy"></div>
+  </div>
+  <h2 class="sec">מה תלמידים אומרים</h2>
+  <p class="sub">בלי לחץ, באמת</p>
+  <div class="quotes">
+    <div class="q clay"><div class="av"><img src="https://picsum.photos/seed/clay-av1/100/100" alt="תמונת פרופיל" loading="lazy"><div><b>עדי לוי</b><small>י"ב, פתח תקווה</small></div></div><p>הסיכומים כאן כתובים כאילו חבר מסביר לך. סוף סוף הבנתי את התחביר.</p><div class="stars">★★★★★</div></div>
+    <div class="q clay"><div class="av"><img src="https://picsum.photos/seed/clay-av2/100/100" alt="תמונת פרופיל" loading="lazy"><div><b>יונתן כץ</b><small>י"א, ראשון לציון</small></div></div><p>הפורום עזר לי בפיזיקה בעשר בלילה. תוך 12 דקות היה לי הסבר עם ציור.</p><div class="stars">★★★★★</div></div>
+    <div class="q clay"><div class="av"><img src="https://picsum.photos/seed/clay-av3/100/100" alt="תמונת פרופיל" loading="lazy"><div><b>מיכל בר</b><small>י"ב, כרמיאל</small></div></div><p>העליתי סיכום בביולוגיה והרווחתי מספיק לזוג אוזניות חדשות. וגם עזרתי לאנשים!</p><div class="stars">★★★★★</div></div>
+  </div>
+  <h2 class="sec">שלושה צעדים קלים</h2>
+  <p class="sub">כמו ללוש פלסטלינה</p>
+  <div class="steps">
+    <div class="clay mint"><div class="n">1</div><h3>בוחרים</h3><p>מסננים לפי מקצוע ושאלון. כל קובץ עם דירוג ותצוגה מקדימה.</p></div>
+    <div class="clay peach"><div class="n">2</div><h3>קונים</h3><p>קובץ בודד או חבילה. תשלום קל, חשבונית במייל.</p></div>
+    <div class="clay lil"><div class="n">3</div><h3>לומדים</h3><p>PDF נקי עם סימן מים אישי. זמין מכל מכשיר.</p></div>
+  </div>
+</div>
+<footer class="clay">
+  <div class="cols">
+    <div><div class="logo" style="margin-bottom:10px"><i></i>בגרות+</div><p style="color:var(--mut);line-height:1.6;max-width:320px">פלטפורמת חומרי הלימוד הכי רכה בישראל. תלמידים כותבים, מורים בודקים, כולם מחייכים.</p></div>
+    <div><h4>ניווט</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">פורום</a></div>
+    <div><h4>קהילה</h4><a href="#">למוכרים</a><a href="#">בלוג</a><a href="#">אירועים</a></div>
+    <div><h4>תמיכה</h4><a href="#">שאלות</a><a href="#">קשר</a><a href="#">תנאים</a></div>
+  </div>
+  <div class="copy">© 2026 בגרות+ · נלוש באהבה</div>
+</footer>
+</section>
+<section class="style" id="s08" data-name="Bento Grid בסגנון אפל" data-desc="רקע אפור-לבן חלק, אריחים מעוגלים בגדלים שונים, אריחים כהים ובהירים ותמונות ממלאות">
+<style>
+#s08{--bg:#f5f5f7;--tile:#fff;--dark:#1d1d1f;--tx:#1d1d1f;--mut:#6e6e73;--blue:#0071e3;font-family:'Heebo',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;letter-spacing:-.2px}
+#s08 *{box-sizing:border-box}
+#s08 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+#s08 .nav{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;background:rgba(255,255,255,.7);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06);position:sticky;top:0;z-index:5}
+#s08 .logo{font-weight:700;font-size:20px}
+#s08 .nav ul{list-style:none;display:flex;gap:30px;margin:0;padding:0}
+#s08 .nav ul a{color:var(--tx);text-decoration:none;font-size:14px;opacity:.85}
+#s08 .nav ul a:hover{opacity:1;color:var(--blue)}
+#s08 .btn{display:inline-block;padding:11px 22px;border-radius:999px;background:var(--blue);color:#fff;text-decoration:none;font-size:15px;font-weight:500;transition:.2s}
+#s08 .btn:hover{background:#0077ed;transform:scale(1.02)}
+#s08 .btn.ghost{background:transparent;color:var(--blue);border:1px solid var(--blue)}
+#s08 .btn.white{background:#fff;color:var(--dark)}
+#s08 .hero{text-align:center;padding:80px 0 40px}
+#s08 .hero h1{font-size:clamp(44px,6.5vw,80px);font-weight:700;letter-spacing:-2.5px;line-height:1.05;margin:0 0 16px}
+#s08 .hero h1 span{background:linear-gradient(90deg,#0071e3,#a855f7,#f43f5e);-webkit-background-clip:text;background-clip:text;color:transparent}
+#s08 .hero p{font-size:23px;color:var(--mut);max-width:640px;margin:0 auto 28px;line-height:1.4;font-weight:400}
+#s08 .hero .acts{display:flex;justify-content:center;gap:14px}
+#s08 .bento{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:220px;gap:16px;margin:50px 0 80px}
+#s08 .t{border-radius:28px;background:var(--tile);padding:28px;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04);transition:.3s;display:flex;flex-direction:column;justify-content:flex-end}
+#s08 .t:hover{transform:scale(1.015);box-shadow:0 12px 30px rgba(0,0,0,.1)}
+#s08 .t.dark{background:var(--dark);color:#fff}
+#s08 .t.dark .mut{color:#a1a1a6}
+#s08 .t img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+#s08 .t .ov{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.75));z-index:0}
+#s08 .t>*{position:relative;z-index:1}
+#s08 .t h3{margin:0 0 6px;font-size:24px;font-weight:700;letter-spacing:-.6px}
+#s08 .t p{margin:0;font-size:15px;color:var(--mut);line-height:1.4}
+#s08 .t.img h3,#s08 .t.img p{color:#fff}
+#s08 .t .big{font-size:64px;font-weight:700;letter-spacing:-3px;line-height:1}
+#s08 .t .lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin-bottom:auto}
+#s08 .t.dark .lbl{color:#64d2ff}
+#s08 .c2{grid-column:span 2}
+#s08 .r2{grid-row:span 2}
+#s08 .t.grad{background:linear-gradient(135deg,#0071e3,#a855f7);color:#fff}
+#s08 .t.grad p{color:rgba(255,255,255,.85)}
+#s08 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:80px}
+#s08 .stats div{background:var(--tile);border-radius:24px;padding:28px;text-align:center}
+#s08 .stats b{display:block;font-size:44px;font-weight:700;letter-spacing:-2px}
+#s08 .stats span{color:var(--mut);font-size:14px}
+#s08 h2.sec{font-size:44px;font-weight:700;letter-spacing:-1.5px;text-align:center;margin:0 0 8px}
+#s08 .sub{text-align:center;color:var(--mut);font-size:19px;margin:0 0 36px}
+#s08 .subjects{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:200px;gap:16px;margin-bottom:80px}
+#s08 .subjects .t.img h3{font-size:22px}
+#s08 .subjects .t .cnt{font-size:13px;opacity:.9}
+#s08 .subjects .t.dark h3{font-size:22px}
+#s08 .ico{width:44px;height:44px;border-radius:14px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:auto}
+#s08 .t.dark .ico{background:#2c2c2e}
+#s08 .bundle{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:80px}
+#s08 .bundle .t{grid-auto-rows:auto;min-height:420px;justify-content:center;padding:50px 46px}
+#s08 .bundle h2{font-size:42px;font-weight:700;letter-spacing:-1.5px;margin:0 0 12px}
+#s08 .bundle p{font-size:18px;line-height:1.5}
+#s08 .bundle .price{font-size:60px;font-weight:700;letter-spacing:-3px;margin:18px 0 6px}
+#s08 .bundle .price small{font-size:17px;letter-spacing:0;font-weight:400;color:#a1a1a6}
+#s08 .bundle ul{list-style:none;padding:0;margin:14px 0 26px;font-size:15px}
+#s08 .bundle li{padding:6px 0;color:#d1d1d6}
+#s08 .bundle li::before{content:'✓  ';color:#30d158}
+#s08 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:80px}
+#s08 .q{background:var(--tile);border-radius:24px;padding:28px}
+#s08 .q p{font-size:17px;line-height:1.55;margin:0 0 16px;font-weight:500}
+#s08 .q .av{display:flex;align-items:center;gap:10px}
+#s08 .q .av img{width:40px;height:40px;border-radius:50%;object-fit:cover}
+#s08 .q .av b{display:block;font-size:14px}
+#s08 .q .av small{color:var(--mut);font-size:12px}
+#s08 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:80px}
+#s08 .steps .t{min-height:240px;justify-content:flex-start}
+#s08 .steps .n{font-size:56px;font-weight:700;letter-spacing:-3px;color:var(--blue);line-height:1;margin-bottom:auto}
+#s08 .steps h3{font-size:22px}
+#s08 footer{background:var(--tile);border-top:1px solid rgba(0,0,0,.06);padding:40px 24px 24px}
+#s08 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1180px;margin:0 auto}
+#s08 footer h4{font-size:12px;font-weight:600;color:var(--tx);margin:0 0 12px}
+#s08 footer a{display:block;color:var(--mut);text-decoration:none;font-size:12px;margin-bottom:8px}
+#s08 footer a:hover{color:var(--tx)}
+#s08 footer .copy{max-width:1180px;margin:30px auto 0;font-size:12px;color:var(--mut);border-top:1px solid rgba(0,0,0,.06);padding-top:14px}
+@media(max-width:900px){#s08 .bento,#s08 .subjects,#s08 .stats,#s08 .bundle,#s08 .quotes,#s08 .steps,#s08 footer .cols{grid-template-columns:1fr}#s08 .c2,#s08 .r2{grid-column:span 1;grid-row:span 1}#s08 .nav ul{display:none}}
+</style>
+<nav class="nav">
+  <div class="logo">בגרות+</div>
+  <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">למוכרים</a></li><li><a href="#">תמיכה</a></li></ul>
+  <a class="btn" href="#" style="padding:7px 16px;font-size:13px">כניסה</a>
+</nav>
+<div class="wrap">
+  <header class="hero">
+    <h1>הבגרות שלכם.<br><span>מסודרת לאריחים.</span></h1>
+    <p>כל מקצוע, כל קובץ וכל תשובה בפורום — במקום אחד, נקי ומהיר. תלמידים כותבים, מורים בודקים, אתם מצליחים.</p>
+    <div class="acts"><a class="btn" href="#">לקטלוג</a><a class="btn ghost" href="#">איך זה עובד ›</a></div>
+  </header>
+  <div class="bento">
+    <div class="t img c2 r2"><img src="https://picsum.photos/seed/bento-hero/1000/900" alt="תלמידים לומדים בקמפוס" loading="lazy"><div class="ov"></div><h3>3,800 קבצים. אפס רעש.</h3><p>סיכומים, פתרונות ומבחני תרגול — כל אחד נבדק על ידי מורה.</p></div>
+    <div class="t dark"><span class="lbl">תלמידים</span><div class="big">12.4K</div><p class="mut">פעילים החודש</p></div>
+    <div class="t"><span class="lbl">שביעות רצון</span><div class="big">94%</div><p>מ-8,200 ביקורות</p></div>
+    <div class="t grad c2"><span class="lbl" style="color:#fff">חדש</span><h3>הפורום עונה תוך 15 דקות</h3><p>גם ב-23:40 בלילה שלפני המבחן.</p></div>
+    <div class="t img"><img src="https://picsum.photos/seed/bento-2/500/500" alt="מחברת פתוחה" loading="lazy"><div class="ov"></div><h3>מועדי עבר</h3><p>מאז 2010</p></div>
+    <div class="t"><div class="ico">↑</div><h3>מוכרים מרוויחים 70%</h3><p>מכל מכירה של סיכום שהעליתם.</p></div>
+    <div class="t img c2"><img src="https://picsum.photos/seed/bento-3/1000/500" alt="שולחן לימוד מסודר" loading="lazy"><div class="ov"></div><h3>עדכונים אחרי כל מועד</h3><p>הפתרונות של מועד קיץ כבר למעלה.</p></div>
+    <div class="t dark"><span class="lbl">מקצועות</span><div class="big">27</div><p class="mut">מ-3 עד 5 יח"ל</p></div>
+    <div class="t"><span class="lbl">דירוג</span><div class="big">4.9</div><p>ממוצע כלל האתר</p></div>
+  </div>
+  <h2 class="sec">מקצועות</h2>
+  <p class="sub">בחרו אריח, מצאו קובץ</p>
+  <div class="subjects">
+    <div class="t img c2"><img src="https://picsum.photos/seed/bento-math/1000/500" alt="מתמטיקה" loading="lazy"><div class="ov"></div><h3>מתמטיקה 5 יח"ל</h3><span class="cnt">412 קבצים · שאלונים 581/582</span></div>
+    <div class="t dark"><div class="ico">A</div><h3>אנגלית</h3><span class="cnt">298 קבצים</span></div>
+    <div class="t"><div class="ico">א</div><h3>לשון והבעה</h3><span class="cnt">176 קבצים</span></div>
+    <div class="t"><div class="ico">⏳</div><h3>היסטוריה</h3><span class="cnt">231 קבצים</span></div>
+    <div class="t img"><img src="https://picsum.photos/seed/bento-civ/500/500" alt="אזרחות" loading="lazy"><div class="ov"></div><h3>אזרחות</h3><span class="cnt">143 קבצים</span></div>
+    <div class="t dark"><div class="ico">⚛</div><h3>פיזיקה</h3><span class="cnt">188 קבצים</span></div>
+    <div class="t"><div class="ico">🧬</div><h3>ביולוגיה</h3><span class="cnt">164 קבצים</span></div>
+    <div class="t img"><img src="https://picsum.photos/seed/bento-lit/500/500" alt="ספרות" loading="lazy"><div class="ov"></div><h3>ספרות</h3><span class="cnt">121 קבצים</span></div>
+    <div class="t"><div class="ico">⌨</div><h3>מדעי המחשב</h3><span class="cnt">97 קבצים</span></div>
+    <div class="t dark"><div class="ico">⚗</div><h3>כימיה</h3><span class="cnt">132 קבצים</span></div>
+    <div class="t"><div class="ico">📖</div><h3>תנ"ך</h3><span class="cnt">109 קבצים</span></div>
+  </div>
+  <div class="bundle">
+    <div class="t dark">
+      <span class="lbl">מנוי שנתי</span>
+      <h2>בגרות+ Pro</h2>
+      <p style="color:#d1d1d6">כל המקצועות, כל הקבצים, כל העדכונים — במנוי אחד לשנה שלמה.</p>
+      <ul><li>3,800+ קבצים ללא הגבלה</li><li>עדכונים אחרי כל מועד</li><li>PDF עם סימן מים אישי</li><li>פורום פרימיום</li></ul>
+      <div class="price">₪149 <small>/ שנה</small></div>
+      <div><a class="btn white" href="#">הצטרפות</a></div>
+    </div>
+    <div class="t img"><img src="https://picsum.photos/seed/bento-bundle/800/800" alt="מרחב לימוד מינימליסטי" loading="lazy"><div class="ov"></div><h3>מסונכרן בכל מכשיר</h3><p>מהמחשב, מהטלפון, מהטאבלט. אותם קבצים, אותו סימון.</p></div>
+  </div>
+  <h2 class="sec">מה אומרים</h2>
+  <p class="sub">תלמידים, הורים ומורים</p>
+  <div class="quotes">
+    <div class="q"><p>"נכנסתי, מצאתי, הורדתי. הכול מסודר עד כדי כך שאין מה לחפש."</p><div class="av"><img src="https://picsum.photos/seed/bento-av1/80/80" alt="תמונת פרופיל" loading="lazy"><div><b>אורי כהן</b><small>י"ב, הרצליה</small></div></div></div>
+    <div class="q"><p>"הפתרונות למתמטיקה מוסברים טוב יותר מהספר. 96 במועד קיץ."</p><div class="av"><img src="https://picsum.photos/seed/bento-av2/80/80" alt="תמונת פרופיל" loading="lazy"><div><b>נועה שפירא</b><small>י"ב, רמת גן</small></div></div></div>
+    <div class="q"><p>"אני מפנה את התלמידים שלי לכאן. החומר מדויק והתצוגה המקדימה הוגנת."</p><div class="av"><img src="https://picsum.photos/seed/bento-av3/80/80" alt="תמונת פרופיל" loading="lazy"><div><b>גלית מור</b><small>מורה להיסטוריה</small></div></div></div>
+  </div>
+  <h2 class="sec">איך זה עובד</h2>
+  <p class="sub">שלושה אריחים, שלושה צעדים</p>
+  <div class="steps">
+    <div class="t"><span class="n">1</span><h3>בוחרים</h3><p>מקצוע, שאלון, יחידות. כל קובץ עם דירוג ותצוגה מקדימה.</p></div>
+    <div class="t dark"><span class="n" style="color:#64d2ff">2</span><h3>קונים</h3><p class="mut">קובץ בודד או מנוי שנתי. תשלום מאובטח, חשבונית מיידית.</p></div>
+    <div class="t"><span class="n">3</span><h3>לומדים</h3><p>PDF נקי עם סימן מים אישי, מסונכרן לכל המכשירים.</p></div>
+  </div>
+</div>
+<footer>
+  <div class="cols">
+    <div><div class="logo" style="margin-bottom:8px">בגרות+</div><p style="font-size:12px;color:var(--mut);line-height:1.6;max-width:300px">פלטפורמת חומרי הלימוד לבגרות. תלמידים כותבים, מורים בודקים, אתם מצליחים.</p></div>
+    <div><h4>מקצועות</h4><a href="#">מתמטיקה</a><a href="#">אנגלית</a><a href="#">היסטוריה</a><a href="#">הכול</a></div>
+    <div><h4>קהילה</h4><a href="#">פורום</a><a href="#">למוכרים</a><a href="#">בלוג</a></div>
+    <div><h4>תמיכה</h4><a href="#">שאלות נפוצות</a><a href="#">צור קשר</a><a href="#">פרטיות</a></div>
+  </div>
+  <div class="copy">Copyright © 2026 בגרות+ · כל הזכויות שמורות</div>
+</footer>
+</section>
+<section class="style" id="s09" data-name="סייברפאנק / טרמינל" data-desc="שחור, ירוק ניאון וציאן, מונוספייס, scanlines, גליץ' ופינות חתוכות — לוג נתונים חי">
+<style>
+#s09{--gr:#39ff14;--cy:#00e5ff;--bg:#040705;--pnl:#0a120c;--dim:#1e3322;--tx:#c8ffc0;font-family:'Cousine',monospace;background:var(--bg);color:var(--tx);min-height:100vh;position:relative;overflow:hidden}
+#s09 *{box-sizing:border-box}
+#s09::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 2px,transparent 2px 4px);pointer-events:none;z-index:3;mix-blend-mode:multiply}
+#s09::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.7));pointer-events:none;z-index:3}
+#s09 .wrap{max-width:1200px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+#s09 .cut{clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+#s09 .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--dim);background:rgba(10,18,12,.9);font-size:14px}
+#s09 .logo{color:var(--gr);font-weight:700;font-size:20px;text-shadow:0 0 8px var(--gr);position:relative}
+#s09 .logo::before{content:'> ';color:var(--cy)}
+#s09 .logo::after{content:'_';animation:s09-blink 1s steps(1) infinite}
+@keyframes s09-blink{50%{opacity:0}}
+#s09 .nav ul{list-style:none;display:flex;gap:4px;margin:0;padding:0}
+#s09 .nav ul a{color:var(--tx);text-decoration:none;padding:8px 14px;border:1px solid transparent;transition:.15s}
+#s09 .nav ul a::before{content:'['}#s09 .nav ul a::after{content:']'}
+#s09 .nav ul a:hover{color:var(--gr);border-color:var(--dim);background:rgba(57,255,20,.05)}
+#s09 .btn{display:inline-block;padding:12px 26px;text-decoration:none;color:var(--bg);background:var(--gr);font-weight:700;font-family:'Cousine';font-size:14px;letter-spacing:1px;box-shadow:0 0 16px rgba(57,255,20,.5);transition:.15s;text-transform:uppercase}
+#s09 .btn:hover{background:#fff;box-shadow:0 0 24px #fff}
+#s09 .btn.out{background:transparent;color:var(--cy);border:1px solid var(--cy);box-shadow:0 0 12px rgba(0,229,255,.3)}
+#s09 .btn.out:hover{background:rgba(0,229,255,.1);color:#fff}
+#s09 .hero{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:70px 0 60px;align-items:center}
+#s09 .hero .term{font-size:13px;color:var(--cy);margin-bottom:18px}
+#s09 .hero .term::before{content:'root@bagrut:~$ '}
+#s09 .hero h1{font-size:clamp(40px,5.5vw,72px);line-height:1.05;margin:0 0 20px;color:#fff;font-weight:700;position:relative;letter-spacing:-1px}
+#s09 .hero h1 .gl{position:relative;display:inline-block;color:var(--gr);text-shadow:0 0 10px var(--gr);animation:s09-glitch 4s infinite}
+@keyframes s09-glitch{0%,90%,100%{text-shadow:0 0 10px var(--gr)}92%{text-shadow:-3px 0 var(--cy),3px 0 #ff2b8a;transform:translateX(2px)}94%{text-shadow:3px 0 var(--cy),-3px 0 #ff2b8a;transform:translateX(-2px)}96%{text-shadow:0 0 10px var(--gr);transform:none}}
+#s09 .hero p{font-size:16px;line-height:1.7;color:var(--tx);opacity:.9;max-width:520px;margin:0 0 30px;border-inline-start:2px solid var(--dim);padding-inline-start:16px}
+#s09 .hero .acts{display:flex;gap:16px;flex-wrap:wrap}
+#s09 .hero .screen{background:var(--pnl);border:1px solid var(--dim);padding:0;position:relative}
+#s09 .hero .screen .bar{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--dim);font-size:12px;color:var(--dim)}
+#s09 .hero .screen .bar i{width:10px;height:10px;border-radius:50%;background:var(--dim);display:inline-block}
+#s09 .hero .screen .bar i:first-child{background:#ff5f56}
+#s09 .hero .screen img{width:100%;height:340px;object-fit:cover;display:block;filter:grayscale(1) contrast(1.4) brightness(.7);mix-blend-mode:screen;opacity:.9}
+#s09 .hero .screen::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(57,255,20,.15),rgba(0,229,255,.1));mix-blend-mode:color;pointer-events:none}
+#s09 .hero .screen .log{padding:12px;font-size:12px;line-height:1.7;border-top:1px solid var(--dim);color:var(--gr)}
+#s09 .hero .screen .log span{color:var(--cy)}
+#s09 .ticker{background:var(--pnl);border-top:1px solid var(--dim);border-bottom:1px solid var(--dim);overflow:hidden;white-space:nowrap;font-size:13px;padding:8px 0;color:var(--cy)}
+#s09 .ticker span{display:inline-block;animation:s09-tick 30s linear infinite;padding-inline-start:100%}
+@keyframes s09-tick{to{transform:translateX(100%)}}
+#s09 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:40px 0 80px}
+#s09 .stats div{background:var(--pnl);border:1px solid var(--dim);padding:22px 20px;position:relative}
+#s09 .stats div::before{content:attr(data-k);font-size:11px;color:var(--cy);display:block;margin-bottom:8px}
+#s09 .stats b{font-size:42px;color:var(--gr);text-shadow:0 0 12px rgba(57,255,20,.6);display:block;line-height:1}
+#s09 .stats span{font-size:12px;opacity:.7}
+#s09 .stats .bar{height:4px;background:var(--dim);margin-top:12px}
+#s09 .stats .bar i{display:block;height:100%;background:var(--gr);box-shadow:0 0 8px var(--gr)}
+#s09 h2.sec{font-size:28px;color:#fff;margin:0 0 6px;font-weight:700}
+#s09 h2.sec::before{content:'## ';color:var(--gr)}
+#s09 .sub{font-size:13px;color:var(--cy);margin:0 0 30px;opacity:.85}
+#s09 .sub::before{content:'// '}
+#s09 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:80px}
+#s09 .card{background:var(--pnl);border:1px solid var(--dim);padding:22px;position:relative;transition:.2s;font-size:14px}
+#s09 .card:hover{border-color:var(--gr);box-shadow:0 0 20px rgba(57,255,20,.25);transform:translateY(-3px)}
+#s09 .card .id{font-size:11px;color:var(--cy);display:flex;justify-content:space-between;margin-bottom:12px}
+#s09 .card .id i{font-style:normal;color:var(--gr)}
+#s09 .card h3{margin:0 0 8px;font-size:20px;color:#fff}
+#s09 .card h3::before{content:'▸ ';color:var(--gr)}
+#s09 .card p{margin:0 0 14px;opacity:.8;line-height:1.6}
+#s09 .card .row{display:flex;justify-content:space-between;font-size:12px;border-top:1px dashed var(--dim);padding-top:10px}
+#s09 .card .row b{color:var(--gr)}
+#s09 .bundle{display:grid;grid-template-columns:1.1fr .9fr;gap:0;margin-bottom:80px;border:1px solid var(--gr);box-shadow:0 0 30px rgba(57,255,20,.2);background:var(--pnl)}
+#s09 .bundle .txt{padding:44px 40px}
+#s09 .bundle .lbl{color:var(--cy);font-size:12px;letter-spacing:2px}
+#s09 .bundle h2{font-size:40px;color:#fff;margin:8px 0 12px;line-height:1.05}
+#s09 .bundle h2 span{color:var(--gr);text-shadow:0 0 12px var(--gr)}
+#s09 .bundle p{opacity:.85;line-height:1.7;font-size:15px}
+#s09 .bundle pre{background:var(--bg);border:1px solid var(--dim);padding:14px;font-size:13px;line-height:1.7;margin:18px 0 22px;color:var(--gr);overflow:auto;font-family:'Cousine'}
+#s09 .bundle pre span{color:var(--cy)}
+#s09 .bundle .price{font-size:60px;color:#fff;line-height:1;margin-bottom:20px}
+#s09 .bundle .price small{font-size:14px;color:var(--cy)}
+#s09 .bundle .pic{position:relative;overflow:hidden;min-height:400px;border-inline-start:1px solid var(--dim)}
+#s09 .bundle .pic img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.5) brightness(.6)}
+#s09 .bundle .pic::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(57,255,20,.35),rgba(0,229,255,.25));mix-blend-mode:screen}
+#s09 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:80px}
+#s09 .q{background:var(--pnl);border:1px solid var(--dim);padding:22px;font-size:14px;position:relative}
+#s09 .q::before{content:'$ cat review.txt';display:block;font-size:11px;color:var(--cy);margin-bottom:12px}
+#s09 .q p{margin:0 0 14px;line-height:1.7;color:#e6ffe0}
+#s09 .q b{color:var(--gr);font-size:13px}
+#s09 .q small{display:block;font-size:11px;opacity:.6}
+#s09 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:80px}
+#s09 .steps div{background:var(--pnl);border:1px solid var(--dim);padding:26px;font-size:14px}
+#s09 .steps .n{font-size:13px;color:var(--cy);display:block;margin-bottom:12px}
+#s09 .steps h3{color:#fff;font-size:20px;margin:0 0 8px}
+#s09 .steps h3::before{content:'> ';color:var(--gr)}
+#s09 .steps p{margin:0;opacity:.8;line-height:1.7}
+#s09 .steps .ok{color:var(--gr);font-size:12px;margin-top:12px;display:block}
+#s09 .imgs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:80px}
+#s09 .imgs img{width:100%;height:160px;object-fit:cover;filter:grayscale(1) contrast(1.6) brightness(.6);border:1px solid var(--dim);transition:.3s}
+#s09 .imgs img:hover{filter:grayscale(1) contrast(1.6) brightness(.9) sepia(1) hue-rotate(60deg) saturate(4);border-color:var(--gr)}
+#s09 footer{position:relative;z-index:1;border-top:1px solid var(--dim);background:var(--pnl);padding:36px 24px 20px;font-size:13px}
+#s09 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1200px;margin:0 auto}
+#s09 footer h4{color:var(--cy);font-size:12px;margin:0 0 12px;letter-spacing:1px}
+#s09 footer h4::before{content:'# '}
+#s09 footer a{display:block;color:var(--tx);text-decoration:none;opacity:.8;margin-bottom:6px}
+#s09 footer a:hover{color:var(--gr);opacity:1}
+#s09 footer .copy{max-width:1200px;margin:26px auto 0;color:var(--dim);border-top:1px dashed var(--dim);padding-top:12px;font-size:12px}
+@media(max-width:900px){#s09 .hero,#s09 .stats,#s09 .subjects,#s09 .bundle,#s09 .quotes,#s09 .steps,#s09 footer .cols{grid-template-columns:1fr}#s09 .imgs{grid-template-columns:1fr 1fr}#s09 .nav ul{display:none}}
+</style>
+<nav class="nav">
+  <div class="logo">bagrut.plus</div>
+  <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">API למוכרים</a></li><li><a href="#">לוג</a></li></ul>
+  <a class="btn cut" href="#">login</a>
+</nav>
+<div class="ticker"><span>[19:42:03] קובץ חדש: פתרון 582 מועד קיץ · [19:41:50] user_8821 הצטרף לפורום · [19:41:12] סיכום היסטוריה פרק 4 אושר ע"י מורה · [19:40:33] 3 הורדות חדשות בפיזיקה · [19:39:58] מוכר yael_r קיבלה תשלום ₪84 · [19:39:01] שרשור חדש: שאלה 7 בשאלון 581 ·</span></div>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <div class="term">./start --subject=all --mode=focus</div>
+      <h1>גישה מלאה<br>ל<span class="gl">מאגר הבגרות</span><br>אושרה.</h1>
+      <p>3,800 קבצים מאומתים. 27 מקצועות. פורום שעונה תוך 15 דקות. אין פרסומות, אין רעש — רק חומר, מסודר כמו קוד נקי.</p>
+      <div class="acts"><a class="btn cut" href="#">$ open catalog</a><a class="btn out cut" href="#">$ man howto</a></div>
+    </div>
+    <div class="screen cut">
+      <div class="bar"><i></i><i></i><i></i> &nbsp; bagrut@terminal — catalog.view</div>
+      <img src="https://picsum.photos/seed/cyber-hero/900/600" alt="מסך מחשב בחדר חשוך" loading="lazy">
+      <div class="log">> loading subjects... <span>OK</span><br>> verifying 3,800 files... <span>OK</span><br>> connecting forum (latency 12ms)... <span>OK</span><br>> ready. press any key_</div>
+    </div>
+  </header>
+  <div class="stats">
+    <div data-k="USERS_ACTIVE"><b>12,400</b><span>תלמידים מחוברים</span><div class="bar"><i style="width:88%"></i></div></div>
+    <div data-k="FILES_VERIFIED"><b>3,800</b><span>קבצים מאומתים</span><div class="bar"><i style="width:76%"></i></div></div>
+    <div data-k="SATISFACTION"><b>94%</b><span>שביעות רצון</span><div class="bar"><i style="width:94%"></i></div></div>
+    <div data-k="UPTIME"><b>99.9%</b><span>זמינות מערכת</span><div class="bar"><i style="width:99%"></i></div></div>
+  </div>
+  <h2 class="sec">subjects/</h2>
+  <p class="sub">ls -la — 27 ספריות, ממוינות לפי פופולריות</p>
+  <div class="subjects">
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#001</i></div><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581/582, פתרונות שלב-אחר-שלב עם הסברים.</p><div class="row"><span>files: <b>412</b></span><span>rating: <b>4.9</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#002</i></div><h3>אנגלית</h3><p>Module E/F/G, אוצר מילים ו-unseen מתורגלים.</p><div class="row"><span>files: <b>298</b></span><span>rating: <b>4.8</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#003</i></div><h3>לשון והבעה</h3><p>תחביר, צורות, שם המספר, הבנת הנקרא.</p><div class="row"><span>files: <b>176</b></span><span>rating: <b>4.7</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#004</i></div><h3>היסטוריה</h3><p>לאומיות, שואה, מלחמות העולם — סיכום אחד לכל הפרקים.</p><div class="row"><span>files: <b>231</b></span><span>rating: <b>4.8</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#005</i></div><h3>אזרחות</h3><p>מושגים, גישות, שאלות אירוע עם דוגמאות.</p><div class="row"><span>files: <b>143</b></span><span>rating: <b>4.6</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#006</i></div><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר. מעבדות מסוכמות.</p><div class="row"><span>files: <b>188</b></span><span>rating: <b>4.9</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#007</i></div><h3>מדעי המחשב</h3><p>Java, מבני נתונים, שאלוני עבר עם פתרונות מלאים.</p><div class="row"><span>files: <b>97</b></span><span>rating: <b>4.9</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#008</i></div><h3>כימיה</h3><p>מבנה וקישור, סטוכיומטריה, חמצון-חיזור.</p><div class="row"><span>files: <b>132</b></span><span>rating: <b>4.7</b></span></div></div>
+    <div class="card cut"><div class="id"><span>drwxr-xr-x</span><i>#009</i></div><h3>ביולוגיה</h3><p>תא, גוף האדם, אקולוגיה — עם תרשימים.</p><div class="row"><span>files: <b>164</b></span><span>rating: <b>4.8</b></span></div></div>
+  </div>
+  <div class="bundle cut">
+    <div class="txt">
+      <span class="lbl">SUBSCRIPTION // ANNUAL</span>
+      <h2>sudo apt install <span>bagrut-full</span></h2>
+      <p>גישה מלאה לכל הספרייה למשך שנה. כל המקצועות, כל הקבצים, כל העדכונים אחרי כל מועד. הרשאות root לפורום הפרימיום.</p>
+      <pre>{
+  <span>"files"</span>: "3800+",
+  <span>"updates"</span>: "auto",
+  <span>"watermark"</span>: "personal",
+  <span>"forum"</span>: "premium",
+  <span>"refund"</span>: "14d"
+}</pre>
+      <div class="price">₪149 <small>/ year</small></div>
+      <a class="btn cut" href="#">$ install</a>
+    </div>
+    <div class="pic"><img src="https://picsum.photos/seed/cyber-bundle/800/700" alt="שרתים בחדר מחשבים" loading="lazy"></div>
+  </div>
+  <h2 class="sec">reviews/</h2>
+  <p class="sub">tail -n 3 — הביקורות האחרונות</p>
+  <div class="quotes">
+    <div class="q cut"><p>"הורדתי את פתרונות 582 ב-02:14. למדתי עד 07:00. ציון: 97. אין באגים."</p><b>tomer_dev</b><small>י"ב · חולון · 5 יח"ל</small></div>
+    <div class="q cut"><p>"הפורום פה מגיב מהר יותר מ-stackoverflow. שאלה בפיזיקה, 11 דקות, תשובה עם ציור."</p><b>shani.k</b><small>י"א · באר שבע</small></div>
+    <div class="q cut"><p>"העליתי סיכום במדמ"ח. 380 הורדות, ₪1,140. הפלטפורמה משלמת בזמן, כל פעם."</p><b>yoav_cs</b><small>SELLER · ירושלים</small></div>
+  </div>
+  <h2 class="sec">howto/</h2>
+  <p class="sub">שלושה צעדים, אפס תלויות</p>
+  <div class="steps">
+    <div class="cut"><span class="n">STEP 01</span><h3>filter</h3><p>מסננים לפי מקצוע, שאלון ויחידות. כל קובץ עם דירוג, תצוגה מקדימה ושם העורך.</p><span class="ok">✔ done in 4 clicks</span></div>
+    <div class="cut"><span class="n">STEP 02</span><h3>checkout</h3><p>קובץ בודד או מנוי שנתי. תשלום מאובטח, חשבונית במייל, החזר תוך 14 יום.</p><span class="ok">✔ SSL secured</span></div>
+    <div class="cut"><span class="n">STEP 03</span><h3>download</h3><p>PDF עם סימן מים אישי. זמין מכל מכשיר, לתמיד.</p><span class="ok">✔ 100% complete</span></div>
+  </div>
+  <div class="imgs">
+    <img src="https://picsum.photos/seed/cyber-g1/500/400" alt="עיר בלילה" loading="lazy">
+    <img src="https://picsum.photos/seed/cyber-g2/500/400" alt="כבלים ומעגלים" loading="lazy">
+    <img src="https://picsum.photos/seed/cyber-g3/500/400" alt="מקלדת מוארת" loading="lazy">
+    <img src="https://picsum.photos/seed/cyber-g4/500/400" alt="שלטי ניאון" loading="lazy">
+  </div>
+</div>
+<footer>
+  <div class="cols">
+    <div><div class="logo" style="margin-bottom:10px">bagrut.plus</div><p style="opacity:.75;line-height:1.7;max-width:320px">פלטפורמת חומרי לימוד לבגרות. תלמידים כותבים, מורים בודקים, המערכת רצה 24/7.</p></div>
+    <div><h4>nav</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">פורום</a></div>
+    <div><h4>community</h4><a href="#">API למוכרים</a><a href="#">changelog</a><a href="#">status</a></div>
+    <div><h4>support</h4><a href="#">FAQ</a><a href="#">contact</a><a href="#">terms</a></div>
+  </div>
+  <div class="copy">© 2026 bagrut.plus — build 2026.08.17 — all systems nominal</div>
+</footer>
+</section>
+<section class="style" id="s10" data-name="מינימליזם סקנדינבי" data-desc="שמנת ולבן חם, גווני עץ ואפור-ירקרק, טיפוגרפיה דקה, המון אוויר וקווים עדינים">
+<style>
+#s10{--bg:#faf7f2;--wh:#fffdf9;--wood:#b08968;--sage:#8a9a8b;--tx:#2b2a27;--mut:#8b877f;--line:#e6e0d6;background:var(--bg);color:var(--tx);font-family:'Assistant',sans-serif;font-weight:300;min-height:100vh}
+#s10 *{box-sizing:border-box}
+#s10 .wrap{max-width:1120px;margin:0 auto;padding:0 32px}
+#s10 .nav{display:flex;align-items:center;justify-content:space-between;padding:30px 0}
+#s10 .logo{font-family:'Alef',sans-serif;font-size:24px;letter-spacing:2px;color:var(--tx)}
+#s10 .logo b{color:var(--wood);font-weight:400}
+#s10 .nav ul{list-style:none;display:flex;gap:36px;margin:0;padding:0}
+#s10 .nav ul a{color:var(--tx);text-decoration:none;font-size:15px;font-weight:400;position:relative}
+#s10 .nav ul a::after{content:'';position:absolute;bottom:-4px;inset-inline-start:0;width:0;height:1px;background:var(--wood);transition:.3s}
+#s10 .nav ul a:hover::after{width:100%}
+#s10 .btn{display:inline-block;padding:13px 30px;border:1px solid var(--tx);border-radius:4px;color:var(--tx);text-decoration:none;font-size:15px;font-weight:400;transition:.25s;background:transparent}
+#s10 .btn:hover{background:var(--tx);color:var(--wh)}
+#s10 .btn.wood{border-color:var(--wood);color:var(--wood)}
+#s10 .btn.wood:hover{background:var(--wood);color:#fff}
+#s10 .hero{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center;padding:80px 0 100px}
+#s10 .hero .kick{font-size:13px;letter-spacing:4px;color:var(--sage);margin-bottom:22px;font-weight:400}
+#s10 .hero h1{font-size:clamp(42px,5.5vw,72px);font-weight:200;line-height:1.15;margin:0 0 26px;letter-spacing:-.5px}
+#s10 .hero h1 b{font-weight:600;color:var(--wood)}
+#s10 .hero p{font-size:19px;line-height:1.8;color:var(--mut);max-width:460px;margin:0 0 36px}
+#s10 .hero .acts{display:flex;gap:16px}
+#s10 .hero .vis{position:relative}
+#s10 .hero .vis img{width:100%;height:520px;object-fit:cover;border-radius:6px;filter:saturate(.6) brightness(1.05) sepia(.15)}
+#s10 .hero .vis .note{position:absolute;bottom:-24px;inset-inline-start:-24px;background:var(--wh);border:1px solid var(--line);border-radius:6px;padding:18px 22px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.05)}
+#s10 .hero .vis .note b{display:block;font-size:24px;font-weight:600;color:var(--wood)}
+#s10 .stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:36px 0;margin-bottom:100px}
+#s10 .stats div{text-align:center}
+#s10 .stats b{display:block;font-size:40px;font-weight:200;line-height:1}
+#s10 .stats span{font-size:13px;letter-spacing:2px;color:var(--mut)}
+#s10 h2.sec{font-size:36px;font-weight:200;margin:0 0 8px;letter-spacing:-.3px}
+#s10 .sub{color:var(--mut);margin:0 0 44px;font-size:17px}
+#s10 .head{display:flex;justify-content:space-between;align-items:end;margin-bottom:40px}
+#s10 .head a{color:var(--wood);text-decoration:none;font-size:15px;font-weight:400}
+#s10 .subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:40px 32px;margin-bottom:110px}
+#s10 .card{transition:.3s}
+#s10 .card img{width:100%;height:190px;object-fit:cover;border-radius:6px;filter:saturate(.55) brightness(1.05);margin-bottom:16px;transition:.4s}
+#s10 .card:hover img{filter:saturate(.8) brightness(1)}
+#s10 .card small{font-size:12px;letter-spacing:3px;color:var(--sage);font-weight:400}
+#s10 .card h3{font-size:22px;font-weight:600;margin:6px 0 6px}
+#s10 .card p{margin:0 0 10px;color:var(--mut);line-height:1.6;font-size:15px}
+#s10 .card .cnt{font-size:13px;color:var(--wood);font-weight:400;border-bottom:1px solid var(--line);padding-bottom:10px;display:block}
+#s10 .bundle{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--wh);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:110px}
+#s10 .bundle .pic img{width:100%;height:100%;min-height:440px;object-fit:cover;filter:saturate(.6) sepia(.2)}
+#s10 .bundle .txt{padding:60px 50px}
+#s10 .bundle .lbl{font-size:12px;letter-spacing:4px;color:var(--sage);font-weight:400}
+#s10 .bundle h2{font-size:38px;font-weight:200;margin:10px 0 14px}
+#s10 .bundle p{color:var(--mut);line-height:1.8;font-size:16px}
+#s10 .bundle ul{list-style:none;padding:0;margin:20px 0 28px}
+#s10 .bundle li{padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+#s10 .bundle li::before{content:'— ';color:var(--wood)}
+#s10 .bundle .price{font-size:52px;font-weight:200;line-height:1;margin-bottom:24px}
+#s10 .bundle .price small{font-size:14px;color:var(--mut);letter-spacing:1px}
+#s10 .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-bottom:110px}
+#s10 .q{background:var(--wh);border:1px solid var(--line);border-radius:6px;padding:34px 30px}
+#s10 .q p{font-size:17px;line-height:1.75;margin:0 0 20px;font-weight:300}
+#s10 .q b{font-weight:600;font-size:14px;display:block}
+#s10 .q small{color:var(--mut);font-size:13px}
+#s10 .q .ln{width:36px;height:1px;background:var(--wood);margin-bottom:18px}
+#s10 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-bottom:110px}
+#s10 .steps .n{font-size:13px;letter-spacing:3px;color:var(--wood);font-weight:400;display:block;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px}
+#s10 .steps h3{font-size:22px;font-weight:600;margin:0 0 8px}
+#s10 .steps p{color:var(--mut);line-height:1.7;margin:0;font-size:15px}
+#s10 .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:110px}
+#s10 .strip img{width:100%;height:200px;object-fit:cover;border-radius:6px;filter:saturate(.55) brightness(1.05) sepia(.1)}
+#s10 footer{border-top:1px solid var(--line);padding:50px 32px 30px}
+#s10 footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;max-width:1120px;margin:0 auto}
+#s10 footer h4{font-size:12px;letter-spacing:3px;font-weight:400;color:var(--sage);margin:0 0 14px}
+#s10 footer a{display:block;color:var(--tx);text-decoration:none;font-size:14px;margin-bottom:8px}
+#s10 footer a:hover{color:var(--wood)}
+#s10 footer .copy{max-width:1120px;margin:40px auto 0;font-size:12px;color:var(--mut);letter-spacing:1px}
+@media(max-width:900px){#s10 .hero,#s10 .stats,#s10 .subjects,#s10 .bundle,#s10 .quotes,#s10 .steps,#s10 footer .cols{grid-template-columns:1fr}#s10 .strip{grid-template-columns:1fr 1fr}#s10 .nav ul{display:none}#s10 .hero .vis img{height:340px}}
+</style>
+<div class="wrap">
+  <nav class="nav">
+    <div class="logo">בגרות<b>+</b></div>
+    <ul><li><a href="#">מקצועות</a></li><li><a href="#">חבילות</a></li><li><a href="#">פורום</a></li><li><a href="#">למוכרים</a></li><li><a href="#">אודות</a></li></ul>
+    <a class="btn" href="#">כניסה</a>
+  </nav>
+  <header class="hero">
+    <div>
+      <div class="kick">חומרי לימוד לבגרות</div>
+      <h1>פחות רעש.<br><b>יותר הבנה.</b></h1>
+      <p>ספרייה שקטה של סיכומים, פתרונות ומבחני תרגול — כל אחד נבדק על ידי מורה. כדי שתוכלו להתרכז במה שחשוב באמת.</p>
+      <div class="acts"><a class="btn wood" href="#">לקטלוג</a><a class="btn" href="#">איך זה עובד</a></div>
+    </div>
+    <div class="vis">
+      <img src="https://picsum.photos/seed/nordic-hero/800/900" alt="שולחן עץ עם מחברת וכוס תה" loading="lazy">
+      <div class="note"><b>4.9</b>דירוג ממוצע · 8,200 ביקורות</div>
+    </div>
+  </header>
+  <div class="stats">
+    <div><b>12,400</b><span>תלמידים</span></div>
+    <div><b>3,800</b><span>קבצים</span></div>
+    <div><b>94%</b><span>שביעות רצון</span></div>
+    <div><b>27</b><span>מקצועות</span></div>
+  </div>
+  <div class="head"><div><h2 class="sec">מקצועות</h2><p class="sub" style="margin:0">בחרו נושא ומצאו את מה שחסר</p></div><a href="#">לכל המקצועות ←</a></div>
+  <div class="subjects">
+    <div class="card"><img src="https://picsum.photos/seed/nordic-m/600/400" alt="מתמטיקה" loading="lazy"><small>מדעים</small><h3>מתמטיקה 5 יח"ל</h3><p>שאלונים 581 ו-582 עם פתרונות מלאים ומוסברים.</p><span class="cnt">412 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-e/600/400" alt="אנגלית" loading="lazy"><small>שפות</small><h3>אנגלית</h3><p>Module E–G, unseen וכתיבה מונחית.</p><span class="cnt">298 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-l/600/400" alt="לשון" loading="lazy"><small>עברית</small><h3>לשון והבעה</h3><p>תחביר, מערכת הצורות והבנת הנקרא.</p><span class="cnt">176 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-h/600/400" alt="היסטוריה" loading="lazy"><small>רוח</small><h3>היסטוריה</h3><p>כל הפרקים בסיכום אחד, עם ציר זמן.</p><span class="cnt">231 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-c/600/400" alt="אזרחות" loading="lazy"><small>חברה</small><h3>אזרחות</h3><p>מושגון, גישות ושאלות אירוע.</p><span class="cnt">143 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-p/600/400" alt="פיזיקה" loading="lazy"><small>מדעים</small><h3>פיזיקה</h3><p>מכניקה, חשמל, קרינה וחומר.</p><span class="cnt">188 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-b/600/400" alt="ביולוגיה" loading="lazy"><small>מדעי החיים</small><h3>ביולוגיה</h3><p>תא, גוף האדם ואקולוגיה, עם תרשימים.</p><span class="cnt">164 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-t/600/400" alt="תנך" loading="lazy"><small>יהדות</small><h3>תנ"ך</h3><p>סיכומי פרקים ופרשנות מסודרת.</p><span class="cnt">109 קבצים</span></div>
+    <div class="card"><img src="https://picsum.photos/seed/nordic-a/600/400" alt="ערבית" loading="lazy"><small>שפות</small><h3>ערבית</h3><p>דקדוק, טקסטים ותרגום, עם הקלטות.</p><span class="cnt">64 קבצים</span></div>
+  </div>
+  <div class="bundle">
+    <div class="pic"><img src="https://picsum.photos/seed/nordic-bundle/700/800" alt="חדר לימוד בהיר עם צמח" loading="lazy"></div>
+    <div class="txt">
+      <span class="lbl">מנוי שנתי</span>
+      <h2>הספרייה השלמה</h2>
+      <p>כל המקצועות, כל הקבצים, כל העדכונים — במנוי אחד, לשנת לימודים שלמה. שקט נפשי במחיר של ספר לימוד אחד.</p>
+      <ul><li>גישה ל-3,800+ קבצים ללא הגבלה</li><li>עדכון אחרי כל מועד בחינה</li><li>PDF עם סימן מים אישי</li><li>פורום התלמידים</li></ul>
+      <div class="price">₪139 <small>לשנה</small></div>
+      <a class="btn wood" href="#">להצטרפות</a>
+    </div>
+  </div>
+  <h2 class="sec">מה תלמידים אומרים</h2>
+  <p class="sub">בקול שקט</p>
+  <div class="quotes">
+    <div class="q"><div class="ln"></div><p>הסיכומים כאן נותנים תחושה של סדר. פתחתי, קראתי, הבנתי. בלי להילחץ.</p><b>רוני אשכנזי</b><small>י"ב, זכרון יעקב</small></div>
+    <div class="q"><div class="ln"></div><p>שאלתי בפורום שאלה בביולוגיה בערב. בבוקר חיכתה לי תשובה מסודרת עם תרשים.</p><b>עומר טל</b><small>י"א, כפר ורדים</small></div>
+    <div class="q"><div class="ln"></div><p>אני מורה ללשון. הופתעתי לגלות עד כמה החומר מדויק. אני מפנה תלמידים בלב שקט.</p><b>הילה נבו</b><small>מורה, קריית טבעון</small></div>
+  </div>
+  <h2 class="sec">איך זה עובד</h2>
+  <p class="sub">שלושה צעדים פשוטים</p>
+  <div class="steps">
+    <div><span class="n">01</span><h3>מוצאים</h3><p>מסננים לפי מקצוע, שאלון ויחידות. תצוגה מקדימה לכל קובץ.</p></div>
+    <div><span class="n">02</span><h3>רוכשים</h3><p>קובץ בודד או מנוי שנתי. תשלום מאובטח והחזר כספי תוך 14 יום.</p></div>
+    <div><span class="n">03</span><h3>לומדים</h3><p>מורידים PDF נקי עם סימן מים אישי, ולומדים בקצב שלכם.</p></div>
+  </div>
+  <div class="strip">
+    <img src="https://picsum.photos/seed/nordic-s1/500/400" alt="ספרים על מדף עץ" loading="lazy">
+    <img src="https://picsum.photos/seed/nordic-s2/500/400" alt="חלון עם אור בוקר" loading="lazy">
+    <img src="https://picsum.photos/seed/nordic-s3/500/400" alt="עציץ על שולחן" loading="lazy">
+    <img src="https://picsum.photos/seed/nordic-s4/500/400" alt="כוס קפה ומחברת" loading="lazy">
+  </div>
+</div>
+<footer>
+  <div class="cols">
+    <div><div class="logo" style="margin-bottom:10px">בגרות<b>+</b></div><p style="color:var(--mut);line-height:1.7;max-width:300px;font-size:14px">ספריית חומרי לימוד לבגרות. תלמידים כותבים, מורים בודקים, אתם לומדים בשקט.</p></div>
+    <div><h4>ניווט</h4><a href="#">מקצועות</a><a href="#">חבילות</a><a href="#">פורום</a></div>
+    <div><h4>קהילה</h4><a href="#">למוכרים</a><a href="#">בלוג</a><a href="#">אירועים</a></div>
+    <div><h4>שירות</h4><a href="#">שאלות נפוצות</a><a href="#">צור קשר</a><a href="#">תנאי שימוש</a></div>
+  </div>
+  <div class="copy">© 2026 בגרות+ · עוצב בשקט, בצפון</div>
+</footer>
+</section>

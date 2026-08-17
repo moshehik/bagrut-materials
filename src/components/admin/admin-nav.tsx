@@ -10,6 +10,14 @@ import {
   HandCoins,
   MessagesSquare,
   Mail,
+  Activity,
+  Download,
+  Radio,
+  BarChart3,
+  ScrollText,
+  Wallet,
+  CreditCard,
+  Settings,
 } from "lucide-react";
 
 const ITEMS = [
@@ -20,6 +28,14 @@ const ITEMS = [
   { href: "/admin/offers", label: "הצעות מכירה", icon: HandCoins },
   { href: "/admin/forum", label: "פורום", icon: MessagesSquare },
   { href: "/admin/mail", label: "מיילים", icon: Mail },
+  { href: "/admin/online", label: "מחוברות כעת", icon: Radio },
+  { href: "/admin/activity", label: "פעילות וגלישה", icon: Activity },
+  { href: "/admin/downloads", label: "היסטוריית הורדות", icon: Download },
+  { href: "/admin/stats", label: "סטטיסטיקות", icon: BarChart3 },
+  { href: "/admin/logs", label: "לוג פעולות", icon: ScrollText },
+  { href: "/admin/finance", label: "כספים", icon: Wallet },
+  { href: "/admin/subscriptions", label: "מנויים", icon: CreditCard },
+  { href: "/admin/settings", label: "הגדרות", icon: Settings },
 ];
 
 export function AdminNav() {
