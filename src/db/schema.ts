@@ -195,7 +195,28 @@ export const sellOffers = pgTable("sell_offers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const categoriesRelations = relations(categories, ({ one, many }) => ({
+/** לוג מיילים – כל שליחה (אוטומטית או ידנית) נרשמת */
+export const emailLogs = pgTable(
+  "email_logs",
+  {
+    id: serial("id").primaryKey(),
+    to: text("to").notNull(),
+    cc: text("cc"),
+    subject: varchar("subject", { length: 300 }),
+    body: text("body"),
+    fileName: varchar("file_name", { length: 255 }),
+    /** סוג ההודעה: welcome / purchase / sell_offer / forum_reply / contact / manual / broadcast */
+    kind: varchar("kind", { length: 40 }).notNull().default("manual"),
+    status: varchar("status", { length: 20 }).notNull().default("success"),
+    errorMessage: text("error_message"),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    sentById: integer("sent_by_id").references(() => users.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at").notNull().defaultNow(),
+  },
+  (t) => [index("email_logs_sent_idx").on(t.sentAt)],
+);
+
+export const categoriesRelations =relations(categories, ({ one, many }) => ({
   parent: one(categories, {
     fields: [categories.parentId],
     references: [categories.id],

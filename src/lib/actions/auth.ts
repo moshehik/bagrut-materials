@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { createSession, destroySession } from "@/lib/session";
+import { sendMailInBackground, templates } from "@/lib/mail";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -59,6 +60,12 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     .returning({ id: users.id });
 
   await createSession(u.id);
+  sendMailInBackground({
+    to: email,
+    ...templates.welcome(name, personalCode),
+    kind: "welcome",
+    userId: u.id,
+  });
   redirect("/account");
 }
 

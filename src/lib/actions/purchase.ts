@@ -5,8 +5,9 @@ import { z } from "zod";
 import { eq, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, materials, purchases, users, type Tier, type Plan } from "@/db/schema";
-import { PLANS, PREMIUM_ADDON_PRICE, TIERS } from "@/lib/constants";
+import { PLANS, PREMIUM_ADDON_PRICE, TIERS, formatPrice } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
+import { sendMailInBackground, templates } from "@/lib/mail";
 import { getDescendantIds } from "@/lib/data";
 
 /*
@@ -210,6 +211,19 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   if (!rows.length) return { error: "לא נוצרה הזמנה" };
   await db.insert(purchases).values(rows);
   if (tierTarget) await raiseTier(user.id, user.tier, tierTarget);
+
+  // מייל אישור רכישה
+  const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
+  const description =
+    input.kind === "premium"
+      ? "מנוי פרימיום חודשי"
+      : input.kind === "single"
+        ? "הורדה בודדת"
+        : input.kind === "bundle"
+          ? "קובץ מורחב (תיקייה שלמה)"
+          : PLANS[input.plan].label + (premium ? " + פרימיום" : "");
+  const t = templates.purchase(user.name, description, formatPrice(total), rows[0]?.endsAt ?? null);
+  sendMailInBackground({ to: user.email, ...t, kind: "purchase", userId: user.id });
 
   redirect("/account?purchased=1");
 }

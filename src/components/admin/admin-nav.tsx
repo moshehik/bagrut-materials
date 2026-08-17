@@ -9,6 +9,7 @@ import {
   Users,
   HandCoins,
   MessagesSquare,
+  Mail,
 } from "lucide-react";
 
 const ITEMS = [
@@ -18,6 +19,7 @@ const ITEMS = [
   { href: "/admin/users", label: "משתמשות", icon: Users },
   { href: "/admin/offers", label: "הצעות מכירה", icon: HandCoins },
   { href: "/admin/forum", label: "פורום", icon: MessagesSquare },
+  { href: "/admin/mail", label: "מיילים", icon: Mail },
 ];
 
 export function AdminNav() {

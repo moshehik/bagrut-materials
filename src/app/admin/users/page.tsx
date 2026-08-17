@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users, downloads } from "@/db/schema";
@@ -55,6 +56,13 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="py-2 pe-3" dir="ltr">
                     {u.email}
+                    <Link
+                      href={`/admin/mail?to=${encodeURIComponent(u.email)}`}
+                      className="ms-2 text-xs text-blue-deep hover:underline"
+                      title="שליחת מייל"
+                    >
+                      ✉
+                    </Link>
                   </td>
                   <td className="py-2 pe-3 font-mono" dir="ltr">
                     {u.personalCode}

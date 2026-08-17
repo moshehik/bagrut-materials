@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { sellOffers } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { adminEmail, sendMailInBackground, templates } from "@/lib/mail";
 
 export type SellState = { error?: string; ok?: boolean } | undefined;
 
@@ -47,6 +48,18 @@ export async function createSellOffer(_prev: SellState, form: FormData): Promise
     fileUrl: d.fileUrl ?? null,
     status: "pending",
   });
+
+  const priceAgorot = d.askingPrice !== undefined ? Math.round(d.askingPrice * 100) : null;
+  sendMailInBackground({ to: user.email, ...templates.sellOfferUser(user.name, d.title), kind: "sell_offer", userId: user.id });
+  const admin = adminEmail();
+  if (admin) {
+    sendMailInBackground({
+      to: admin,
+      ...templates.sellOfferAdmin(user.name, user.email, d.subject, d.title, d.description + (d.fileUrl ? `\n\nקישור: ${d.fileUrl}` : ""), priceAgorot),
+      kind: "sell_offer",
+      userId: user.id,
+    });
+  }
 
   revalidatePath("/sell");
   return { ok: true };

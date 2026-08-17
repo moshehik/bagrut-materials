@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, MessageSquare, Store, HelpCircle } from "lucide-react";
 import { SITE_NAME } from "@/lib/constants";
+import { ContactForm } from "@/components/contact-form";
 
 export const metadata: Metadata = { title: "צרי קשר" };
 
@@ -78,6 +79,12 @@ export default function ContactPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="card mt-8 p-6 animate-fade-up" style={{ animationDelay: "0.2s" }}>
+        <h2 className="font-display text-2xl font-bold mb-1">או כתבי לנו כאן</h2>
+        <p className="text-sm text-muted mb-4">ההודעה תישלח ישירות למנהלת האתר ונחזור אלייך למייל שציינת.</p>
+        <ContactForm />
       </div>
 
       <p className="mt-6 text-center text-xs text-muted">

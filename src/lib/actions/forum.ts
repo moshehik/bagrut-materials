@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { forumPosts, forumThreads } from "@/db/schema";
+import { forumPosts, forumThreads, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { userHasPremium } from "@/lib/data";
+import { sendMailInBackground, templates } from "@/lib/mail";
 
 export type ForumState = { error?: string; ok?: boolean } | undefined;
 
@@ -67,8 +68,15 @@ export async function replyThread(_prev: ForumState, form: FormData): Promise<Fo
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const [thread] = await db
-    .select({ id: forumThreads.id })
+    .select({
+      id: forumThreads.id,
+      title: forumThreads.title,
+      ownerId: users.id,
+      ownerName: users.name,
+      ownerEmail: users.email,
+    })
     .from(forumThreads)
+    .innerJoin(users, eq(users.id, forumThreads.userId))
     .where(eq(forumThreads.id, parsed.data.threadId))
     .limit(1);
   if (!thread) return { error: "הדיון לא נמצא" };
@@ -78,6 +86,16 @@ export async function replyThread(_prev: ForumState, form: FormData): Promise<Fo
     userId: auth.user.id,
     body: parsed.data.body,
   });
+
+  // התראה במייל לבעלת השאלה (לא כשהיא עונה לעצמה)
+  if (thread.ownerId !== auth.user.id) {
+    sendMailInBackground({
+      to: thread.ownerEmail,
+      ...templates.forumReply(thread.ownerName, thread.title, auth.user.name, thread.id),
+      kind: "forum_reply",
+      userId: thread.ownerId,
+    });
+  }
 
   revalidatePath(`/forum/${thread.id}`);
   revalidatePath("/forum");
