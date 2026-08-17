@@ -40,9 +40,10 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
   pdf.registerFontkit(fontkit);
   const font = await pdf.embedFont(await loadFont(), { subset: true });
 
-  const footer = visualHebrew(
-    `© ${SITE_NAME} – כל הזכויות שמורות. הורד ע"י מנויה מס' ${info.personalCode}. אין להעביר לאחר.`,
-  );
+  // המספר האישי נשאר מחוץ למחרוזת העברית כדי שלא יתהפך; בהיפוך ויזואלי הוא יופיע בסוף המשפט (בצד שמאל)
+  const footer =
+    visualHebrew(`© ${SITE_NAME} – כל הזכויות שמורות. אין להעביר לאחר. הורד ע"י מנויה מס'`) +
+    ` ${info.personalCode}`;
   const diagonal = `${info.personalCode}  •  ${info.email}`;
 
   for (const page of pdf.getPages()) {
