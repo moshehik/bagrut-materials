@@ -64,6 +64,7 @@
   --font-sans: var(--font-heebo), "Assistant", system-ui, sans-serif;
   --font-display: var(--font-heebo), "Assistant", system-ui, sans-serif;
   --font-hand: var(--font-gveret), "Gveret Levin", cursive;
+  --font-stamp: var(--font-karantina), "Karantina", cursive;
   --radius-2xl: 1.5rem;
   --shadow-soft: 0 10px 30px rgba(31, 45, 51, 0.08);
   --shadow-lift: 0 20px 50px rgba(31, 45, 51, 0.14);
@@ -218,6 +219,7 @@ body {
   box-shadow: 0 8px 20px rgba(178, 58, 46, 0.32);
 }
 .btn-primary:hover {
+  background: var(--terra-deep);
   box-shadow: 0 12px 26px rgba(178, 58, 46, 0.42);
 }
 .btn-sea {

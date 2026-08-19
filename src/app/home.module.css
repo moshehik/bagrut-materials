@@ -8,27 +8,23 @@
 }
 
 /* ---------- HERO ---------- */
+/* גובה ה-hero מוגבל לגובה המסך הפנוי (מתחת לכותרת העליונה) כדי שהוא ייראה כולו בלי גלילה */
 .hero {
   position: relative;
   border-radius: 0 0 48px 48px;
   overflow: hidden;
-  min-height: 520px;
   margin-bottom: 60px;
   background: #fff;
   color: var(--ink);
   box-shadow: 0 20px 40px -24px rgba(31, 45, 51, 0.25);
 }
-/* היער מטושטש ומעומעם ברקע כדי שהלוגו יישאר המוקד */
+/* יער הבמבוק הוורוד — ממורח מקצה לקצה, בלי שוליים לבנים */
 .hero::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 0;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.8) 55%, rgba(255, 255, 255, 0.95) 100%),
-    url("/forest-bg.png") center/cover no-repeat;
-  filter: blur(5px);
-  transform: scale(1.04);
+  background: url("/images/hero-bg.webp") center 42% / cover no-repeat;
 }
 .heroGrid {
   position: relative;
@@ -37,8 +33,8 @@
   grid-template-columns: 1.05fr 0.95fr;
   gap: 30px;
   align-items: center;
-  min-height: 520px;
-  padding: 32px 60px 56px;
+  height: clamp(360px, calc(100vh - 140px), 480px);
+  padding: 20px 60px 26px;
 }
 .heroIn {
   position: relative;
@@ -48,51 +44,127 @@
 .h1 {
   font-family: var(--font-hand);
   font-weight: 400;
-  font-size: clamp(50px, 7vw, 92px);
-  line-height: 1.15;
-  margin: 0 0 18px;
+  font-size: clamp(32px, 4.4vw, 60px);
+  line-height: 1.32;
+  margin: 0 0 12px;
   color: var(--ink);
 }
 .h1 span {
   display: block;
 }
-.h1 span:last-child {
-  color: #d61f26;
+/* "הגיע הזמן!" — פונט מודגש ונפרד מהכתב-יד, כמו בכרזה. גודל יחסי לפי ההדמיה: שורה 3 (העז מהלו"ז) הכי גדולה, שורה 1 (הגיע הזמן) קצת אחריה, שורה 2 (להוציא את) הכי קטנה */
+.h1 span.stamp {
+  font-family: var(--font-stamp);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow:
+    -1px -1px 0 #fff,
+    1px -1px 0 #fff,
+    -1px 1px 0 #fff,
+    1px 1px 0 #fff;
+  font-size: 0.85em;
 }
-.h1 span.green {
-  color: #7ed321;
-  text-shadow: 0 0 18px rgba(126, 211, 33, 0.45);
+.h1 span.small {
+  font-size: 0.62em;
 }
-.h1 span.black {
-  color: var(--ink);
+.swoosh {
+  display: block;
+  width: min(420px, 88%);
+  margin-top: 10px;
+}
+.swoosh svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.swoosh path {
+  fill: none;
+  stroke: #2b323b;
+  stroke-width: 3;
+  stroke-linecap: round;
 }
 .lead {
-  font-size: 20px;
-  line-height: 1.6;
-  margin: 0 0 30px;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 20px;
   color: var(--ink);
   font-weight: 700;
+}
+.lead [data-gold-reveal] {
+  color: #fff;
+  background-image: linear-gradient(100deg, #a5741f, var(--sun) 40%, #f3d998 55%, var(--sun) 70%, #a5741f);
+  background-size: 260% auto;
+  animation: goldSweep 5s linear infinite;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  border-radius: 4px;
+  padding: 0.05em 0.2em;
+  box-shadow: 0 1px 6px rgba(165, 116, 31, 0.35);
+}
+@keyframes goldSweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lead [data-gold-reveal] {
+    animation: none;
+    background-position: 0 0;
+  }
+}
+.lead [data-cursor] {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-inline-start: 1px;
+  background: currentColor;
+  vertical-align: text-bottom;
+  animation: leadCursorBlink 0.85s step-end infinite;
+}
+@keyframes leadCursorBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lead [data-cursor] {
+    animation: none;
+    opacity: 0;
+  }
 }
 .acts {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
 }
-/* הלוגו "לו״ז העניין" — מצויר ישירות על הרקע, בלי מסגרת/כרטיס. העז והלוח מפוצלים לשתי שכבות כדי שהעז תזוז כאילו היא יוצאת מהלוח */
+/* הלוגו "לו״ז העניין" — איור העז והלוח עם הכיתוב מוטבע בתוך התמונה, מצויר ישירות על הרקע בלי מסגרת/כרטיס */
 .art {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   align-self: end;
-  padding-top: 40px;
+  padding-top: 10px;
   z-index: 1;
   overflow: visible;
 }
 .paper {
   position: relative;
-  width: min(100%, 560px);
-  aspect-ratio: 1486 / 749;
+  width: min(100%, 460px);
+  aspect-ratio: 925 / 592;
   animation: float 7s ease-in-out infinite;
+  filter: drop-shadow(0 14px 22px rgba(31, 45, 51, 0.2));
+}
+.paper img {
+  object-fit: contain;
 }
 @keyframes float {
   0%,
@@ -101,91 +173,6 @@
   }
   50% {
     transform: translateY(-10px) rotate(1deg);
-  }
-}
-.calendarLayer {
-  position: absolute;
-  top: 0;
-  left: 20.9286%;
-  width: 79.0714%;
-  height: 100%;
-  filter: drop-shadow(0 14px 22px rgba(31, 45, 51, 0.22));
-}
-.calendarLayer img {
-  object-fit: contain;
-  object-position: left center;
-}
-/* שכבת העז — מונפשת בנפרד כדי שהיא תיראה כאילו קופצת החוצה מהלוח */
-.goatLayer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 20.9286%;
-  height: 100%;
-  transform-origin: 100% 85%;
-  animation: goat-peek 5s ease-in-out infinite;
-  filter: drop-shadow(0 14px 22px rgba(31, 45, 51, 0.22));
-}
-.goatLayer img {
-  object-fit: contain;
-  object-position: right center;
-}
-@keyframes goat-peek {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  28% {
-    transform: translateY(-10px) rotate(-5deg);
-  }
-  55% {
-    transform: translateY(-4px) rotate(4deg);
-  }
-}
-/* בועת "מההה" שקופצת ליד ראש העז */
-.meh {
-  position: absolute;
-  left: -4%;
-  top: -4%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 18px 10px;
-  background: #fff;
-  color: var(--terra);
-  font-family: var(--font-hand);
-  font-size: 26px;
-  line-height: 1;
-  border-radius: 999px 999px 4px 999px;
-  box-shadow: 0 10px 22px rgba(31, 45, 51, 0.18);
-  transform-origin: 90% 100%;
-  animation: meh-pop 4.5s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 2;
-  white-space: nowrap;
-}
-@keyframes meh-pop {
-  0%,
-  8% {
-    opacity: 0;
-    transform: scale(0.4) rotate(6deg);
-  }
-  16% {
-    opacity: 1;
-    transform: scale(1.12) rotate(2deg);
-  }
-  22% {
-    transform: scale(0.96) rotate(3deg);
-  }
-  28%,
-  70% {
-    opacity: 1;
-    transform: scale(1) rotate(2deg);
-  }
-  82%,
-  100% {
-    opacity: 0;
-    transform: scale(0.7) rotate(2deg);
   }
 }
 /* ---------- STATS ---------- */
@@ -202,6 +189,19 @@
   text-align: center;
   box-shadow: 0 10px 30px rgba(31, 45, 51, 0.08);
   border-top: 6px solid var(--sea);
+  transition:
+    transform 0.25s var(--ease-snap),
+    box-shadow 0.25s var(--ease-snap);
+}
+.stat:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 34px rgba(31, 45, 51, 0.14);
+}
+.stat b {
+  transition: transform 0.25s var(--ease-snap);
+}
+.stat:hover b {
+  transform: scale(1.08);
 }
 .stat:nth-child(2) {
   border-top-color: var(--terra);
@@ -234,7 +234,7 @@
 }
 .subj {
   display: block;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.3);
   border-radius: 160px 160px 24px 24px;
   overflow: hidden;
   box-shadow: 0 12px 30px rgba(31, 45, 51, 0.08);
@@ -248,14 +248,25 @@
 .subj:hover {
   transform: translateY(-6px);
 }
+/* "חצי הירח" — חלון עם קו מתאר עט כחול, מתמלא בגוון הבית ב-hover */
 .arch {
   height: 200px;
-  background: var(--sea-soft, #eef6f5);
+  margin: 14px 14px 0;
+  border-radius: 120px 120px 16px 16px;
+  background: transparent;
+  border: 2px solid var(--blue);
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background-color 0.3s var(--ease-snap),
+    border-color 0.3s var(--ease-snap);
+}
+.subj:hover .arch {
+  background: color-mix(in srgb, var(--accent, var(--blue)) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent, var(--blue)) 70%, var(--blue));
 }
 .houseWrap {
   position: relative;
@@ -273,24 +284,6 @@
 .subj:hover .house {
   transform: translateY(-3px) scale(1.02);
 }
-.houseTitle {
-  position: absolute;
-  left: 24%;
-  right: 13%;
-  top: 32%;
-  bottom: 18%;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: var(--font-hand);
-  font-weight: 400;
-  font-size: clamp(16px, 2.3vw, 24px);
-  line-height: 1.15;
-  color: var(--ink);
-  pointer-events: none;
-}
 .arch b {
   position: absolute;
   inset: 0;
@@ -299,6 +292,10 @@
   font-size: 60px;
   color: #fff;
   text-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s var(--ease-snap);
+}
+.subj:hover .arch b {
+  transform: translateY(-3px) scale(1.08) rotate(-4deg);
 }
 .subj > h3 {
   font-family: var(--font-hand);
@@ -311,6 +308,11 @@
   font-style: normal;
   color: var(--terra);
   font-weight: 700;
+  display: inline-block;
+  transition: transform 0.25s var(--ease-snap);
+}
+.subj:hover em {
+  transform: translateX(-5px);
 }
 .code {
   display: inline-block;
@@ -325,168 +327,54 @@
 
 /* ---------- PACK (מסלול מומלץ) ---------- */
 .pack {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  position: relative;
   margin-bottom: 100px;
   border-radius: 32px;
   overflow: hidden;
   box-shadow: 0 20px 50px rgba(31, 45, 51, 0.12);
-  background: #fff;
+  height: 460px;
+  background: url("/pack-monthly.png") center / cover no-repeat;
 }
 .packBody {
-  padding: 60px 54px;
-  background: linear-gradient(135deg, var(--sea), var(--sea2));
-  color: #fff;
-  position: relative;
-}
-.packBody::before {
-  content: "";
   position: absolute;
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  border: 40px solid rgba(255, 255, 255, 0.08);
-  inset-inline-end: -120px;
-  bottom: -120px;
-  pointer-events: none;
+  top: 9%;
+  bottom: 5%;
+  left: 60%;
+  right: 18%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--ink);
 }
 .packBody h3 {
   font-family: var(--font-hand);
   font-weight: 400;
-  font-size: 42px;
+  font-size: clamp(24px, 2.6vw, 40px);
   margin: 0 0 14px;
-  position: relative;
 }
 .packBody ul {
   list-style: none;
   padding: 0;
-  margin: 0 0 24px;
-  line-height: 2;
-  font-size: 17px;
-  position: relative;
+  margin: 0 0 20px;
+  line-height: 1.7;
+  font-size: clamp(12px, 1vw, 16px);
 }
 .packBody li::before {
   content: "✎";
-  color: var(--sun);
-  margin-inline-end: 10px;
+  color: var(--terra);
+  margin-inline-end: 8px;
 }
 .price {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 56px;
-  margin-bottom: 22px;
+  font-size: clamp(28px, 3.2vw, 48px);
+  margin-bottom: 18px;
   line-height: 1;
-  position: relative;
 }
 .price small {
-  font-size: 16px;
+  font-size: clamp(11px, 0.9vw, 15px);
   font-family: var(--font-sans);
-  opacity: 0.85;
-}
-/* צד ויזואלי: כריכת מחברת כהה עם דוגמת שברונים בצהוב-חרדל */
-.packVisual {
-  padding: 44px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(160deg, #3a2e22, #2a2118);
-}
-.packVisual::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.9;
-  background-image:
-    linear-gradient(135deg, transparent 0 46%, #d9a441 46% 54%, transparent 54% 100%),
-    linear-gradient(45deg, transparent 0 46%, #d9a441 46% 54%, transparent 54% 100%);
-  background-size: 180px 180px;
-  background-position:
-    0 0,
-    0 0;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.55));
-}
-.packVisual > * {
-  position: relative;
-}
-/* לוח-שבוע קטן: "העיקר" מסומן, השאר פנוי */
-.sheet {
-  width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 18px 40px rgba(31, 45, 51, 0.12);
-  overflow: hidden;
-  border: 1px solid #efe6d8;
-  transform: rotate(-2deg);
-}
-.sheetTop {
-  background: var(--terra);
-  color: #fff;
-  padding: 18px 22px 14px;
-  font-family: var(--font-hand);
-  font-size: 26px;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-.sheetTop small {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  opacity: 0.9;
-}
-.days {
-  display: grid;
-  grid-template-columns: 64px repeat(5, 1fr);
-  gap: 6px;
-  padding: 16px 18px 12px;
-  font-size: 13px;
-  text-align: center;
-}
-.days i {
-  font-style: normal;
-  font-size: 12px;
-  opacity: 0.55;
-  font-weight: 700;
-  align-self: center;
-}
-.days span {
-  min-height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: #f4f0e8;
-  color: #b7aa97;
-  font-weight: 700;
-}
-.days .core {
-  background: var(--sea);
-  color: #fff;
-}
-.days .done {
-  background: var(--sun);
-  color: var(--ink);
-}
-.days .free {
-  background: #fff;
-  border: 1.5px dashed #e6dccb;
-  color: #c7bba8;
-}
-.legend {
-  display: flex;
-  gap: 14px;
-  padding: 0 18px 18px;
-  font-size: 12px;
-  opacity: 0.85;
-  flex-wrap: wrap;
-}
-.legend b {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-inline-end: 6px;
-  vertical-align: middle;
+  opacity: 0.75;
 }
 
 /* ---------- QUOTES ---------- */
@@ -497,23 +385,38 @@
   margin-bottom: 100px;
 }
 .q {
-  background: #fff;
-  border-radius: 24px;
-  padding: 28px;
-  box-shadow: 0 10px 30px rgba(31, 45, 51, 0.08);
   position: relative;
-  border-inline-start: 6px solid var(--terra);
+  aspect-ratio: 0.95;
+  transition: transform 0.25s var(--ease-snap);
 }
-.quotes > :nth-child(2) .q {
-  border-color: var(--sea);
+.q:hover {
+  transform: translateY(-6px) rotate(-1deg);
 }
-.quotes > :nth-child(3) .q {
-  border-color: var(--sun);
+.memoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top;
+  z-index: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 22px rgba(31, 45, 51, 0.16));
+  transition: filter 0.25s var(--ease-snap);
+}
+.q:hover .memoImg {
+  filter: drop-shadow(0 16px 30px rgba(31, 45, 51, 0.22));
+}
+.qBody {
+  position: relative;
+  z-index: 1;
+  padding: 21% 13% 8%;
 }
 .q p {
-  font-size: 17px;
-  line-height: 1.7;
-  margin: 0 0 18px;
+  font-size: 16px;
+  line-height: 1.65;
+  margin: 0 0 16px;
+  color: var(--ink);
 }
 .who {
   display: flex;
@@ -534,6 +437,10 @@
   background: var(--terra);
   border: 3px solid var(--plaster);
   box-shadow: 0 0 0 2px var(--terra);
+  transition: transform 0.25s var(--ease-snap);
+}
+.q:hover .av {
+  transform: scale(1.1) rotate(-6deg);
 }
 .quotes > :nth-child(2) .av {
   background: var(--sea);
@@ -557,39 +464,141 @@
   padding: 30px 20px;
 }
 .n {
-  width: 80px;
-  height: 80px;
-  border-radius: 50% 50% 50% 0;
-  background: var(--sea);
-  color: #fff;
+  width: 124px;
+  height: 124px;
+  background: url("/images/step-circle-1.png") center / contain no-repeat;
+  color: #3a9684;
   display: grid;
   place-items: center;
   margin: 0 auto 18px;
   font-family: var(--font-display);
-  font-size: 32px;
-  transform: rotate(-45deg);
+  font-size: 44px;
+  transition: transform 0.3s var(--ease-snap);
 }
-.n span {
-  transform: rotate(45deg);
+.step:hover .n {
+  transform: scale(1.12) translateY(-4px);
 }
 .steps > :nth-child(2) .n {
-  background: var(--terra);
+  background-image: url("/images/step-circle-2.png");
+  color: #fc555c;
 }
 .steps > :nth-child(3) .n {
-  background: var(--sun);
-  color: var(--ink);
+  background-image: url("/images/step-circle-3.png");
+  color: #c1fa06;
 }
 .step h4 {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6px;
   font-family: var(--font-hand);
   font-weight: 400;
   font-size: 24px;
   margin: 0 0 8px;
+}
+.highlight {
+  background: color-mix(in srgb, #3a9684 50%, transparent);
+  padding: 2px 8px;
+  border-radius: 3px 10px 5px 9px / 8px 3px 10px 4px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.steps > :nth-child(2) .highlight {
+  background: color-mix(in srgb, #fc555c 50%, transparent);
+}
+.steps > :nth-child(3) .highlight {
+  background: color-mix(in srgb, #c1fa06 50%, transparent);
+}
+.stepMarker {
+  width: 130px;
+  height: auto;
+  flex-shrink: 0;
+  transform-origin: bottom left;
+  transform: rotate(-6deg);
+  animation: penWrite 2.6s ease-in-out infinite;
+}
+.steps > :nth-child(2) .stepMarker {
+  animation-delay: 0.5s;
+}
+.steps > :nth-child(3) .stepMarker {
+  animation-delay: 1s;
+}
+@keyframes penWrite {
+  0%,
+  100% {
+    transform: rotate(-6deg) translate(0, 0);
+  }
+  50% {
+    transform: rotate(-2deg) translate(-1px, -1px);
+  }
 }
 .step p {
   font-size: 15px;
   opacity: 0.75;
   line-height: 1.6;
   margin: 0;
+}
+
+/* ---------- KINDS HEAD (קשת מרקרים מסביב לכותרת) ---------- */
+.kindsHeadWrap {
+  position: relative;
+  width: min(100%, 640px);
+  aspect-ratio: 1920 / 1080;
+  margin: 0 auto 24px;
+}
+.kindsHeadImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.kindsHeadTitle {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 56%;
+  bottom: 4%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(18px, 2.6vw, 26px);
+  line-height: 1.3;
+}
+
+/* ---------- KINDS INTRO (עט מצייר מסגרת, המשפט "רק מה שצריך" בפנים) ---------- */
+.kindsNote {
+  position: relative;
+  width: min(100%, 620px);
+  aspect-ratio: 1920 / 1230;
+  margin: -2cm auto 46px;
+}
+.kindsNoteImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.kindsNoteText {
+  position: absolute;
+  left: 39%;
+  right: 38%;
+  top: 66.6%;
+  bottom: 7%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-hand);
+  font-size: clamp(14px, 1.6vw, 19px);
+  line-height: 1.5;
+  color: var(--ink);
+  padding: 0 14px;
 }
 
 /* ---------- KINDS (מה בכל ערכה) ---------- */
@@ -599,10 +608,12 @@
   gap: 16px;
   margin-bottom: 100px;
 }
+/* כרטיס "חצי-קשת" שקוף עם מסגרת עט כחול — כמו חלון ה-arch של המקצועות, ומתמלא בגוון שקוף ב-hover */
 .kind {
   min-height: 200px;
   border-radius: 100px 100px 12px 12px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid var(--blue);
   box-shadow: 0 10px 30px rgba(31, 45, 51, 0.08);
   display: flex;
   flex-direction: column;
@@ -611,13 +622,34 @@
   gap: 6px;
   text-align: center;
   padding: 24px 18px 20px;
-  border-bottom: 6px solid var(--sea);
+  transition:
+    transform 0.25s var(--ease-snap),
+    box-shadow 0.25s var(--ease-snap),
+    background-color 0.3s var(--ease-snap),
+    border-color 0.3s var(--ease-snap);
+}
+.kind:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 34px rgba(31, 45, 51, 0.14);
+  background: color-mix(in srgb, var(--accent, var(--blue)) 20%, transparent);
+  border-color: var(--accent, var(--blue));
 }
 .kinds > :nth-child(even) .kind {
   border-radius: 12px 12px 100px 100px;
-  border-bottom: 0;
-  border-top: 6px solid var(--terra);
   padding: 20px 18px 24px;
+}
+/* כל כרטיס מקבל צבע הובר משלו מהפלטה — כחול, זהב, חום, כחול-דיו */
+.kinds > :nth-child(1) .kind {
+  --accent: var(--sea);
+}
+.kinds > :nth-child(2) .kind {
+  --accent: var(--sun);
+}
+.kinds > :nth-child(3) .kind {
+  --accent: var(--terra);
+}
+.kinds > :nth-child(4) .kind {
+  --accent: var(--sea2);
 }
 .kind b {
   font-family: var(--font-hand);
@@ -625,17 +657,43 @@
   font-size: 24px;
   color: var(--sea2);
 }
-.kinds > :nth-child(even) .kind b {
-  color: var(--terra);
-}
 .kind span {
   font-size: 14px;
   opacity: 0.75;
   line-height: 1.5;
 }
-.kind em {
-  font-style: normal;
-  font-size: 30px;
+/* אייקון קו דק שחור — מצייר את עצמו קו-אחר-קו כשעומדים על הכרטיס */
+.kindIcon {
+  width: 38px;
+  height: 38px;
+  color: var(--ink);
+  transition:
+    transform 0.3s var(--ease-snap),
+    color 0.3s var(--ease-snap);
+}
+.kind:hover .kindIcon {
+  transform: scale(1.14) rotate(-4deg);
+  color: var(--accent, var(--ink));
+}
+.kindIcon path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.6s var(--ease-snap);
+}
+.kind:hover .kindIcon path {
+  stroke-dashoffset: 0;
+}
+.kind:hover .kindIcon path:nth-child(2) {
+  transition-delay: 0.08s;
+}
+.kind:hover .kindIcon path:nth-child(3) {
+  transition-delay: 0.16s;
+}
+.kind:hover .kindIcon path:nth-child(4) {
+  transition-delay: 0.24s;
+}
+.kind:hover .kindIcon path:nth-child(5) {
+  transition-delay: 0.32s;
 }
 
 /* ---------- SECURITY ---------- */
@@ -647,6 +705,12 @@
   gap: 24px;
   align-items: center;
   flex-wrap: wrap;
+}
+.secure .shieldIcon {
+  transition: transform 0.35s var(--ease-snap);
+}
+.secure:hover .shieldIcon {
+  transform: rotate(-10deg) scale(1.1);
 }
 .secure h3 {
   font-family: var(--font-hand);
@@ -663,7 +727,6 @@
 
 @media (max-width: 900px) {
   .subjects,
-  .pack,
   .quotes,
   .steps {
     grid-template-columns: 1fr;
@@ -674,12 +737,11 @@
   }
   .hero {
     border-radius: 0 0 120px 120px;
-    min-height: 520px;
   }
   .heroGrid {
     grid-template-columns: 1fr;
     padding: 30px 24px 90px;
-    min-height: 0;
+    height: auto;
   }
   .art {
     order: 2;
@@ -689,11 +751,29 @@
   .paper {
     width: min(100%, 380px);
   }
-  .packBody {
-    padding: 40px 28px;
+  /* מובייל: הכרטיס לא צר מספיק בשביל שהטקסט יישב על התמונה — התמונה הופכת לבאנר, והטקסט יורד מתחת */
+  .pack {
+    height: auto;
+    background: none;
   }
-  .packVisual {
-    padding: 28px 20px;
+  .pack::before {
+    content: "";
+    display: block;
+    height: 220px;
+    background: url("/pack-monthly.png") center / cover no-repeat;
+  }
+  .packBody {
+    position: static;
+    inset: auto;
+    padding: 36px 28px;
+    background: linear-gradient(135deg, var(--sea), var(--sea2));
+    color: #fff;
+  }
+  .packBody li::before {
+    color: var(--sun);
+  }
+  .price small {
+    opacity: 0.85;
   }
   .secure {
     padding: 30px 24px;

@@ -2,12 +2,15 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
 import { getPlanPrices } from "@/lib/pricing";
-import { PLANS, SUBJECT_ICONS, SUBJECT_HOUSES, formatPrice } from "@/lib/constants";
+import { PLANS, SUBJECT_ICONS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS, formatPrice } from "@/lib/constants";
 import type { Category } from "@/db/schema";
+import type { CSSProperties } from "react";
 import Image from "next/image";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { HeroTitle } from "@/components/hero-title";
+import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
+import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
 import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -48,11 +51,10 @@ export default async function HomePage() {
           <div className={s.heroGrid}>
             <div className={s.heroIn}>
               <HeroTitle />
-              <p className={s.lead}>
-                כל פרק מגיע כערכה מוכנה — דף לתלמידה, דף למורה ומצגת — ומסודר בדיוק לפי מה
-                שחשוב לבגרות. ככה מתמקדים בעיקר, ונשאר זמן לכל שאר הדברים שמורה צריכה ויכולה
-                לתת לכיתה שלה.
-              </p>
+              <TypewriterLead
+                className={s.lead}
+                text="לראשונה! אתר חדשני ומקצועי שמאגד את כל חומרי הבגרות ללמידה בכיתה: שכפול, מערך שיעור ומצגת! תוספים מרעננים למנויות פרימיום. כן. הגיע הזמן להוציא את העז מהלו״ז, שתוכלי להתמקד בלוז העניין ולתת מעבר."
+              />
               <div className={s.acts}>
                 <Link href="/subjects" className="btn btn-primary text-base">
                   למאגר המקצועות
@@ -63,9 +65,7 @@ export default async function HomePage() {
               </div>
             </div>
             <div className={s.art}>
-              <div className={s.paper} role="img" aria-label="לו״ז העניין — בית לחומרי הבגרות">
-                <GoatCalendarArt />
-              </div>
+              <GoatCalendarArt />
             </div>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default async function HomePage() {
             המקצועות
           </h2>
           <p className="sec-sub" style={{ marginBottom: 46 }}>
-            בחרי קשת, היכנסי — ומהמקצוע יורדים ליחידות, לפנימי/חיצוני, לנושא ועד לפרק שאת
+            בחרי לך בית, היכנסי — ומהמקצוע יורדים ליחידות, לפנימי/חיצוני, לנושא ועד לפרק שאת
             מלמדת מחר.
           </p>
         </Reveal>
@@ -120,17 +120,23 @@ export default async function HomePage() {
                 className={s.subj}
                 aria-label={`פתיחת ${c.title}`}
               >
-                <div className={s.arch}>
+                <div
+                  className={s.arch}
+                  style={
+                    SUBJECT_HOUSE_COLORS[c.slug]
+                      ? ({ "--accent": SUBJECT_HOUSE_COLORS[c.slug] } as CSSProperties)
+                      : undefined
+                  }
+                >
                   {SUBJECT_HOUSES[c.slug] ? (
                     <div className={s.houseWrap}>
                       <img
                         className={s.house}
                         src={SUBJECT_HOUSES[c.slug]}
-                        alt=""
+                        alt={c.title}
                         width={356}
                         height={266}
                       />
-                      <h3 className={s.houseTitle}>{c.title}</h3>
                     </div>
                   ) : (
                     <b>{c.icon || SUBJECT_ICONS[c.slug] || "📘"}</b>
@@ -162,92 +168,38 @@ export default async function HomePage() {
                 לכל המסלולים
               </Link>
             </div>
-            <div className={s.packVisual} aria-hidden>
-              <div className={s.sheet}>
-                <div className={s.sheetTop}>
-                  <span>השבוע</span>
-                  <small>המערכת של רבקה · לשון + נביא</small>
-                </div>
-                <div className={s.days}>
-                  <i></i>
-                  <i>א</i>
-                  <i>ב</i>
-                  <i>ג</i>
-                  <i>ד</i>
-                  <i>ה</i>
-
-                  <i>1</i>
-                  <span className={s.core}>לשון</span>
-                  <span className={s.free}></span>
-                  <span className={s.core}>נביא</span>
-                  <span className={s.free}></span>
-                  <span className={s.done}>✓</span>
-
-                  <i>2</i>
-                  <span className={s.free}></span>
-                  <span className={s.core}>לשון</span>
-                  <span className={s.free}></span>
-                  <span className={s.done}>✓</span>
-                  <span className={s.free}></span>
-
-                  <i>3</i>
-                  <span className={s.core}>נביא</span>
-                  <span className={s.free}></span>
-                  <span className={s.done}>✓</span>
-                  <span className={s.free}></span>
-                  <span className={s.core}>לשון</span>
-
-                  <i>4</i>
-                  <span className={s.free}></span>
-                  <span className={s.free}></span>
-                  <span className={s.free}></span>
-                  <span className={s.core}>נביא</span>
-                  <span className={s.free}></span>
-                </div>
-                <div className={s.legend}>
-                  <span>
-                    <b style={{ background: "var(--sea)" }} />
-                    העיקר — שיעור מוכן
-                  </span>
-                  <span>
-                    <b style={{ background: "var(--sun)" }} />
-                    נמסר
-                  </span>
-                  <span>
-                    <b style={{ background: "#fff", border: "1.5px dashed #e6dccb" }} />
-                    זמן פנוי לכיתה
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </Reveal>
 
         {/* ================= KINDS ================= */}
         <Reveal>
-          <h2 className="sec-h">מה בכל ערכת שיעור</h2>
-          <p className="sec-sub" style={{ marginBottom: 46 }}>
-            רק מה שצריך כדי להיכנס לכיתה מוכנה — ולא גרם אחד יותר.
-          </p>
+          <div className={s.kindsHeadWrap}>
+            <img src="/images/markers-arc.png" alt="" className={s.kindsHeadImg} />
+            <h2 className={`sec-h ${s.kindsHeadTitle}`}>מה בכל ערכת שיעור</h2>
+          </div>
+          <div className={s.kindsNote}>
+            <img src="/images/pen-note.png" alt="" className={s.kindsNoteImg} />
+            <p className={s.kindsNoteText}>כל מה שצריך כדי להרים בכיתה שיעור מעולה, במינימום מאמץ.</p>
+          </div>
         </Reveal>
         <AnimatedGrid className={s.kinds}>
           <div className={s.kind}>
-            <em>📝</em>
+            <IconStudentPage className={s.kindIcon} />
             <b>דף לתלמידה</b>
             <span>משפטים להשלמה תוך כדי השיעור — הכיתה נשארת ערנית</span>
           </div>
           <div className={s.kind}>
-            <em>👩‍🏫</em>
+            <IconTeacherPage className={s.kindIcon} />
             <b>דף למורה</b>
             <span>אותו דף עם התשובות, סיפורים, שאלות לחידוד וחידות</span>
           </div>
           <div className={s.kind}>
-            <em>🖥️</em>
+            <IconPresentation className={s.kindIcon} />
             <b>מצגת מלווה</b>
             <span>לפי מהלך השיעור, למקרן או ללוח חכם</span>
           </div>
           <div className={s.kind}>
-            <em>📚</em>
+            <IconPastExams className={s.kindIcon} />
             <b>בגרויות קודמות</b>
             <span>שאלות לפי פרק עם פתרונות — לפרימיום</span>
           </div>
@@ -262,30 +214,39 @@ export default async function HomePage() {
         </Reveal>
         <AnimatedGrid className={s.quotes}>
           <div className={s.q}>
-            <p>
-              במקום לבנות כל ערב דף עבודה מאפס, אני פותחת את הפרק ומדפיסה. את הזמן שהתפנה אני
-              משקיעה בבנות שצריכות אותי יותר.
-            </p>
-            <div className={s.who}>
-              <span className={s.av}>ר</span>רבקה, מורה ללשון
+            <img src="/images/memo/memo-cream.png" alt="" className={s.memoImg} />
+            <div className={s.qBody}>
+              <p>
+                במקום לבנות כל ערב דף עבודה מאפס, אני פותחת את הפרק ומדפיסה. את הזמן שהתפנה אני
+                משקיעה בבנות שצריכות אותי יותר.
+              </p>
+              <div className={s.who}>
+                <span className={s.av}>ר</span>רבקה, מורה ללשון
+              </div>
             </div>
           </div>
           <div className={s.q}>
-            <p>
-              המצגת מסודרת בדיוק לפי מהלך השיעור, אז אני לא &quot;מלמדת מהדף&quot; — אני מלמדת את הכיתה.
-              זה ההבדל.
-            </p>
-            <div className={s.who}>
-              <span className={s.av}>מ</span>מלכה, מורה לנביא
+            <img src="/images/memo/memo-blue.png" alt="" className={s.memoImg} />
+            <div className={s.qBody}>
+              <p>
+                המצגת מסודרת בדיוק לפי מהלך השיעור, אז אני לא &quot;מלמדת מהדף&quot; — אני מלמדת את הכיתה.
+                זה ההבדל.
+              </p>
+              <div className={s.who}>
+                <span className={s.av}>מ</span>מלכה, מורה לנביא
+              </div>
             </div>
           </div>
           <div className={s.q}>
-            <p>
-              שאלות הבגרויות הקודמות לפי פרק חסכו לי שעות של חיפוש. סוף סוף יש לי זמן גם
-              לסיפור, גם לחידה — וגם לבגרות.
-            </p>
-            <div className={s.who}>
-              <span className={s.av}>ש</span>שרה, מורה להיסטוריה
+            <img src="/images/memo/memo-pink.png" alt="" className={s.memoImg} />
+            <div className={s.qBody}>
+              <p>
+                שאלות הבגרויות הקודמות לפי פרק חסכו לי שעות של חיפוש. סוף סוף יש לי זמן גם
+                לסיפור, גם לחידה — וגם לבגרות.
+              </p>
+              <div className={s.who}>
+                <span className={s.av}>ש</span>שרה, מורה להיסטוריה
+              </div>
             </div>
           </div>
         </AnimatedGrid>
@@ -302,21 +263,30 @@ export default async function HomePage() {
             <div className={s.n}>
               <span>1</span>
             </div>
-            <h4>בוחרים מקצוע</h4>
+            <h4>
+              <img src="/images/marker-1.png" alt="" className={s.stepMarker} />
+              <mark className={s.highlight}>בוחרים מקצוע</mark>
+            </h4>
             <p>תורה, נביא, כתובים, לשון, ספרות, אנגלית, יהדות, מתמטיקה, דינים, היסטוריה ועוד.</p>
           </div>
           <div className={s.step}>
             <div className={s.n}>
               <span>2</span>
             </div>
-            <h4>יורדים עד לפרק</h4>
+            <h4>
+              <img src="/images/marker-2.png" alt="" className={s.stepMarker} />
+              <mark className={s.highlight}>יורדים עד לפרק</mark>
+            </h4>
             <p>יחידות ← פנימי/חיצוני ← נושא ← פרשה/פרק. כל תיקייה עם סמל שאלון ותיאור קצר.</p>
           </div>
           <div className={s.step}>
             <div className={s.n}>
               <span>3</span>
             </div>
-            <h4>מורידים ומלמדים</h4>
+            <h4>
+              <img src="/images/marker-3.png" alt="" className={s.stepMarker} />
+              <mark className={s.highlight}>מורידים ומלמדים</mark>
+            </h4>
             <p>הקובץ מוטבע במספר האישי שלך ונשמר באזור האישי. מדפיסים — ונכנסים לכיתה.</p>
           </div>
         </AnimatedGrid>
@@ -325,7 +295,7 @@ export default async function HomePage() {
         <Reveal>
           <div className={`sea-panel ${s.secure}`}>
             <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-white/15">
-              <ShieldCheck className="h-9 w-9" aria-hidden />
+              <ShieldCheck className={`h-9 w-9 ${s.shieldIcon}`} aria-hidden />
             </span>
             <div className="flex-1 relative">
               <h3>כל קובץ מוטבע במספר האישי שלך</h3>

@@ -86,29 +86,15 @@ export const SUBJECT_ICONS: Record<string, string> = {
   sicha: "💬",
   chevra: "🤝",
   teacher: "🎓",
+  megilot: "📃",
 };
 
-/** בית צבעוני גנרי – משמש רק כגיבוי למקצוע בלי בית מעוצב משלו */
-const HOUSE_FILES = [
-  "house-01-purple.png",
-  "house-02-lime.png",
-  "house-03-pink.png",
-  "house-04-maroon.png",
-  "house-05-gold.png",
-  "house-06-orange.png",
-  "house-07-sky.png",
-  "house-08-mint.png",
-  "house-09-red.png",
-  "house-10-teal.png",
-  "house-11-salmon.png",
-  "house-12-peach.png",
-];
-
-/** בית מעוצב עם תמונה וכיתוב לכל מקצוע (מוצג בכרטיסי המקצועות) */
+/** בית מעוצב עם תמונה וכיתוב – רק למקצועות/יחידות שיש להם בית משלהם (מוצג בכרטיסי המקצועות) */
 const SUBJECT_HOUSE_FILES: Record<string, string> = {
   torah: "house-torah.png",
   navi: "house-navi.png",
   ktuvim: "house-ktuvim.png",
+  mishlei: "house-mishlei.png",
   lashon: "house-lashon.png",
   sifrut: "house-sifrut.png",
   english: "house-english.png",
@@ -118,14 +104,32 @@ const SUBJECT_HOUSE_FILES: Record<string, string> = {
   ezrachut: "house-ezrachut.png",
   sicha: "house-sicha.png",
   chevra: "house-chevra.png",
+  math: "house-math.png",
+  teacher: "house-teacher.png",
 };
 
 export const SUBJECT_HOUSES: Record<string, string> = Object.fromEntries(
-  Object.keys(SUBJECT_ICONS).map((slug, i) => [
-    slug,
-    `/images/houses/${SUBJECT_HOUSE_FILES[slug] ?? HOUSE_FILES[i % HOUSE_FILES.length]}`,
-  ]),
+  Object.entries(SUBJECT_HOUSE_FILES).map(([slug, file]) => [slug, `/images/houses/${file}`]),
 );
+
+/** צבע זהות לכל בית — משמש לצביעת חלון הבית ב-hover בדף הבית */
+export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
+  torah: "#b8895a",
+  navi: "#8a9bb8",
+  ktuvim: "#c9a15e",
+  mishlei: "#7fa87f",
+  lashon: "#6b7f99",
+  sifrut: "#b5766a",
+  english: "#5a9bb0",
+  yahadut: "#9b8bc4",
+  dinim: "#7d8fa3",
+  history: "#a68a5c",
+  ezrachut: "#6f8faa",
+  sicha: "#6fb8a8",
+  chevra: "#d99a5c",
+  math: "#7a8a89",
+  teacher: "#b0729a",
+};
 
 export function formatPrice(agorot: number) {
   return `₪${(agorot / 100).toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
