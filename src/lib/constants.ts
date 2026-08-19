@@ -88,7 +88,7 @@ export const SUBJECT_ICONS: Record<string, string> = {
   teacher: "🎓",
 };
 
-/** בית צבעוני לכל מקצוע שורש (מוצג בכרטיסי המקצועות) */
+/** בית צבעוני גנרי – משמש רק כגיבוי למקצוע בלי בית מעוצב משלו */
 const HOUSE_FILES = [
   "house-01-purple.png",
   "house-02-lime.png",
@@ -104,10 +104,26 @@ const HOUSE_FILES = [
   "house-12-peach.png",
 ];
 
+/** בית מעוצב עם תמונה וכיתוב לכל מקצוע (מוצג בכרטיסי המקצועות) */
+const SUBJECT_HOUSE_FILES: Record<string, string> = {
+  torah: "house-torah.png",
+  navi: "house-navi.png",
+  ktuvim: "house-ktuvim.png",
+  lashon: "house-lashon.png",
+  sifrut: "house-sifrut.png",
+  english: "house-english.png",
+  yahadut: "house-yahadut.png",
+  dinim: "house-dinim.png",
+  history: "house-history.png",
+  ezrachut: "house-ezrachut.png",
+  sicha: "house-sicha.png",
+  chevra: "house-chevra.png",
+};
+
 export const SUBJECT_HOUSES: Record<string, string> = Object.fromEntries(
   Object.keys(SUBJECT_ICONS).map((slug, i) => [
     slug,
-    `/images/houses/${HOUSE_FILES[i % HOUSE_FILES.length]}`,
+    `/images/houses/${SUBJECT_HOUSE_FILES[slug] ?? HOUSE_FILES[i % HOUSE_FILES.length]}`,
   ]),
 );
 
