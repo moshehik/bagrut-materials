@@ -238,6 +238,18 @@ export const templates = {
       ),
     };
   },
+  changeEmailVerify(name: string, newEmail: string, url: string) {
+    return {
+      subject: `אימות כתובת מייל חדשה – ${SITE_NAME}`,
+      text: `שלום ${name},\n\nביקשת לשנות את כתובת המייל שלך באתר ${SITE_NAME} לכתובת: ${newEmail}\nכדי לאשר את השינוי היכנסי לקישור (בתוקף ל-24 שעות):\n${url}\n\nאם לא ביקשת זאת – אפשר להתעלם מהודעה זו, כתובת המייל שלך לא תשתנה.`,
+      html: layoutHtml(
+        "אימות כתובת מייל חדשה",
+        `<p>שלום ${esc(name)},</p><p>ביקשת לשנות את כתובת המייל שלך לכתובת <b dir="ltr">${esc(newEmail)}</b>. לחצי על הכפתור כדי לאשר. הקישור בתוקף ל-24 שעות.</p>
+         <p style="color:#64748b;font-size:13px">אם לא ביקשת זאת – אפשר להתעלם מהודעה זו, כתובת המייל שלך לא תשתנה.</p>`,
+        { label: "אישור כתובת המייל החדשה", href: url },
+      ),
+    };
+  },
   verifyEmail(name: string, url: string) {
     return {
       subject: `אימות כתובת המייל – ${SITE_NAME}`,

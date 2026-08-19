@@ -27,6 +27,7 @@ export default async function LoginPage({
 
   return (
     <AuthShell
+      logoHeader
       icon={<LogIn className="h-6 w-6" />}
       title="ברוכה השבה, מורה"
       subtitle="התחברי כדי להוריד חומרים ולנהל את המנוי שלך"

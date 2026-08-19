@@ -30,6 +30,7 @@ export default async function RegisterPage({
 
   return (
     <AuthShell
+      logoHeader
       icon={<UserPlus className="h-6 w-6" />}
       title="הצטרפי ללו״ז העניין"
       subtitle="ההרשמה חינמית ולוקחת פחות מדקה"

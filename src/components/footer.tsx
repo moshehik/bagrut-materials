@@ -28,6 +28,7 @@ export function Footer() {
           <div className="font-display text-lg mb-3 text-sun">מידע</div>
           <ul className="space-y-1.5 text-white/90">
             <li><Link href="/terms" className="link-draw hover:text-sun">תנאי שימוש וזכויות יוצרים</Link></li>
+            <li><Link href="/privacy" className="link-draw hover:text-sun">מדיניות פרטיות</Link></li>
             <li><Link href="/accessibility" className="link-draw hover:text-sun">הצהרת נגישות</Link></li>
             <li><Link href="/contact" className="link-draw hover:text-sun">צרי קשר</Link></li>
           </ul>

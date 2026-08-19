@@ -14,13 +14,26 @@ import {
   CheckCircle2,
   Crown,
   ShieldCheck,
+  Settings2,
+  Heart,
+  Receipt,
+  XCircle,
 } from "lucide-react";
 import { db } from "@/db";
-import { categories, downloads, materials, purchases } from "@/db/schema";
+import { categories, downloads, materials, purchases, transactions, userInterests } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
-import { userHasPremium, getCategoryChain, chainToHref } from "@/lib/data";
-import { PLANS, TIERS, MATERIAL_KINDS, formatPrice } from "@/lib/constants";
+import { userHasPremium, getCategoryChain, chainToHref, getRootSubjects } from "@/lib/data";
+import { PLANS, TIERS, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
+import { EditNameForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
+import { updateInterestsAction, requestCancelSubscriptionAction } from "@/lib/actions/profile";
+
+const TX_TYPE_LABEL: Record<string, string> = {
+  charge: "חיוב",
+  refund: "זיכוי",
+  manual: "ידני",
+  adjustment: "התאמה",
+};
 
 export const metadata: Metadata = { title: "האזור האישי" };
 export const dynamic = "force-dynamic";
@@ -31,14 +44,21 @@ const fmtDate = (d: Date | null) =>
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ purchased?: string; verified?: string; limit?: string }>;
+  searchParams: Promise<{
+    purchased?: string;
+    verified?: string;
+    limit?: string;
+    emailchange?: string;
+    interests?: string;
+    cancelreq?: string;
+  }>;
 }) {
-  const { purchased, verified, limit } = await searchParams;
+  const { purchased, verified, limit, emailchange, interests, cancelreq } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
 
   const now = new Date();
-  const [hasPremium, activePurchases, recent] = await Promise.all([
+  const [hasPremium, activePurchases, recent, roots, myInterests, recentTx] = await Promise.all([
     userHasPremium(user),
     db
       .select({
@@ -67,7 +87,16 @@ export default async function AccountPage({
       .where(eq(downloads.userId, user.id))
       .orderBy(desc(downloads.createdAt))
       .limit(10),
+    getRootSubjects(),
+    db.select({ categoryId: userInterests.categoryId }).from(userInterests).where(eq(userInterests.userId, user.id)),
+    db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.userId, user.id))
+      .orderBy(desc(transactions.createdAt))
+      .limit(5),
   ]);
+  const interestIds = new Set(myInterests.map((r) => r.categoryId));
 
   // קישורים לפרקים של ההורדות האחרונות
   const hrefCache = new Map<number, string>();
@@ -106,6 +135,30 @@ export default async function AccountPage({
           <p className="text-sm">
             <b>ההזמנה נרשמה בהצלחה!</b> אפשר להתחיל להוריד. הרכישה מופיעה בטבלה למטה.
           </p>
+        </div>
+      )}
+      {emailchange === "1" && (
+        <div className="card p-4 flex items-center gap-3 border-emerald-200 bg-emerald-50 text-emerald-900 animate-pop">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <p className="text-sm">כתובת המייל עודכנה בהצלחה.</p>
+        </div>
+      )}
+      {emailchange === "0" && (
+        <div className="card p-4 flex items-center gap-3 border-pink/30 bg-pink-soft text-[#9d4a2a] animate-pop">
+          <XCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">אימות המייל נכשל – הקישור אינו תקף או שפג תוקפו. אפשר לנסות שוב.</p>
+        </div>
+      )}
+      {interests === "1" && (
+        <div className="card p-4 flex items-center gap-3 border-emerald-200 bg-emerald-50 text-emerald-900 animate-pop">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <p className="text-sm">נושאי הלימוד שלך נשמרו.</p>
+        </div>
+      )}
+      {cancelreq === "1" && (
+        <div className="card p-4 flex items-center gap-3 border-blue/20 bg-blue-soft text-blue-deep animate-pop">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <p className="text-sm">בקשת ביטול המנוי נשלחה למנהלת האתר – נחזור אלייך בהקדם.</p>
         </div>
       )}
 
@@ -152,6 +205,11 @@ export default async function AccountPage({
               <dt className="text-muted">מייל</dt>
               <dd className="font-semibold" dir="ltr">
                 {user.email}
+                {user.pendingEmail && (
+                  <span className="block text-xs font-normal text-gold mt-0.5" dir="rtl">
+                    ממתין לאימות: <span dir="ltr">{user.pendingEmail}</span>
+                  </span>
+                )}
               </dd>
             </div>
             <div>
@@ -169,6 +227,16 @@ export default async function AccountPage({
               </div>
             )}
           </dl>
+          <details className="mt-4 group">
+            <summary className="cursor-pointer text-sm font-semibold text-blue-deep flex items-center gap-1.5 select-none">
+              <Settings2 className="h-4 w-4" /> עריכת פרטים וסיסמה
+            </summary>
+            <div className="mt-4 space-y-5 border-t border-foreground/10 pt-4">
+              <EditNameForm currentName={user.name} />
+              <ChangeEmailForm currentEmail={user.email} pendingEmail={user.pendingEmail} />
+              <ChangePasswordForm />
+            </div>
+          </details>
         </section>
 
         {/* מספר אישי */}
@@ -212,6 +280,32 @@ export default async function AccountPage({
         </section>
       </div>
 
+      {/* נושאי לימוד שמעניינים */}
+      <section className="card p-6 animate-fade-up">
+        <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
+          <Heart className="h-5 w-5 text-pink" /> נושאי לימוד שמעניינים אותי
+        </h2>
+        <p className="text-sm text-muted mb-4">נסמן מקצועות שמעניינים אותנו – יעזור לנו להתאים לך עדכונים והמלצות.</p>
+        <form action={updateInterestsAction} className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {roots.map((r) => (
+              <label
+                key={r.id}
+                className="flex items-center gap-2 rounded-xl border border-foreground/10 px-3 py-2 text-sm cursor-pointer hover:bg-blue-soft/40 has-[:checked]:bg-blue-soft has-[:checked]:border-blue/30"
+              >
+                <input type="checkbox" name="categoryIds" value={r.id} defaultChecked={interestIds.has(r.id)} className="accent-[var(--blue)]" />
+                <span>
+                  {r.icon ?? SUBJECT_ICONS[r.slug] ?? "📘"} {r.title}
+                </span>
+              </label>
+            ))}
+          </div>
+          <button type="submit" className="btn btn-ghost text-sm">
+            שמירת נושאים
+          </button>
+        </form>
+      </section>
+
       {/* רכישות ומנויים */}
       <section className="card p-6 animate-fade-up">
         <div className="flex items-center justify-between mb-4">
@@ -240,6 +334,7 @@ export default async function AccountPage({
                   <th className="text-start font-medium py-2 px-2">בתוקף עד</th>
                   <th className="text-start font-medium py-2 px-2">פרימיום</th>
                   <th className="text-start font-medium py-2 px-2">סכום</th>
+                  <th className="text-start font-medium py-2 px-2">פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,6 +381,18 @@ export default async function AccountPage({
                         )}
                       </td>
                       <td className="py-3 px-2 whitespace-nowrap">{formatPrice(p.amount)}</td>
+                      <td className="py-3 px-2 whitespace-nowrap">
+                        <form action={requestCancelSubscriptionAction}>
+                          <input type="hidden" name="purchaseId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="text-xs text-muted hover:text-[#9d4a2a] flex items-center gap-1"
+                            title="בקשת ביטול המנוי – תטופל על ידי מנהלת האתר"
+                          >
+                            <XCircle className="h-3.5 w-3.5" /> בקשת ביטול
+                          </button>
+                        </form>
+                      </td>
                     </tr>
                   );
                 })}
@@ -295,11 +402,49 @@ export default async function AccountPage({
         )}
       </section>
 
+      {/* היסטוריית תשלומים */}
+      <section className="card p-6 animate-fade-up">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <Receipt className="h-5 w-5 text-gold" /> היסטוריית תשלומים
+          </h2>
+          <Link href="/account/payments" className="text-sm text-blue-deep hover:underline">
+            לכל ההיסטוריה
+          </Link>
+        </div>
+        {recentTx.length === 0 ? (
+          <p className="text-center py-8 text-muted text-sm">עדיין אין תנועות כספיות.</p>
+        ) : (
+          <ul className="divide-y divide-foreground/5 text-sm">
+            {recentTx.map((t) => (
+              <li key={t.id} className="py-3 flex items-center gap-3">
+                <span className={`chip ${t.amount < 0 ? "bg-emerald-50 text-emerald-700" : "bg-blue-soft text-blue-deep"}`}>
+                  {TX_TYPE_LABEL[t.type] ?? t.type}
+                </span>
+                <div className="min-w-0 flex-1">
+                  {t.note && <p className="truncate">{t.note}</p>}
+                  <p className="text-xs text-muted">{fmtDate(t.createdAt)}{t.method ? ` · ${t.method}` : ""}</p>
+                </div>
+                <span className={`font-semibold whitespace-nowrap ${t.amount < 0 ? "text-emerald-700" : ""}`}>
+                  {t.amount < 0 ? "-" : ""}
+                  {formatPrice(Math.abs(t.amount))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* הורדות אחרונות */}
       <section className="card p-6 animate-fade-up">
-        <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Download className="h-5 w-5 text-pink" /> הורדות אחרונות
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <Download className="h-5 w-5 text-pink" /> הורדות אחרונות
+          </h2>
+          <Link href="/account/downloads" className="text-sm text-blue-deep hover:underline">
+            לכל ההיסטוריה
+          </Link>
+        </div>
         {recentWithHref.length === 0 ? (
           <div className="text-center py-10 text-muted">
             <p>עדיין לא הורדת חומרים.</p>

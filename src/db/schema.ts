@@ -58,6 +58,8 @@ export const users = pgTable(
     googleId: varchar("google_id", { length: 64 }),
     avatarUrl: text("avatar_url"),
     emailVerified: boolean("email_verified").notNull().default(false),
+    /** מייל חדש שממתין לאימות (בתהליך שינוי כתובת מייל) */
+    pendingEmail: varchar("pending_email", { length: 255 }),
     /** חשבון מושהה – לא יכול להתחבר/להוריד */
     suspended: boolean("suspended").notNull().default(false),
     suspendReason: text("suspend_reason"),
@@ -341,6 +343,25 @@ export const transactions = pgTable(
   (t) => [index("transactions_created_idx").on(t.createdAt), index("transactions_user_idx").on(t.userId)],
 );
 
+/** נושאי לימוד שמעניינים את המשתמשת (להתאמת המלצות/עדכונים) */
+export const userInterests = pgTable(
+  "user_interests",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("user_interests_user_cat_idx").on(t.userId, t.categoryId),
+    index("user_interests_user_idx").on(t.userId),
+  ],
+);
+
 /** טוקנים לאיפוס סיסמה / אימות מייל */
 export const authTokens = pgTable(
   "auth_tokens",
@@ -403,3 +424,4 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
+export type UserInterest = typeof userInterests.$inferSelect;
