@@ -1,7 +1,8 @@
 import type { MaterialKind, Tier, Plan } from "@/db/schema";
 
-export const SITE_NAME = "חומרים לבגרות";
-export const SITE_TAGLINE = "מאגר שיעורים מוכנים למורות במחוז החרדי";
+export const SITE_NAME = "לו״ז העניין";
+export const SITE_TAGLINE = "מתמקדים בעיקר – שיעורים מוכנים למורות במחוז החרדי";
+export const SITE_MOTTO = "מתמקדים בעיקר";
 
 export const TIERS: Record<Tier, { label: string; color: string; icon: string; order: number }> = {
   none: { label: "ללא", color: "#9ca3af", icon: "○", order: 0 },
@@ -86,6 +87,29 @@ export const SUBJECT_ICONS: Record<string, string> = {
   chevra: "🤝",
   teacher: "🎓",
 };
+
+/** בית צבעוני לכל מקצוע שורש (מוצג בכרטיסי המקצועות) */
+const HOUSE_FILES = [
+  "house-01-purple.png",
+  "house-02-lime.png",
+  "house-03-pink.png",
+  "house-04-maroon.png",
+  "house-05-gold.png",
+  "house-06-orange.png",
+  "house-07-sky.png",
+  "house-08-mint.png",
+  "house-09-red.png",
+  "house-10-teal.png",
+  "house-11-salmon.png",
+  "house-12-peach.png",
+];
+
+export const SUBJECT_HOUSES: Record<string, string> = Object.fromEntries(
+  Object.keys(SUBJECT_ICONS).map((slug, i) => [
+    slug,
+    `/images/houses/${HOUSE_FILES[i % HOUSE_FILES.length]}`,
+  ]),
+);
 
 export function formatPrice(agorot: number) {
   return `₪${(agorot / 100).toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;

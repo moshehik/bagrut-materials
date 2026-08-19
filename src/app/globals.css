@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
+/* ============================================================
+   לו״ז העניין — ערכת "פנקס המורה" (עיצוב 27)
+   נייר מחברת קרמי · קווי שורות · עט כחול · סימון אדום · טקסט כתב-יד
+   ============================================================ */
 :root {
-  --background: #fdfbf7;
-  --foreground: #1f2a44;
-  --blue: #2f6fed;
-  --blue-deep: #1d4ed8;
-  --blue-soft: #e8f0ff;
-  --pink: #f472b6;
-  --pink-soft: #fde8f3;
-  --oak: #b98555;
-  --oak-deep: #8a5a2b;
-  --oak-soft: #f3e6d5;
-  --gold: #d4a017;
-  --gold-soft: #fff4d6;
+  /* פלטת העיצוב */
+  --sea: #33456e; /* עט כחול-נייבי */
+  --sea2: #212f4d; /* דיו כחול עמוק */
+  --plaster: #fbf9f5; /* עמוד מחברת — לבנבן פנינה */
+  --terra: #b23a2e; /* סימון אדום */
+  --terra-deep: #8a2c22;
+  --sun: #d9a441; /* מרקר צהוב-חרדל */
+  --ink: #2e2a20; /* דיו חום-שחור חם */
+
+  /* מיפוי ל-tokens הקיימים בכל האתר */
+  --background: var(--plaster);
+  --foreground: var(--ink);
+  --blue: var(--sea);
+  --blue-deep: var(--sea2);
+  --blue-soft: #e3e7f0;
+  --pink: var(--terra);
+  --pink-soft: #f4e1db;
+  --oak: #6e8b54; /* ירוק זית — עכשיו גוון עצמאי, לא כפילות של terra */
+  --oak-deep: #4f6b3b;
+  --oak-soft: #e6ebdc;
+  --gold: var(--sun);
+  --gold-soft: #f7ead0;
   --card: #ffffff;
-  --muted: #64748b;
-  --ring: rgba(47, 111, 237, 0.35);
+  --muted: #756b57;
+  --ring: rgba(51, 69, 110, 0.35);
+
+  /* קווי מחברת (תכלת בהיר) ומרווח שוליים אדום */
+  --rule: rgba(94, 186, 224, 0.55);
+  --margin: rgba(178, 58, 46, 0.38);
+
+  /* עקומת תנועה חדה — לאנימציות מודרניות וקצובות */
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-sea: var(--sea);
+  --color-sea2: var(--sea2);
+  --color-plaster: var(--plaster);
+  --color-terra: var(--terra);
+  --color-terra-deep: var(--terra-deep);
+  --color-sun: var(--sun);
+  --color-ink: var(--ink);
   --color-blue: var(--blue);
   --color-blue-deep: var(--blue-deep);
   --color-blue-soft: var(--blue-soft);
@@ -33,15 +61,17 @@
   --color-gold-soft: var(--gold-soft);
   --color-card: var(--card);
   --color-muted: var(--muted);
-  --font-sans: var(--font-heebo), system-ui, sans-serif;
-  --font-display: var(--font-frank), var(--font-heebo), serif;
-  --radius-2xl: 1.25rem;
-  --shadow-soft: 0 10px 30px -12px rgba(31, 42, 68, 0.18);
-  --shadow-lift: 0 22px 45px -18px rgba(47, 111, 237, 0.35);
+  --font-sans: var(--font-heebo), "Assistant", system-ui, sans-serif;
+  --font-display: var(--font-heebo), "Assistant", system-ui, sans-serif;
+  --font-hand: var(--font-gveret), "Gveret Levin", cursive;
+  --radius-2xl: 1.5rem;
+  --shadow-soft: 0 10px 30px rgba(31, 45, 51, 0.08);
+  --shadow-lift: 0 20px 50px rgba(31, 45, 51, 0.14);
   --animate-float: float 6s ease-in-out infinite;
   --animate-shimmer: shimmer 2.8s linear infinite;
-  --animate-fade-up: fade-up 0.6s ease-out both;
-  --animate-pop: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-fade-up: fade-up 0.4s var(--ease-snap) both;
+  --animate-pop: pop 0.3s var(--ease-snap) both;
+  --animate-draw: draw-line 0.5s var(--ease-snap) both;
 
   @keyframes float {
     0%,
@@ -60,10 +90,11 @@
       background-position: 200% 0;
     }
   }
+  /* כניסה שקופה, קצרה וחדה — בלי קפיצים, רק דהייה עדינה */
   @keyframes fade-up {
     from {
       opacity: 0;
-      transform: translateY(14px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
@@ -73,11 +104,20 @@
   @keyframes pop {
     from {
       opacity: 0;
-      transform: scale(0.92);
+      transform: scale(0.94);
     }
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+  /* קו דק שמצייר את עצמו — קצה ימין (תחילת הקריאה בעברית) */
+  @keyframes draw-line {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
     }
   }
 }
@@ -87,37 +127,62 @@ html {
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image: repeating-linear-gradient(var(--background) 0 35px, var(--rule) 35px 36px);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
-  background-image:
-    radial-gradient(1200px 600px at 100% -10%, rgba(232, 240, 255, 0.9), transparent 60%),
-    radial-gradient(900px 500px at -10% 20%, rgba(253, 232, 243, 0.8), transparent 60%),
-    radial-gradient(700px 400px at 50% 110%, rgba(255, 244, 214, 0.9), transparent 60%);
-  background-attachment: fixed;
 }
 
+/* כותרות "מוצקות" — sans מודגש, קריא בכל מקום כולל טבלאות וסכומים */
 .font-display {
   font-family: var(--font-display);
+  font-weight: 800 !important;
+  letter-spacing: -0.01em;
+}
+
+/* כותרות "כתב-יד" — פינת המותג: לוגו, הירו, ציטוטים, כותרות מקטע */
+.font-hand {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* רקע קווי מחברת — פס שוליים אדום + קווי שורה כחולים דהויים */
+.notebook-lines {
+  background-image:
+    linear-gradient(90deg, transparent 0 52px, var(--margin) 52px 53px, transparent 53px),
+    repeating-linear-gradient(
+      var(--plaster) 0 35px,
+      var(--rule) 35px 36px
+    );
 }
 
 .card {
   background: var(--card);
-  border: 1px solid rgba(31, 42, 68, 0.06);
-  border-radius: 1.25rem;
+  border: 1px solid rgba(46, 42, 32, 0.08);
+  border-radius: 14px 16px 14px 18px; /* עיגול לא-אחיד — נגיעה של יד */
   box-shadow: var(--shadow-soft);
 }
 
 .card-hover {
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    border-color 0.25s ease;
+    transform 0.2s var(--ease-snap),
+    box-shadow 0.2s var(--ease-snap),
+    border-color 0.2s var(--ease-snap);
 }
 .card-hover:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   box-shadow: var(--shadow-lift);
-  border-color: rgba(47, 111, 237, 0.25);
+  border-color: rgba(51, 69, 110, 0.25);
+}
+
+/* כרטיס-קשת: נשאר לתאימות עם דפים שמשתמשים בו, מעוגל עדין יותר בסגנון החדש */
+.arch-card {
+  border-radius: 28px 28px 16px 16px;
+}
+.arch-top {
+  border-radius: 22px 22px 14px 14px;
 }
 
 .btn {
@@ -126,59 +191,81 @@ body {
   justify-content: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  padding: 0.65rem 1.4rem;
-  font-weight: 600;
+  padding: 0.75rem 1.6rem;
+  font-weight: 700;
   transition:
-    transform 0.15s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease,
-    opacity 0.2s ease;
+    transform 0.16s var(--ease-snap),
+    box-shadow 0.16s var(--ease-snap),
+    background 0.16s var(--ease-snap),
+    opacity 0.16s var(--ease-snap);
   cursor: pointer;
   white-space: nowrap;
 }
+.btn:hover {
+  transform: translateY(-2px);
+}
 .btn:active {
   transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 .btn-primary {
-  background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+  background: var(--terra);
   color: #fff;
-  box-shadow: 0 10px 24px -10px rgba(47, 111, 237, 0.6);
+  box-shadow: 0 8px 20px rgba(178, 58, 46, 0.32);
 }
 .btn-primary:hover {
-  box-shadow: 0 14px 30px -10px rgba(47, 111, 237, 0.75);
-  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(178, 58, 46, 0.42);
+}
+.btn-sea {
+  background: var(--sea);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(51, 69, 110, 0.32);
+}
+.btn-sea:hover {
+  box-shadow: 0 12px 26px rgba(51, 69, 110, 0.42);
 }
 .btn-pink {
-  background: linear-gradient(135deg, #f9a8d4, var(--pink));
-  color: #4a0d2b;
-  box-shadow: 0 10px 24px -10px rgba(244, 114, 182, 0.6);
+  background: var(--terra);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(178, 58, 46, 0.32);
 }
 .btn-gold {
-  background: linear-gradient(135deg, #f7d774, var(--gold));
-  color: #4b3300;
-  box-shadow: 0 10px 24px -10px rgba(212, 160, 23, 0.6);
+  background: var(--sun);
+  color: var(--ink);
+  box-shadow: 0 8px 20px rgba(217, 164, 65, 0.38);
 }
 .btn-oak {
-  background: linear-gradient(135deg, var(--oak), var(--oak-deep));
+  background: var(--sea2);
   color: #fff;
+  box-shadow: 0 8px 20px rgba(33, 47, 77, 0.32);
 }
 .btn-ghost {
   background: transparent;
-  color: var(--blue-deep);
-  border: 1.5px solid rgba(47, 111, 237, 0.35);
+  color: var(--sea2);
+  border: 2px solid var(--sea);
+  box-shadow: none;
 }
 .btn-ghost:hover {
   background: var(--blue-soft);
 }
+.btn-line-white {
+  background: transparent;
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: none;
+}
+.btn-line-white:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
 
 .input {
   width: 100%;
-  border-radius: 0.9rem;
-  border: 1.5px solid rgba(31, 42, 68, 0.12);
+  border-radius: 1rem;
+  border: 1.5px solid rgba(31, 45, 51, 0.12);
   background: #fff;
   padding: 0.7rem 1rem;
   outline: none;
@@ -187,7 +274,7 @@ body {
     box-shadow 0.2s;
 }
 .input:focus {
-  border-color: var(--blue);
+  border-color: var(--sea);
   box-shadow: 0 0 0 4px var(--ring);
 }
 
@@ -196,13 +283,13 @@ body {
   align-items: center;
   gap: 0.35rem;
   border-radius: 9999px;
-  padding: 0.2rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .gold-text {
-  background: linear-gradient(90deg, #b8860b, #f5d061, #b8860b);
+  background: linear-gradient(90deg, #a5741f, var(--sun), #a5741f);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -210,14 +297,74 @@ body {
   animation: var(--animate-shimmer);
 }
 
+/* באנרים כהים באתר — עכשיו גרדיאנט עט כחול-נייבי */
 .wood {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.05) 0 2px,
-      transparent 2px 9px
-    ),
-    linear-gradient(135deg, #c9995f, var(--oak) 45%, var(--oak-deep));
+  background: linear-gradient(135deg, var(--sea), var(--sea2));
+}
+
+/* מקטע מודגש: רקע גרדיאנט נייבי עם קשת דקורטיבית */
+.sea-panel {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--sea), var(--sea2));
+  color: #fff;
+}
+.sea-panel::before {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 40px solid rgba(255, 255, 255, 0.08);
+  inset-inline-end: -120px;
+  bottom: -120px;
+  pointer-events: none;
+}
+
+/* כותרות מקטע במרכז — בכתב-יד, כמו כותרת פרק במחברת */
+.sec-h {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: clamp(32px, 4.4vw, 46px);
+  color: var(--sea2);
+  text-align: center;
+  line-height: 1.2;
+}
+.sec-sub {
+  text-align: center;
+  font-size: 18px;
+  opacity: 0.75;
+  max-width: 600px;
+  margin: 10px auto 0;
+  line-height: 1.6;
+}
+
+/* קו דק שמצייר את עצמו מתחת לכותרת מקטע — כמו קו-עט מתחת לכותרת במחברת */
+.sec-h::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 2px;
+  margin: 14px auto 0;
+  background: var(--sun);
+  transform-origin: right center;
+  animation: var(--animate-draw);
+  animation-delay: 0.15s;
+}
+
+/* קישור בקו דק שמצייר את עצמו בהובר — כמו עט שמסמן מילה */
+.link-draw {
+  position: relative;
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  background-size: 0% 1.5px;
+  transition: background-size 0.22s var(--ease-snap);
+}
+.link-draw:hover,
+.link-draw:focus-visible {
+  background-size: 100% 1.5px;
 }
 
 /* נגישות */
@@ -228,11 +375,15 @@ body {
   --background: #ffffff;
   --foreground: #000000;
   --muted: #222;
-  --blue: #0033cc;
-  --blue-deep: #001a80;
-  --pink: #b30059;
-  --gold: #8a6500;
-  --oak: #5c3a1a;
+  --sea: #16223d;
+  --sea2: #0e1729;
+  --terra: #7a2018;
+  --sun: #6b4e10;
+  --blue: #16223d;
+  --blue-deep: #0e1729;
+  --pink: #7a2018;
+  --gold: #6b4e10;
+  --oak: #33461f;
   background-image: none !important;
 }
 .a11y-high-contrast .card {
@@ -264,7 +415,7 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--blue);
+  outline: 3px solid var(--sea);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -273,7 +424,7 @@ body {
   position: absolute;
   top: -100px;
   right: 1rem;
-  background: var(--blue-deep);
+  background: var(--sea2);
   color: #fff;
   padding: 0.6rem 1rem;
   border-radius: 0.6rem;

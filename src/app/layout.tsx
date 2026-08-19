@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Heebo, Frank_Ruhl_Libre } from "next/font/google";
+import { Assistant, Gveret_Levin } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
@@ -10,16 +10,16 @@ import { SiteNotices } from "@/components/site-notices";
 import { Tracker } from "@/components/tracker";
 import { Suspense } from "react";
 
-const heebo = Heebo({
+const assistant = Assistant({
   variable: "--font-heebo",
   subsets: ["hebrew", "latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["300", "400", "600", "700", "800"],
 });
 
-const frank = Frank_Ruhl_Libre({
-  variable: "--font-frank",
+const gveretLevin = Gveret_Levin({
+  variable: "--font-gveret",
   subsets: ["hebrew", "latin"],
-  weight: ["500", "700", "900"],
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="he"
       dir="rtl"
-      className={`${heebo.variable} ${frank.variable} h-full antialiased`}
+      className={`${assistant.variable} ${gveretLevin.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a href="#main" className="skip-link">

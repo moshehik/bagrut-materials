@@ -63,7 +63,7 @@ export function VerifyEmailBanner({
       {msg && (
         <p
           role="status"
-          className={`mt-3 text-sm flex items-center gap-2 ${msg.ok ? "text-green-800" : "text-[#8a1c4f]"}`}
+          className={`mt-3 text-sm flex items-center gap-2 ${msg.ok ? "text-green-800" : "text-[#9d4a2a]"}`}
         >
           {msg.ok ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
           {msg.text}

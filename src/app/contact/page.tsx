@@ -12,7 +12,7 @@ export default function ContactPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <div className="text-center animate-fade-up">
-        <span className="chip bg-pink-soft text-[#9d174d]">
+        <span className="chip bg-pink-soft text-[#9d4a2a]">
           <MessageSquare className="h-3.5 w-3.5" aria-hidden /> נשמח לשמוע ממך
         </span>
         <h1 className="font-display mt-3 text-4xl font-black">צרי קשר</h1>

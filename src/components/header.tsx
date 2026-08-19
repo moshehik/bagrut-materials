@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X, BookOpen, Crown, LogIn, UserRound, ShieldCheck, ShoppingCart } from "lucide-react";
-import { SITE_NAME, TIERS } from "@/lib/constants";
+import { Menu, X, LogIn, UserRound, ShieldCheck, ShoppingCart } from "lucide-react";
+import { TIERS } from "@/lib/constants";
 import type { Tier } from "@/db/schema";
 import { logoutAction } from "@/lib/actions/auth";
 
@@ -49,7 +49,7 @@ function CartLink({ count, className, onClick, withLabel }: { count: number; cla
       <span className="relative">
         <ShoppingCart className="h-5 w-5" />
         {count > 0 && (
-          <span className="absolute -top-2 -start-2 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-pink text-white text-[10px] font-bold leading-none animate-pop">
+          <span className="absolute -top-2 -start-2 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-terra text-white text-[10px] font-bold leading-none animate-pop">
             {count > 99 ? "99+" : count}
           </span>
         )}
@@ -62,10 +62,19 @@ function CartLink({ count, className, onClick, withLabel }: { count: number; cla
 const NAV = [
   { href: "/subjects", label: "המקצועות" },
   { href: "/map", label: "מפת הבגרות" },
-  { href: "/pricing", label: "מסלולים ומחירים" },
+  { href: "/pricing", label: "מסלולים" },
   { href: "/forum", label: "פורום מורות" },
-  { href: "/sell", label: "מכירת חומרים" },
+  { href: "/sell", label: "מוכרות" },
 ];
+
+/** לוגו "לו״ז העניין" — כתב-יד (Gveret Levin), דיו כחול עמוק */
+export function Logo({ className = "" }: { className?: string }) {
+  return (
+    <span className={`font-hand leading-none text-sea2 ${className}`}>
+      לו״ז העניין
+    </span>
+  );
+}
 
 export function Header({ user }: { user: HeaderUser }) {
   const [open, setOpen] = useState(false);
@@ -73,18 +82,14 @@ export function Header({ user }: { user: HeaderUser }) {
   const cartCount = useCartCount(!!user);
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md bg-white/75 border-b border-blue/10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center gap-4">
+    <header className="sticky top-0 z-40 backdrop-blur-md bg-plaster/85 border-b border-sea/10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 h-[74px] flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 group" aria-label="דף הבית">
-          <span className="relative grid place-items-center h-10 w-10 rounded-2xl bg-gradient-to-br from-blue to-blue-deep text-white shadow-lg shadow-blue/30 group-hover:rotate-6 transition-transform">
-            <BookOpen className="h-5 w-5" />
-            <span className="absolute -top-1 -left-1 h-3 w-3 rounded-full bg-pink animate-float" />
-          </span>
-          <span className="font-display font-bold text-xl leading-none">
-            {SITE_NAME}
-            <span className="block text-[10px] font-sans font-medium text-muted tracking-wide">
-              המחוז החרדי · שיעורים מוכנים
-            </span>
+          <Logo className="text-[28px] sm:text-[30px]" />
+          <span className="hidden sm:block text-[11px] font-semibold text-muted tracking-wide border-s border-sea/20 ps-3 leading-tight">
+            מתמקדים
+            <br />
+            בעיקר
           </span>
         </Link>
 
@@ -95,10 +100,10 @@ export function Header({ user }: { user: HeaderUser }) {
               <Link
                 key={n.href}
                 href={n.href}
-                className={`px-3 py-2 rounded-full text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded-full text-[15px] font-semibold transition-colors ${
                   active
-                    ? "bg-blue-soft text-blue-deep"
-                    : "text-foreground/80 hover:bg-blue-soft/60 hover:text-blue-deep"
+                    ? "bg-blue-soft text-sea2"
+                    : "text-ink hover:text-sea2"
                 }`}
               >
                 {n.label}
@@ -125,22 +130,22 @@ export function Header({ user }: { user: HeaderUser }) {
               )}
               <CartLink
                 count={cartCount}
-                className="p-2 rounded-full text-foreground/80 hover:bg-pink-soft/70 hover:text-pink transition-colors"
+                className="p-2 rounded-full text-ink/80 hover:bg-pink-soft hover:text-terra transition-colors"
               />
               <Link href="/account" className="btn btn-ghost text-sm py-2">
                 <UserRound className="h-4 w-4" /> {user.name.split(" ")[0]}
               </Link>
               <form action={logoutAction}>
-                <button className="text-sm text-muted hover:text-foreground px-2">יציאה</button>
+                <button className="text-sm text-muted hover:text-ink px-2">יציאה</button>
               </form>
             </>
           ) : (
             <>
-              <Link href="/login" className="btn btn-ghost text-sm py-2">
-                <LogIn className="h-4 w-4" /> התחברות
+              <Link href="/register" className="text-[15px] font-semibold text-ink hover:text-sea2 px-2">
+                הצטרפות
               </Link>
-              <Link href="/register" className="btn btn-primary text-sm py-2">
-                <Crown className="h-4 w-4" /> הצטרפות
+              <Link href="/login" className="btn btn-sea text-sm py-2.5">
+                <LogIn className="h-4 w-4" /> כניסה
               </Link>
             </>
           )}
@@ -148,7 +153,7 @@ export function Header({ user }: { user: HeaderUser }) {
 
         <div className="ms-auto md:hidden flex items-center gap-1">
           {user && (
-            <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-pink-soft/70 text-foreground/80" />
+            <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-pink-soft text-ink/80" />
           )}
           <button
             className="p-2 rounded-xl hover:bg-blue-soft"
@@ -162,19 +167,19 @@ export function Header({ user }: { user: HeaderUser }) {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-blue/10 bg-white/95 animate-fade-up">
+        <div className="md:hidden border-t border-sea/10 bg-plaster/95 animate-fade-up">
           <nav className="flex flex-col p-4 gap-1" aria-label="ניווט נייד">
             {NAV.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-xl hover:bg-blue-soft font-medium"
+                className="px-3 py-2 rounded-xl hover:bg-blue-soft font-semibold"
               >
                 {n.label}
               </Link>
             ))}
-            <div className="h-px bg-blue/10 my-2" />
+            <div className="h-px bg-sea/10 my-2" />
             {user ? (
               <>
                 {user.role === "admin" && (
@@ -189,7 +194,7 @@ export function Header({ user }: { user: HeaderUser }) {
                   count={cartCount}
                   withLabel
                   onClick={() => setOpen(false)}
-                  className="px-3 py-2 rounded-xl hover:bg-pink-soft/60 font-medium"
+                  className="px-3 py-2 rounded-xl hover:bg-pink-soft font-semibold"
                 />
                 <form action={logoutAction}>
                   <button className="w-full py-2 text-muted">יציאה</button>
@@ -197,11 +202,11 @@ export function Header({ user }: { user: HeaderUser }) {
               </>
             ) : (
               <div className="flex gap-2">
-                <Link href="/login" onClick={() => setOpen(false)} className="btn btn-ghost flex-1">
-                  התחברות
-                </Link>
-                <Link href="/register" onClick={() => setOpen(false)} className="btn btn-primary flex-1">
+                <Link href="/register" onClick={() => setOpen(false)} className="btn btn-ghost flex-1">
                   הצטרפות
+                </Link>
+                <Link href="/login" onClick={() => setOpen(false)} className="btn btn-sea flex-1">
+                  כניסה
                 </Link>
               </div>
             )}

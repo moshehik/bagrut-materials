@@ -18,7 +18,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   accepted: { label: "התקבלה", cls: "bg-emerald-50 text-emerald-800" },
   approved: { label: "אושרה", cls: "bg-emerald-50 text-emerald-800" },
   purchased: { label: "נרכשה", cls: "bg-emerald-50 text-emerald-800" },
-  rejected: { label: "לא התאימה", cls: "bg-pink-soft text-[#8a1c4f]" },
+  rejected: { label: "לא התאימה", cls: "bg-pink-soft text-[#9d4a2a]" },
 };
 
 const STEPS = [

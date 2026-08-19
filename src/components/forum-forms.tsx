@@ -9,7 +9,7 @@ type SubjectOpt = { id: number; title: string; icon: string };
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#8a1c4f] px-4 py-3 text-sm animate-pop">
+    <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#9d4a2a] px-4 py-3 text-sm animate-pop">
       <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
       <span>{error}</span>
     </div>
@@ -28,7 +28,7 @@ export function NewThreadForm({ subjects }: { subjects: SubjectOpt[] }) {
         className="w-full flex items-center gap-3 text-start"
         aria-expanded={open}
       >
-        <span className="grid place-items-center h-10 w-10 rounded-xl bg-gradient-to-br from-pink to-[#ec4899] text-white shadow-lg shadow-pink/30">
+        <span className="grid place-items-center h-10 w-10 rounded-xl bg-gradient-to-br from-pink to-[#c1613b] text-white shadow-lg shadow-pink/30">
           <MessageSquarePlus className="h-5 w-5" />
         </span>
         <span className="flex-1">

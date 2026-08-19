@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft } from "lucide-react";
-import { SUBJECT_ICONS } from "@/lib/constants";
+import { SUBJECT_ICONS, SUBJECT_HOUSES } from "@/lib/constants";
 
 type Props = {
   href: string;
@@ -31,6 +32,7 @@ export function SubjectCard({
   size = "md",
 }: Props) {
   const emoji = icon || (slug ? SUBJECT_ICONS[slug] : undefined) || "📘";
+  const house = slug ? SUBJECT_HOUSES[slug] : undefined;
   const accent = color || "var(--blue)";
   const big = size === "lg";
 
@@ -60,14 +62,30 @@ export function SubjectCard({
             }}
           />
           <div className="flex items-start gap-4">
-            <span
-              className={`grid shrink-0 place-items-center rounded-2xl ${
-                big ? "h-16 w-16 text-4xl" : "h-12 w-12 text-2xl"
-              } transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}
-              style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
-            >
-              {emoji}
-            </span>
+            {house ? (
+              <span
+                className={`relative grid shrink-0 place-items-center ${
+                  big ? "h-16 w-16" : "h-12 w-12"
+                } transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}
+              >
+                <Image
+                  src={house}
+                  alt=""
+                  fill
+                  sizes={big ? "64px" : "48px"}
+                  className="object-contain"
+                />
+              </span>
+            ) : (
+              <span
+                className={`grid shrink-0 place-items-center rounded-2xl ${
+                  big ? "h-16 w-16 text-4xl" : "h-12 w-12 text-2xl"
+                } transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}
+                style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
+              >
+                {emoji}
+              </span>
+            )}
             <div className="min-w-0 flex-1">
               <h3
                 className={`font-display font-bold leading-tight ${

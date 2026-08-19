@@ -129,7 +129,7 @@ export function CartView({ cart }: { cart: Cart }) {
                       checked={it.premium}
                       disabled={rowBusy}
                       onChange={(e) => togglePremium(it.id, e.target.checked)}
-                      className="h-4 w-4 accent-[var(--color-gold,#d4a017)]"
+                      className="h-4 w-4 accent-[var(--color-gold,#d9a21b)]"
                     />
                     <Sparkles className="h-4 w-4 text-gold" />
                     <span>
@@ -153,7 +153,7 @@ export function CartView({ cart }: { cart: Cart }) {
                   type="button"
                   onClick={() => remove(it.id)}
                   disabled={rowBusy}
-                  className="text-xs text-muted hover:text-[#8a1c4f] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-pink-soft/60"
+                  className="text-xs text-muted hover:text-[#9d4a2a] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-pink-soft/60"
                   aria-label={`הסרת ${it.title} מהעגלה`}
                 >
                   {rowBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -192,7 +192,7 @@ export function CartView({ cart }: { cart: Cart }) {
           {state?.error && (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#8a1c4f] px-4 py-3 text-sm animate-pop"
+              className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#9d4a2a] px-4 py-3 text-sm animate-pop"
             >
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
               <span>{state.error}</span>

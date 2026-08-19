@@ -17,7 +17,7 @@ function fileType(m: Material): { label: string; className: string } {
   const name = m.fileName.toLowerCase();
   const mime = m.mime.toLowerCase();
   if (mime.includes("pdf") || name.endsWith(".pdf"))
-    return { label: "PDF", className: "bg-pink-soft text-[#9d174d]" };
+    return { label: "PDF", className: "bg-pink-soft text-[#9d4a2a]" };
   if (mime.includes("presentation") || /\.pptx?$/.test(name))
     return { label: "PPTX", className: "bg-oak-soft text-oak-deep" };
   if (mime.includes("word") || /\.docx?$/.test(name))

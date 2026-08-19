@@ -84,7 +84,7 @@ export function AddToCartButton({ materialId, categoryId, plan, premium, label, 
           לעגלה ←
         </Link>
       )}
-      {error && <span className="text-xs text-[#8a1c4f]">{error}</span>}
+      {error && <span className="text-xs text-[#9d4a2a]">{error}</span>}
     </span>
   );
 }

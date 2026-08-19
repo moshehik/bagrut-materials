@@ -25,19 +25,18 @@ export function AnimatedGrid({
       viewport={{ once: true, margin: "-40px" }}
       variants={{
         hidden: {},
-        show: { transition: { staggerChildren: 0.07, delayChildren: delay } },
+        show: { transition: { staggerChildren: 0.05, delayChildren: delay } },
       }}
     >
       {items.map((child, i) => (
         <motion.div
           key={i}
           variants={{
-            hidden: { opacity: 0, y: 18, scale: 0.97 },
+            hidden: { opacity: 0, y: 10 },
             show: {
               opacity: 1,
               y: 0,
-              scale: 1,
-              transition: { type: "spring", stiffness: 260, damping: 24 },
+              transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
             },
           }}
         >
@@ -61,10 +60,10 @@ export function Reveal({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.55, ease: "easeOut", delay }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
     >
       {children}
     </motion.div>

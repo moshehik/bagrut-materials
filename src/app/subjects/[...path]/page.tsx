@@ -147,7 +147,7 @@ export default async function CategoryPage({ params }: Props) {
                 <span className="chip bg-blue-soft text-blue-deep">
                   <FolderOpen className="h-3.5 w-3.5" aria-hidden /> {children.length} תיקיות
                 </span>
-                <span className="chip bg-pink-soft text-[#9d174d]">{mats.length} חומרים כאן</span>
+                <span className="chip bg-pink-soft text-[#9d4a2a]">{mats.length} חומרים כאן</span>
               </div>
             </div>
             {category.bundlePrice !== null && (

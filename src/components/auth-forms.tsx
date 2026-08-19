@@ -11,7 +11,7 @@ function ErrorBox({ error }: { error?: string }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#8a1c4f] px-4 py-3 text-sm animate-pop"
+      className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#9d4a2a] px-4 py-3 text-sm animate-pop"
     >
       <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
       <span>{error}</span>

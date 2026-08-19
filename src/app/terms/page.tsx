@@ -19,7 +19,7 @@ export default function TermsPage() {
       <div className="mt-8 grid gap-4 sm:grid-cols-3 animate-fade-up" style={{ animationDelay: "0.1s" }}>
         {[
           { icon: <Fingerprint className="h-6 w-6" aria-hidden />, t: "מספר אישי בכל קובץ", c: "bg-blue-soft text-blue-deep" },
-          { icon: <ShieldCheck className="h-6 w-6" aria-hidden />, t: "העברה הלאה – חשיפה לתביעה", c: "bg-pink-soft text-[#9d174d]" },
+          { icon: <ShieldCheck className="h-6 w-6" aria-hidden />, t: "העברה הלאה – חשיפה לתביעה", c: "bg-pink-soft text-[#9d4a2a]" },
           { icon: <Copyright className="h-6 w-6" aria-hidden />, t: "כל הזכויות שמורות", c: "bg-gold-soft text-[#7a5b00]" },
         ].map((b) => (
           <div key={b.t} className="card flex items-center gap-3 p-4">

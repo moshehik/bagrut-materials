@@ -33,7 +33,7 @@ export default async function ResetPasswordPage({
         <ResetPasswordForm token={token} />
       ) : (
         <div className="space-y-4">
-          <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#8a1c4f] px-4 py-3 text-sm">
+          <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#9d4a2a] px-4 py-3 text-sm">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>הקישור חסר או לא תקין.</span>
           </div>

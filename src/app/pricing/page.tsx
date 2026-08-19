@@ -24,8 +24,8 @@ export default async function PricingPage() {
   const prices = await getPlanPrices();
   const subs = [
     { key: "subject_monthly", tone: "from-blue to-blue-deep", badge: null },
-    { key: "custom_monthly", tone: "from-pink to-[#db2777]", badge: "הכי משתלם" },
-    { key: "yearly", tone: "from-[#f2c94c] to-gold", badge: "לכל השנה" },
+    { key: "custom_monthly", tone: "from-pink to-[#c1613b]", badge: "הכי משתלם" },
+    { key: "yearly", tone: "from-[#f5c542] to-gold", badge: "לכל השנה" },
   ] as const;
 
   return (

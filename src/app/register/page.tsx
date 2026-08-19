@@ -31,7 +31,7 @@ export default async function RegisterPage({
   return (
     <AuthShell
       icon={<UserPlus className="h-6 w-6" />}
-      title="הצטרפי לחומרים לבגרות"
+      title="הצטרפי ללו״ז העניין"
       subtitle="ההרשמה חינמית ולוקחת פחות מדקה"
       aside={
         <div className="card p-6 sm:p-8 bg-gradient-to-br from-white to-blue-soft/60">

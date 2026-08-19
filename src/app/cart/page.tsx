@@ -20,7 +20,7 @@ export default async function CartPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
       <div className="flex items-center gap-3 mb-6">
-        <span className="grid place-items-center h-12 w-12 rounded-2xl bg-gradient-to-br from-pink to-[#c2185b] text-white shadow-lg shadow-pink/30">
+        <span className="grid place-items-center h-12 w-12 rounded-2xl bg-gradient-to-br from-pink to-[#9d4a2a] text-white shadow-lg shadow-pink/30">
           <ShoppingCart className="h-6 w-6" />
         </span>
         <div>

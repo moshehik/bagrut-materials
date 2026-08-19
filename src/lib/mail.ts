@@ -124,22 +124,22 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 export function layoutHtml(title: string, bodyHtml: string, cta?: { label: string; href: string }) {
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#fdfbf7;font-family:Arial,Heebo,sans-serif;color:#1f2a44">
+  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#faf6ef;font-family:Arial,Assistant,sans-serif;color:#1f2d33">
 <div style="max-width:600px;margin:0 auto;padding:24px">
-  <div style="background:linear-gradient(135deg,#2f6fed,#1d4ed8);color:#fff;border-radius:18px 18px 0 0;padding:22px 26px">
+  <div style="background:linear-gradient(135deg,#1aa6b7,#0e7f8f);color:#fff;border-radius:18px 18px 0 0;padding:22px 26px">
     <div style="font-size:22px;font-weight:800">${esc(SITE_NAME)}</div>
-    <div style="font-size:12px;opacity:.85">המחוז החרדי · שיעורים מוכנים</div>
+    <div style="font-size:12px;opacity:.85">מתמקדים בעיקר · שיעורים מוכנים</div>
   </div>
   <div style="background:#fff;border:1px solid #e6e9f2;border-top:0;padding:26px;border-radius:0 0 18px 18px;line-height:1.7;font-size:15px">
-    <h2 style="margin:0 0 12px;color:#1d4ed8;font-size:20px">${esc(title)}</h2>
+    <h2 style="margin:0 0 12px;color:#0e7f8f;font-size:20px">${esc(title)}</h2>
     ${bodyHtml}
     ${
       cta
-        ? `<p style="margin:22px 0 6px"><a href="${cta.href}" style="display:inline-block;background:#d4a017;color:#3b2a00;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:999px">${esc(cta.label)}</a></p>`
+        ? `<p style="margin:22px 0 6px"><a href="${cta.href}" style="display:inline-block;background:#f5c542;color:#1f2d33;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:999px">${esc(cta.label)}</a></p>`
         : ""
     }
   </div>
-  <p style="text-align:center;color:#8a5a2b;font-size:11px;margin-top:14px">© ${esc(SITE_NAME)} · כל הזכויות שמורות · כל קובץ מוטבע במספר אישי של המורידה</p>
+  <p style="text-align:center;color:#0e7f8f;font-size:11px;margin-top:14px">© ${esc(SITE_NAME)} · כל הזכויות שמורות · כל קובץ מוטבע במספר אישי של המורידה</p>
 </div></body></html>`;
 }
 
@@ -152,7 +152,7 @@ export const templates = {
       html: layoutHtml(
         `שלום ${esc(name)}, ברוכה הבאה!`,
         `<p>נרשמת בהצלחה לאתר <b>${esc(SITE_NAME)}</b>.</p>
-         <p>המספר האישי שלך: <b style="font-size:18px;letter-spacing:1px;color:#1d4ed8">${esc(personalCode)}</b><br>
+         <p>המספר האישי שלך: <b style="font-size:18px;letter-spacing:1px;color:#0e7f8f">${esc(personalCode)}</b><br>
          <span style="color:#64748b;font-size:13px">מספר זה מוטבע על כל קובץ שאת מורידה – שמרי עליו ואל תעבירי קבצים הלאה.</span></p>`,
         { label: "לאזור האישי", href: `${url}/account` },
       ),

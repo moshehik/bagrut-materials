@@ -1,38 +1,40 @@
 import Link from "next/link";
-import { SITE_NAME } from "@/lib/constants";
+import { SITE_MOTTO } from "@/lib/constants";
 
 export function Footer() {
   return (
-    <footer className="mt-20 border-t border-blue/10 bg-white/60 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 grid gap-8 md:grid-cols-4 text-sm">
+    <footer className="mt-24 bg-sea2 text-white rounded-t-[40px]">
+      <div className="mx-auto max-w-[1180px] px-6 sm:px-10 pt-12 pb-8 grid gap-10 md:grid-cols-4 text-[15px]">
         <div className="md:col-span-2">
-          <div className="font-display text-2xl font-bold">{SITE_NAME}</div>
-          <p className="mt-2 text-muted max-w-md leading-relaxed">
-            מאגר שיעורים מוכנים למורות במחוז החרדי: דפי שכפול לתלמידה ולמורה, מצגות,
-            שאלות מבגרויות קודמות וטיפים – מסודר לפי מקצוע, יחידות, פנימי/חיצוני ופרקים.
+          <div className="font-hand text-[30px] leading-none">
+            לו״ז <span className="text-sun">העניין</span>
+          </div>
+          <p className="mt-3 text-white/85 max-w-md leading-relaxed">
+            {SITE_MOTTO}. שיעורים מוכנים למורות במחוז החרדי – דף לתלמידה, דף למורה
+            ומצגת מלווה לכל פרק – כדי שהזמן שלך יישאר לדברים שרק מורה יכולה לתת.
           </p>
         </div>
         <div>
-          <div className="font-semibold mb-2">ניווט</div>
-          <ul className="space-y-1 text-muted">
-            <li><Link href="/subjects" className="hover:text-blue-deep">המקצועות</Link></li>
-            <li><Link href="/map" className="hover:text-blue-deep">מפת הבגרות</Link></li>
-            <li><Link href="/pricing" className="hover:text-blue-deep">מסלולים ומחירים</Link></li>
-            <li><Link href="/forum" className="hover:text-blue-deep">פורום</Link></li>
-            <li><Link href="/sell" className="hover:text-blue-deep">מכירת חומרים לאתר</Link></li>
+          <div className="font-display text-lg mb-3 text-sun">ניווט</div>
+          <ul className="space-y-1.5 text-white/90">
+            <li><Link href="/subjects" className="link-draw hover:text-sun">המקצועות</Link></li>
+            <li><Link href="/map" className="link-draw hover:text-sun">מפת הבגרות</Link></li>
+            <li><Link href="/pricing" className="link-draw hover:text-sun">מסלולים ומחירים</Link></li>
+            <li><Link href="/forum" className="link-draw hover:text-sun">פורום מורות</Link></li>
+            <li><Link href="/sell" className="link-draw hover:text-sun">מכירת חומרים לאתר</Link></li>
           </ul>
         </div>
         <div>
-          <div className="font-semibold mb-2">מידע</div>
-          <ul className="space-y-1 text-muted">
-            <li><Link href="/terms" className="hover:text-blue-deep">תנאי שימוש וזכויות יוצרים</Link></li>
-            <li><Link href="/accessibility" className="hover:text-blue-deep">הצהרת נגישות</Link></li>
-            <li><Link href="/contact" className="hover:text-blue-deep">צרי קשר</Link></li>
+          <div className="font-display text-lg mb-3 text-sun">מידע</div>
+          <ul className="space-y-1.5 text-white/90">
+            <li><Link href="/terms" className="link-draw hover:text-sun">תנאי שימוש וזכויות יוצרים</Link></li>
+            <li><Link href="/accessibility" className="link-draw hover:text-sun">הצהרת נגישות</Link></li>
+            <li><Link href="/contact" className="link-draw hover:text-sun">צרי קשר</Link></li>
           </ul>
         </div>
       </div>
-      <div className="wood text-white/95 text-center text-xs py-3">
-        © {new Date().getFullYear()} {SITE_NAME} · כל הזכויות שמורות · כל קובץ מוטבע במספר אישי של המורידה
+      <div className="border-t border-white/15 text-center text-xs text-white/80 py-4 px-4">
+        © {new Date().getFullYear()} לו״ז העניין · {SITE_MOTTO} · כל קובץ מוטבע במספר אישי של המורידה
       </div>
     </footer>
   );

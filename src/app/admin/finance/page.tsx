@@ -202,7 +202,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               const x = (months.length - 1 - i) * 56 + 8; // RTL: החודש האחרון בצד ימין
               return (
                 <g key={m.key}>
-                  <rect x={x} y={130 - h} width={40} height={h} rx={6} fill="var(--oak, #b07a45)" opacity={0.85}>
+                  <rect x={x} y={130 - h} width={40} height={h} rx={6} fill="var(--oak, #c1613b)" opacity={0.85}>
                     <title>
                       {m.label}: {formatPrice(m.revenue)}
                     </title>

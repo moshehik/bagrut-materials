@@ -133,7 +133,7 @@ export function CategoryForm({
             defaultValue={initial?.color ?? ""}
             className="input font-mono"
             dir="ltr"
-            placeholder="#2f6fed"
+            placeholder="#1aa6b7"
           />
         </label>
       </div>

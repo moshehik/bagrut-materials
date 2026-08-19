@@ -245,3 +245,30 @@ export async function userHasPremium(user: User | null) {
     .limit(1);
   return !!row;
 }
+
+/** מספרים לדף הבית: מקצועות, פרקים (תיקיות), קבצים והורדות — כולם מהנתונים האמיתיים */
+export async function getHomeStats() {
+  const [[subj], [cats], [mats]] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(categories)
+      .where(and(isNull(categories.parentId), eq(categories.status, "active"))),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(categories)
+      .where(eq(categories.status, "active")),
+    db
+      .select({
+        n: sql<number>`count(*)::int`,
+        d: sql<number>`coalesce(sum(${materials.downloads}),0)::int`,
+      })
+      .from(materials)
+      .where(eq(materials.status, "active")),
+  ]);
+  return {
+    subjects: subj?.n ?? 0,
+    folders: cats?.n ?? 0,
+    files: mats?.n ?? 0,
+    downloads: mats?.d ?? 0,
+  };
+}

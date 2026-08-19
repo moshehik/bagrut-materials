@@ -15,7 +15,7 @@ export function SellForm({ subjects }: { subjects: string[] }) {
   return (
     <form ref={ref} action={action} className="space-y-4">
       {state?.error && (
-        <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#8a1c4f] px-4 py-3 text-sm animate-pop">
+        <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#9d4a2a] px-4 py-3 text-sm animate-pop">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>{state.error}</span>
         </div>

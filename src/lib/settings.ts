@@ -8,8 +8,8 @@ import { settings } from "@/db/schema";
  * הוספת הגדרה חדשה = להוסיף שורה ל-DEFAULTS (ולטופס ב-/admin/settings).
  */
 export const SETTING_DEFS = {
-  site_name: { label: "שם האתר", type: "text", default: "חומרים לבגרות", group: "כללי" },
-  site_tagline: { label: "כותרת משנה", type: "text", default: "מאגר שיעורים מוכנים למורות במחוז החרדי", group: "כללי" },
+  site_name: { label: "שם האתר", type: "text", default: "לו״ז העניין", group: "כללי" },
+  site_tagline: { label: "כותרת משנה", type: "text", default: "מתמקדים בעיקר – שיעורים מוכנים למורות במחוז החרדי", group: "כללי" },
   admin_email: { label: "מייל מנהל (התראות)", type: "text", default: "", group: "כללי" },
   maintenance_mode: { label: "מצב תחזוקה (האתר סגור למשתמשות, פתוח למנהלת)", type: "boolean", default: "false", group: "כללי" },
   maintenance_message: { label: "הודעת תחזוקה", type: "textarea", default: "האתר בתחזוקה קצרה, נחזור בקרוב.", group: "כללי" },
