@@ -40,6 +40,9 @@
 
   /* תרשים הזרימה: ורוד לסימון החץ על ריבוע סופי (ללא המשך) — מבדיל אותו מריבועי-ענף */
   --flow-final: #d1477e;
+  /* מסגרת צפה (טולטיפ) בריחוף על החץ — צבע אחיד ייחודי, לא בשימוש בשום מקום אחר בתרשים */
+  --flow-tip-bg: #34363c;
+  --flow-tip-fg: var(--plaster);
 }
 
 @theme inline {
@@ -217,6 +220,49 @@ body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* מסגרת צפה מודרנית על החץ בריחוף: כתב-יד, צבע אחיד ייחודי שלא קיים בשום מקום אחר בתרשים */
+.flow-tip {
+  position: relative;
+}
+.flow-tip::after,
+.flow-tip::before {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 40;
+}
+.flow-tip::after {
+  content: attr(data-tip);
+  bottom: calc(100% + 12px);
+  font-family: var(--font-hand);
+  font-size: 0.95rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  background: var(--flow-tip-bg);
+  color: var(--flow-tip-fg);
+  padding: 0.4rem 0.9rem;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lift, 0 10px 25px rgba(0, 0, 0, 0.22));
+}
+.flow-tip::before {
+  content: "";
+  border: 6px solid transparent;
+  border-top-color: var(--flow-tip-bg);
+}
+.flow-tip:hover::after,
+.flow-tip:hover::before,
+.flow-tip:focus-visible::after,
+.flow-tip:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
 }
 
 .card-hover {
@@ -440,6 +486,8 @@ body {
   --gold: #6b4e10;
   --oak: #33461f;
   --flow-final: #7a2018;
+  --flow-tip-bg: #000000;
+  --flow-tip-fg: #ffffff;
   background-image: none !important;
 }
 .a11y-high-contrast .card {
