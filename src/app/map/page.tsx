@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GitBranch, FolderTree } from "lucide-react";
+import { GitBranch, FolderTree, ChevronDown, ArrowUpLeft } from "lucide-react";
 import { getAllActiveCategories } from "@/lib/data";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
@@ -50,6 +50,17 @@ export default async function MapPage() {
         <Link href="/subjects" className="btn btn-ghost text-sm">
           <FolderTree className="h-4 w-4" aria-hidden /> לצפייה לפי תיקיות
         </Link>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-ink/15 bg-plaster px-4 py-3 text-sm text-muted animate-fade-up">
+        <span className="flex items-center gap-1.5">
+          <ChevronDown className="h-4 w-4 shrink-0 text-ink/70" aria-hidden />
+          לחיצה על <b className="text-ink">הריבוע עצמו</b> פותחת את הריבוע הבא
+        </span>
+        <span className="flex items-center gap-1.5">
+          <ArrowUpLeft className="h-4 w-4 shrink-0" style={{ color: "var(--flow-final)" }} aria-hidden />
+          לחיצה על <b className="text-ink">החץ</b> מביאה אל המקור עצמו
+        </span>
       </div>
 
       {tree.length === 0 ? (
