@@ -29,6 +29,14 @@ export const perek = (n: number, suffix?: string): Node => ({
   slug: `perek-${n}`,
   title: `פרק ${hebNum(n)}${suffix ? ` (${suffix})` : ""}`,
 });
+/**
+ * פרק עם קטעי מפרשים — תיאור בתחילית "מפרשים:" מדליק סימון נוצה במפה,
+ * ולחיצה עליו פותחת בועת אליפסה עם שם המפרש והפסוק.
+ */
+export const perekM = (n: number, meforshim: string, suffix?: string): Node => ({
+  ...perek(n, suffix),
+  description: `מפרשים: ${meforshim}`,
+});
 /** טווח פרקים רצוף */
 export const prakim = (from: number, to: number): Node[] => {
   const out: Node[] = [];
@@ -49,26 +57,43 @@ const TANACH_NOTE =
   'בבגרות החרדית תורה, נביא וכתובים נבחנים יחד בשאלוני תנ"ך משותפים (הפיקוח על תנ"ך חינוך חרדי). כאן מוצג בכל מקצוע החלק שלו מכל שאלון, לפי תכניות הלימודים הרשמיות לתשפ"ו. הסמלים משותפים לשלושת המקצועות.';
 
 /* ---- תנ"ך: שאלון חיצוני 3381 – חלק החומש (עיון בשמות) ---- */
+const RASHI_NOTE = 'עם פירוש רש"י. פרקים עם קטעי מפרשים מסומנים בסמל נוצה.';
 const SHEMOT_3381: Node[] = [
   {
     slug: "bo",
     title: "פרשת בא",
-    description:
-      'עם פירוש רש"י, וקטעי מפרשים: רמב"ן י"ב ב\' ("וטעם החדש הזה לכם"), רמב"ן י"ב מ\' (ב-5 יח"ל), ספורנו י"ב מ"ג, ספורנו י"ג ב\'.',
-    children: [perek(10), perek(11), perek(12), perek(13, 'עד פסוק ט"ז')],
+    description: RASHI_NOTE,
+    children: [
+      perek(10),
+      perek(11),
+      perekM(
+        12,
+        'רמב"ן פסוק ב\' ("וטעם החדש הזה לכם ראש חדשים" עד "שנקרא לו לזיכרון גאולתנו"); רמב"ן פסוק מ\' (ב-5 יח"ל, עד "היה בן שבעים וחמש שנה"); ספורנו פסוק מ"ג',
+      ),
+      perekM(13, "ספורנו פסוק ב'", 'עד פסוק ט"ז'),
+    ],
   },
   {
     slug: "beshalach",
     title: "פרשת בשלח",
-    description:
-      'עם פירוש רש"י, וקטעי מפרשים: ספורנו י"ג י"ז (ב-5 יח"ל), רמב"ן ט"ו כ"ז, רמב"ן ט"ז ב\', רשב"ם ט"ז כ"ג, רמב"ן י"ז א\'.',
-    children: [perek(13, 'מפסוק י"ז'), perek(14), perek(15), perek(16), perek(17)],
+    description: RASHI_NOTE,
+    children: [
+      perekM(13, 'ספורנו פסוק י"ז (ב-5 יח"ל)', 'מפסוק י"ז'),
+      perek(14),
+      perekM(15, 'רמב"ן פסוק כ"ז (עד "יותר משאר המקומות שעבדו בהם")'),
+      perekM(16, 'רמב"ן פסוק ב\'; רשב"ם פסוק כ"ג ד"ה "ויאמר אליהם"'),
+      perekM(17, 'רמב"ן פסוק א\' ד"ה "ואין מים לשתות העם"'),
+    ],
   },
   {
     slug: "yitro",
     title: "פרשת יתרו",
-    description: 'עם פירוש רש"י, וקטעי מפרשים: ספורנו י"ח ט\', רמב"ן י"ח ט"ו, רשב"ם כ\' ח\'.',
-    children: prakim(18, 20),
+    description: RASHI_NOTE,
+    children: [
+      perekM(18, 'ספורנו פסוק ט\'; רמב"ן פסוק ט"ו'),
+      perek(19),
+      perekM(20, "רשב\"ם פסוק ח'"),
+    ],
   },
   {
     slug: "mishpatim",
@@ -83,21 +108,35 @@ const BEREISHIT_SCHOOL: Node[] = [
   {
     slug: "vayera",
     title: "פרשת וירא",
-    description: 'עם פירוש רש"י, וקטעי מפרשים: רמב"ן י"ח ז\', ספורנו י"ט ט"ז, רמב"ן כ"ב א\'.',
-    children: prakim(18, 22),
+    description: RASHI_NOTE,
+    children: [
+      perekM(18, "רמב\"ן פסוק ז'"),
+      perekM(19, 'ספורנו פסוק ט"ז'),
+      perek(20),
+      perek(21),
+      perekM(22, "רמב\"ן פסוק א'"),
+    ],
   },
   {
     slug: "chayei-sara",
     title: "פרשת חיי שרה",
-    description: 'עם פירוש רש"י, וקטעי מפרשים: כלי יקר כ"ה א\', רמב"ן כ"ה ח\'.',
-    children: [perek(23), perek(24), perek(25, 'עד פסוק י"ח')],
+    description: RASHI_NOTE,
+    children: [
+      perek(23),
+      perek(24),
+      perekM(25, 'כלי יקר פסוק א\'; רמב"ן פסוק ח\'', 'עד פסוק י"ח'),
+    ],
   },
   {
     slug: "toldot",
     title: "פרשת תולדות",
-    description:
-      'עם פירוש רש"י, וקטעי מפרשים: רמב"ן כ"ו כ\', ספורנו כ"ז ד\', רמב"ן כ"ז ל"ג, רמב"ן כ"ח ה\'.',
-    children: [perek(25, 'מפסוק י"ט'), perek(26), perek(27), perek(28, "עד פסוק ט'")],
+    description: RASHI_NOTE,
+    children: [
+      perek(25, 'מפסוק י"ט'),
+      perekM(26, "רמב\"ן פסוק כ'"),
+      perekM(27, 'ספורנו פסוק ד\'; רמב"ן פסוק ל"ג'),
+      perekM(28, "רמב\"ן פסוק ה'", "עד פסוק ט'"),
+    ],
   },
 ];
 
@@ -124,9 +163,13 @@ const BAMIDBAR_CHALUFA: Node[] = [
 const VAYECHI: Node = {
   slug: "vayechi",
   title: "פרשת ויחי",
-  description:
-    'עם פירוש רש"י, וקטעי מפרשים: רמב"ן מ"ז כ"ט, רמב"ן מ"ז ל"א, ספורנו מ"ח י\', ספורנו מ"ט י\'.',
-  children: [perek(47, 'מפסוק כ"ח'), perek(48), perek(49), perek(50)],
+  description: RASHI_NOTE,
+  children: [
+    perekM(47, 'רמב"ן פסוק כ"ט; רמב"ן פסוק ל"א', 'מפסוק כ"ח'),
+    perekM(48, 'ספורנו פסוק י\' ד"ה "לא יוכל לראות"'),
+    perekM(49, 'ספורנו פסוק י\' ד"ה "לא יסור שבט מיהודה"'),
+    perek(50),
+  ],
 };
 const VEZOT_HABRACHA: Node = {
   slug: "vezot-habracha",
@@ -162,11 +205,19 @@ const tehilimHagever: Node[] = [
   perek(79),
   perek(81),
   perek(82),
-  { slug: "perek-90-95", title: "פרקים צ'-צ\"ה" },
-  perek(100),
+  {
+    slug: "perek-90-95",
+    title: "פרקים צ'-צ\"ה",
+    description: 'מפרשים: מלבי"ם פרק צ"ב פסוקים ה\'-ו\'',
+  },
+  perekM(100, "מלבי\"ם פסוקים א'-ב'"),
   perek(104),
-  perek(107),
-  { slug: "perek-111-118", title: 'פרקים קי"א-קי"ח' },
+  perekM(107, 'רד"ק פסוק י"ז'),
+  {
+    slug: "perek-111-118",
+    title: 'פרקים קי"א-קי"ח',
+    description: 'מפרשים: מלבי"ם פרק קט"ז פסוקים י"ב-י"ד; מלבי"ם פרק קי"ח פסוק כ"ד',
+  },
   perek(139),
 ];
 
@@ -212,18 +263,47 @@ const yeshayaPerakim: Node[] = [
 /** שמואל א' – נביאים ראשונים, הערכה בית ספרית 3373/3573 */
 const shmuelAlefPerakim: Node[] = [
   { slug: "perek-1-2", title: "פרקים א'-ב' – חנה ותפילתה" },
-  { slug: "perek-3-12", title: 'פרקים ג\', ז\', ט\', י"ב – שמואל כנביא וכשופט' },
+  {
+    slug: "perek-3-12",
+    title: 'פרקים ג\', ז\', ט\', י"ב – שמואל כנביא וכשופט',
+    description:
+      'מפרשים: רד"ק פרק ג\' פסוק ג\' ד"ה "ונר אלקים טרם יכבה"; רד"ק פרק ז\' פסוק י"ג',
+  },
   { slug: "perek-8-12", title: 'פרקים ח\', י"ב – בקשת המלוכה ותגובת שמואל' },
-  { slug: "perek-9-12", title: 'פרקים ט\'-י"ב – שאול: מעלותיו ומשיחתו למלך' },
-  { slug: "perek-16-17", title: 'פרקים ט"ז-י"ז – דוד: מעלותיו ומשיחתו למלך' },
-  { slug: "perek-18-26", title: 'פרקים י"ח-כ"ד, כ"ו – שאול ויחסו לדוד' },
+  {
+    slug: "perek-9-12",
+    title: 'פרקים ט\'-י"ב – שאול: מעלותיו ומשיחתו למלך',
+    description: "מפרשים: רד\"ק פרק י' פסוק ח'",
+  },
+  {
+    slug: "perek-16-17",
+    title: 'פרקים ט"ז-י"ז – דוד: מעלותיו ומשיחתו למלך',
+    description: 'מפרשים: רד"ק פרק י"ז פסוק מ\' ד"ה "חמשה חלוקי אבנים"',
+  },
+  {
+    slug: "perek-18-26",
+    title: 'פרקים י"ח-כ"ד, כ"ו – שאול ויחסו לדוד',
+    description: 'מפרשים: רד"ק פרק כ"ד פסוק ד\' ד"ה "ויכרת את כנף המעיל"',
+  },
 ];
 /** שמואל ב' – נביאים ראשונים, הערכה בית ספרית 3373/3573 */
 const shmuelBetPerakim: Node[] = [
-  { slug: "perek-1", title: "פרק א' – קינת דוד על שאול ויהונתן" },
+  {
+    slug: "perek-1",
+    title: "פרק א' – קינת דוד על שאול ויהונתן",
+    description: 'מפרשים: רד"ק פסוק כ"ד',
+  },
   { slug: "perek-5", title: "פרק ה' – המלכת דוד על כל ישראל" },
-  { slug: "perek-6", title: "פרק ו' – העלאת ארון ה' לעיר דוד" },
-  { slug: "perek-14-18", title: 'פרקים י"ד-י"ח – מרד אבשלום' },
+  {
+    slug: "perek-6",
+    title: "פרק ו' – העלאת ארון ה' לעיר דוד",
+    description: 'מפרשים: רד"ק פסוק ו\' ד"ה "כי שמטו הבקר"',
+  },
+  {
+    slug: "perek-14-18",
+    title: 'פרקים י"ד-י"ח – מרד אבשלום',
+    description: 'מפרשים: רד"ק פרק י"ד פסוק כ"ה',
+  },
 ];
 
 /* ---- יהדות/דינים: תוכן משותף לשאלון 4381 החיצוני (3 ו-5 יח"ל) ---- */
@@ -602,17 +682,29 @@ export const TREE: Node[] = [
                       {
                         slug: "acharei-mot",
                         title: "פרשת אחרי מות",
-                        children: prakim(16, 18),
+                        children: [
+                          perek(16),
+                          perekM(17, 'רמב"ן פסוק ב\' (עד "כי אז יתיר להם בשר תאווה")'),
+                          perek(18),
+                        ],
                       },
                       {
                         slug: "kedoshim",
                         title: "פרשת קדושים",
-                        children: prakim(19, 20),
+                        children: [
+                          perekM(19, 'ספורנו פסוק ט\'; רמב"ן פסוק י"ד (החל מ"ועל דרך הפשט")'),
+                          perek(20),
+                        ],
                       },
                       {
                         slug: "emor",
                         title: "פרשת אמור",
-                        children: prakim(21, 24),
+                        children: [
+                          perek(21),
+                          perek(22),
+                          perekM(23, 'רמב"ן פסוק ב\' (עד "מיד ולדורות"); ספורנו פסוקים ל"ו, ל"ט'),
+                          perek(24),
+                        ],
                       },
                       {
                         slug: "bekiut-vayikra",
@@ -644,12 +736,26 @@ export const TREE: Node[] = [
                   {
                     slug: "parashat-bereishit",
                     title: "פרשת בראשית",
-                    children: [...prakim(1, 5), perek(6, "עד פסוק ח'")],
+                    children: [
+                      perekM(1, 'רמב"ן ד"ה "בראשית" (הראשון, עד "הגוי אשר לפניהם"); רמב"ן פסוק כ"ט'),
+                      perekM(2, 'רמב"ן פסוק י"ז ד"ה "ביום אכלך ממנו"; ספורנו פסוק י"ח'),
+                      perek(3),
+                      perekM(4, 'רמב"ן פסוק י"ג (עד "רק בשמירת עליון עליו")'),
+                      perek(5),
+                      perek(6, "עד פסוק ח'"),
+                    ],
                   },
                   {
                     slug: "lech-lecha",
                     title: "פרשת לך לך",
-                    children: prakim(12, 17),
+                    children: [
+                      perekM(12, 'רמב"ן פסוק ו\' (עד "לעובדו בפרהסיה")'),
+                      perek(13),
+                      perek(14),
+                      perekM(15, 'ספורנו פסוק ו\'; רמב"ן פסוק י"ד ד"ה "וגם את הגוי"'),
+                      perek(16),
+                      perek(17),
+                    ],
                   },
                 ],
               },
@@ -666,22 +772,42 @@ export const TREE: Node[] = [
                   {
                     slug: "devarim",
                     title: "פרשת דברים",
-                    children: [perek(1), perek(2), perek(3, 'עד פסוק כ"ב')],
+                    children: [perekM(1, 'רמב"ן פסוק כ"ה'), perek(2), perek(3, 'עד פסוק כ"ב')],
                   },
                   {
                     slug: "vaetchanan",
                     title: "פרשת ואתחנן",
-                    children: [perek(3, 'מפסוק כ"ג'), perek(4), perek(5), perek(6), perek(7, 'עד פסוק י"א')],
+                    children: [
+                      perekM(3, 'כלי יקר פסוק כ"ד', 'מפסוק כ"ג'),
+                      perek(4),
+                      perek(5),
+                      perek(6),
+                      perek(7, 'עד פסוק י"א'),
+                    ],
                   },
                   {
                     slug: "reeh",
                     title: "פרשת ראה",
-                    children: [perek(11, 'מפסוק כ"ו'), perek(12), perek(13), perek(14), perek(15), perek(16, 'עד פסוק י"ז')],
+                    children: [
+                      perekM(11, 'ספורנו פסוק כ"ו', 'מפסוק כ"ו'),
+                      perekM(12, "רמב\"ן פסוק כ'"),
+                      perek(13),
+                      perekM(14, "ספורנו פסוק א'"),
+                      perekM(15, 'רמב"ן פסוק י"א ד"ה "כי לא יחדל אביון"'),
+                      perek(16, 'עד פסוק י"ז'),
+                    ],
                   },
                   {
                     slug: "shoftim",
                     title: "פרשת שופטים",
-                    children: [perek(16, 'מפסוק י"ח'), perek(17), perek(18), perek(19), perek(20), perek(21, "עד פסוק ט'")],
+                    children: [
+                      perek(16, 'מפסוק י"ח'),
+                      perekM(17, 'רמב"ן פסוק י"א; רמב"ן פסוק י"ד; רמב"ן פסוק כ\''),
+                      perekM(18, 'רשב"ם פסוק ט"ו; ספורנו פסוקים כ"א-כ"ב'),
+                      perek(19),
+                      perek(20),
+                      perek(21, "עד פסוק ט'"),
+                    ],
                   },
                 ],
               },
@@ -720,42 +846,62 @@ export const TREE: Node[] = [
           {
             slug: "yehoshua",
             title: "יהושע",
-            description: 'קטעי רד"ק: פרק ד\' י"ט; ב-5 יח"ל גם פרק כ"ד א\'.',
+            description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
             children: [
-              { slug: "nisim-yarden", title: "הניסים במעבר הירדן – פרקים ג'-ד'" },
+              {
+                slug: "nisim-yarden",
+                title: "הניסים במעבר הירדן – פרקים ג'-ד'",
+                description: "מפרשים: רד\"ק פרק ד' פסוק י\"ט",
+              },
               { slug: "maal-achan", title: "מעל עכן ותוצאותיו – פרקים ז'-ח'" },
               { slug: "milchemet-yericho", title: "מלחמת יריחו – פרק ו'" },
               { slug: "milchemet-haai", title: "מלחמת העי – פרק ח'" },
               { slug: "shemesh-begivon", title: "שמש בגבעון דום – פרק י'" },
               {
                 slug: "tochechat-yehoshua",
-                title: 'תוכחת יהושע לפני פטירתו – פרק כ"ד',
-                description: 'בתכנית 5 יח"ל (3573).',
+                title: 'תוכחת יהושע לפני פטירתו – פרק כ"ד (בתכנית 5 יח"ל)',
+                description: 'מפרשים: רד"ק פרק כ"ד פסוק א\' (בתכנית 5 יח"ל)',
               },
             ],
           },
           {
             slug: "shoftim",
             title: "שופטים",
-            description: 'קטעי רד"ק: ה\' ו\', ו\' ל"ט, י"ב ח\', י"ג ד\'.',
+            description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
             children: [
               { slug: "ehud", title: "אהוד בן גרא – פרק ג'" },
-              { slug: "dvora", title: "דבורה הנביאה וברק בן אבינועם – פרקים ד'-ה'" },
-              { slug: "gidon", title: "גדעון – פרקים ו'-ז'" },
-              { slug: "yiftach", title: 'יפתח הגלעדי ונדרו – פרקים י"א-י"ב' },
-              { slug: "shimshon", title: 'שמשון הגיבור ומעשיו – פרקים י"ג-ט"ז' },
+              {
+                slug: "dvora",
+                title: "דבורה הנביאה וברק בן אבינועם – פרקים ד'-ה'",
+                description: "מפרשים: רד\"ק פרק ה' פסוק ו'",
+              },
+              {
+                slug: "gidon",
+                title: "גדעון – פרקים ו'-ז'",
+                description: 'מפרשים: רד"ק פרק ו\' פסוק ל"ט',
+              },
+              {
+                slug: "yiftach",
+                title: 'יפתח הגלעדי ונדרו – פרקים י"א-י"ב',
+                description: 'מפרשים: רד"ק פרק י"ב פסוק ח\'',
+              },
+              {
+                slug: "shimshon",
+                title: 'שמשון הגיבור ומעשיו – פרקים י"ג-ט"ז',
+                description: 'מפרשים: רד"ק פרק י"ג פסוק ד\' ד"ה "ואל תשתי יין ושכר"',
+              },
             ],
           },
           {
             slug: "shmuel-a",
             title: "שמואל א'",
-            description: 'קטעי רד"ק: ג\' ג\', ז\' י"ג, י\' ח\', י"ז מ\', כ"ד ד\'.',
+            description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
             children: shmuelAlefPerakim,
           },
           {
             slug: "shmuel-b",
             title: "שמואל ב'",
-            description: 'קטעי רד"ק: א\' כ"ד, ו\' ו\', י"ד כ"ה.',
+            description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
             children: shmuelBetPerakim,
           },
           {

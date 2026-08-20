@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2 } from "lucide-react";
+import { ChevronDown, ArrowUpLeft, Undo2, Feather } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 
@@ -15,6 +15,18 @@ function hrefFor(chain: Category[]) {
 /** צומת הפניה: מפנה לפירוט שנמצא במקום אחר בתרשים (למשל "החומר המשותף עם 3 יחידות") */
 const REF_PREFIX = "same-as-";
 const isRefNode = (node: MapNode) => node.cat.slug.startsWith(REF_PREFIX);
+
+/** תיאור שמתחיל ב"מפרשים:" מסמן קטעי מפרשים על הפרק — מוצג כסמל נוצה + בועת אליפסה */
+const MEFORSHIM_PREFIX = "מפרשים:";
+const meforshimOf = (node: MapNode): string[] | null => {
+  const d = node.cat.description;
+  if (!d?.startsWith(MEFORSHIM_PREFIX)) return null;
+  return d
+    .slice(MEFORSHIM_PREFIX.length)
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+};
 
 type TreeCtx = {
   isOpen: (id: number) => boolean;
@@ -49,6 +61,8 @@ function NodeBox({
   const hasChildren = node.children.length > 0;
   const ref = isRefNode(node);
   const refTarget = ref ? ctx.resolveRef(node) : null;
+  const meforshim = meforshimOf(node);
+  const [meforshimOpen, setMeforshimOpen] = useState(false);
   const style = { "--flow-accent": accent } as CSSProperties;
   const size = compact
     ? "px-2 py-0.5 text-sm max-w-[14rem]"
@@ -62,6 +76,7 @@ function NodeBox({
   const clickAction = ref ? () => ctx.gotoRef(node) : hasChildren ? onToggle : undefined;
 
   return (
+    <>
     <div className={boxClass} style={style} onClick={clickAction}>
       {hasChildren || ref ? (
         <button
@@ -86,6 +101,22 @@ function NodeBox({
       ) : (
         <span className="min-w-0 flex-1 leading-tight">{node.cat.title}</span>
       )}
+      {meforshim && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMeforshimOpen((v) => !v);
+          }}
+          aria-expanded={meforshimOpen}
+          className="shrink-0 cursor-pointer rounded-full p-0.5"
+          style={{ color: accent }}
+          title="קטעי מפרשים בפרק זה"
+          aria-label={`קטעי מפרשים – ${node.cat.title}`}
+        >
+          <Feather className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      )}
       {node.cat.questionnaireCode && (
         <span className="shrink-0 self-center rounded-full border border-ink/40 px-1.5 text-xs leading-snug opacity-80">
           {node.cat.questionnaireCode}
@@ -101,6 +132,20 @@ function NodeBox({
         <ArrowUpLeft className="h-3.5 w-3.5" aria-hidden />
       </Link>
     </div>
+    {meforshim && meforshimOpen && (
+      <div className="flow-ellipse text-ink" style={style}>
+        <span className="mb-0.5 flex items-center justify-center gap-1 text-xs opacity-70">
+          <Feather className="h-3 w-3" aria-hidden />
+          מפרשים
+        </span>
+        {meforshim.map((line, i) => (
+          <span key={i} className="block leading-snug">
+            {line}
+          </span>
+        ))}
+      </div>
+    )}
+    </>
   );
 }
 
@@ -125,7 +170,7 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
           onToggle={() => ctx.toggle(node.cat.id)}
           ctx={ctx}
         />
-        {open && node.cat.description && (
+        {open && node.cat.description && !node.cat.description.startsWith(MEFORSHIM_PREFIX) && (
           <p className="max-w-[15rem] text-[11px] leading-relaxed text-muted">{node.cat.description}</p>
         )}
         {open && allLeaves && (

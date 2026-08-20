@@ -192,6 +192,29 @@ body {
   background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 40%, transparent);
   transition: background-color 0.4s ease;
 }
+/* בועת מפרשים — חלון בצורת אליפסה (לא ריבוע!) שנפתח מסמל הנוצה */
+.flow-ellipse {
+  font-family: var(--font-hand);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  padding: 1.1rem 1.9rem;
+  max-width: 20rem;
+  text-align: center;
+  font-size: 0.875rem;
+  background: color-mix(in srgb, var(--flow-accent, var(--sun)) 12%, var(--card));
+  box-shadow: var(--shadow-soft);
+  animation: ellipse-pop 0.22s var(--ease-snap, ease-out);
+}
+@keyframes ellipse-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
 .card-hover {
   transition:
