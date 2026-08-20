@@ -73,9 +73,7 @@ export default async function MapPage() {
         </div>
       ) : (
         <AnimatedGrid className="mt-8">
-          <div className="card p-5">
-            <BagrutMapTree tree={tree} />
-          </div>
+          <BagrutMapTree tree={tree} />
         </AnimatedGrid>
       )}
     </div>
