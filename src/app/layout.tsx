@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Assistant, Gveret_Levin, Karantina } from "next/font/google";
+import { Assistant, Gveret_Levin, Rubik } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
@@ -22,10 +22,10 @@ const gveretLevin = Gveret_Levin({
   weight: ["400"],
 });
 
-const karantina = Karantina({
-  variable: "--font-karantina",
+const rubik = Rubik({
+  variable: "--font-rubik",
   subsets: ["hebrew", "latin"],
-  weight: ["700"],
+  weight: ["900"],
 });
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="he"
       dir="rtl"
-      className={`${assistant.variable} ${gveretLevin.variable} ${karantina.variable} h-full antialiased`}
+      className={`${assistant.variable} ${gveretLevin.variable} ${rubik.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a href="#main" className="skip-link">

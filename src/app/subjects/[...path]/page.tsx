@@ -169,7 +169,7 @@ export default async function CategoryPage({ params }: Props) {
           <h2 id="children-h" className="font-display text-2xl font-bold">
             תיקיות בתוך {category.title}
           </h2>
-          <AnimatedGrid className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <AnimatedGrid className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {children.map((c, i) => (
               <SubjectCard
                 key={c.id}

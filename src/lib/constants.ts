@@ -87,6 +87,8 @@ export const SUBJECT_ICONS: Record<string, string> = {
   chevra: "🤝",
   teacher: "🎓",
   megilot: "📃",
+  tichnut: "💻",
+  minhal: "📊",
 };
 
 /** בית מעוצב עם תמונה וכיתוב – רק למקצועות/יחידות שיש להם בית משלהם (מוצג בכרטיסי המקצועות) */
@@ -106,6 +108,8 @@ const SUBJECT_HOUSE_FILES: Record<string, string> = {
   chevra: "house-chevra.png",
   math: "house-math.png",
   teacher: "house-teacher.png",
+  tichnut: "house-tichnut.png",
+  minhal: "house-minhal.png",
 };
 
 export const SUBJECT_HOUSES: Record<string, string> = Object.fromEntries(
@@ -129,6 +133,8 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
   chevra: "#d99a5c",
   math: "#7a8a89",
   teacher: "#b0729a",
+  tichnut: "#a0cad2",
+  minhal: "#bbba8d",
 };
 
 export function formatPrice(agorot: number) {

@@ -152,21 +152,24 @@ export default async function HomePage() {
 
         {/* ================= PACK ================= */}
         <Reveal>
-          <div className={s.pack}>
-            <div className={s.packBody}>
-              <h3>{PLANS.custom_monthly.label}</h3>
-              <ul>
-                <li>מותאם למערכת השעות שלך — עד 3 מקצועות</li>
-                <li>עד {PLANS.custom_monthly.downloadsLimit} הורדות בחודש: דף לתלמידה, דף למורה ומצגת</li>
-                <li>רק הפרקים שאת מלמדת — בלי רעש מסביב</li>
-                <li>פורום מורות לשאלות על מסירת הפרק</li>
-              </ul>
-              <div className={s.price}>
-                {formatPrice(customPrice)} <small>· לחודש</small>
+          <div className={s.packWrap}>
+            <img className={s.packBow} src="/bow-cutout.png" alt="" aria-hidden />
+            <div className={s.pack}>
+              <div className={s.packBody}>
+                <h3>{PLANS.custom_monthly.label}</h3>
+                <ul>
+                  <li>עד 3 מקצועות לפי המערכת שלך</li>
+                  <li>עד {PLANS.custom_monthly.downloadsLimit} הורדות בחודש</li>
+                  <li>רק הפרקים שאת מלמדת</li>
+                  <li>פורום מורות לשאלות</li>
+                </ul>
+                <div className={s.price}>
+                  {formatPrice(customPrice)} <small>· לחודש</small>
+                </div>
+                <Link href="/pricing" className="btn btn-gold">
+                  לכל המסלולים
+                </Link>
               </div>
-              <Link href="/pricing" className="btn btn-gold">
-                לכל המסלולים
-              </Link>
             </div>
           </div>
         </Reveal>
@@ -290,6 +293,69 @@ export default async function HomePage() {
             <p>הקובץ מוטבע במספר האישי שלך ונשמר באזור האישי. מדפיסים — ונכנסים לכיתה.</p>
           </div>
         </AnimatedGrid>
+
+        {/* ================= ABOUT ================= */}
+        <Reveal>
+          <h2 className="sec-h" style={{ marginBottom: 36 }}>
+            מי אנחנו?
+          </h2>
+          <div className={s.aboutLetter}>
+            <img src="/images/about-letter.png" alt="" className={s.aboutLetterImg} aria-hidden />
+            <div className={s.aboutText}>
+              <p>הכל התחיל כשהבנו שהגיע הזמן.</p>
+              <p>
+                אולי זאת הייתה שוועת ממלאות המקום היומיות-
+                <br />
+                שבהתראות קצרות נדרשו למלא לו״ז?
+              </p>
+              <p>
+                או שאולי דווקא התקופתיות-
+                <br />
+                כל שלושה חודשים יצאו למסע יש מאין של איסוף, איתור ואילתור?
+              </p>
+              <p>
+                ייתכן וזה היה קולו הדחוק של החלום ההוא, להוסיף שעות,
+                <br />
+                חלום שנגדע עקב אימת הכנת השיעורים מחדש.
+              </p>
+              <p>
+                או אולי משרות שהתפספסו,
+                <br />
+                רק כי פחדנו להירטב שוב מהמים הקרים.
+              </p>
+              <p>
+                זה לא סוד.
+                <br />
+                להכין שיעור טוב- זה אתגר.
+                <br />
+                להפוך אותו למיוחד ואטרקטיבי - זה בונוס לפריווילגיות.
+              </p>
+              <p>
+                והגיע לנו, בדור שזקוק אפילו ליותר מזה, לקבל במתנה את-
+                <br />
+                <b className={s.aboutBrand}>לו״ז העניין.</b>
+                <br />
+                <b className={s.aboutBrand}>הבית של הבגרויות.</b>
+              </p>
+              <p>
+                אנחנו כאן, אחיות להוראה,
+                <br />
+                ממנעד סמינרים רחב ומגוון.
+                <br />
+                רוצות להעניק לך את השלווה של הפת בסלה.
+              </p>
+              <p className={s.aboutClose}>
+                בואי הצטרפי אלינו,
+                <br />
+                ובשטח הלו״ז הפנוי,
+                <br />
+                מלאי אותו באין סוף דברים טובים,
+                <br />
+                כאלה, שרק מורה יכולה לתת.
+              </p>
+            </div>
+          </div>
+        </Reveal>
 
         {/* ================= SECURITY ================= */}
         <Reveal>

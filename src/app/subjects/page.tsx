@@ -57,7 +57,7 @@ export default async function SubjectsPage() {
           <p className="mt-2 text-muted">התיקיות הראשונות בדרך. חזרי בקרוב!</p>
         </div>
       ) : (
-        <AnimatedGrid className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <AnimatedGrid className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {rows.map(({ subject: s, count }) => (
             <SubjectCard
               key={s.id}
