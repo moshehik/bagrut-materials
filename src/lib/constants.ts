@@ -91,6 +91,26 @@ export const SUBJECT_ICONS: Record<string, string> = {
   minhal: "📊",
 };
 
+/** צבע ייחודי לכל מקצוע — גוונים שונים סביב גלגל הצבעים, בלי כפילויות */
+export const SUBJECT_COLORS: Record<string, string> = {
+  torah: "#2f6fed", // כחול
+  navi: "#14b8a6", // טורקיז
+  ktuvim: "#8b5cf6", // סגול
+  lashon: "#f59e0b", // ענבר
+  sifrut: "#ec4899", // ורוד
+  english: "#dc2626", // אדום
+  yahadut: "#4f46e5", // אינדיגו
+  math: "#22c55e", // ירוק
+  dinim: "#eab308", // זהב-חרדל
+  history: "#8a5a2b", // חום אדמה
+  ezrachut: "#0ea5e9", // תכלת
+  minhal: "#84cc16", // ירוק-זית
+  sicha: "#e11d48", // אדום-ורדרד
+  chevra: "#c026d3", // פוקסיה
+  teacher: "#0d9488", // ירוק-ים כהה
+  tichnut: "#ea580c", // כתום עמוק
+};
+
 /** בית מעוצב עם תמונה וכיתוב – רק למקצועות/יחידות שיש להם בית משלהם (מוצג בכרטיסי המקצועות) */
 const SUBJECT_HOUSE_FILES: Record<string, string> = {
   torah: "house-torah.png",

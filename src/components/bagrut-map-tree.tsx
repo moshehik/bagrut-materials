@@ -3,6 +3,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ChevronDown, ArrowUpLeft, Undo2 } from "lucide-react";
+import { SUBJECT_COLORS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 
 export type MapNode = { cat: Category; chain: Category[]; children: MapNode[] };
@@ -115,7 +116,7 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
 
   return (
     <div className="flex items-start">
-      <div id={`map-cat-${node.cat.id}`} className="flex flex-col gap-1.5">
+      <div id={`map-cat-${node.cat.id}`} className="flex flex-col items-start gap-1">
         <NodeBox
           node={node}
           level={level}
@@ -125,7 +126,7 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
           ctx={ctx}
         />
         {open && node.cat.description && (
-          <p className="max-w-[17rem] text-[11px] leading-relaxed text-muted">{node.cat.description}</p>
+          <p className="max-w-[15rem] text-[11px] leading-relaxed text-muted">{node.cat.description}</p>
         )}
         {open && allLeaves && (
           <div className="flex flex-col">
@@ -222,7 +223,12 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
     <div className="flex flex-col gap-8 overflow-x-auto py-2">
       {tree.map((root) => (
         <div key={root.cat.id} className="min-w-max">
-          <Branch node={root} level={0} accent={root.cat.color || "var(--sun)"} ctx={ctx} />
+          <Branch
+            node={root}
+            level={0}
+            accent={SUBJECT_COLORS[root.cat.slug] || root.cat.color || "var(--sun)"}
+            ctx={ctx}
+          />
         </div>
       ))}
     </div>
