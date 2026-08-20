@@ -25,7 +25,8 @@ async function buildTree(): Promise<MapNode[]> {
       return { cat, chain: me, children: kids.map((k) => expand(k, me)) };
     };
     return (byParent.get(null) ?? []).map((r) => expand(r, []));
-  } catch {
+  } catch (e) {
+    console.error("bagrut map: failed to build tree", e);
     return [];
   }
 }

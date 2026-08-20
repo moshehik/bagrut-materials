@@ -1721,6 +1721,11 @@ async function pruneStale(seededRootIds: number[]) {
   }
   const mats = await db.select({ categoryId: materials.categoryId }).from(materials);
   const hasMaterial = new Set(mats.map((m) => m.categoryId));
+  // רכישות שמפנות לקטגוריה: מחיקה הייתה מאפסת להן את הקטגוריה ומשבשת הרשאות
+  const purch = await db
+    .select({ categoryId: schema.purchases.categoryId })
+    .from(schema.purchases);
+  for (const p of purch) if (p.categoryId !== null) hasMaterial.add(p.categoryId);
 
   const subtreeHasMaterials = (id: number): boolean => {
     if (hasMaterial.has(id)) return true;
