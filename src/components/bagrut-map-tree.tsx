@@ -110,9 +110,9 @@ function NodeBox({
             setMeforshimOpen((v) => !v);
           }}
           aria-expanded={meforshimOpen}
-          className="shrink-0 cursor-pointer rounded-full p-0.5"
+          className="flow-tip shrink-0 cursor-pointer rounded-full p-0.5"
           style={{ color: accent }}
-          title="קטעי מפרשים בפרק זה"
+          data-tip="קטעי מפרשים בפרק זה"
           aria-label={`קטעי מפרשים – ${node.cat.title}`}
         >
           <Feather className="h-3.5 w-3.5" aria-hidden />
