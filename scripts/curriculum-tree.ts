@@ -195,7 +195,12 @@ const tehilimPerakim: Node[] = [
   perek(130),
   perek(136),
   perek(137),
-  { slug: "perek-145-150", title: 'פרקים קמ"ה-ק"נ' },
+  perek(145),
+  perek(146),
+  perek(147),
+  perek(148),
+  perek(149),
+  perek(150),
 ];
 
 /** פרקי תהילים ביחידת הגבר 3281 */
@@ -205,19 +210,23 @@ const tehilimHagever: Node[] = [
   perek(79),
   perek(81),
   perek(82),
-  {
-    slug: "perek-90-95",
-    title: "פרקים צ'-צ\"ה",
-    description: 'מפרשים: מלבי"ם פרק צ"ב פסוקים ה\'-ו\'',
-  },
+  perek(90),
+  perek(91),
+  perekM(92, 'מלבי"ם פסוקים ה\'-ו\''),
+  perek(93),
+  perek(94),
+  perek(95),
   perekM(100, "מלבי\"ם פסוקים א'-ב'"),
   perek(104),
   perekM(107, 'רד"ק פסוק י"ז'),
-  {
-    slug: "perek-111-118",
-    title: 'פרקים קי"א-קי"ח',
-    description: 'מפרשים: מלבי"ם פרק קט"ז פסוקים י"ב-י"ד; מלבי"ם פרק קי"ח פסוק כ"ד',
-  },
+  perek(111),
+  perek(112),
+  perek(113),
+  perek(114),
+  perek(115),
+  perekM(116, 'מלבי"ם פסוקים י"ב-י"ד'),
+  perek(117),
+  perekM(118, 'מלבי"ם פסוק כ"ד'),
   perek(139),
 ];
 
