@@ -61,6 +61,7 @@ function NodeBox({
   const hasChildren = node.children.length > 0;
   const ref = isRefNode(node);
   const refTarget = ref ? ctx.resolveRef(node) : null;
+  const isFinal = !hasChildren && !ref;
   const meforshim = meforshimOf(node);
   const [meforshimOpen, setMeforshimOpen] = useState(false);
   const style = { "--flow-accent": accent } as CSSProperties;
@@ -125,8 +126,11 @@ function NodeBox({
       <Link
         href={hrefFor(refTarget ? refTarget.chain : node.chain)}
         onClick={(e) => e.stopPropagation()}
-        className="shrink-0 rounded-full p-0.5 opacity-60 hover:opacity-100"
-        title="לפתיחת דף התיקייה"
+        className={`shrink-0 rounded-full p-0.5 ${
+          isFinal ? "opacity-90 hover:opacity-100" : "opacity-60 hover:opacity-100"
+        }`}
+        style={isFinal ? { color: "var(--flow-final)" } : undefined}
+        title={isFinal ? "ריבוע סופי – לחיצה פותחת את דף התיקייה" : "לפתיחת דף התיקייה"}
         aria-label={`פתיחת דף ${node.cat.title}`}
       >
         <ArrowUpLeft className="h-3.5 w-3.5" aria-hidden />

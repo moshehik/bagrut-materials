@@ -37,6 +37,9 @@
 
   /* עקומת תנועה חדה — לאנימציות מודרניות וקצובות */
   --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* תרשים הזרימה: ורוד לסימון החץ על ריבוע סופי (ללא המשך) — מבדיל אותו מריבועי-ענף */
+  --flow-final: #d1477e;
 }
 
 @theme inline {
@@ -436,6 +439,7 @@ body {
   --pink: #7a2018;
   --gold: #6b4e10;
   --oak: #33461f;
+  --flow-final: #7a2018;
   background-image: none !important;
 }
 .a11y-high-contrast .card {
