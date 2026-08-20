@@ -126,10 +126,8 @@ function NodeBox({
       <Link
         href={hrefFor(refTarget ? refTarget.chain : node.chain)}
         onClick={(e) => e.stopPropagation()}
-        className={`flow-tip shrink-0 rounded-full p-0.5 ${
-          isFinal ? "opacity-90 hover:opacity-100" : "opacity-60 hover:opacity-100"
-        }`}
-        style={isFinal ? { color: "var(--flow-final)" } : undefined}
+        className="flow-tip flow-arrow-circle shrink-0"
+        style={{ backgroundColor: isFinal ? "var(--flow-final)" : "var(--ink)" }}
         data-tip={isFinal ? "ריבוע סופי – לחיצה פותחת את דף התיקייה" : "לפתיחת דף התיקייה"}
         aria-label={`פתיחת דף ${node.cat.title}`}
       >

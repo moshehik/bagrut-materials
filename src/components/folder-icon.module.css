@@ -1,0 +1,35 @@
+/* אייקון "תיקייה" — קו דק שחור, ללא מילוי. הדף בפנים מרחף בעדינות; הכריכה הקדמית נפתחת קצת ב-hover */
+
+.folder {
+  overflow: visible;
+  color: var(--ink);
+}
+
+.paper {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: folderPeek 3.2s ease-in-out infinite;
+}
+@keyframes folderPeek {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paper {
+    animation: none;
+  }
+}
+
+.front {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  transition: transform 0.3s var(--ease-snap, ease);
+}
+.folder:hover .front {
+  transform: translateY(1.5px) scaleY(1.03);
+}

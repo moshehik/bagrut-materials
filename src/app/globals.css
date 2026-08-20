@@ -222,6 +222,24 @@ body {
   }
 }
 
+/* חץ הריבוע בתוך עיגול צבע מלא — כדי שיהיה ברור שזה כפתור לחיץ */
+.flow-arrow-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  color: var(--plaster);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.15s var(--ease-snap), box-shadow 0.15s ease;
+}
+.flow-arrow-circle:hover,
+.flow-arrow-circle:focus-visible {
+  transform: scale(1.14);
+  box-shadow: var(--shadow-lift);
+}
+
 /* מסגרת צפה מודרנית על החץ בריחוף: כתב-יד, צבע אחיד ייחודי שלא קיים בשום מקום אחר בתרשים */
 .flow-tip {
   position: relative;

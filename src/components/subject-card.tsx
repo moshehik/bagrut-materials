@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { SUBJECT_ICONS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
+import { IconFolder } from "./folder-icon";
 import s from "./subject-card.module.css";
 
 type Props = {
@@ -32,7 +33,7 @@ export function SubjectCard({
   color,
   size = "md",
 }: Props) {
-  const emoji = icon || (slug ? SUBJECT_ICONS[slug] : undefined) || "📘";
+  const emoji = icon || (slug ? SUBJECT_ICONS[slug] : undefined);
   const house = slug ? SUBJECT_HOUSES[slug] : undefined;
   const accent = color || (slug ? SUBJECT_HOUSE_COLORS[slug] : undefined) || "var(--blue)";
   const big = size === "lg";
@@ -48,8 +49,10 @@ export function SubjectCard({
           <div className={s.houseWrap}>
             <img className={s.house} src={house} alt={title} width={356} height={266} />
           </div>
-        ) : (
+        ) : emoji ? (
           <b className={s.icon}>{emoji}</b>
+        ) : (
+          <IconFolder className={s.folderIcon} />
         )}
       </div>
       {!house && <h3 className={s.title}>{title}</h3>}

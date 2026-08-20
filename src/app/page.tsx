@@ -11,6 +11,7 @@ import { HeroTitle } from "@/components/hero-title";
 import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
+import { IconFolder } from "@/components/folder-icon";
 import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -138,8 +139,10 @@ export default async function HomePage() {
                         height={266}
                       />
                     </div>
+                  ) : c.icon || SUBJECT_ICONS[c.slug] ? (
+                    <b>{c.icon || SUBJECT_ICONS[c.slug]}</b>
                   ) : (
-                    <b>{c.icon || SUBJECT_ICONS[c.slug] || "📘"}</b>
+                    <IconFolder className={s.folderIcon} />
                   )}
                 </div>
                 {!SUBJECT_HOUSES[c.slug] && <h3>{c.title}</h3>}
@@ -367,6 +370,8 @@ export default async function HomePage() {
                 <b className={s.aboutBrand}>צוות לו״ז העניין</b>
                 <br />
                 בהנהלת חיה שיינווטר
+                <br />
+                וחוה רחל גולוסוב
               </p>
             </div>
           </div>

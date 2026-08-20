@@ -74,6 +74,22 @@
   transform: translateY(-2px) scale(1.08) rotate(-4deg);
 }
 
+.folderIcon {
+  position: absolute;
+  inset: 0;
+  width: 42%;
+  height: 42%;
+  margin: auto;
+  transition: transform 0.3s var(--ease-snap);
+}
+.big .folderIcon {
+  width: 46%;
+  height: 46%;
+}
+.card:hover .folderIcon {
+  transform: translateY(-2px) scale(1.06);
+}
+
 .title {
   font-family: var(--font-hand);
   font-weight: 400;

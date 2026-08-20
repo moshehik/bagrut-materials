@@ -18,6 +18,7 @@ import type { Material, MaterialKind } from "@/db/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
+import { IconFolder } from "@/components/folder-icon";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 
@@ -104,7 +105,7 @@ export default async function CategoryPage({ params }: Props) {
       .filter((x) => x.m.kind === kind),
   })).filter((g) => g.items.length > 0);
 
-  const icon = category.icon || SUBJECT_ICONS[category.slug] || (chain.length === 1 ? "📘" : "📁");
+  const icon = category.icon || SUBJECT_ICONS[category.slug];
   const accent = category.color || root.color || "var(--blue)";
   const parentHref = chain.length > 1 ? chainToHref(chain.slice(0, -1)) : "/subjects";
 
@@ -125,7 +126,7 @@ export default async function CategoryPage({ params }: Props) {
               className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl text-5xl animate-float"
               style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
             >
-              {icon}
+              {icon || <IconFolder className="h-9 w-9" />}
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
