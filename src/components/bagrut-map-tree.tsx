@@ -127,11 +127,10 @@ function NodeBox({
         href={hrefFor(refTarget ? refTarget.chain : node.chain)}
         onClick={(e) => e.stopPropagation()}
         className="flow-tip flow-arrow-circle shrink-0"
-        style={{ backgroundColor: isFinal ? "var(--flow-final)" : "var(--ink)" }}
         data-tip={isFinal ? "ריבוע סופי – לחיצה פותחת את דף התיקייה" : "לפתיחת דף התיקייה"}
         aria-label={`פתיחת דף ${node.cat.title}`}
       >
-        <ArrowUpLeft className="h-3.5 w-3.5" aria-hidden />
+        <ArrowUpLeft className="h-3 w-3" aria-hidden />
       </Link>
     </div>
     {meforshim && meforshimOpen && (

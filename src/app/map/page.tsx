@@ -58,7 +58,9 @@ export default async function MapPage() {
           לחיצה על <b className="text-ink">הריבוע עצמו</b> פותחת את הריבוע הבא
         </span>
         <span className="flex items-center gap-1.5">
-          <ArrowUpLeft className="h-4 w-4 shrink-0" style={{ color: "var(--flow-final)" }} aria-hidden />
+          <span className="flow-arrow-circle shrink-0">
+            <ArrowUpLeft className="h-3 w-3" aria-hidden />
+          </span>
           לחיצה על <b className="text-ink">החץ</b> מביאה אל המקור עצמו
         </span>
       </div>
