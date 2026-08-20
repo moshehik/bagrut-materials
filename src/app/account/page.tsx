@@ -8,7 +8,7 @@ import {
   Sparkles,
   Download,
   ShoppingBag,
-  MessagesSquare,
+  Map as MapIcon,
   Store,
   BookOpen,
   CheckCircle2,
@@ -264,7 +264,7 @@ export default async function AccountPage({
             {[
               { href: "/subjects", label: "המקצועות", icon: BookOpen, cls: "bg-blue-soft text-blue-deep" },
               { href: "/pricing", label: "מסלולים", icon: ShoppingBag, cls: "bg-pink-soft text-pink" },
-              { href: "/forum", label: "פורום מורות", icon: MessagesSquare, cls: "bg-gold-soft text-[#8a6500]" },
+              { href: "/map", label: "מפת הבגרות", icon: MapIcon, cls: "bg-gold-soft text-[#8a6500]" },
               { href: "/sell", label: "מכירת חומרים", icon: Store, cls: "bg-oak-soft text-oak-deep" },
             ].map((l) => (
               <Link

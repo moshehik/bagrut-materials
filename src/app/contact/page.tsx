@@ -60,11 +60,11 @@ export default function ContactPage() {
             <MessageSquare className="h-5 w-5 text-pink" aria-hidden />
             <div className="mt-2 font-bold">שאלות מקצועיות</div>
             <p className="text-muted">
-              למנויות פרימיום –{" "}
-              <Link href="/forum" className="text-blue-deep underline">
-                פורום המורות
+              למנויות פרימיום – בכל{" "}
+              <Link href="/subjects" className="text-blue-deep underline">
+                יחידת לימוד
               </Link>{" "}
-              הוא המקום הכי מהיר לקבל תשובה.
+              מחכה פורום מורות לשאלות על השיעור הספציפי.
             </p>
           </div>
           <div className="rounded-2xl bg-gold-soft/60 p-4">

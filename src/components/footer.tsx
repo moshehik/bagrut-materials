@@ -6,10 +6,15 @@ export function Footer() {
     <footer className="mt-24 bg-sea2 text-white rounded-t-[40px]">
       <div className="mx-auto max-w-[1180px] px-6 sm:px-10 pt-12 pb-8 grid gap-10 md:grid-cols-4 text-[15px]">
         <div className="md:col-span-2">
-          <div className="font-hand text-[30px] leading-none">
-            לו״ז <span className="text-sun">העניין</span>
-          </div>
-          <p className="mt-3 text-white/85 max-w-md leading-relaxed">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/logo-white.png"
+            alt="לו״ז העניין – בית לחומרי הבגרות"
+            width={640}
+            height={410}
+            className="h-24 sm:h-28 w-auto"
+          />
+          <p className="mt-4 text-white/85 max-w-md leading-relaxed">
             {SITE_MOTTO}. שיעורים מוכנים למורות במחוז החרדי – דף לתלמידה, דף למורה
             ומצגת מלווה לכל פרק – כדי שהזמן שלך יישאר לדברים שרק מורה יכולה לתת.
           </p>
@@ -20,7 +25,6 @@ export function Footer() {
             <li><Link href="/subjects" className="link-draw hover:text-sun">המקצועות</Link></li>
             <li><Link href="/map" className="link-draw hover:text-sun">מפת הבגרות</Link></li>
             <li><Link href="/pricing" className="link-draw hover:text-sun">מסלולים ומחירים</Link></li>
-            <li><Link href="/forum" className="link-draw hover:text-sun">פורום מורות</Link></li>
             <li><Link href="/sell" className="link-draw hover:text-sun">מכירת חומרים לאתר</Link></li>
           </ul>
         </div>
@@ -34,8 +38,13 @@ export function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/15 text-center text-xs text-white/80 py-4 px-4">
-        © {new Date().getFullYear()} לו״ז העניין · {SITE_MOTTO} · כל קובץ מוטבע במספר אישי של המורידה
+      <div className="border-t border-white/15 text-center text-xs text-white/80 py-4 px-4 space-y-1">
+        <div>
+          © {new Date().getFullYear()} לו״ז העניין · {SITE_MOTTO} · כל קובץ מוטבע במספר אישי של המורידה
+        </div>
+        <div dir="rtl">
+          האתר נבנה ע״י wither אוטומציה ודפי נחיתה · <a href="tel:0556799588" className="hover:text-sun">0556799588</a>
+        </div>
       </div>
     </footer>
   );

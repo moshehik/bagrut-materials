@@ -63,16 +63,20 @@ const NAV = [
   { href: "/subjects", label: "המקצועות" },
   { href: "/map", label: "מפת הבגרות" },
   { href: "/pricing", label: "מסלולים" },
-  { href: "/forum", label: "פורום מורות" },
   { href: "/sell", label: "מוכרות" },
 ];
 
-/** לוגו "לו״ז העניין" — כתב-יד (Gveret Levin), דיו כחול עמוק */
+/** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */
 export function Logo({ className = "" }: { className?: string }) {
   return (
-    <span className={`font-hand leading-none text-sea2 ${className}`}>
-      לו״ז העניין
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/images/logo.png"
+      alt="לו״ז העניין – בית לחומרי הבגרות"
+      width={640}
+      height={410}
+      className={`w-auto ${className}`}
+    />
   );
 }
 
@@ -85,7 +89,7 @@ export function Header({ user }: { user: HeaderUser }) {
     <header className="sticky top-0 z-40 backdrop-blur-md bg-plaster/85 border-b border-sea/10">
       <div className="mx-auto max-w-[1180px] px-4 sm:px-6 h-[74px] flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 group" aria-label="דף הבית">
-          <Logo className="text-[28px] sm:text-[30px]" />
+          <Logo className="h-11 sm:h-12" />
           <span className="hidden sm:block text-[11px] font-semibold text-muted tracking-wide border-s border-sea/20 ps-3 leading-tight">
             מתמקדים
             <br />

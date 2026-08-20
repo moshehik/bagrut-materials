@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderOpen, Package, ArrowRight, Crown } from "lucide-react";
+import { FolderOpen, Package, ArrowRight, Crown, ShieldCheck } from "lucide-react";
 import {
   resolvePath,
   getVisibleChildren,
@@ -19,6 +19,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
+import { UnitForum } from "@/components/unit-forum";
 
 export const dynamic = "force-dynamic";
 
@@ -204,6 +205,14 @@ export default async function CategoryPage({ params }: Props) {
             )}
           </div>
 
+          <p className="mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-soft/60 px-4 py-3 text-sm leading-relaxed text-blue-deep">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+            <span>
+              בכל הורדה מוטבעים בקובץ המספר האישי של המורידה והודעת זכויות יוצרים. כך אנחנו
+              שומרות על היוצרות — ועל המחירים הנמוכים.
+            </span>
+          </p>
+
           <div className="mt-6 space-y-10">
             {groups.map((g) => {
               const meta = MATERIAL_KINDS[g.kind];
@@ -255,6 +264,9 @@ export default async function CategoryPage({ params }: Props) {
           </Link>
         </div>
       )}
+
+      {/* פורום מורות – רק ביחידות עצמן (תיקיות ללא תתי-תיקיות) */}
+      {children.length === 0 && <UnitForum category={category} here={here} user={user} />}
     </div>
   );
 }

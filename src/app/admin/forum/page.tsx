@@ -30,9 +30,7 @@ export default async function AdminForumPage() {
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-2xl font-bold">פורום מורות</h2>
         <span className="chip bg-blue-soft text-blue-deep">{rows.length} דיונים</span>
-        <Link href="/forum" target="_blank" className="btn btn-ghost text-xs py-1 ms-auto">
-          לפורום באתר ↗
-        </Link>
+        <span className="text-xs text-muted ms-auto">כל דיון שייך ליחידת לימוד ומוצג בדף שלה</span>
       </div>
       {rows.length === 0 ? (
         <div className="card p-8 text-center text-muted">אין עדיין דיונים.</div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles, Eye, PauseCircle, Gift } from "lucide-react";
+import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles, Eye, PauseCircle, Gift, Fingerprint } from "lucide-react";
 import type { Material } from "@/db/schema";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { Entitlement } from "@/lib/data";
@@ -96,6 +96,10 @@ export function MaterialCard({ material: m, entitlement, loggedIn, currentPath =
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-4">
         <Actions m={m} entitlement={entitlement} loggedIn={loggedIn} currentPath={currentPath} />
       </div>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted">
+        <Fingerprint className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        מוטבע במספר האישי שלך
+      </p>
     </article>
   );
 }

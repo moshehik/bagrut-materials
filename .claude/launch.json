@@ -8,6 +8,11 @@
       "port": 5178
     },
     {
+      "name": "next-attach",
+      "url": "http://localhost:3007",
+      "port": 3007
+    },
+    {
       "name": "next-dev",
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["--use-system-ca", "node_modules/next/dist/bin/next", "dev", "-p", "3007"],
@@ -18,6 +23,12 @@
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["--use-system-ca", "node_modules/next/dist/bin/next", "dev", "-p", "3011"],
       "port": 3011
+    },
+    {
+      "name": "next-dev-c",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["--use-system-ca", "node_modules/next/dist/bin/next", "dev", "-p", "3013"],
+      "port": 3013
     }
   ]
 }

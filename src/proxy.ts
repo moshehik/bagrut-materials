@@ -23,7 +23,8 @@ export const config = {
   matcher: [
     "/account/:path*",
     "/admin/:path*",
-    "/forum/:path*",
+    // הדיונים דורשים התחברות; /forum עצמו רק מפנה ליחידות
+    "/forum/:path+",
     "/checkout/:path*",
     "/cart/:path*",
     "/sell/:path*",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { Store, Coins, SearchCheck, Handshake, Link2, Clock } from "lucide-react";
+import { Store, Coins, SearchCheck, Handshake, Link2, Clock, Crown } from "lucide-react";
 import { db } from "@/db";
 import { sellOffers } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
@@ -69,6 +69,25 @@ export default async function SellPage() {
           חומרים איכותיים – כך מורות אחרות נהנות מהעבודה שלך, ואת מקבלת תמורה הוגנת.
         </p>
       </header>
+
+      <section className="card p-6 sm:p-7 animate-fade-up border-2 border-[#d9b23a]/40 bg-gold-soft/40">
+        <div className="flex items-start gap-4">
+          <span className="grid place-items-center h-11 w-11 rounded-xl bg-gold-soft text-[#8a6500] shrink-0">
+            <Crown className="h-6 w-6" />
+          </span>
+          <div>
+            <h2 className="font-display font-bold text-xl">
+              יש לך מערכי שיעורים מושקעים? מסודרים? ברורים?
+            </h2>
+            <p className="mt-2 leading-relaxed">
+              זה יכול לצאת לך משתלם! <strong>על מקצוע שתאיישי תקבלי מנוי פרמיום קבוע!</strong>
+            </p>
+            <p className="text-sm text-muted mt-1 leading-relaxed">
+              החומרים צריכים להיות מוקלדים ומלאים. בואי נהיה בקשר!
+            </p>
+          </div>
+        </div>
+      </section>
 
       <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((s, i) => (

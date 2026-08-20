@@ -25,7 +25,7 @@ export function AuthShell({
           {logoHeader ? (
             <div className="flex flex-col items-center text-center mb-6">
               <h1 className="sr-only">{title}</h1>
-              <Logo className="text-[40px] sm:text-[46px]" />
+              <Logo className="h-20 sm:h-24" />
               <p className="sr-only">{subtitle}</p>
             </div>
           ) : (

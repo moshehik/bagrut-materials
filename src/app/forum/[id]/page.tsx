@@ -6,7 +6,7 @@ import { ArrowRight, Clock, UserRound, MessageCircle, Sparkles, Lock } from "luc
 import { db } from "@/db";
 import { categories, forumPosts, forumThreads, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
-import { userHasPremium } from "@/lib/data";
+import { userHasPremium, getCategoryChain, chainToHref } from "@/lib/data";
 import { ReplyForm } from "@/components/forum-forms";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ async function loadThread(id: number) {
       body: forumThreads.body,
       createdAt: forumThreads.createdAt,
       userId: forumThreads.userId,
+      categoryId: forumThreads.categoryId,
       author: users.name,
       category: categories.title,
     })
@@ -53,6 +54,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const thread = await loadThread(id);
   if (!thread) notFound();
 
+  // קישור חזרה ליחידת הלימוד שבה נשאלה השאלה
+  const chain = thread.categoryId ? await getCategoryChain(thread.categoryId) : [];
+  const backHref = chain.length > 0 ? chainToHref(chain) : "/subjects";
+  const backLabel = thread.category ? `חזרה ל${thread.category}` : "לכל המקצועות";
+
   if (!premium) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center space-y-4 animate-fade-up">
@@ -65,8 +71,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           <Link href="/checkout?premium=1" className="btn btn-gold">
             <Sparkles className="h-4 w-4" /> הצטרפי לפרימיום
           </Link>
-          <Link href="/forum" className="btn btn-ghost">
-            חזרה לפורום
+          <Link href={backHref} className="btn btn-ghost">
+            {backLabel}
           </Link>
         </div>
       </div>
@@ -88,12 +94,16 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10 sm:py-14 space-y-6">
-      <Link href="/forum" className="inline-flex items-center gap-1 text-sm text-blue-deep hover:underline">
-        <ArrowRight className="h-4 w-4" /> חזרה לפורום
+      <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-blue-deep hover:underline">
+        <ArrowRight className="h-4 w-4" /> {backLabel}
       </Link>
 
       <article className="card p-6 sm:p-8 animate-fade-up">
-        {thread.category && <span className="chip bg-blue-soft text-blue-deep mb-3">{thread.category}</span>}
+        {thread.category && (
+          <Link href={backHref} className="chip bg-blue-soft text-blue-deep mb-3 hover:bg-blue-soft/70">
+            {thread.category}
+          </Link>
+        )}
         <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight">{thread.title}</h1>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted mt-2">
           <span className="flex items-center gap-1">

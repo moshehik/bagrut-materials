@@ -187,21 +187,25 @@ export default async function HomePage() {
         </Reveal>
         <AnimatedGrid className={s.kinds}>
           <div className={s.kind}>
+            <img src="/images/kind-blob-1.png" alt="" className={s.kindBlob} />
             <IconStudentPage className={s.kindIcon} />
             <b>דף לתלמידה</b>
             <span>משפטים להשלמה תוך כדי השיעור — הכיתה נשארת ערנית</span>
           </div>
           <div className={s.kind}>
+            <img src="/images/kind-blob-2.png" alt="" className={s.kindBlob} />
             <IconTeacherPage className={s.kindIcon} />
             <b>דף למורה</b>
             <span>אותו דף עם התשובות, סיפורים, שאלות לחידוד וחידות</span>
           </div>
           <div className={s.kind}>
+            <img src="/images/kind-blob-3.png" alt="" className={s.kindBlob} />
             <IconPresentation className={s.kindIcon} />
             <b>מצגת מלווה</b>
             <span>לפי מהלך השיעור, למקרן או ללוח חכם</span>
           </div>
           <div className={s.kind}>
+            <img src="/images/kind-blob-4.png" alt="" className={s.kindBlob} />
             <IconPastExams className={s.kindIcon} />
             <b>בגרויות קודמות</b>
             <span>שאלות לפי פרק עם פתרונות — לפרימיום</span>
@@ -319,7 +323,7 @@ export default async function HomePage() {
                 חלום שנגדע עקב אימת הכנת השיעורים מחדש.
               </p>
               <p>
-                או אולי משרות שהתפספסו,
+                או אולי משרות נחשקות שאוישו בלעדינו,
                 <br />
                 רק כי פחדנו להירטב שוב מהמים הקרים.
               </p>
@@ -353,6 +357,17 @@ export default async function HomePage() {
                 <br />
                 כאלה, שרק מורה יכולה לתת.
               </p>
+              <p className={s.aboutSign}>
+                בהערכה,
+                <br />
+                <span className={s.aboutHeart} aria-hidden="true">
+                  ♥
+                </span>
+                <br />
+                <b className={s.aboutBrand}>צוות לו״ז העניין</b>
+                <br />
+                בהנהלת חיה שיינווטר
+              </p>
             </div>
           </div>
         </Reveal>
@@ -373,6 +388,13 @@ export default async function HomePage() {
             <Link href="/terms" className="btn btn-gold relative">
               לתנאי השימוש
             </Link>
+          </div>
+        </Reveal>
+
+        {/* ================= LOGO OUTRO ================= */}
+        <Reveal>
+          <div className={s.logoOutro}>
+            <GoatCalendarArt />
           </div>
         </Reveal>
       </div>

@@ -4,8 +4,6 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Loader2, MessageSquarePlus, Send, AlertCircle, ChevronDown } from "lucide-react";
 import { createThread, replyThread } from "@/lib/actions/forum";
 
-type SubjectOpt = { id: number; title: string; icon: string };
-
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
   return (
@@ -16,7 +14,7 @@ function ErrorBox({ error }: { error?: string }) {
   );
 }
 
-export function NewThreadForm({ subjects }: { subjects: SubjectOpt[] }) {
+export function NewThreadForm({ categoryId, unitTitle }: { categoryId: number; unitTitle: string }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createThread, undefined);
 
@@ -32,8 +30,10 @@ export function NewThreadForm({ subjects }: { subjects: SubjectOpt[] }) {
           <MessageSquarePlus className="h-5 w-5" />
         </span>
         <span className="flex-1">
-          <span className="font-bold block">שאלה חדשה</span>
-          <span className="text-sm text-muted">שאלי את המורות, התייעצי או שתפי רעיון</span>
+          <span className="font-bold block">שאלה חדשה על השיעור הזה</span>
+          <span className="text-sm text-muted">
+            שאלי, התייעצי או שתפי רעיון – הדיון יישאר צמוד ל{unitTitle}
+          </span>
         </span>
         <ChevronDown className={`h-5 w-5 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -41,30 +41,18 @@ export function NewThreadForm({ subjects }: { subjects: SubjectOpt[] }) {
       {open && (
         <form action={action} className="mt-5 space-y-4 animate-fade-up">
           <ErrorBox error={state?.error} />
-          <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
-            <label className="block">
-              <span className="text-sm font-semibold">כותרת</span>
-              <input
-                name="title"
-                required
-                minLength={4}
-                maxLength={200}
-                className="input mt-1"
-                placeholder="למשל: איך לפתוח את פרק ג' בצורה מעניינת?"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold">מקצוע (לא חובה)</span>
-              <select name="categoryId" className="input mt-1" defaultValue="">
-                <option value="">כללי</option>
-                {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.icon} {s.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <input type="hidden" name="categoryId" value={categoryId} />
+          <label className="block">
+            <span className="text-sm font-semibold">כותרת</span>
+            <input
+              name="title"
+              required
+              minLength={4}
+              maxLength={200}
+              className="input mt-1"
+              placeholder="למשל: איך לפתוח את השיעור הזה בצורה מעניינת?"
+            />
+          </label>
           <label className="block">
             <span className="text-sm font-semibold">השאלה / הרעיון</span>
             <textarea

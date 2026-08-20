@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { forumPosts, forumThreads, users } from "@/db/schema";
+import { categories, forumPosts, forumThreads, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { userHasPremium } from "@/lib/data";
 import { sendMailInBackground, templates } from "@/lib/mail";
@@ -24,10 +24,8 @@ async function requirePremiumUser() {
 const threadSchema = z.object({
   title: z.string().trim().min(4, "כותרת קצרה מדי").max(200, "כותרת ארוכה מדי"),
   body: z.string().trim().min(10, "כתבי לפחות כמה מילים").max(8000, "ההודעה ארוכה מדי"),
-  categoryId: z.preprocess(
-    (v) => (v === "" || v == null ? undefined : v),
-    z.coerce.number().int().positive().optional(),
-  ),
+  // כל דיון שייך ליחידת לימוד – אין שאלות "כלליות"
+  categoryId: z.coerce.number().int().positive(),
 });
 
 export async function createThread(_prev: ForumState, form: FormData): Promise<ForumState> {
@@ -37,9 +35,16 @@ export async function createThread(_prev: ForumState, form: FormData): Promise<F
   const parsed = threadSchema.safeParse({
     title: form.get("title"),
     body: form.get("body"),
-    categoryId: form.get("categoryId") ?? "",
+    categoryId: form.get("categoryId"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const [cat] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.id, parsed.data.categoryId))
+    .limit(1);
+  if (!cat) return { error: "יחידת הלימוד לא נמצאה" };
 
   const [t] = await db
     .insert(forumThreads)
@@ -47,11 +52,10 @@ export async function createThread(_prev: ForumState, form: FormData): Promise<F
       userId: auth.user.id,
       title: parsed.data.title,
       body: parsed.data.body,
-      categoryId: parsed.data.categoryId ?? null,
+      categoryId: parsed.data.categoryId,
     })
     .returning({ id: forumThreads.id });
 
-  revalidatePath("/forum");
   redirect(`/forum/${t.id}`);
 }
 
@@ -98,6 +102,5 @@ export async function replyThread(_prev: ForumState, form: FormData): Promise<Fo
   }
 
   revalidatePath(`/forum/${thread.id}`);
-  revalidatePath("/forum");
   return { ok: true };
 }

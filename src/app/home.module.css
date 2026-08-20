@@ -631,48 +631,51 @@
   gap: 16px;
   margin-bottom: 100px;
 }
-/* כרטיס "חצי-קשת" שקוף עם מסגרת עט כחול — כמו חלון ה-arch של המקצועות, ומתמלא בגוון שקוף ב-hover */
+/* כרטיס "כתם" מאויר — כתם צבע עם עיגול עט, הטקסט יושב בתוכו. שקוף 50% ומתמלא ב-hover */
 .kind {
-  min-height: 200px;
-  border-radius: 100px 100px 12px 12px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 2px solid var(--blue);
-  box-shadow: 0 10px 30px rgba(31, 45, 51, 0.08);
+  position: relative;
+  aspect-ratio: 338 / 359;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
   text-align: center;
-  padding: 24px 18px 20px;
-  transition:
-    transform 0.25s var(--ease-snap),
-    box-shadow 0.25s var(--ease-snap),
-    background-color 0.3s var(--ease-snap),
-    border-color 0.3s var(--ease-snap);
+  padding: 8% 15% 26%;
+  transition: transform 0.25s var(--ease-snap);
 }
 .kind:hover {
   transform: translateY(-6px);
-  box-shadow: 0 16px 34px rgba(31, 45, 51, 0.14);
-  background: color-mix(in srgb, var(--accent, var(--blue)) 20%, transparent);
-  border-color: var(--accent, var(--blue));
 }
-.kinds > :nth-child(even) .kind {
-  border-radius: 12px 12px 100px 100px;
-  padding: 20px 18px 24px;
+.kindBlob {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease-snap);
 }
-/* כל כרטיס מקבל צבע הובר משלו מהפלטה — כחול, זהב, חום, כחול-דיו */
+.kind:hover .kindBlob {
+  opacity: 1;
+}
+.kind > :not(.kindBlob) {
+  position: relative;
+}
+/* כל כרטיס מקבל צבע הובר משלו לפי צבע הכתם — צהוב, כחלחל, ורוד, ירוק */
 .kinds > :nth-child(1) .kind {
-  --accent: var(--sea);
+  --accent: var(--sun);
 }
 .kinds > :nth-child(2) .kind {
-  --accent: var(--sun);
+  --accent: var(--sea);
 }
 .kinds > :nth-child(3) .kind {
   --accent: var(--terra);
 }
 .kinds > :nth-child(4) .kind {
-  --accent: var(--sea2);
+  --accent: #5e8a2e; /* ירוק כהה תואם לכתם הירוק */
 }
 .kind b {
   font-family: var(--font-hand);
@@ -722,7 +725,7 @@
 /* ---------- ABOUT (מי אנחנו) — מכתב-מדבקה מאויר, עם הטקסט "כתוב" בתוך שטח הכתיבה שלו ---------- */
 .aboutLetter {
   position: relative;
-  width: min(100%, 820px);
+  width: min(100%, 840px);
   aspect-ratio: 709 / 874;
   margin: 0 auto 100px;
   filter: drop-shadow(0 20px 40px rgba(31, 45, 51, 0.16));
@@ -734,11 +737,11 @@
   height: 100%;
   object-fit: contain;
 }
-/* אזור הכתיבה בתוך המכתב — משאיר מרווח מהמסגרת המחוררת משמאל ומעמודת תיבות הסימון מימין */
+/* אזור הכתיבה בתוך המכתב — משאיר מרווח מהמסגרת המחוררת משמאל ומעמודת תיבות הסימון מימין, ומתחיל גבוה כדי לפנות מקום לכל הפסקאות עד לחתימה */
 .aboutText {
   position: absolute;
-  top: 8%;
-  bottom: 7%;
+  top: 5%;
+  bottom: 5%;
   right: 26%;
   left: 9%;
   display: flex;
@@ -747,7 +750,7 @@
 }
 .aboutText p {
   font-size: clamp(13px, 1.5vw, 18px);
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--ink);
   text-align: center;
   margin: 0 0 10px;
@@ -764,6 +767,15 @@
 .aboutClose {
   font-weight: 700;
   color: var(--terra);
+}
+.aboutSign {
+  margin-top: 4px;
+}
+.aboutHeart {
+  display: inline-block;
+  font-size: 1.15em;
+  line-height: 1;
+  margin: 1px 0;
 }
 /* מתחת לרוחב הזה אין מספיק גובה בתוך יחס-הרוחב הקבוע של המכתב לטקסט המלא — עוברים לתמונה דקורטיבית מעל וכרטיס טקסט רגיל מתחתיה */
 @media (max-width: 760px) {
@@ -897,4 +909,11 @@
   .kinds {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- LOGO OUTRO — הלוגו המלא בין לוחית האבטחה לפוטר ---------- */
+.logoOutro {
+  display: flex;
+  justify-content: center;
+  margin-top: 70px;
 }
