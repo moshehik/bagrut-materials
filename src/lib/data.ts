@@ -44,6 +44,15 @@ export async function getMaterials(categoryId: number) {
     .orderBy(asc(materials.sort), asc(materials.id));
 }
 
+/** כל הקטגוריות הפעילות בשאילתה אחת – לבניית עץ שלם בזיכרון (מפת הבגרות) */
+export async function getAllActiveCategories() {
+  return db
+    .select()
+    .from(categories)
+    .where(eq(categories.status, "active"))
+    .orderBy(asc(categories.sort), asc(categories.id));
+}
+
 /** תתי-קטגוריות – למנהלת הכל, למשתמשות רק פעילות */
 export async function getVisibleChildren(parentId: number, isAdmin: boolean) {
   if (isAdmin) return getChildren(parentId);

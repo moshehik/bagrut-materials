@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GitBranch, FolderTree } from "lucide-react";
-import { getRootSubjects, getVisibleChildren } from "@/lib/data";
+import { getAllActiveCategories } from "@/lib/data";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
@@ -9,24 +9,29 @@ import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
 export const metadata: Metadata = { title: "מפת הבגרות המלאה" };
 export const dynamic = "force-dynamic";
 
-async function buildTree(depth: number): Promise<MapNode[]> {
+async function buildTree(): Promise<MapNode[]> {
   try {
-    const roots = await getRootSubjects();
-    const expand = async (cat: Category, chain: Category[], level: number): Promise<MapNode> => {
+    // שאילתה אחת לכל הקטגוריות; הרכבת העץ בזיכרון (רקורסיה לפי parentId)
+    const all = await getAllActiveCategories();
+    const byParent = new Map<number | null, Category[]>();
+    for (const cat of all) {
+      const list = byParent.get(cat.parentId) ?? [];
+      list.push(cat);
+      byParent.set(cat.parentId, list);
+    }
+    const expand = (cat: Category, chain: Category[]): MapNode => {
       const me = [...chain, cat];
-      if (level >= depth) return { cat, chain: me, children: [] };
-      const kids = await getVisibleChildren(cat.id, false).catch(() => []);
-      const children = await Promise.all(kids.map((k) => expand(k, me, level + 1)));
-      return { cat, chain: me, children };
+      const kids = byParent.get(cat.id) ?? [];
+      return { cat, chain: me, children: kids.map((k) => expand(k, me)) };
     };
-    return Promise.all(roots.map((r) => expand(r, [], 0)));
+    return (byParent.get(null) ?? []).map((r) => expand(r, []));
   } catch {
     return [];
   }
 }
 
 export default async function MapPage() {
-  const tree = await buildTree(7);
+  const tree = await buildTree();
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">

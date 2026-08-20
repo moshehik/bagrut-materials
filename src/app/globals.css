@@ -166,6 +166,24 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+/* תרשים זרימה מצויר ביד (מפת הבגרות): ריבוע שקוף בקו דיו דק, מתמלא צבע בריחוף.
+   הרדיוסים הלא-סימטריים יוצרים "רעד" של מלבן משורטט בעט. */
+.flow-node {
+  font-family: var(--font-hand);
+  background: transparent;
+  border: 2px solid var(--ink);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+.flow-node--alt {
+  border-radius: 15px 225px 15px 255px / 255px 15px 225px 15px;
+}
+.flow-node:hover,
+.flow-node:focus-within {
+  background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 30%, transparent);
+  transform: rotate(-0.5deg) scale(1.02);
+}
+
 .card-hover {
   transition:
     transform 0.2s var(--ease-snap),
