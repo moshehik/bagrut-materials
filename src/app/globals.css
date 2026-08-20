@@ -183,6 +183,15 @@ body {
   background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 30%, transparent);
   transform: rotate(-0.5deg) scale(1.02);
 }
+/* צומת הפניה — קו מקווקו, קופץ אל הפירוט שאליו הוא מפנה */
+.flow-node--ref {
+  border-style: dashed;
+}
+/* הבהוב כשמגיעים לצומת דרך הפניה */
+.flow-flash > .flow-node {
+  background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 40%, transparent);
+  transition: background-color 0.4s ease;
+}
 
 .card-hover {
   transition:
