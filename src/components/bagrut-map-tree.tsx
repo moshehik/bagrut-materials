@@ -11,7 +11,11 @@ function hrefFor(chain: Category[]) {
   return "/subjects/" + chain.map((c) => encodeURIComponent(c.slug)).join("/");
 }
 
-/** צומת בסגנון משורטט: מלבן שקוף בקו דיו, כתב-יד, נצבע בריחוף */
+/**
+ * צומת בסגנון משורטט: מלבן שקוף בקו דיו, כתב-יד, נצבע בריחוף.
+ * לחיצה בכל מקום על הקופסה פותחת/סוגרת את הענף — לעולם אינה מנווטת.
+ * רק החץ הקטן פותח את דף התיקייה (גם בצומת סופי).
+ */
 function NodeBox({
   node,
   level,
@@ -29,45 +33,44 @@ function NodeBox({
   const style = { "--flow-accent": accent } as CSSProperties;
   const boxClass = `flow-node ${level % 2 === 1 ? "flow-node--alt" : ""} inline-flex max-w-[17rem] items-center gap-1.5 px-3.5 py-2 text-ink ${
     level === 0 ? "text-2xl" : "text-lg"
-  }`;
+  } ${hasChildren ? "cursor-pointer" : ""}`;
 
-  const chip = node.cat.questionnaireCode && (
-    <span className="shrink-0 self-center rounded-full border border-ink/40 px-2 text-sm leading-snug opacity-80">
-      {node.cat.questionnaireCode}
-    </span>
-  );
-
-  // צומת סופי (עלה): כל הריבוע הוא קישור לדף התיקייה
-  if (!hasChildren) {
-    return (
-      <Link href={hrefFor(node.chain)} className={boxClass} style={style} title="לפתיחת הדף">
-        <span className="min-w-0 leading-tight">{node.cat.title}</span>
-        {chip}
-      </Link>
-    );
-  }
-
-  // צומת עם המשך: לחיצה פותחת/סוגרת את הענף, החץ הקטן פותח את דף התיקייה
   return (
-    <div className={boxClass} style={style}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-start"
-      >
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-        <span className="min-w-0 leading-tight">{node.cat.title}</span>
-      </button>
-      {chip}
+    <div
+      className={boxClass}
+      style={style}
+      onClick={hasChildren ? onToggle : undefined}
+    >
+      {hasChildren ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-start"
+        >
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+          <span className="min-w-0 leading-tight">{node.cat.title}</span>
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1 leading-tight">{node.cat.title}</span>
+      )}
+      {node.cat.questionnaireCode && (
+        <span className="shrink-0 self-center rounded-full border border-ink/40 px-2 text-sm leading-snug opacity-80">
+          {node.cat.questionnaireCode}
+        </span>
+      )}
       <Link
         href={hrefFor(node.chain)}
+        onClick={(e) => e.stopPropagation()}
         className="shrink-0 rounded-full p-1 opacity-60 hover:opacity-100"
-        title="לפתיחת הדף"
-        aria-label={`פתיחת ${node.cat.title}`}
+        title="לפתיחת דף התיקייה"
+        aria-label={`פתיחת דף ${node.cat.title}`}
       >
         <ArrowUpLeft className="h-4 w-4" aria-hidden />
       </Link>
