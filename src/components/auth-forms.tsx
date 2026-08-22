@@ -119,7 +119,7 @@ export function LoginForm({
         <label className="block">
           <span className="text-sm font-semibold flex items-center justify-between">
             סיסמה
-            <Link href="/forgot-password" className="text-xs font-medium text-blue-deep hover:underline">
+            <Link href="/forgot-password" className="hover-move text-xs font-medium text-blue-deep hover:underline">
               שכחתי סיסמה
             </Link>
           </span>
@@ -141,7 +141,7 @@ export function LoginForm({
           עדיין אין לך חשבון?{" "}
           <Link
             href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
-            className="text-blue-deep font-semibold hover:underline"
+            className="hover-move text-blue-deep font-semibold hover:underline"
           >
             הצטרפי עכשיו
           </Link>
@@ -207,7 +207,7 @@ export function RegisterForm({ next, googleEnabled }: { next?: string; googleEna
           כבר רשומה?{" "}
           <Link
             href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
-            className="text-blue-deep font-semibold hover:underline"
+            className="hover-move text-blue-deep font-semibold hover:underline"
           >
             התחברי
           </Link>
@@ -252,7 +252,7 @@ export function ForgotPasswordForm() {
       </button>
       <p className="text-center text-sm text-muted">
         נזכרת?{" "}
-        <Link href="/login" className="text-blue-deep font-semibold hover:underline">
+        <Link href="/login" className="hover-move text-blue-deep font-semibold hover:underline">
           התחברי
         </Link>
       </p>
@@ -309,7 +309,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       </button>
       {state?.error && (
         <p className="text-center text-sm text-muted">
-          <Link href="/forgot-password" className="text-blue-deep font-semibold hover:underline">
+          <Link href="/forgot-password" className="hover-move text-blue-deep font-semibold hover:underline">
             בקשי קישור חדש
           </Link>
         </p>

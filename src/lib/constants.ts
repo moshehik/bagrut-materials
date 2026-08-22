@@ -48,28 +48,28 @@ export const PLANS: Record<
   },
   subject_monthly: {
     label: "מנוי חודשי למקצוע",
-    description: "גישה חודשית למקצוע אחד – עד 30 הורדות",
-    price: 6900,
-    downloadsLimit: 30,
+    description: "גישה מלאה למקצוע אחד – בלי לספור קבצים",
+    price: 4900,
+    downloadsLimit: 150,
     days: 30,
   },
   custom_monthly: {
     label: "מנוי חודשי לפי מערכת",
-    description: "מותאם למערכת השעות שלך – עד 3 מקצועות, 60 הורדות",
-    price: 14900,
-    downloadsLimit: 60,
+    description: "מותאם למערכת השעות שלך – גישה מלאה עד 3 מקצועות",
+    price: 9900,
+    downloadsLimit: 300,
     days: 30,
   },
   yearly: {
     label: "מנוי שנתי",
-    description: "כל המקצועות, כל השנה – 400 הורדות",
-    price: 89000,
-    downloadsLimit: 400,
+    description: "גישה מלאה לכל המקצועות, כל השנה",
+    price: 58800,
+    downloadsLimit: 2000,
     days: 365,
   },
 };
 
-export const PREMIUM_ADDON_PRICE = 2900; // לחודש
+export const PREMIUM_ADDON_PRICE = 1900; // לחודש
 
 export const SUBJECT_ICONS: Record<string, string> = {
   torah: "📜",

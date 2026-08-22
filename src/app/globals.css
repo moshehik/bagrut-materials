@@ -473,16 +473,39 @@ body {
 /* קישור בקו דק שמצייר את עצמו בהובר — כמו עט שמסמן מילה */
 .link-draw {
   position: relative;
+  display: inline-block;
   text-decoration: none;
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
   background-position: 100% 100%;
   background-size: 0% 1.5px;
-  transition: background-size 0.22s var(--ease-snap);
+  transition:
+    background-size 0.22s var(--ease-snap),
+    transform 0.22s var(--ease-snap);
 }
 .link-draw:hover,
 .link-draw:focus-visible {
   background-size: 100% 1.5px;
+  transform: translateY(-2px);
+}
+
+/* תנועה עדינה בהובר — לכל קישור/כפתור טקסטואלי שעד כה זז רק בצבע */
+.hover-move {
+  display: inline-block;
+  transition: transform 0.18s var(--ease-snap);
+}
+.hover-move:hover,
+.hover-move:focus-visible {
+  transform: translateY(-2px);
+}
+/* גרסת "חץ הולך" — לקישורי "← לחומרים" וכד' */
+.hover-move-x {
+  display: inline-block;
+  transition: transform 0.2s var(--ease-snap);
+}
+.hover-move-x:hover,
+.hover-move-x:focus-visible {
+  transform: translateX(-4px);
 }
 
 /* נגישות */

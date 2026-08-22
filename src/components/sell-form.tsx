@@ -45,7 +45,7 @@ export function SellForm({ subjects }: { subjects: string[] }) {
           </datalist>
         </label>
         <label className="block">
-          <span className="text-sm font-semibold">מחיר מבוקש (₪, לא חובה)</span>
+          <span className="text-sm font-semibold">הערכת שווי לצורך התגמול (לא חובה)</span>
           <input
             name="askingPrice"
             type="number"
@@ -53,7 +53,7 @@ export function SellForm({ subjects }: { subjects: string[] }) {
             step={1}
             inputMode="numeric"
             className="input mt-1"
-            placeholder="למשל: 150"
+            placeholder="לדוגמה: 150 – עוזר לנו לקבוע כמה גישה חינמית להעניק"
           />
         </label>
       </div>

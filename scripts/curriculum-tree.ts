@@ -772,7 +772,7 @@ export const TREE: Node[] = [
                 slug: "devarim-iyun",
                 title: "עיון דברים",
                 description:
-                  'פרשות דברים, ואתחנן, ראה, שופטים עם פירוש רש"י, הקדמת הרמב"ן לחומש דברים, וקטעי רמב"ן, ספורנו, כלי יקר ורשב"ם נבחרים.',
+                  'פרשות דברים, ואתחנן, ראה עם פירוש רש"י, הקדמת הרמב"ן לחומש דברים, וקטעי רמב"ן, ספורנו, כלי יקר ורשב"ם נבחרים.',
                 children: [
                   {
                     slug: "hakdamat-haramban",
@@ -804,18 +804,6 @@ export const TREE: Node[] = [
                       perekM(14, "ספורנו פסוק א'"),
                       perekM(15, 'רמב"ן פסוק י"א ד"ה "כי לא יחדל אביון"'),
                       perek(16, 'עד פסוק י"ז'),
-                    ],
-                  },
-                  {
-                    slug: "shoftim",
-                    title: "פרשת שופטים",
-                    children: [
-                      perek(16, 'מפסוק י"ח'),
-                      perekM(17, 'רמב"ן פסוק י"א; רמב"ן פסוק י"ד; רמב"ן פסוק כ\''),
-                      perekM(18, 'רשב"ם פסוק ט"ו; ספורנו פסוקים כ"א-כ"ב'),
-                      perek(19),
-                      perek(20),
-                      perek(21, "עד פסוק ט'"),
                     ],
                   },
                 ],
@@ -1070,8 +1058,27 @@ export const TREE: Node[] = [
                   { slug: "naoy", title: 'נע"ו/י' },
                 ],
               },
-              { slug: "darchei-tzura", title: "דרכי תצורה" },
+              {
+                slug: "darchei-tzura",
+                title: "דרכי תצורה",
+                children: [
+                  { slug: "shoresh-mishkal", title: "שורש ומשקל" },
+                  { slug: "basis-vetzoran-sofi", title: "בסיס וצורן סופי" },
+                  { slug: "tzoran-gzira-vs-nutiya", title: "צורן גזירה וצורן נטיה" },
+                  { slug: "helem-sheila-notrikon", title: "הלחם, שאילה מלעז ונוטריקון" },
+                ],
+              },
               { slug: "beinoni", title: "בינוני" },
+              {
+                slug: "shem-mispar",
+                title: "שם המספר",
+                children: [
+                  { slug: "mispar-mone", title: "מספר מונה" },
+                  { slug: "mispar-sodar", title: "מספר סודר" },
+                  { slug: "mispar-stami", title: "מספר סתמי" },
+                  { slug: "mone-meyuda", title: "מונה מיודע" },
+                ],
+              },
             ],
           },
           { slug: "havanat-hanikra", title: "הבנת הנקרא" },
@@ -1084,7 +1091,17 @@ export const TREE: Node[] = [
         description:
           "הערכה בית ספרית: התחביר נלמד ומוערך פנימית (לפי בחירת רוב בתי הספר), וכן תלקיט.",
         children: [
-          { slug: "tachbir", title: "תחביר" },
+          { slug: "mosgey-yesod", title: "מושגים בסיסיים בלשון" },
+          {
+            slug: "tachbir",
+            title: "תחביר",
+            children: [
+              { slug: "mishpat-pashut", title: "משפט פשוט" },
+              { slug: "mishpat-murkav", title: "משפט מורכב" },
+              { slug: "mishpat-kolel", title: "משפט כולל (חלקים כוללים)" },
+              { slug: "mishpat-ichuy", title: "משפט איחוי" },
+            ],
+          },
           {
             slug: "talkit",
             title: "תלקיט",

@@ -104,7 +104,7 @@ export function CartView({ cart }: { cart: Cart }) {
                     {it.crumbs.map((c, i) => (
                       <span key={c.href} className="flex items-center gap-1">
                         {i > 0 && <ChevronLeft className="h-3 w-3" />}
-                        <Link href={c.href} className="hover:text-blue-deep hover:underline">
+                        <Link href={c.href} className="hover-move hover:text-blue-deep hover:underline">
                           {c.title}
                         </Link>
                       </span>
@@ -113,7 +113,7 @@ export function CartView({ cart }: { cart: Cart }) {
                 )}
                 <h3 className="font-bold leading-snug">
                   {it.href ? (
-                    <Link href={it.href} className="hover:text-blue-deep">
+                    <Link href={it.href} className="hover-move hover:text-blue-deep">
                       {it.title}
                     </Link>
                   ) : (
@@ -153,7 +153,7 @@ export function CartView({ cart }: { cart: Cart }) {
                   type="button"
                   onClick={() => remove(it.id)}
                   disabled={rowBusy}
-                  className="text-xs text-muted hover:text-[#9d4a2a] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-pink-soft/60"
+                  className="text-xs text-muted hover:text-[#9d4a2a] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-pink-soft/60 transition-transform hover:-translate-y-0.5"
                   aria-label={`הסרת ${it.title} מהעגלה`}
                 >
                   {rowBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -168,7 +168,7 @@ export function CartView({ cart }: { cart: Cart }) {
             type="button"
             onClick={clear}
             disabled={busy}
-            className="text-xs text-muted hover:text-foreground underline-offset-2 hover:underline"
+            className="hover-move text-xs text-muted hover:text-foreground underline-offset-2 hover:underline"
           >
             ריקון העגלה
           </button>

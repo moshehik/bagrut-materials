@@ -54,7 +54,7 @@ export default async function AccountPaymentsPage({ searchParams }: { searchPara
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 space-y-6">
       <header className="flex flex-wrap items-center gap-3">
-        <Link href="/account" className="text-sm text-blue-deep hover:underline">
+        <Link href="/account" className="hover-move-x text-sm text-blue-deep hover:underline">
           ← האזור האישי
         </Link>
       </header>

@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { SUBJECT_ICONS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
-import { IconFolder } from "./folder-icon";
+import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
+import { SubjectIcon } from "./subject-icons";
 import s from "./subject-card.module.css";
 
 type Props = {
   href: string;
   title: string;
   slug?: string;
-  icon?: string | null;
+  /** slug של המקצוע השורשי — לבחירת האייקון המתאים בתיקיות מקוננות (יחידות/נושאים/פרקים) */
+  rootSlug?: string;
   description?: string | null;
   questionnaireCode?: string | null;
   count?: number;
@@ -25,7 +26,7 @@ export function SubjectCard({
   href,
   title,
   slug,
-  icon,
+  rootSlug,
   description,
   questionnaireCode,
   count,
@@ -33,7 +34,6 @@ export function SubjectCard({
   color,
   size = "md",
 }: Props) {
-  const emoji = icon || (slug ? SUBJECT_ICONS[slug] : undefined);
   const house = slug ? SUBJECT_HOUSES[slug] : undefined;
   const accent = color || (slug ? SUBJECT_HOUSE_COLORS[slug] : undefined) || "var(--blue)";
   const big = size === "lg";
@@ -49,10 +49,8 @@ export function SubjectCard({
           <div className={s.houseWrap}>
             <img className={s.house} src={house} alt={title} width={356} height={266} />
           </div>
-        ) : emoji ? (
-          <b className={s.icon}>{emoji}</b>
         ) : (
-          <IconFolder className={s.folderIcon} />
+          <SubjectIcon slug={rootSlug || slug} className={s.folderIcon} />
         )}
       </div>
       {!house && <h3 className={s.title}>{title}</h3>}

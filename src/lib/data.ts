@@ -134,14 +134,15 @@ export async function getDescendantIds(rootId: number): Promise<number[]> {
   return rows.rows.map((r) => Number(r.id));
 }
 
-export async function countMaterialsUnder(rootId: number): Promise<number> {
+export async function countMaterialsUnder(rootId: number, isAdmin = false): Promise<number> {
   const rows = await db.execute<{ n: number }>(sql`
     WITH RECURSIVE tree AS (
       SELECT id FROM categories WHERE id = ${rootId}
       UNION ALL
       SELECT c.id FROM categories c JOIN tree t ON c.parent_id = t.id
     )
-    SELECT count(*)::int AS n FROM materials WHERE category_id IN (SELECT id FROM tree)
+    SELECT count(*)::int AS n FROM materials
+    WHERE category_id IN (SELECT id FROM tree) ${isAdmin ? sql`` : sql`AND status = 'active'`}
   `);
   return Number(rows.rows[0]?.n ?? 0);
 }

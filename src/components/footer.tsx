@@ -43,7 +43,7 @@ export function Footer() {
           © {new Date().getFullYear()} לו״ז העניין · {SITE_MOTTO} · כל קובץ מוטבע במספר אישי של המורידה
         </div>
         <div dir="rtl">
-          האתר נבנה ע״י wither אוטומציה ודפי נחיתה · <a href="tel:0556799588" className="hover:text-sun">0556799588</a>
+          האתר נבנה ע״י wither אוטומציה ודפי נחיתה · <a href="tel:0556799588" className="hover-move hover:text-sun">0556799588</a>
         </div>
       </div>
     </footer>

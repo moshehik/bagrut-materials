@@ -1,0 +1,25 @@
+/* אייקוני קו דק שחורים לכל מקצוע — מוצגים כשלתיקייה אין בית מאויר משלה. זזים בעדינות ברצף */
+
+.icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--ink);
+  transform-box: fill-box;
+  transform-origin: 50% 85%;
+  animation: subjectSway 3.8s ease-in-out infinite;
+}
+@keyframes subjectSway {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-3deg) translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+  }
+}

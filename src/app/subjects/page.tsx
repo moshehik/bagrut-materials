@@ -3,7 +3,6 @@ import Link from "next/link";
 import { FolderTree, GitBranch } from "lucide-react";
 import { getRootSubjects, countMaterialsUnder } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
-import { SUBJECT_ICONS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { SubjectCard } from "@/components/subject-card";
@@ -15,11 +14,12 @@ export const dynamic = "force-dynamic";
 async function load(): Promise<{ subject: Category; count: number }[]> {
   try {
     const user = await getCurrentUser().catch(() => null);
-    const subjects = await getRootSubjects(user?.role === "admin");
+    const isAdmin = user?.role === "admin";
+    const subjects = await getRootSubjects(isAdmin);
     return Promise.all(
       subjects.map(async (subject) => ({
         subject,
-        count: await countMaterialsUnder(subject.id).catch(() => 0),
+        count: await countMaterialsUnder(subject.id, isAdmin).catch(() => 0),
       })),
     );
   } catch {
@@ -65,7 +65,6 @@ export default async function SubjectsPage() {
               href={`/subjects/${encodeURIComponent(s.slug)}`}
               title={s.title}
               slug={s.slug}
-              icon={s.icon || SUBJECT_ICONS[s.slug]}
               description={s.description}
               questionnaireCode={s.questionnaireCode}
               count={count}

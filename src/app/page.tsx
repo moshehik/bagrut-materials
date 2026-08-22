@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
 import { getPlanPrices } from "@/lib/pricing";
-import { PLANS, SUBJECT_ICONS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS, formatPrice } from "@/lib/constants";
+import { PLANS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS, formatPrice } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 import type { CSSProperties } from "react";
 import Image from "next/image";
@@ -11,7 +11,7 @@ import { HeroTitle } from "@/components/hero-title";
 import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
-import { IconFolder } from "@/components/folder-icon";
+import { SubjectIcon } from "@/components/subject-icons";
 import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -139,10 +139,8 @@ export default async function HomePage() {
                         height={266}
                       />
                     </div>
-                  ) : c.icon || SUBJECT_ICONS[c.slug] ? (
-                    <b>{c.icon || SUBJECT_ICONS[c.slug]}</b>
                   ) : (
-                    <IconFolder className={s.folderIcon} />
+                    <SubjectIcon slug={c.slug} className={s.folderIcon} />
                   )}
                 </div>
                 {!SUBJECT_HOUSES[c.slug] && <h3>{c.title}</h3>}

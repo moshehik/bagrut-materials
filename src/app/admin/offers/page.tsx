@@ -56,7 +56,7 @@ export default async function AdminOffersPage() {
                 <div className="text-sm flex flex-wrap gap-x-4 gap-y-1">
                   {o.askingPrice !== null && (
                     <span>
-                      מחיר מבוקש: <b>{formatPrice(o.askingPrice)}</b>
+                      הערכת שווי לתגמול: <b>{formatPrice(o.askingPrice)}</b>
                     </span>
                   )}
                   {o.fileUrl && (

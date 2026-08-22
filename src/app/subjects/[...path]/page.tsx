@@ -13,12 +13,12 @@ import {
   type Entitlement,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
-import { MATERIAL_KINDS, PREMIUM_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
+import { MATERIAL_KINDS, PREMIUM_KINDS, formatPrice } from "@/lib/constants";
 import type { Material, MaterialKind } from "@/db/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
-import { IconFolder } from "@/components/folder-icon";
+import { SubjectIcon } from "@/components/subject-icons";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 
@@ -91,7 +91,7 @@ export default async function CategoryPage({ params }: Props) {
   ]);
 
   const childCounts = await Promise.all(
-    children.map((c) => countMaterialsUnder(c.id).catch(() => 0)),
+    children.map((c) => countMaterialsUnder(c.id, isAdmin).catch(() => 0)),
   );
 
   const entitlements: Entitlement[] = await Promise.all(
@@ -105,7 +105,6 @@ export default async function CategoryPage({ params }: Props) {
       .filter((x) => x.m.kind === kind),
   })).filter((g) => g.items.length > 0);
 
-  const icon = category.icon || SUBJECT_ICONS[category.slug];
   const accent = category.color || root.color || "var(--blue)";
   const parentHref = chain.length > 1 ? chainToHref(chain.slice(0, -1)) : "/subjects";
 
@@ -123,10 +122,10 @@ export default async function CategoryPage({ params }: Props) {
           />
           <div className="flex flex-col gap-5 md:flex-row md:items-center">
             <span
-              className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl text-5xl animate-float"
+              className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl animate-float"
               style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
             >
-              {icon || <IconFolder className="h-9 w-9" />}
+              <SubjectIcon slug={root.slug} className="h-9 w-9" />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -178,7 +177,7 @@ export default async function CategoryPage({ params }: Props) {
                 href={chainToHref([...chain, c])}
                 title={c.title}
                 slug={c.slug}
-                icon={c.icon}
+                rootSlug={root.slug}
                 description={c.description}
                 questionnaireCode={c.questionnaireCode}
                 count={childCounts[i]}

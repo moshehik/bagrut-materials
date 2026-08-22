@@ -86,7 +86,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <Crumbs chain={chain} />
           <h2 className="font-bold text-lg leading-snug mt-1">{m.title}</h2>
           <p className="text-sm text-muted">{MATERIAL_KINDS[m.kind].label}</p>
-          <Link href={chainToHref(chain)} className="text-xs text-blue-deep hover:underline">
+          <Link href={chainToHref(chain)} className="hover-move-x text-xs text-blue-deep hover:underline">
             חזרה לפרק
           </Link>
         </div>
@@ -118,7 +118,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             {ms.length} חומרים בתיקייה ובכל תתי-הפרקים שלה
             {!c.bundlePrice && ms.length > 0 && " · 30% הנחה לעומת רכישה בודדת"}
           </p>
-          <Link href={chainToHref(chain)} className="text-xs text-blue-deep hover:underline">
+          <Link href={chainToHref(chain)} className="hover-move-x text-xs text-blue-deep hover:underline">
             חזרה לתיקייה
           </Link>
         </div>
@@ -159,12 +159,19 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <h2 className="font-bold text-lg leading-snug">{def.label}</h2>
           <p className="text-sm text-muted">{def.description}</p>
           <p className="text-xs text-muted mt-1">
-            תוקף: {days} ימים · עד {def.downloadsLimit} הורדות
+            תוקף: {days} ימים · גישה מלאה לכל החומרים בתחום המסלול
             {scopeTitle && <> · מקצוע: <b className="text-foreground">{scopeTitle}</b></>}
           </p>
         </div>
-        <span className="ms-auto font-display font-bold text-xl text-blue-deep whitespace-nowrap">
-          {formatPrice(planPrice)}
+        <span className="ms-auto text-left whitespace-nowrap">
+          <span className="font-display font-bold text-xl text-blue-deep block">
+            {formatPrice(planPrice)}
+          </span>
+          {planKey === "yearly" && (
+            <span className="text-xs text-muted">
+              ({formatPrice(Math.round(planPrice / 12))} לחודש · 12 תשלומים · חיוב אחד)
+            </span>
+          )}
         </span>
       </div>
     );

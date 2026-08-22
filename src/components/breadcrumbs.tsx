@@ -24,7 +24,7 @@ export function Breadcrumbs({ chain }: { chain: Category[] }) {
               ) : (
                 <Link
                   href={it.href}
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-blue-soft hover:text-blue-deep transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-blue-soft hover:text-blue-deep transition-colors transition-transform hover:-translate-y-0.5"
                 >
                   {it.icon && <Home className="h-3.5 w-3.5" aria-hidden />}
                   {it.label}

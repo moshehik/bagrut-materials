@@ -43,7 +43,7 @@ function CartLink({ count, className, onClick, withLabel }: { count: number; cla
     <Link
       href="/cart"
       onClick={onClick}
-      className={`relative inline-flex items-center gap-2 ${className ?? ""}`}
+      className={`relative inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 ${className ?? ""}`}
       aria-label={`עגלת קניות${count ? ` – ${count} פריטים` : ""}`}
     >
       <span className="relative">
@@ -104,7 +104,7 @@ export function Header({ user }: { user: HeaderUser }) {
               <Link
                 key={n.href}
                 href={n.href}
-                className={`px-3 py-2 rounded-full text-[15px] font-semibold transition-colors ${
+                className={`px-3 py-2 rounded-full text-[15px] font-semibold transition-colors transition-transform hover:-translate-y-0.5 ${
                   active
                     ? "bg-blue-soft text-sea2"
                     : "text-ink hover:text-sea2"
@@ -140,12 +140,12 @@ export function Header({ user }: { user: HeaderUser }) {
                 <UserRound className="h-4 w-4" /> {user.name.split(" ")[0]}
               </Link>
               <form action={logoutAction}>
-                <button className="text-sm text-muted hover:text-ink px-2">יציאה</button>
+                <button className="text-sm text-muted hover:text-ink px-2 transition-transform hover:-translate-y-0.5">יציאה</button>
               </form>
             </>
           ) : (
             <>
-              <Link href="/register" className="text-[15px] font-semibold text-ink hover:text-sea2 px-2">
+              <Link href="/register" className="text-[15px] font-semibold text-ink hover:text-sea2 px-2 transition-transform hover:-translate-y-0.5">
                 הצטרפות
               </Link>
               <Link href="/login" className="btn btn-sea text-sm py-2.5">
@@ -160,7 +160,7 @@ export function Header({ user }: { user: HeaderUser }) {
             <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-pink-soft text-ink/80" />
           )}
           <button
-            className="p-2 rounded-xl hover:bg-blue-soft"
+            className="p-2 rounded-xl hover:bg-blue-soft transition-transform hover:scale-110"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-label="תפריט"
@@ -178,7 +178,7 @@ export function Header({ user }: { user: HeaderUser }) {
                 key={n.href}
                 href={n.href}
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-xl hover:bg-blue-soft font-semibold"
+                className="px-3 py-2 rounded-xl hover:bg-blue-soft font-semibold transition-transform hover:-translate-y-0.5"
               >
                 {n.label}
               </Link>

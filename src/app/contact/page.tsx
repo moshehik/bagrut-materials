@@ -30,7 +30,7 @@ export default function ContactPage() {
           <div className="mt-4 text-sm text-muted">כתובת המייל שלנו</div>
           <a
             href={`mailto:${EMAIL}?subject=${encodeURIComponent(`פנייה מאתר ${SITE_NAME}`)}`}
-            className="font-display mt-1 inline-block text-2xl font-bold text-blue-deep hover:underline sm:text-3xl"
+            className="hover-move font-display mt-1 inline-block text-2xl font-bold text-blue-deep hover:underline sm:text-3xl"
             dir="ltr"
           >
             {EMAIL}

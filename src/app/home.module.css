@@ -280,19 +280,6 @@
 .subj:hover .house {
   transform: translateY(-3px) scale(1.02);
 }
-.arch b {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 60px;
-  color: #fff;
-  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s var(--ease-snap);
-}
-.subj:hover .arch b {
-  transform: translateY(-3px) scale(1.08) rotate(-4deg);
-}
 .folderIcon {
   position: absolute;
   inset: 0;

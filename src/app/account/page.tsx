@@ -312,7 +312,7 @@ export default async function AccountPage({
           <h2 className="font-bold text-lg flex items-center gap-2">
             <ShoppingBag className="h-5 w-5 text-blue" /> רכישות ומנויים פעילים
           </h2>
-          <Link href="/pricing" className="text-sm text-blue-deep hover:underline">
+          <Link href="/pricing" className="hover-move text-sm text-blue-deep hover:underline">
             למסלולים
           </Link>
         </div>
@@ -386,7 +386,7 @@ export default async function AccountPage({
                           <input type="hidden" name="purchaseId" value={p.id} />
                           <button
                             type="submit"
-                            className="text-xs text-muted hover:text-[#9d4a2a] flex items-center gap-1"
+                            className="text-xs text-muted hover:text-[#9d4a2a] flex items-center gap-1 transition-transform hover:-translate-y-0.5"
                             title="בקשת ביטול המנוי – תטופל על ידי מנהלת האתר"
                           >
                             <XCircle className="h-3.5 w-3.5" /> בקשת ביטול
@@ -408,7 +408,7 @@ export default async function AccountPage({
           <h2 className="font-bold text-lg flex items-center gap-2">
             <Receipt className="h-5 w-5 text-gold" /> היסטוריית תשלומים
           </h2>
-          <Link href="/account/payments" className="text-sm text-blue-deep hover:underline">
+          <Link href="/account/payments" className="hover-move text-sm text-blue-deep hover:underline">
             לכל ההיסטוריה
           </Link>
         </div>
@@ -441,7 +441,7 @@ export default async function AccountPage({
           <h2 className="font-bold text-lg flex items-center gap-2">
             <Download className="h-5 w-5 text-pink" /> הורדות אחרונות
           </h2>
-          <Link href="/account/downloads" className="text-sm text-blue-deep hover:underline">
+          <Link href="/account/downloads" className="hover-move text-sm text-blue-deep hover:underline">
             לכל ההיסטוריה
           </Link>
         </div>
@@ -458,7 +458,7 @@ export default async function AccountPage({
               <li key={r.id} className="py-3 flex items-center gap-3">
                 <span className="text-xl">{MATERIAL_KINDS[r.kind].icon}</span>
                 <div className="min-w-0 flex-1">
-                  <Link href={r.href} className="font-semibold hover:text-blue-deep line-clamp-1">
+                  <Link href={r.href} className="hover-move font-semibold hover:text-blue-deep line-clamp-1">
                     {r.title}
                   </Link>
                   <p className="text-xs text-muted">

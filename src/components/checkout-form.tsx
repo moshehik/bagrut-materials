@@ -100,7 +100,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
                     key={s.id}
                     onClick={() => setSubjectId(s.id)}
                     aria-pressed={on}
-                    className={`rounded-xl border px-3 py-2.5 text-sm text-start transition ${
+                    className={`rounded-xl border px-3 py-2.5 text-sm text-start transition transition-transform hover:-translate-y-0.5 ${
                       on
                         ? "border-blue bg-blue-soft text-blue-deep shadow-sm"
                         : "border-foreground/10 hover:border-blue/40 hover:bg-blue-soft/40"
@@ -137,7 +137,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
                         ? "border-pink bg-pink-soft shadow-sm"
                         : disabled
                           ? "border-foreground/10 opacity-50 cursor-not-allowed"
-                          : "border-foreground/10 hover:border-pink/50 hover:bg-pink-soft/40"
+                          : "border-foreground/10 hover:border-pink/50 hover:bg-pink-soft/40 transition-transform hover:-translate-y-0.5"
                     }`}
                   >
                     <input
@@ -160,7 +160,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
       {allowPremium && kind !== "premium" && (
         <label
           className={`flex gap-3 items-start rounded-2xl border p-4 cursor-pointer transition ${
-            premium ? "border-gold bg-gold-soft/60" : "border-foreground/10 hover:border-gold/60"
+            premium ? "border-gold bg-gold-soft/60" : "border-foreground/10 hover:border-gold/60 transition-transform hover:-translate-y-0.5"
           }`}
         >
           <input

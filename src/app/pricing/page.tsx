@@ -98,18 +98,22 @@ export default async function PricingPage() {
                   )}
                   <h3 className="font-display mt-2 text-2xl font-bold">{p.label}</h3>
                   <div className="mt-2 text-4xl font-black">
-                    {formatPrice(prices.plans[key])}
-                    <span className="text-sm font-medium opacity-90">
-                      {" "}
-                      / {p.days === 365 ? "שנה" : "חודש"}
-                    </span>
+                    {key === "yearly"
+                      ? formatPrice(Math.round(prices.plans.yearly / 12))
+                      : formatPrice(prices.plans[key])}
+                    <span className="text-sm font-medium opacity-90"> / חודש</span>
                   </div>
+                  {key === "yearly" && (
+                    <p className="mt-1 text-xs font-medium opacity-90">
+                      ב-12 תשלומים · סה״כ {formatPrice(prices.plans.yearly)} לשנה, חיוב אחד
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-1 flex-col p-6">
                   <p className="text-muted">{p.description}</p>
                   <ul className="mt-4 space-y-2 text-sm">
                     <li className="flex gap-2">
-                      <Check className="h-4 w-4 shrink-0 text-blue" aria-hidden /> עד {p.downloadsLimit} הורדות
+                      <Check className="h-4 w-4 shrink-0 text-blue" aria-hidden /> גישה מלאה לכל החומרים בתחום המסלול
                     </li>
                     <li className="flex gap-2">
                       <Check className="h-4 w-4 shrink-0 text-blue" aria-hidden /> דפי שכפול לתלמידה ולמורה
@@ -216,7 +220,7 @@ export default async function PricingPage() {
             <div className="flex-1">
               <h2 className="font-display text-2xl font-bold">יש לך חומרים משלך?</h2>
               <p className="mt-1 text-white/90">
-                מורות מנוסות מוזמנות למכור למנהל האתר מערכי שיעור, דפי עבודה ומצגות – ולהרוויח.
+                מורות מנוסות מוזמנות לשתף מערכי שיעור, דפי עבודה ומצגות – ולזכות בגישה חינמית לאתר.
               </p>
             </div>
             <Link href="/sell" className="btn bg-white text-oak-deep shadow-lg">

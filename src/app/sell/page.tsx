@@ -42,8 +42,8 @@ const STEPS = [
   },
   {
     icon: Coins,
-    title: "מקבלת תשלום",
-    text: "התשלום נעשה כרכישה חד-פעמית של החומר. זכויות היוצרים נשמרות ומוגנות בהטבעה אישית.",
+    title: "מקבלת גישה חינם",
+    text: "התמורה היא זיכוי לגישה חינמית באתר – בהתאם להיקף החומר, ועד מנוי קבוע על כיסוי מקצוע שלם. זכויות היוצרים נשמרות ומוגנות בהטבעה אישית.",
     cls: "bg-gold-soft text-[#8a6500]",
   },
 ];
@@ -63,10 +63,11 @@ export default async function SellPage() {
         <p className="text-sm text-muted flex items-center gap-1">
           <Store className="h-4 w-4" /> למורות יוצרות
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold">יש לך חומרים טובים? נשמח לקנות</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold">יש לך חומרים טובים? נשמח שתשתפי</h1>
         <p className="text-muted mt-2 leading-relaxed">
-          הכנת מערך שיעור מצוין, דפי שכפול או מצגת שעבדו בכיתה? מנהלת האתר עוברת על ההצעות ורוכשת
-          חומרים איכותיים – כך מורות אחרות נהנות מהעבודה שלך, ואת מקבלת תמורה הוגנת.
+          הכנת מערך שיעור מצוין, דפי שכפול או מצגת שעבדו בכיתה? מנהלת האתר עוברת על ההצעות, וחומרים
+          איכותיים עולים לאתר – כך מורות אחרות נהנות מהעבודה שלך, ואת מקבלת גישה חינמית לאתר בתמורה,
+          בלי שום תשלום.
         </p>
       </header>
 
@@ -80,7 +81,8 @@ export default async function SellPage() {
               יש לך מערכי שיעורים מושקעים? מסודרים? ברורים?
             </h2>
             <p className="mt-2 leading-relaxed">
-              זה יכול לצאת לך משתלם! <strong>על מקצוע שתאיישי תקבלי מנוי פרמיום קבוע!</strong>
+              זה יכול לצאת לך משתלם – בגישה, לא בכסף: כל חומר שאושר מזכה אותך בגישה חינמית לאתר
+              לפרק זמן, ו<strong>על מקצוע שלם שתאיישי תקבלי מנוי פרמיום קבוע וחינמי!</strong>
             </p>
             <p className="text-sm text-muted mt-1 leading-relaxed">
               החומרים צריכים להיות מוקלדים ומלאים. בואי נהיה בקשר!
@@ -139,7 +141,7 @@ export default async function SellPage() {
                         href={o.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-deep hover:underline inline-flex items-center gap-1 mt-2"
+                        className="hover-move text-xs text-blue-deep hover:underline inline-flex items-center gap-1 mt-2"
                       >
                         <Link2 className="h-3 w-3" /> קישור לדוגמה
                       </a>

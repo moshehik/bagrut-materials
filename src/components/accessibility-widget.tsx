@@ -113,7 +113,7 @@ export function AccessibilityWidget() {
                 setOpen(false);
                 btnRef.current?.focus();
               }}
-              className="rounded-full p-1 hover:bg-blue-soft"
+              className="rounded-full p-1 hover:bg-blue-soft transition-transform hover:scale-110"
               aria-label="סגירת תפריט נגישות"
             >
               <X className="h-4 w-4" />
@@ -130,7 +130,7 @@ export function AccessibilityWidget() {
                     role="switch"
                     aria-checked={on}
                     onClick={() => update({ ...state, [o.key]: !on })}
-                    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors transition-transform hover:-translate-y-0.5 ${
                       on
                         ? "border-blue bg-blue-soft text-blue-deep"
                         : "border-black/10 hover:bg-blue-soft/50"
@@ -160,11 +160,11 @@ export function AccessibilityWidget() {
             <button
               type="button"
               onClick={() => update(EMPTY)}
-              className="inline-flex items-center gap-1 text-muted hover:text-foreground"
+              className="hover-move inline-flex items-center gap-1 text-muted hover:text-foreground"
             >
               <RotateCcw className="h-4 w-4" aria-hidden /> איפוס
             </button>
-            <Link href="/accessibility" className="text-blue-deep hover:underline" onClick={() => setOpen(false)}>
+            <Link href="/accessibility" className="hover-move text-blue-deep hover:underline" onClick={() => setOpen(false)}>
               הצהרת נגישות
             </Link>
           </div>

@@ -79,7 +79,7 @@ export function AddToCartButton({ materialId, categoryId, plan, premium, label, 
       {done && (
         <Link
           href="/cart"
-          className={`font-semibold text-blue-deep hover:underline ${small ? "text-xs" : "text-sm"}`}
+          className={`hover-move-x font-semibold text-blue-deep hover:underline ${small ? "text-xs" : "text-sm"}`}
         >
           לעגלה ←
         </Link>

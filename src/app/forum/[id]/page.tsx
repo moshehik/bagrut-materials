@@ -94,13 +94,13 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10 sm:py-14 space-y-6">
-      <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-blue-deep hover:underline">
+      <Link href={backHref} className="hover-move inline-flex items-center gap-1 text-sm text-blue-deep hover:underline">
         <ArrowRight className="h-4 w-4" /> {backLabel}
       </Link>
 
       <article className="card p-6 sm:p-8 animate-fade-up">
         {thread.category && (
-          <Link href={backHref} className="chip bg-blue-soft text-blue-deep mb-3 hover:bg-blue-soft/70">
+          <Link href={backHref} className="chip bg-blue-soft text-blue-deep mb-3 hover:bg-blue-soft/70 transition-transform hover:-translate-y-0.5">
             {thread.category}
           </Link>
         )}
