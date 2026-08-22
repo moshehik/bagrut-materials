@@ -1,6 +1,7 @@
 import "server-only";
 import { PDFDocument, rgb, degrees } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { SITE_NAME } from "./constants";
@@ -88,4 +89,32 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
   pdf.setSubject(`Licensed to ${info.personalCode}`);
   pdf.setKeywords([SITE_NAME, info.personalCode]);
   return pdf.save();
+}
+
+/**
+ * מטביע על תמונה (PNG/JPEG) את המספר האישי של המורידה: תג אלכסוני שקוף
+ * ותג קטן בפינה. רק אנגלית/ספרות — אין תמיכה אמינה בפונט עברי ברינדור SVG בשרת.
+ */
+export async function stampImage(input: Uint8Array | Buffer, info: Pick<StampInfo, "personalCode">) {
+  const image = sharp(Buffer.from(input));
+  const meta = await image.metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
+  if (!width || !height) return Buffer.from(input);
+
+  const tag = `#${info.personalCode}`;
+  const diagonalSize = Math.max(14, Math.min(width, height) / 14);
+  const cornerSize = Math.max(10, Math.min(width, height) / 40);
+
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
+      transform="rotate(-32 ${width / 2} ${height / 2})"
+      font-family="Arial, sans-serif" font-weight="700" font-size="${diagonalSize}"
+      fill="#2f5fbf" fill-opacity="0.12">${tag}</text>
+    <text x="${Math.max(8, width * 0.015)}" y="${Math.max(cornerSize + 4, height * 0.03)}"
+      font-family="Arial, sans-serif" font-weight="600" font-size="${cornerSize}"
+      fill="#3a3a3a" fill-opacity="0.75">${tag}</text>
+  </svg>`;
+
+  return image.composite([{ input: Buffer.from(svg) }]).toBuffer();
 }

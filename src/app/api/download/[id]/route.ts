@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { downloads, materials, purchases } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
-import { stampPdf } from "@/lib/watermark";
+import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { getNumber } from "@/lib/settings";
 
@@ -128,6 +128,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     material.mime === "application/pdf" ||
     material.fileName.toLowerCase().endsWith(".pdf") ||
     (file.contentType ?? "").startsWith("application/pdf");
+  const isImage = /^image\/(png|jpe?g)$/.test(file.contentType ?? material.mime ?? "");
 
   const outName = withSuffix(material.fileName, u.personalCode);
   let response: Response;
@@ -148,6 +149,23 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     response = new Response(new Uint8Array(out), {
       headers: {
         "Content-Type": "application/pdf",
+        "Content-Length": String(out.byteLength),
+        "Content-Disposition": contentDisposition(outName),
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } else if (isImage) {
+    const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+    let out: Uint8Array;
+    try {
+      out = await stampImage(bytes, { personalCode: u.personalCode });
+    } catch {
+      // אם ההטבעה נכשלה (תמונה פגומה/פורמט לא נתמך) – מחזירים את המקור
+      out = bytes;
+    }
+    response = new Response(new Uint8Array(out), {
+      headers: {
+        "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
         "Content-Length": String(out.byteLength),
         "Content-Disposition": contentDisposition(outName),
         "Cache-Control": "private, no-store",
