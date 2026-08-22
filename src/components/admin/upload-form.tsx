@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { upload } from "@vercel/blob/client";
 import { CloudUpload, FileCheck2, X } from "lucide-react";
 import type { Access, MaterialKind, Status, Tier } from "@/db/schema";
 import { MATERIAL_KINDS, TIERS } from "@/lib/constants";
@@ -14,6 +13,53 @@ import {
   stripExtension,
 } from "@/lib/admin-utils";
 import { createMaterial } from "@/lib/actions/admin";
+
+// PUT ישיר מהדפדפן ל-vercel.com נחסם ע"י מסנני אינטרנט מקומיים (נטפרי וכד'), לכן
+// מעלים בחתיכות דרך /api/admin/upload/chunk (הדומיין שלנו) ומאחדים ב-/finish.
+const CHUNK_BYTES = 4 * 1024 * 1024;
+
+async function postChunk(session: string, index: number, chunk: ArrayBuffer): Promise<string> {
+  const res = await fetch(`/api/admin/upload/chunk?session=${session}&index=${index}`, {
+    method: "POST",
+    body: chunk,
+    headers: { "content-type": "application/octet-stream" },
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || `שגיאה ${res.status}`);
+  return j.url as string;
+}
+
+async function uploadChunked(
+  file: File,
+  onProgress: (pct: number) => void
+): Promise<{ url: string; contentType?: string }> {
+  const buf = await file.arrayBuffer();
+  const session = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) =>
+    b.toString(36).padStart(2, "0")
+  )
+    .join("")
+    .slice(0, 24);
+  const totalParts = Math.max(1, Math.ceil(buf.byteLength / CHUNK_BYTES));
+  const urls: string[] = [];
+  for (let i = 0, n = 0; i < buf.byteLength; i += CHUNK_BYTES, n++) {
+    urls.push(await postChunk(session, n, buf.slice(i, Math.min(i + CHUNK_BYTES, buf.byteLength))));
+    onProgress(Math.round(((n + 1) / totalParts) * 100));
+  }
+  const res = await fetch("/api/admin/upload/finish", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      session,
+      name: file.name,
+      mimeType: file.type || "application/octet-stream",
+      size: buf.byteLength,
+      urls,
+    }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || `איחוד הקובץ נכשל (${res.status})`);
+  return { url: j.url as string, contentType: j.contentType as string | undefined };
+}
 
 type Item = {
   key: string;
@@ -77,13 +123,7 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
       if (it.file.size > MAX_UPLOAD_BYTES) continue;
       try {
         patch(it.key, { status: "uploading", progress: 0, error: undefined });
-        const blob = await upload(it.file.name, it.file, {
-          access: "private",
-          handleUploadUrl: "/api/admin/upload",
-          clientPayload: JSON.stringify({ categoryId }),
-          contentType: it.file.type || "application/octet-stream",
-          onUploadProgress: ({ percentage }) => patch(it.key, { progress: percentage }),
-        });
+        const blob = await uploadChunked(it.file, (pct) => patch(it.key, { progress: pct }));
         patch(it.key, { status: "saving", progress: 100 });
         const r = await createMaterial({
           categoryId,
