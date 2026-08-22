@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/session";
-import { put, del, CHUNK_PREFIX, isSafeId } from "@/lib/blob-server";
+import { put, del, get, CHUNK_PREFIX, isSafeId } from "@/lib/blob-server";
 import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/admin-utils";
 
 // מאחד את החתיכות (מ-/chunk) לקובץ פרטי אחד ב-Blob, ומוחק את הזמניים.
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const STORE_HOST_RE = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i;
+const STORE_HOST_RE = /^https:\/\/[a-z0-9-]+\.private\.blob\.vercel-storage\.com\//i;
 
 type Body = {
   session?: string;
@@ -51,9 +51,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     const stream = new ReadableStream<Uint8Array>({
       async pull(controller) {
         while (i < urls.length) {
-          const res = await fetch(urls[i++], { cache: "no-store" });
-          if (!res.ok) throw new Error(`חתיכה ${i} לא נמצאה (${res.status})`);
-          const buf = new Uint8Array(await res.arrayBuffer());
+          const chunk = await get(urls[i++], { access: "private" });
+          if (!chunk) throw new Error(`חתיכה ${i} לא נמצאה`);
+          const buf = new Uint8Array(await new Response(chunk.stream).arrayBuffer());
           if (buf.byteLength) {
             controller.enqueue(buf);
             return;

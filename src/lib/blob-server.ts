@@ -1,6 +1,6 @@
 import "server-only";
 
-export { put, del } from "@vercel/blob";
+export { put, del, get } from "@vercel/blob";
 
 export const CHUNK_PREFIX = "chunks/";
 

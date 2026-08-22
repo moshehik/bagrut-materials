@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       `${CHUNK_PREFIX}${user.id}/${session}/${String(index).padStart(3, "0")}`,
       bytes,
       {
-        access: "public",
+        access: "private",
         addRandomSuffix: false,
         allowOverwrite: true,
         contentType: "application/octet-stream",
