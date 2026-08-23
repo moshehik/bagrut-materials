@@ -10,8 +10,8 @@ export function Footer() {
           <img
             src="/images/logo-white.png"
             alt="לו״ז העניין – בית לחומרי הבגרות"
-            width={640}
-            height={410}
+            width={1491}
+            height={871}
             className="h-24 sm:h-28 w-auto"
           />
           <p className="mt-4 text-white/85 max-w-md leading-relaxed">

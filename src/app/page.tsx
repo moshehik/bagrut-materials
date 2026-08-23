@@ -48,6 +48,10 @@ export default async function HomePage() {
     <div className="overflow-x-clip">
       {/* ================= HERO ================= */}
       <div className={s.hero}>
+        <div className={s.heroBg} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={139} height={166} />
+        </div>
         <div className={s.wrap}>
           <div className={s.heroGrid}>
             <div className={s.heroIn}>
@@ -64,9 +68,6 @@ export default async function HomePage() {
                   מסלולים ומחירים
                 </Link>
               </div>
-            </div>
-            <div className={s.art}>
-              <GoatCalendarArt />
             </div>
           </div>
         </div>

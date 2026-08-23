@@ -89,6 +89,7 @@ export const SUBJECT_ICONS: Record<string, string> = {
   megilot: "📃",
   tichnut: "💻",
   minhal: "📊",
+  "chinuch-pinansi": "💰",
 };
 
 /** צבע ייחודי לכל מקצוע — גוונים שונים סביב גלגל הצבעים, בלי כפילויות */
@@ -109,6 +110,7 @@ export const SUBJECT_COLORS: Record<string, string> = {
   chevra: "#c026d3", // פוקסיה
   teacher: "#0d9488", // ירוק-ים כהה
   tichnut: "#ea580c", // כתום עמוק
+  "chinuch-pinansi": "#a3a86c", // ירוק-זית כספי
 };
 
 /** בית מעוצב עם תמונה וכיתוב – רק למקצועות/יחידות שיש להם בית משלהם (מוצג בכרטיסי המקצועות) */
@@ -130,6 +132,7 @@ const SUBJECT_HOUSE_FILES: Record<string, string> = {
   teacher: "house-teacher.png",
   tichnut: "house-tichnut.png",
   minhal: "house-minhal.png",
+  "chinuch-pinansi": "house-chinuch-pinansi.png",
 };
 
 export const SUBJECT_HOUSES: Record<string, string> = Object.fromEntries(
@@ -155,6 +158,7 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
   teacher: "#b0729a",
   tichnut: "#a0cad2",
   minhal: "#bbba8d",
+  "chinuch-pinansi": "#c3bd8e",
 };
 
 export function formatPrice(agorot: number) {

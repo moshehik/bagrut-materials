@@ -73,8 +73,8 @@ export function Logo({ className = "" }: { className?: string }) {
     <img
       src="/images/logo.png"
       alt="לו״ז העניין – בית לחומרי הבגרות"
-      width={640}
-      height={410}
+      width={1491}
+      height={871}
       className={`w-auto ${className}`}
     />
   );
