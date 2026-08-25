@@ -50,7 +50,7 @@ export default async function HomePage() {
       <div className={s.hero}>
         <div className={s.heroBg} aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={139} height={166} />
+          <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={428} height={443} />
         </div>
         <div className={s.wrap}>
           <div className={s.heroGrid}>
@@ -58,7 +58,7 @@ export default async function HomePage() {
               <HeroTitle />
               <TypewriterLead
                 className={s.lead}
-                text="לראשונה! אתר חדשני ומקצועי שמאגד את כל חומרי הבגרות ללמידה בכיתה: שכפול, מערך שיעור ומצגת! תוספים מרעננים למנויות פרימיום. כן. הגיע הזמן להוציא את העז מהלו״ז, שתוכלי להתמקד בלוז העניין ולתת מעבר."
+                text="לראשונה! אתר חדשני ומקצועי שמאגד את כל חומרי הבגרות ללמידה בכיתה, שכפול למורה ולתלמידה, חומר העשרה מגוון ומרתק, בוחן מסכם עם תשובון למורה ודף עם מיומנויות למידה המותאמות ליחידת החומר! תוספים מרעננים ומרגשים למנויות פרימיום. כן. הגיע הזמן להוציא את העז מהלו״ז, שתוכלי להתמקד בלוז העניין ולתת מעבר."
               />
               <div className={s.acts}>
                 <Link href="/subjects" className="btn btn-primary text-base">
@@ -155,12 +155,11 @@ export default async function HomePage() {
         {/* ================= PACK ================= */}
         <Reveal>
           <div className={s.packWrap}>
-            <img className={s.packBow} src="/bow-cutout.png" alt="" aria-hidden />
             <div className={s.pack}>
               <div className={s.packBody}>
                 <h3>{PLANS.custom_monthly.label}</h3>
                 <ul>
-                  <li>עד 3 מקצועות לפי המערכת שלך</li>
+                  <li>עד 3 מקצועות לפי המערכת</li>
                   <li>עד {PLANS.custom_monthly.downloadsLimit} הורדות בחודש</li>
                   <li>רק הפרקים שאת מלמדת</li>
                   <li>פורום מורות לשאלות</li>
@@ -369,8 +368,6 @@ export default async function HomePage() {
                 <b className={s.aboutBrand}>צוות לו״ז העניין</b>
                 <br />
                 בהנהלת חיה שיינווטר
-                <br />
-                וחוה רחל גולוסוב
               </p>
             </div>
           </div>

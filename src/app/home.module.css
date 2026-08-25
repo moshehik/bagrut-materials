@@ -29,10 +29,10 @@
 /* העז הדוהרת — אותה עז מהתמונה המקורית, ממוקמת באותו מקום ליד העט, עם ניתור-דהירה בלולאה */
 .heroGoat {
   position: absolute;
-  left: 71%;
+  left: 66.5%;
   bottom: 2.4%;
   width: 12.5%;
-  aspect-ratio: 139 / 166;
+  aspect-ratio: 428 / 443;
   height: auto;
   transform-origin: 50% 100%;
   animation: goatGallop 0.9s ease-in-out infinite;
@@ -357,26 +357,14 @@
   border-radius: 32px;
   overflow: hidden;
   box-shadow: 0 20px 50px rgba(31, 45, 51, 0.12);
-  height: 449px;
-  background: url("/pack-monthly.png?v=6") center / cover no-repeat;
-}
-/* פפיון דקורטיבי — "מודבק" מעל הכרטיס, בולט מעבר לפינה השמאלית העליונה */
-.packBow {
-  position: absolute;
-  top: -33px;
-  left: -42px;
-  width: 240px;
-  height: auto;
-  transform: rotate(-14deg);
-  filter: drop-shadow(0 10px 16px rgba(31, 45, 51, 0.25));
-  z-index: 2;
-  pointer-events: none;
+  aspect-ratio: 1248 / 493;
+  background: var(--sea2) url("/pack-monthly.png?v=15") center / cover no-repeat;
 }
 .packBody {
   position: absolute;
-  top: 8%;
-  bottom: 6%;
-  left: 69%;
+  top: 34%;
+  bottom: 5%;
+  left: 72%;
   right: 4%;
   display: flex;
   flex-direction: column;
@@ -387,15 +375,15 @@
 .packBody h3 {
   font-family: var(--font-hand);
   font-weight: 400;
-  font-size: clamp(24px, 2.4vw, 36px);
-  margin: 0 0 14px;
+  font-size: clamp(20px, 2vw, 30px);
+  margin: 0 0 12px;
 }
 .packBody ul {
   list-style: none;
   padding: 0;
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   line-height: 1.5;
-  font-size: clamp(16px, 1.2vw, 19px);
+  font-size: clamp(14px, 1.05vw, 17px);
   max-width: 100%;
 }
 .packBody li {
@@ -902,19 +890,15 @@
   }
   /* מובייל: הכרטיס לא צר מספיק בשביל שהטקסט יישב על התמונה — התמונה הופכת לבאנר, והטקסט יורד מתחת */
   .pack {
+    aspect-ratio: auto;
     height: auto;
     background: none;
-  }
-  .packBow {
-    width: 150px;
-    top: -21px;
-    left: -24px;
   }
   .pack::before {
     content: "";
     display: block;
     height: 220px;
-    background: url("/pack-monthly.png?v=6") center / cover no-repeat;
+    background: var(--sea2) url("/pack-monthly.png?v=15") center / cover no-repeat;
   }
   .packBody {
     position: static;

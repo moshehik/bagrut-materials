@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# lesson-materials working files (not part of the site)
+/חומרים מוכנים מחדש/
