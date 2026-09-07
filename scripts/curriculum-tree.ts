@@ -9,6 +9,12 @@ export type Node = {
   questionnaireCode?: string;
   bundlePrice?: number;
   description?: string;
+  /** לא נדרש יותר לבחינה (לפי מיקוד משרד החינוך לשנה הנוכחית) — מוצג במפה עם קו חוצה */
+  excluded?: boolean;
+  /** פרק שרק חלקו נדרש: מה הוצא מהמיקוד — מוצג במפה כריבוע "מה לא צריך" צמוד בלי רווח לריבוע הפרק */
+  excludedNote?: string;
+  /** כבר הוכן חומר בפועל (דף לתלמידה/למורה וכו') לצומת זה — מוצג במפה עם סימן וי */
+  ready?: boolean;
   children?: Node[];
 };
 
@@ -45,6 +51,25 @@ export const prakim = (from: number, to: number): Node[] => {
 };
 /** רשימת פרקים לפי מספרים */
 export const prakimOf = (...nums: number[]): Node[] => nums.map((n) => perek(n));
+/**
+ * מסמן צומת (ואת כל תת-הענף שלו) כלא נדרש יותר לבחינה, לפי מיקוד משרד החינוך לשנה הנוכחית.
+ * מוצג במפה עם קו חוצה + סמל מספריים.
+ */
+export const notNeeded = (n: Node): Node => ({
+  ...n,
+  excluded: true,
+  children: n.children?.map(notNeeded),
+});
+/**
+ * פרק שרק חלקו נדרש לבחינה (המיקוד הוריד רק חלק ממנו): note = מה שלא נדרש.
+ * מוצג במפה כשני ריבועים צמודים בלי רווח — ריבוע הפרק (מה שצריך) ומיד אחריו ריבוע "מה לא צריך".
+ */
+export const partlyNeeded = (n: Node, note: string): Node => ({ ...n, excludedNote: note });
+/**
+ * מסמן צומת (ואת כל תת-הענף שלו) כמי שכבר הוכן לו חומר בפועל.
+ * מוצג במפה עם סימן וי.
+ */
+export const ready = (n: Node): Node => ({ ...n, ready: true, children: n.children?.map(ready) });
 /** סימן בקיצור שולחן ערוך, עם פירוט הסעיפים הנלמדים */
 export const siman = (n: number, seifim?: string): Node => ({
   slug: `siman-${n}`,
@@ -54,7 +79,7 @@ export const siman = (n: number, seifim?: string): Node => ({
 
 /** הערה משותפת לתורה/נביא/כתובים */
 const TANACH_NOTE =
-  'בבגרות החרדית תורה, נביא וכתובים נבחנים יחד בשאלוני תנ"ך משותפים (הפיקוח על תנ"ך חינוך חרדי). כאן מוצג בכל מקצוע החלק שלו מכל שאלון, לפי תכניות הלימודים הרשמיות לתשפ"ו. הסמלים משותפים לשלושת המקצועות.';
+  'בבגרות החרדית תורה, נביא וכתובים נבחנים יחד בשאלוני תנ"ך משותפים (הפיקוח על תנ"ך חינוך חרדי). כאן מוצג בכל מקצוע החלק שלו מכל שאלון, לפי תכניות הלימודים הרשמיות לתשפ"ו. הסמלים משותפים לשלושת המקצועות. פרקים המסומנים ✂ הוצאו ממיקוד משרד החינוך לתשפ"ז ואינם נדרשים לבחינה (שאלונים 3381, 3281 החיצוניים).';
 
 /* ---- תנ"ך: שאלון חיצוני 3381 – חלק החומש (עיון בשמות) ---- */
 const RASHI_NOTE = 'עם פירוש רש"י. פרקים עם קטעי מפרשים מסומנים בסמל נוצה.';
@@ -66,9 +91,9 @@ const SHEMOT_3381: Node[] = [
     children: [
       perek(10),
       perek(11),
-      perekM(
-        12,
-        'רמב"ן פסוק ב\' ("וטעם החדש הזה לכם ראש חדשים" עד "שנקרא לו לזיכרון גאולתנו"); רמב"ן פסוק מ\' (ב-5 יח"ל, עד "היה בן שבעים וחמש שנה"); ספורנו פסוק מ"ג',
+      partlyNeeded(
+        perekM(12, 'רמב"ן פסוק ב\' ("וטעם החדש הזה לכם ראש חדשים" עד "שנקרא לו לזיכרון גאולתנו")'),
+        'רמב"ן פסוק מ\' (ב-5 יח"ל, עד "היה בן שבעים וחמש שנה"); ספורנו פסוק מ"ג',
       ),
       perekM(13, "ספורנו פסוק ב'", 'עד פסוק ט"ז'),
     ],
@@ -78,7 +103,7 @@ const SHEMOT_3381: Node[] = [
     title: "פרשת בשלח",
     description: RASHI_NOTE,
     children: [
-      perekM(13, 'ספורנו פסוק י"ז (ב-5 יח"ל)', 'מפסוק י"ז'),
+      notNeeded(perekM(13, 'ספורנו פסוק י"ז (ב-5 יח"ל)', 'מפסוק י"ז')),
       perek(14),
       perekM(15, 'רמב"ן פסוק כ"ז (עד "יותר משאר המקומות שעבדו בהם")'),
       perekM(16, 'רמב"ן פסוק ב\'; רשב"ם פסוק כ"ג ד"ה "ויאמר אליהם"'),
@@ -105,7 +130,7 @@ const SHEMOT_3381: Node[] = [
 
 /* ---- תנ"ך: הערכה בית ספרית 3373/3573 – חלק החומש (עיון בראשית) ---- */
 const BEREISHIT_SCHOOL: Node[] = [
-  {
+  ready({
     slug: "vayera",
     title: "פרשת וירא",
     description: RASHI_NOTE,
@@ -116,15 +141,15 @@ const BEREISHIT_SCHOOL: Node[] = [
       perek(21),
       perekM(22, "רמב\"ן פסוק א'"),
     ],
-  },
+  }),
   {
     slug: "chayei-sara",
     title: "פרשת חיי שרה",
     description: RASHI_NOTE,
     children: [
-      perek(23),
-      perek(24),
-      perekM(25, 'כלי יקר פסוק א\'; רמב"ן פסוק ח\'', 'עד פסוק י"ח'),
+      ready(perek(23)),
+      ready(perek(24)),
+      ready(perekM(25, 'כלי יקר פסוק א\'; רמב"ן פסוק ח\'', 'עד פסוק י"ח')),
     ],
   },
   {
@@ -132,10 +157,10 @@ const BEREISHIT_SCHOOL: Node[] = [
     title: "פרשת תולדות",
     description: RASHI_NOTE,
     children: [
-      perek(25, 'מפסוק י"ט'),
-      perekM(26, "רמב\"ן פסוק כ'"),
-      perekM(27, 'ספורנו פסוק ד\'; רמב"ן פסוק ל"ג'),
-      perekM(28, "רמב\"ן פסוק ה'", "עד פסוק ט'"),
+      ready(perek(25, 'מפסוק י"ט')),
+      ready(perekM(26, "רמב\"ן פסוק כ'")),
+      ready(perekM(27, 'ספורנו פסוק ד\'; רמב"ן פסוק ל"ג')),
+      ready(perekM(28, "רמב\"ן פסוק ה'", "עד פסוק ט'")),
     ],
   },
 ];
@@ -188,8 +213,8 @@ const tehilimPerakim: Node[] = [
   perek(27),
   perek(29),
   perek(30),
-  perek(33),
-  perek(34),
+  notNeeded(perek(33)),
+  notNeeded(perek(34)),
   perek(47),
   perek(48),
   perek(130),
@@ -205,7 +230,7 @@ const tehilimPerakim: Node[] = [
 
 /** פרקי תהילים ביחידת הגבר 3281 */
 const tehilimHagever: Node[] = [
-  perek(49),
+  notNeeded(perek(49)),
   perek(51),
   perek(79),
   perek(81),
@@ -227,7 +252,7 @@ const tehilimHagever: Node[] = [
   perekM(116, 'מלבי"ם פסוקים י"ב-י"ד'),
   perek(117),
   perekM(118, 'מלבי"ם פסוק כ"ד'),
-  perek(139),
+  notNeeded(perek(139)),
 ];
 
 /** פרקי יחזקאל בשאלון החיצוני 3381 */
@@ -240,7 +265,7 @@ const yechezkelPerakim: Node[] = [
   perek(37),
   perek(38, 'מפסוק י"ח'),
   perek(39, 'עד פסוק ט"ז'),
-  perek(44, 'פסוקים ט"ו-ל"א'),
+  notNeeded(perek(44, 'פסוקים ט"ו-ל"א')),
 ];
 
 /** פרקי ירמיה בשאלון החיצוני 3381 */
@@ -250,8 +275,8 @@ const yirmiyaPerakim: Node[] = [
   perek(7),
   perek(8, 'מפסוק י"ג'),
   perek(9),
-  perek(16, 'מפסוק י"ט'),
-  perek(17, 'עד פסוק י"ד'),
+  notNeeded(perek(16, 'מפסוק י"ט')),
+  notNeeded(perek(17, 'עד פסוק י"ד')),
   perek(31),
 ];
 
@@ -261,8 +286,8 @@ const yeshayaPerakim: Node[] = [
   perek(2),
   perek(40),
   perek(41),
-  perek(43),
-  perek(44),
+  notNeeded(perek(43)),
+  notNeeded(perek(44)),
   perek(57, 'מפסוק י"ד'),
   perek(58),
   perek(60),
@@ -606,14 +631,14 @@ export const TREE: Node[] = [
         title: "בגרות 3 יחידות",
         description: "שאלון 3381 חיצוני (40%), 3373 בית ספרי (30%), 3383 בית ספרי (30%).",
         children: [
-          {
+          ready({
             slug: "external",
             title: "בגרות חיצונית – עיון בשמות",
             questionnaireCode: "3381",
             description:
               '40% מציון תנ"ך 3 יח"ל (שאלון משותף ל-5 יח"ל). השאלון כולל גם נביאים אחרונים ותהלים — ראו נביא וכתובים.',
             children: SHEMOT_3381,
-          },
+          }),
           {
             slug: "internal",
             title: "בגרות פנימית",
@@ -625,7 +650,7 @@ export const TREE: Node[] = [
                 description: "30% מהציון. השאלון כולל גם נביאים ראשונים — ראו נביא.",
                 children: BEREISHIT_SCHOOL,
               },
-              {
+              ready({
                 slug: "school-based-electives",
                 title: "הערכה בית ספרית – חלופות לבחירה",
                 questionnaireCode: "3383",
@@ -644,12 +669,12 @@ export const TREE: Node[] = [
                     children: BAMIDBAR_CHALUFA,
                   },
                 ],
-              },
+              }),
             ],
           },
         ],
       },
-      {
+      ready({
         slug: "5-units",
         title: "בגרות 5 יחידות",
         description:
@@ -750,8 +775,8 @@ export const TREE: Node[] = [
                       perekM(2, 'רמב"ן פסוק י"ז ד"ה "ביום אכלך ממנו"; ספורנו פסוק י"ח'),
                       perek(3),
                       perekM(4, 'רמב"ן פסוק י"ג (עד "רק בשמירת עליון עליו")'),
-                      perek(5),
-                      perek(6, "עד פסוק ח'"),
+                      notNeeded(perek(5)),
+                      notNeeded(perek(6, "עד פסוק ח'")),
                     ],
                   },
                   {
@@ -787,9 +812,9 @@ export const TREE: Node[] = [
                     slug: "vaetchanan",
                     title: "פרשת ואתחנן",
                     children: [
-                      perekM(3, 'כלי יקר פסוק כ"ד', 'מפסוק כ"ג'),
+                      notNeeded(perekM(3, 'כלי יקר פסוק כ"ד', 'מפסוק כ"ג')),
                       perek(4),
-                      perek(5),
+                      notNeeded(perek(5)),
                       perek(6),
                       perek(7, 'עד פסוק י"א'),
                     ],
@@ -811,7 +836,7 @@ export const TREE: Node[] = [
             ],
           },
         ],
-      },
+      }),
     ],
   },
 
@@ -823,22 +848,22 @@ export const TREE: Node[] = [
     children: [
       {
         slug: "external",
-        title: "שאלון חיצוני – נביאים אחרונים",
+        title: 'שאלון חיצוני 3 יח"ל – נביאים אחרונים',
         questionnaireCode: "3381",
         description:
           '40% מהציון ב-3 יח"ל / 20% ב-5 יח"ל (שאלון תנ"ך משותף). יש ללמוד ע"פ רש"י או מצודות באופן שכל הפסוק מפורש.',
         children: [
-          { slug: "yechezkel", title: "יחזקאל", children: yechezkelPerakim },
-          { slug: "yirmiya", title: "ירמיה", children: yirmiyaPerakim },
-          { slug: "yeshaya", title: "ישעיה", children: yeshayaPerakim },
+          ready({ slug: "yechezkel", title: "יחזקאל", children: yechezkelPerakim }),
+          ready({ slug: "yirmiya", title: "ירמיה", children: yirmiyaPerakim }),
+          ready({ slug: "yeshaya", title: "ישעיה", children: yeshayaPerakim }),
         ],
       },
       {
         slug: "school-based",
-        title: "הערכה בית ספרית – נביאים ראשונים",
+        title: 'הערכה בית ספרית – נביאים ראשונים (משותף ל-3 ו-5 יח"ל)',
         questionnaireCode: "3373",
         description:
-          '3 יח"ל: שאלון 3373 (30%); 5 יח"ל: שאלון 3573 (20%). כולל גם עיון בראשית — ראו תורה. בנוסף לרש"י/מצודות נלמדים קטעי פירוש רד"ק.',
+          'אין הערכה בית ספרית נפרדת ל-5 יח"ל — זהו אותו חומר בשני המסלולים, רק בשאלון ובמשקל שונים: 3 יח"ל שאלון 3373 (30%), 5 יח"ל שאלון 3573 (20%). כולל גם עיון בראשית — ראו תורה. בנוסף לרש"י/מצודות נלמדים קטעי פירוש רד"ק.',
         children: [
           {
             slug: "yehoshua",
@@ -915,7 +940,7 @@ export const TREE: Node[] = [
         description:
           '40% מציון תנ"ך 5 יח"ל. כוללת גם עיון בראשית ודברים ותהלים — ראו תורה וכתובים.',
         children: [
-          {
+          ready({
             slug: "melachim-a",
             title: "מלכים א'",
             children: [
@@ -926,8 +951,8 @@ export const TREE: Node[] = [
               { slug: "perek-7", title: "פרק ז' (פסוקים י\"ג-כ\"ו, מ'-נ')" },
               { slug: "perek-18", title: "פרק י\"ח (פסוקים א'-ל\"ט)" },
             ],
-          },
-          {
+          }),
+          ready({
             slug: "melachim-b",
             title: "מלכים ב'",
             children: [
@@ -937,28 +962,30 @@ export const TREE: Node[] = [
               { slug: "perek-11", title: "פרק י\"א (פסוקים א'-י\"ז)" },
               { slug: "perek-18", title: "פרק י\"ח (פסוקים א'-ז')" },
             ],
-          },
-          {
+          }),
+          ready({
             slug: "yeshaya-hagever",
             title: "ישעיה – פרקי הגבר",
-            children: [perek(5), perek(6), perek(11), perek(12), ...prakim(51, 56)],
-          },
+            children: [perek(5), notNeeded(perek(6)), perek(11), perek(12), ...prakim(51, 56)],
+          }),
           {
             slug: "trei-asar",
             title: "תרי עשר",
             description: 'יש ללמוד ע"פ רש"י או מצודות באופן שכל הפסוק מפורש.',
             children: [
-              {
+              ready({
                 slug: "hoshea",
                 title: "הושע",
                 children: [perek(2), perek(12, 'מפסוק י"ג'), perek(13), perek(14)],
-              },
-              {
-                slug: "yoel",
-                title: "יואל",
-                children: [perek(1), perek(2, 'מפסוק ט"ו')],
-              },
-              { slug: "amos", title: "עמוס", children: prakimOf(2, 3, 9) },
+              }),
+              ready(
+                notNeeded({
+                  slug: "yoel",
+                  title: "יואל",
+                  children: [perek(1), perek(2, 'מפסוק ט"ו')],
+                }),
+              ),
+              notNeeded({ slug: "amos", title: "עמוס", children: prakimOf(2, 3, 9) }),
               { slug: "ovadia", title: "עובדיה", children: [perek(1)] },
               { slug: "yona", title: "יונה", children: prakim(1, 4) },
               {

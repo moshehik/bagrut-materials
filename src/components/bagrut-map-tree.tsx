@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2, Feather } from "lucide-react";
+import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 
@@ -63,6 +63,9 @@ function NodeBox({
   const refTarget = ref ? ctx.resolveRef(node) : null;
   const isFinal = !hasChildren && !ref;
   const meforshim = meforshimOf(node);
+  const excluded = node.cat.excluded;
+  const excludedNote = node.cat.excludedNote;
+  const ready = node.cat.ready;
   const [meforshimOpen, setMeforshimOpen] = useState(false);
   const style = { "--flow-accent": accent } as CSSProperties;
   const size = compact
@@ -72,12 +75,17 @@ function NodeBox({
       : "px-2.5 py-1 text-base max-w-[14rem]";
   const boxClass = `flow-node ${level % 2 === 1 ? "flow-node--alt" : ""} ${
     ref ? "flow-node--ref" : ""
-  } inline-flex items-center gap-1.5 text-ink ${size} ${hasChildren || ref ? "cursor-pointer" : ""}`;
+  } ${excluded ? "flow-node--excluded" : ""} ${excludedNote ? "flow-node--has-cut" : ""} ${
+    open && hasChildren ? "flow-node--open" : ""
+  } inline-flex items-center gap-1.5 text-ink ${size} ${
+    hasChildren || ref ? "cursor-pointer" : ""
+  }`;
 
   const clickAction = ref ? () => ctx.gotoRef(node) : hasChildren ? onToggle : undefined;
 
   return (
     <>
+    <div className={excludedNote ? "inline-flex flex-col items-stretch" : "contents"}>
     <div className={boxClass} style={style} onClick={clickAction}>
       {hasChildren || ref ? (
         <button
@@ -97,10 +105,34 @@ function NodeBox({
               aria-hidden
             />
           )}
-          <span className="min-w-0 leading-tight">{node.cat.title}</span>
+          <span className={`min-w-0 leading-tight ${excluded ? "line-through opacity-60" : ""}`}>
+            {node.cat.title}
+          </span>
         </button>
       ) : (
-        <span className="min-w-0 flex-1 leading-tight">{node.cat.title}</span>
+        <span className={`min-w-0 flex-1 leading-tight ${excluded ? "line-through opacity-60" : ""}`}>
+          {node.cat.title}
+        </span>
+      )}
+      {excluded && (
+        <span
+          tabIndex={0}
+          className="flow-tip shrink-0 rounded-full p-0.5 text-[#a33]"
+          data-tip='לא נדרש בתשפ"ז (מיקוד משרד החינוך)'
+          aria-label={`לא נדרש בתשפ"ז – ${node.cat.title}`}
+        >
+          <Scissors className="h-3.5 w-3.5" aria-hidden />
+        </span>
+      )}
+      {ready && (
+        <span
+          tabIndex={0}
+          className="flow-tip shrink-0 rounded-full p-0.5 text-emerald-600"
+          data-tip="כבר הוכן חומר לנושא זה"
+          aria-label={`כבר הוכן חומר – ${node.cat.title}`}
+        >
+          <Check className="h-3.5 w-3.5" aria-hidden />
+        </span>
       )}
       {meforshim && (
         <button
@@ -132,6 +164,21 @@ function NodeBox({
       >
         <ArrowUpLeft className="h-3 w-3" aria-hidden />
       </Link>
+    </div>
+    {/* פרק שרק חלקו נדרש: ריבוע "מה לא צריך" צמוד בלי רווח מתחת לריבוע הפרק */}
+    {excludedNote && (
+      <div
+        className={`flow-node flow-node--cut inline-flex items-start gap-1.5 text-ink ${
+          compact ? "px-2 py-0.5" : "px-2.5 py-1"
+        } ${level === 0 ? "max-w-[15rem]" : "max-w-[14rem]"}`}
+        style={style}
+      >
+        <Scissors className="mt-0.5 h-3 w-3 shrink-0 text-[#a33]" aria-hidden />
+        <span className="min-w-0 text-xs leading-snug opacity-80">
+          <b>לא נדרש בתשפ&quot;ז (מיקוד):</b> {excludedNote}
+        </span>
+      </div>
+    )}
     </div>
     {meforshim && meforshimOpen && (
       <div className="flow-ellipse text-ink" style={style}>
@@ -196,11 +243,11 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
       {open && hasChildren && !allLeaves && (
         <>
           <span aria-hidden className="mt-4 h-px w-4 shrink-0 bg-ink/50" />
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex flex-col gap-6">
             {node.children.map((child) => (
               <li
                 key={child.cat.id}
-                className="relative flex items-start ps-4 before:absolute before:right-0 before:top-0 before:bottom-0 before:w-px before:bg-ink/50 first:before:top-4 last:before:bottom-[calc(100%-1rem)] after:absolute after:right-0 after:top-4 after:h-px after:w-4 after:-translate-y-1/2 after:bg-ink/50"
+                className="flow-branch-line relative flex items-start ps-4 after:absolute after:right-0 after:top-4 after:h-px after:w-4 after:-translate-y-1/2 after:bg-ink/50"
               >
                 <Branch node={child} level={level + 1} accent={child.cat.color || accent} ctx={ctx} />
               </li>
@@ -266,7 +313,7 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
   };
 
   return (
-    <div className="flex flex-col gap-8 overflow-x-auto pb-2 pt-12">
+    <div className="flex flex-col gap-16 overflow-x-auto pb-2 pt-12">
       {tree.map((root) => (
         <div key={root.cat.id} className="min-w-max">
           <Branch

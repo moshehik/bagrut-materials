@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GitBranch, FolderTree, ChevronDown, ArrowUpLeft } from "lucide-react";
+import { GitBranch, FolderTree, ChevronDown, ArrowUpLeft, Scissors, Check } from "lucide-react";
 import { getAllActiveCategories } from "@/lib/data";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
+import { FocusNotice } from "@/components/focus-notice";
 
 export const metadata: Metadata = { title: "מפת הבגרות המלאה" };
 export const dynamic = "force-dynamic";
@@ -63,7 +64,21 @@ export default async function MapPage() {
           </span>
           לחיצה על <b className="text-ink">החץ</b> מביאה אל המקור עצמו
         </span>
+        <span className="flex items-center gap-1.5">
+          <Scissors className="h-4 w-4 shrink-0 text-[#a33]" aria-hidden />
+          נושא <b className="text-ink">מסומן בקו חוצה</b> — לא נדרש בתשפ"ז לפי מיקוד משרד החינוך
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Scissors className="h-4 w-4 shrink-0 text-[#a33]" aria-hidden />
+          פרק שרק חלקו במיקוד — <b className="text-ink">ריבוע צמוד</b> מתחתיו מפרט מה לא נדרש
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+          נושא <b className="text-ink">מסומן בוי</b> — כבר הוכן לו חומר בפועל
+        </span>
       </div>
+
+      <FocusNotice />
 
       {tree.length === 0 ? (
         <div className="card mt-10 p-12 text-center">

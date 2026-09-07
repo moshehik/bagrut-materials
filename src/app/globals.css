@@ -187,9 +187,56 @@ body {
   background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 30%, transparent);
   transform: rotate(-0.5deg) scale(1.02);
 }
+/* קו החוט המחבר בין אחים בענף — משתרע לתוך הרווח שבין אח לאח,
+   כדי שהקו ייראה רציף גם עם רווח גדול (gap-6) בין אחים */
+.flow-branch-line::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -0.75rem;
+  bottom: -0.75rem;
+  width: 1px;
+  background: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+.flow-branch-line:first-child::before {
+  top: 1rem;
+}
+.flow-branch-line:last-child::before {
+  bottom: calc(100% - 1rem);
+}
+
+/* צומת פתוח (הפירוט שלו מוצג) — נשאר צבוע קלות גם בלי ריחוף,
+   כדי שיהיה ברור מי הצומת שפתוח כשכמה פתוחים בו-זמנית */
+.flow-node--open {
+  background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 20%, transparent);
+}
 /* צומת הפניה — קו מקווקו, קופץ אל הפירוט שאליו הוא מפנה */
 .flow-node--ref {
   border-style: dashed;
+}
+/* צומת שהוצא ממיקוד השנה — קו דיו דהוי, לא נדרש יותר לבחינה */
+.flow-node--excluded {
+  border-color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+/* ריבוע פרק שיש לו ריבוע "מה לא צריך" צמוד — קצה תחתון ישר (תפר משותף), בלי ריקוד בריחוף */
+.flow-node--has-cut {
+  border-radius: 255px 15px 0 0 / 15px 225px 0 0;
+}
+.flow-node--has-cut:hover,
+.flow-node--has-cut:focus-within {
+  transform: none;
+}
+/* ריבוע "מה לא צריך" — פרק שרק חלקו במיקוד: צמוד בלי רווח מתחת לריבוע הפרק,
+   קצה עליון ישר (תפר משותף) וקו דיו דהוי. בלי ריקוד בריחוף — שהתפר לא ייפתח. */
+.flow-node--cut {
+  margin-top: -2px;
+  border-radius: 0 0 225px 15px / 0 0 15px 255px;
+  border-color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+.flow-node--cut:hover,
+.flow-node--cut:focus-within {
+  background-color: transparent;
+  transform: none;
 }
 /* הבהוב כשמגיעים לצומת דרך הפניה */
 .flow-flash > .flow-node {

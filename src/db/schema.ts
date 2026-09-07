@@ -96,6 +96,12 @@ export const categories = pgTable(
     sort: integer("sort").notNull().default(0),
     /** מחיר הורדת כל התיקייה כקובץ מורחב (באגורות). null = לא זמין */
     bundlePrice: integer("bundle_price"),
+    /** לא נדרש יותר לבחינה (לפי מיקוד משרד החינוך לשנה הנוכחית) — מוצג במפה עם קו חוצה */
+    excluded: boolean("excluded").notNull().default(false),
+    /** פרק שרק חלקו נדרש: מה הוצא מהמיקוד — מוצג במפה כריבוע "מה לא צריך" צמוד בלי רווח לריבוע הפרק */
+    excludedNote: text("excluded_note"),
+    /** כבר הוכן חומר בפועל לצומת זה (עדיין לא בהכרח הועלה לאתר) — מוצג במפה עם סימן וי */
+    ready: boolean("ready").notNull().default(false),
     /** השהיית דף/תיקייה – מוסתרת מהמשתמשות (מנהלת רואה) */
     status: statusEnum("status").notNull().default("active"),
     /** הגבלת גישה לכל התיקייה לרמת פרימיום מינימלית */
