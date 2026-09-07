@@ -67,11 +67,11 @@ const NAV = [
 ];
 
 /** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */
-export function Logo({ className = "" }: { className?: string }) {
+export function Logo({ className = "", variant = "color" }: { className?: string; variant?: "color" | "white" }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/images/logo.png"
+      src={variant === "white" ? "/images/logo-white.png" : "/images/logo.png"}
       alt="לו״ז העניין – בית לחומרי הבגרות"
       width={1491}
       height={871}
@@ -86,11 +86,11 @@ export function Header({ user }: { user: HeaderUser }) {
   const cartCount = useCartCount(!!user);
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md bg-plaster/85 border-b border-sea/10">
+    <header className="sticky top-0 z-40 backdrop-blur-md bg-sea2/95 border-b border-white/10">
       <div className="mx-auto max-w-[1180px] px-4 sm:px-6 h-[74px] flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 group" aria-label="דף הבית">
-          <Logo className="h-11 sm:h-12" />
-          <span className="hidden sm:block text-[11px] font-semibold text-muted tracking-wide border-s border-sea/20 ps-3 leading-tight">
+          <Logo variant="white" className="h-11 sm:h-12" />
+          <span className="hidden sm:block text-[11px] font-semibold text-white/70 tracking-wide border-s border-white/20 ps-3 leading-tight">
             מתמקדים
             <br />
             בעיקר
@@ -106,8 +106,8 @@ export function Header({ user }: { user: HeaderUser }) {
                 href={n.href}
                 className={`px-3 py-2 rounded-full text-[15px] font-semibold transition-colors transition-transform hover:-translate-y-0.5 ${
                   active
-                    ? "bg-blue-soft text-sea2"
-                    : "text-ink hover:text-sea2"
+                    ? "bg-white/10 text-sun"
+                    : "text-white/90 hover:text-sun"
                 }`}
               >
                 {n.label}
@@ -120,7 +120,7 @@ export function Header({ user }: { user: HeaderUser }) {
           {user ? (
             <>
               {user.role === "admin" && (
-                <Link href="/admin" className="btn btn-oak text-sm py-2">
+                <Link href="/admin" className="btn btn-gold text-sm py-2">
                   <ShieldCheck className="h-4 w-4" /> ניהול
                 </Link>
               )}
@@ -134,21 +134,21 @@ export function Header({ user }: { user: HeaderUser }) {
               )}
               <CartLink
                 count={cartCount}
-                className="p-2 rounded-full text-ink/80 hover:bg-pink-soft hover:text-terra transition-colors"
+                className="p-2 rounded-full text-white/80 hover:bg-white/10 hover:text-sun transition-colors"
               />
-              <Link href="/account" className="btn btn-ghost text-sm py-2">
+              <Link href="/account" className="btn btn-line-white text-sm py-2">
                 <UserRound className="h-4 w-4" /> {user.name.split(" ")[0]}
               </Link>
               <form action={logoutAction}>
-                <button className="text-sm text-muted hover:text-ink px-2 transition-transform hover:-translate-y-0.5">יציאה</button>
+                <button className="text-sm text-white/70 hover:text-sun px-2 transition-transform hover:-translate-y-0.5">יציאה</button>
               </form>
             </>
           ) : (
             <>
-              <Link href="/register" className="text-[15px] font-semibold text-ink hover:text-sea2 px-2 transition-transform hover:-translate-y-0.5">
+              <Link href="/register" className="text-[15px] font-semibold text-white/90 hover:text-sun px-2 transition-transform hover:-translate-y-0.5">
                 הצטרפות
               </Link>
-              <Link href="/login" className="btn btn-sea text-sm py-2.5">
+              <Link href="/login" className="btn btn-gold text-sm py-2.5">
                 <LogIn className="h-4 w-4" /> כניסה
               </Link>
             </>
@@ -157,10 +157,10 @@ export function Header({ user }: { user: HeaderUser }) {
 
         <div className="ms-auto md:hidden flex items-center gap-1">
           {user && (
-            <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-pink-soft text-ink/80" />
+            <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-white/10 text-white/80" />
           )}
           <button
-            className="p-2 rounded-xl hover:bg-blue-soft transition-transform hover:scale-110"
+            className="p-2 rounded-xl text-white hover:bg-white/10 transition-transform hover:scale-110"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-label="תפריט"

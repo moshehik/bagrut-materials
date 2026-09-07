@@ -45,3 +45,18 @@ next-env.d.ts
 
 # lesson-materials working files (not part of the site)
 /חומרים מוכנים מחדש/
+
+# ad-hoc content-authoring scratch files (dumps/caches/one-off build scripts
+# used while hand-writing lesson materials — see CLAUDE.md "Content authoring")
+/_*.js
+/_*.mjs
+/_*.json
+/_*.xml
+/_*.txt
+/_tmp/
+/_tmp_*
+/_render_temp_ch*/
+/scratch_*/
+/scratchpad_*/
+/_scratch_*/
+/_scratchpad_*/

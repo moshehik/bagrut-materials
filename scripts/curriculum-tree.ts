@@ -865,7 +865,7 @@ export const TREE: Node[] = [
         description:
           'אין הערכה בית ספרית נפרדת ל-5 יח"ל — זהו אותו חומר בשני המסלולים, רק בשאלון ובמשקל שונים: 3 יח"ל שאלון 3373 (30%), 5 יח"ל שאלון 3573 (20%). כולל גם עיון בראשית — ראו תורה. בנוסף לרש"י/מצודות נלמדים קטעי פירוש רד"ק.',
         children: [
-          {
+          ready({
             slug: "yehoshua",
             title: "יהושע",
             description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
@@ -885,8 +885,8 @@ export const TREE: Node[] = [
                 description: 'מפרשים: רד"ק פרק כ"ד פסוק א\' (בתכנית 5 יח"ל)',
               },
             ],
-          },
-          {
+          }),
+          ready({
             slug: "shoftim",
             title: "שופטים",
             description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
@@ -913,7 +913,7 @@ export const TREE: Node[] = [
                 description: 'מפרשים: רד"ק פרק י"ג פסוק ד\' ד"ה "ואל תשתי יין ושכר"',
               },
             ],
-          },
+          }),
           {
             slug: "shmuel-a",
             title: "שמואל א'",
@@ -987,17 +987,17 @@ export const TREE: Node[] = [
               ),
               notNeeded({ slug: "amos", title: "עמוס", children: prakimOf(2, 3, 9) }),
               { slug: "ovadia", title: "עובדיה", children: [perek(1)] },
-              { slug: "yona", title: "יונה", children: prakim(1, 4) },
-              {
+              ready({ slug: "yona", title: "יונה", children: prakim(1, 4) }),
+              ready({
                 slug: "micha",
                 title: "מיכה",
                 children: [perek(4), perek(5), perek(6, "עד פסוק ח'")],
-              },
-              {
+              }),
+              ready({
                 slug: "zecharia",
                 title: "זכריה",
                 children: [perek(2, 'מפסוק י"ד'), perek(3), perek(4, "עד פסוק ז'"), perek(14)],
-              },
+              }),
               { slug: "malachi", title: "מלאכי", children: [perek(3)] },
             ],
           },
