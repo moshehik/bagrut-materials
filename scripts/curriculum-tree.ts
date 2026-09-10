@@ -657,17 +657,17 @@ export const TREE: Node[] = [
                 description:
                   "30% מהציון. בוחרים 2 חלופות: אחת מבין א'/ב' ואחת מבין ג'/ד' (חלופות ג'-ד' הן כתובים — ראו שם).",
                 children: [
-                  {
+                  ready({
                     slug: "chalufa-a",
                     title: "חלופה א' – עיון בראשית ודברים",
                     children: [VAYECHI, VEZOT_HABRACHA],
-                  },
-                  {
+                  }),
+                  ready({
                     slug: "chalufa-b",
                     title: "חלופה ב' – עיון במדבר",
                     description: 'בחירה של 2 פרשות מתוך בהעלותך / שלח / קורח, עם פירוש רש"י.',
                     children: BAMIDBAR_CHALUFA,
-                  },
+                  }),
                 ],
               }),
             ],
@@ -693,7 +693,7 @@ export const TREE: Node[] = [
             description:
               "20% מהציון. בוחרים 3 חלופות מתוך א'-ד' (חלופה ד' היא כתובים — ראו שם).",
             children: [
-                  {
+                  ready({
                     slug: "chalufa-a",
                     title: "חלופה א' – עיון בראשית ודברים",
                     children: [
@@ -706,8 +706,8 @@ export const TREE: Node[] = [
                       },
                       VEZOT_HABRACHA,
                     ],
-                  },
-                  {
+                  }),
+                  ready({
                     slug: "chalufa-b",
                     title: "חלופה ב' – חומש ויקרא",
                     description:
@@ -746,13 +746,13 @@ export const TREE: Node[] = [
                         description: 'התמצאות במקרא וברש"י (פירוש אחד ברש"י).',
                       },
                     ],
-                  },
-                  {
+                  }),
+                  ready({
                     slug: "chalufa-c",
                     title: "חלופה ג' – עיון במדבר",
                     description: 'בחירה של 2 פרשות מתוך בהעלותך / שלח / קורח, עם פירוש רש"י.',
                     children: BAMIDBAR_CHALUFA,
-                  },
+                  }),
             ],
           },
           {
@@ -762,7 +762,7 @@ export const TREE: Node[] = [
             description:
               '40% מציון תנ"ך 5 יח"ל. כוללת גם מלכים, ישעיה, תרי עשר ותהלים — ראו נביא וכתובים.',
             children: [
-              {
+              ready({
                 slug: "bereishit-iyun",
                 title: "עיון בראשית",
                 description: 'פרשות בראשית ולך לך עם פירוש רש"י וקטעי רמב"ן וספורנו נבחרים.',
@@ -792,34 +792,34 @@ export const TREE: Node[] = [
                     ],
                   },
                 ],
-              },
+              }),
               {
                 slug: "devarim-iyun",
                 title: "עיון דברים",
                 description:
                   'פרשות דברים, ואתחנן, ראה עם פירוש רש"י, הקדמת הרמב"ן לחומש דברים, וקטעי רמב"ן, ספורנו, כלי יקר ורשב"ם נבחרים.',
                 children: [
-                  {
+                  ready({
                     slug: "hakdamat-haramban",
                     title: 'הקדמת הרמב"ן על חומש דברים',
-                  },
-                  {
+                  }),
+                  ready({
                     slug: "devarim",
                     title: "פרשת דברים",
                     children: [perekM(1, 'רמב"ן פסוק כ"ה'), perek(2), perek(3, 'עד פסוק כ"ב')],
-                  },
+                  }),
                   {
                     slug: "vaetchanan",
                     title: "פרשת ואתחנן",
                     children: [
                       notNeeded(perekM(3, 'כלי יקר פסוק כ"ד', 'מפסוק כ"ג')),
-                      perek(4),
+                      ready(perek(4)),
                       notNeeded(perek(5)),
-                      perek(6),
-                      perek(7, 'עד פסוק י"א'),
+                      ready(perek(6)),
+                      ready(perek(7, 'עד פסוק י"א')),
                     ],
                   },
-                  {
+                  ready({
                     slug: "reeh",
                     title: "פרשת ראה",
                     children: [
@@ -830,7 +830,7 @@ export const TREE: Node[] = [
                       perekM(15, 'רמב"ן פסוק י"א ד"ה "כי לא יחדל אביון"'),
                       perek(16, 'עד פסוק י"ז'),
                     ],
-                  },
+                  }),
                 ],
               },
             ],
@@ -914,18 +914,18 @@ export const TREE: Node[] = [
               },
             ],
           }),
-          {
+          ready({
             slug: "shmuel-a",
             title: "שמואל א'",
             description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
             children: shmuelAlefPerakim,
-          },
-          {
+          }),
+          ready({
             slug: "shmuel-b",
             title: "שמואל ב'",
             description: 'נושאים עם קטעי רד"ק מסומנים בסמל נוצה.',
             children: shmuelBetPerakim,
-          },
+          }),
           {
             slug: "bekiut",
             title: "בקיאות בנביא",
@@ -985,8 +985,8 @@ export const TREE: Node[] = [
                   children: [perek(1), perek(2, 'מפסוק ט"ו')],
                 }),
               ),
-              notNeeded({ slug: "amos", title: "עמוס", children: prakimOf(2, 3, 9) }),
-              { slug: "ovadia", title: "עובדיה", children: [perek(1)] },
+              ready(notNeeded({ slug: "amos", title: "עמוס", children: prakimOf(2, 3, 9) })),
+              ready({ slug: "ovadia", title: "עובדיה", children: [perek(1)] }),
               ready({ slug: "yona", title: "יונה", children: prakim(1, 4) }),
               ready({
                 slug: "micha",
@@ -998,7 +998,7 @@ export const TREE: Node[] = [
                 title: "זכריה",
                 children: [perek(2, 'מפסוק י"ד'), perek(3), perek(4, "עד פסוק ז'"), perek(14)],
               }),
-              { slug: "malachi", title: "מלאכי", children: [perek(3)] },
+              ready({ slug: "malachi", title: "מלאכי", children: [perek(3)] }),
             ],
           },
         ],
@@ -1014,7 +1014,7 @@ export const TREE: Node[] = [
     children: [
       {
         slug: "tehilim",
-        title: "תהלים – שאלון חיצוני",
+        title: 'תהלים – שאלון חיצוני 3 יח"ל',
         questionnaireCode: "3381",
         description:
           '40% מהציון ב-3 יח"ל / 20% ב-5 יח"ל (שאלון תנ"ך משותף). יש ללמוד ע"פ רש"י או מצודות באופן שכל הפסוק מפורש.',
