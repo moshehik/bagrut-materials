@@ -219,6 +219,20 @@ export const templates = {
       ),
     };
   },
+  faqQuestion(name: string | null, email: string | null, question: string) {
+    const who = name ? `${name}${email ? ` – ${email}` : ""}` : "אורחת שלא מחוברת לחשבון";
+    const whoHtml = name
+      ? `${esc(name)}${email ? ` – <a href="mailto:${esc(email)}">${esc(email)}</a>` : ""}`
+      : "אורחת שלא מחוברת לחשבון";
+    return {
+      subject: `שאלה חדשה מתיבת "יש לי עוד שאלה" בעמוד הבית`,
+      text: `שאלה חדשה נשלחה מהתיבה "יש לי עוד שאלה" בעמוד הבית\nמאת: ${who}\n\n${question}`,
+      html: layoutHtml(
+        "שאלה חדשה מעמוד השאלות והתשובות",
+        `<p>מאת: <b>${whoHtml}</b></p><p style="white-space:pre-wrap">${esc(question)}</p>`,
+      ),
+    };
+  },
   manual(subject: string, body: string) {
     return {
       subject,

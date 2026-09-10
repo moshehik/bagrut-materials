@@ -928,6 +928,126 @@
   }
 }
 
+/* ---------- FAQ — שאלות ותשובות, בין לוחית האבטחה ללוגו ---------- */
+.faq {
+  margin-top: 70px;
+}
+.faqList {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.faqItem {
+  border-radius: 22px;
+  overflow: hidden;
+}
+.faqQ {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(
+    to left,
+    var(--sea) 0,
+    var(--sea) calc(100% - 1.5cm),
+    #c9973f calc(100% - 1.5cm),
+    #f2ce7a 100%
+  );
+  color: #fff;
+  border: none;
+  border-radius: 22px;
+  padding: 18px 26px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  text-align: right;
+  cursor: pointer;
+  transition: background 0.25s var(--ease-snap);
+}
+.faqQ:hover,
+.faqQ[aria-expanded="true"] {
+  background: linear-gradient(
+    to left,
+    var(--sea2) 0,
+    var(--sea2) calc(100% - 1.5cm),
+    #c9973f calc(100% - 1.5cm),
+    #f2ce7a 100%
+  );
+}
+.faqQInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.faqNutIcon {
+  flex-shrink: 0;
+  width: 30px;
+  height: auto;
+}
+.faqChevron {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.25s var(--ease-snap);
+}
+.faqChevronOpen {
+  transform: rotate(180deg);
+}
+.faqA {
+  background: #e6f6fb;
+  color: var(--ink);
+  border-radius: 0 0 22px 22px;
+  margin-top: -10px;
+  padding: 24px 26px 18px;
+}
+.faqA p {
+  margin: 0;
+  line-height: 1.8;
+}
+
+.faqAsk {
+  max-width: 640px;
+  margin: 44px auto 0;
+  text-align: center;
+}
+.faqAskForm h3 {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 28px;
+  margin: 0 0 16px;
+}
+.faqAskLabel {
+  display: block;
+  text-align: right;
+  font-weight: 600;
+  font-size: 14px;
+}
+.faqAskActions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.faqAskOk {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 24px;
+  color: var(--sea2);
+}
+
+@media (max-width: 900px) {
+  .faqQ {
+    padding: 15px 18px;
+    font-size: 15.5px;
+  }
+  .faqA {
+    padding: 18px 18px 16px;
+  }
+}
+
 /* ---------- LOGO OUTRO — הלוגו המלא בין לוחית האבטחה לפוטר ---------- */
 .logoOutro {
   display: flex;

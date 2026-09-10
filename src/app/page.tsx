@@ -12,6 +12,7 @@ import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
 import { SubjectIcon } from "@/components/subject-icons";
+import { FaqSection } from "@/components/faq-section";
 import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -390,6 +391,11 @@ export default async function HomePage() {
               לתנאי השימוש
             </Link>
           </div>
+        </Reveal>
+
+        {/* ================= FAQ ================= */}
+        <Reveal>
+          <FaqSection />
         </Reveal>
 
         {/* ================= LOGO OUTRO ================= */}

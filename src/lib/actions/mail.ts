@@ -5,7 +5,7 @@ import { z } from "zod";
 import { and, eq, gt, isNull, or, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { users, purchases, type Tier } from "@/db/schema";
-import { requireAdmin } from "@/lib/session";
+import { requireAdmin, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates, type MailAttachment } from "@/lib/mail";
 
 export type MailState = { error?: string; ok?: string } | undefined;
@@ -151,4 +151,28 @@ export async function contactAction(_prev: MailState, form: FormData): Promise<M
   const { name, email, message } = parsed.data;
   const r = await sendMail({ to: admin, ...templates.contact(name, email, message), kind: "contact" });
   return r.ok ? { ok: "הפנייה נשלחה, נחזור אלייך בהקדם" } : { error: "השליחה נכשלה, נסי שוב מאוחר יותר" };
+}
+
+const faqQuestionSchema = z.object({
+  question: z.string().trim().min(5, "כתבי כמה מילים").max(2000),
+  website: z.string().max(0).optional(), // honeypot
+});
+
+/** "השאלה שלי" בתיבת השאלות ותשובות בעמוד הבית – נשלח למנהל */
+export async function faqQuestionAction(_prev: MailState, form: FormData): Promise<MailState> {
+  const parsed = faqQuestionSchema.safeParse({
+    question: form.get("question"),
+    website: form.get("website") ?? "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const admin = adminEmail();
+  if (!admin) return { error: "כתובת המנהל לא מוגדרת" };
+  const user = await getCurrentUser();
+  const r = await sendMail({
+    to: admin,
+    ...templates.faqQuestion(user?.name ?? null, user?.email ?? null, parsed.data.question),
+    kind: "faq_question",
+    userId: user?.id ?? null,
+  });
+  return r.ok ? { ok: "השאלה נשלחה, תודה! נשמח לענות לך ואולי גם להוסיף אותה כאן" } : { error: "השליחה נכשלה, נסי שוב מאוחר יותר" };
 }
