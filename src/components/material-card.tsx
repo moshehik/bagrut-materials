@@ -95,6 +95,17 @@ export function MaterialCard({ material: m, entitlement, loggedIn, currentPath =
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-4">
         <Actions m={m} entitlement={entitlement} loggedIn={loggedIn} currentPath={currentPath} />
+        {m.allowPreview && !entitlement.ok && (
+          <a
+            href={`/api/preview/${m.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost text-sm py-2"
+            title="עמוד ראשון בלבד, ללא רכישה"
+          >
+            <Eye className="h-4 w-4" aria-hidden /> תצוגה מקדימה
+          </a>
+        )}
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted">
         <Fingerprint className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -132,9 +143,15 @@ function Actions({
     if (!m.allowDownload && entitlement.via !== "admin") {
       return (
         <>
-          <span className="inline-flex items-center gap-1 text-sm text-muted font-medium">
-            <Eye className="h-4 w-4" aria-hidden /> צפייה בלבד – לא ניתן להורדה
-          </span>
+          <a
+            href={`/api/preview/${m.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-oak text-sm py-2"
+            title="צפייה באתר בלבד – לא ניתן להורדה"
+          >
+            <Eye className="h-4 w-4" aria-hidden /> צפייה
+          </a>
           {viaLabel && <span className="text-xs text-muted">{viaLabel}</span>}
         </>
       );

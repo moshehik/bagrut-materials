@@ -91,6 +91,53 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
   return pdf.save();
 }
 
+/** משאיר רק את העמוד הראשון (לתצוגה מקדימה ללא רכישה) */
+export async function firstPageOnly(input: Uint8Array | ArrayBuffer) {
+  const src = await PDFDocument.load(input, { ignoreEncryption: true });
+  const out = await PDFDocument.create();
+  const [page] = await out.copyPages(src, [0]);
+  out.addPage(page);
+  return out.save();
+}
+
+/** מטביע "תצוגה מקדימה" גנרי (ללא זיהוי אישי - משמש לצפייה חופשית ללא רכישה) */
+export async function stampPreview(input: Uint8Array | ArrayBuffer) {
+  const pdf = await PDFDocument.load(input, { ignoreEncryption: true });
+  pdf.registerFontkit(fontkit);
+  const font = await pdf.embedFont(await loadFont(), { subset: true });
+
+  const footer = visualHebrew(`© ${SITE_NAME} – תצוגה מקדימה בלבד, לרכישה באתר`);
+  const diagonal = visualHebrew("תצוגה מקדימה");
+
+  for (const page of pdf.getPages()) {
+    const { width, height } = page.getSize();
+    const fs = 8;
+    const tw = font.widthOfTextAtSize(footer, fs);
+    page.drawText(footer, {
+      x: Math.max(12, (width - tw) / 2),
+      y: 10,
+      size: fs,
+      font,
+      color: rgb(0.35, 0.35, 0.45),
+    });
+
+    const dfs = Math.max(20, Math.min(width, height) / 14);
+    const dw = font.widthOfTextAtSize(diagonal, dfs);
+    page.drawText(diagonal, {
+      x: width / 2 - dw / 2,
+      y: height / 2 - dfs / 2,
+      size: dfs,
+      font,
+      color: rgb(0.2, 0.4, 0.8),
+      opacity: 0.14,
+      rotate: degrees(32),
+    });
+  }
+
+  pdf.setProducer(SITE_NAME);
+  return pdf.save();
+}
+
 /**
  * מטביע על תמונה (PNG/JPEG) את המספר האישי של המורידה: תג אלכסוני שקוף
  * ותג קטן בפינה. רק אנגלית/ספרות — אין תמיכה אמינה בפונט עברי ברינדור SVG בשרת.
