@@ -1,5 +1,14 @@
-import { list, put } from "@vercel/blob";
 import { randomUUID } from "crypto";
+import { eq, desc } from "drizzle-orm";
+import { db } from "@/db";
+import { errorReports as errorReportsTable, errorReportNotes as errorReportNotesTable } from "@/db/schema";
+
+/**
+ * דיווחי תקלות/שאלות מהאתר (מערכת "תמיכה ושגיאות") + שרשור-על ("יומן הסוכן").
+ * מאוחסן ב-Postgres (Neon), לא ב-Blob — הועבר מ-Vercel Blob ל-DB ב-09.2026 אחרי
+ * שה-Blob store של הפרויקט הושעה (מכסה). ר' /agent-system לתיעוד המלא, ו-
+ * .claude/commands/fix-reports.md לפרוטוקול הסוכן שקורא/כותב לכאן.
+ */
 
 export type ErrorReportStatus = "OPEN" | "ARCHIVED";
 
@@ -7,6 +16,12 @@ export type ErrorReportNote = {
   id: string;
   text: string;
   createdAt: string;
+  /** מי כתב את התגובה — "support" = הסוכן האוטומטי/מנהל, "reporter" = מי שפתח את הדיווח. */
+  role: "support" | "reporter";
+  /** true רק כשזו שאלה פתוחה שממתינה בפועל לתשובת המדווח/ת (ר' .claude/commands/fix-reports.md) */
+  isQuestion: boolean;
+  /** קישור ל-Preview Deployment זמני של תיקון (מתווסף רק בסוף סבב תיקונים) */
+  previewUrl?: string;
 };
 
 export type ErrorReport = {
@@ -21,34 +36,46 @@ export type ErrorReport = {
   lastButtons: string[];
   userText: string;
   notes: ErrorReportNote[];
+  /** "agentLog" מסמן את שרשור-העל הקבוע שבו הסוכן האוטומטי מדווח על עצמו (ר' getOrCreateAgentLog) */
+  kind: "report" | "agentLog";
 };
 
-const BLOB_PATH = "error-reports.json";
-
-async function readAll(): Promise<ErrorReport[]> {
-  const { blobs } = await list({ prefix: BLOB_PATH });
-  const blob = blobs.find((b) => b.pathname === BLOB_PATH);
-  if (!blob) return [];
-
-  const res = await fetch(blob.url, { cache: "no-store" });
-  if (!res.ok) return [];
-
-  const data = await res.json().catch(() => null);
-  return Array.isArray(data) ? data : [];
-}
-
-async function writeAll(reports: ErrorReport[]): Promise<void> {
-  await put(BLOB_PATH, JSON.stringify(reports, null, 2), {
-    access: "public",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-  });
+async function attachNotes(reports: (typeof errorReportsTable.$inferSelect)[]): Promise<ErrorReport[]> {
+  const out: ErrorReport[] = [];
+  for (const r of reports) {
+    const notes = await db
+      .select()
+      .from(errorReportNotesTable)
+      .where(eq(errorReportNotesTable.reportId, r.id))
+      .orderBy(errorReportNotesTable.createdAt);
+    out.push({
+      id: r.id,
+      status: r.status,
+      kind: r.kind,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      time: r.time,
+      url: r.url,
+      title: r.title,
+      queryParams: r.queryParams,
+      lastButtons: r.lastButtons ? (JSON.parse(r.lastButtons) as string[]) : [],
+      userText: r.userText,
+      notes: notes.map((n) => ({
+        id: n.id,
+        text: n.text,
+        createdAt: n.createdAt.toISOString(),
+        role: n.role,
+        isQuestion: n.isQuestion,
+        ...(n.previewUrl ? { previewUrl: n.previewUrl } : {}),
+      })),
+    });
+  }
+  return out;
 }
 
 export async function listReports(): Promise<ErrorReport[]> {
-  const reports = await readAll();
-  return reports.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const rows = await db.select().from(errorReportsTable).orderBy(desc(errorReportsTable.updatedAt));
+  return attachNotes(rows);
 }
 
 export type CreateReportInput = {
@@ -61,54 +88,88 @@ export type CreateReportInput = {
 };
 
 export async function createReport(input: CreateReportInput): Promise<ErrorReport> {
-  const now = new Date().toISOString();
-  const report: ErrorReport = {
-    id: randomUUID(),
-    status: "OPEN",
-    createdAt: now,
-    updatedAt: now,
-    time: input.time ? String(input.time).slice(0, 100) : null,
-    url: input.url ? String(input.url).slice(0, 500) : null,
-    title: input.title ? String(input.title).slice(0, 200) : null,
-    queryParams: input.queryParams ? String(input.queryParams).slice(0, 500) : null,
-    lastButtons: Array.isArray(input.lastButtons)
-      ? input.lastButtons.slice(0, 5).map((s) => String(s).slice(0, 80))
-      : [],
-    userText: input.userText,
-    notes: [],
-  };
+  const id = randomUUID();
+  const [row] = await db
+    .insert(errorReportsTable)
+    .values({
+      id,
+      status: "OPEN",
+      kind: "report",
+      time: input.time ? String(input.time).slice(0, 100) : null,
+      url: input.url ? String(input.url).slice(0, 500) : null,
+      title: input.title ? String(input.title).slice(0, 200) : null,
+      queryParams: input.queryParams ? String(input.queryParams).slice(0, 500) : null,
+      lastButtons: JSON.stringify(
+        Array.isArray(input.lastButtons) ? input.lastButtons.slice(0, 5).map((s) => String(s).slice(0, 80)) : []
+      ),
+      userText: input.userText,
+    })
+    .returning();
 
-  const reports = await readAll();
-  reports.push(report);
-  await writeAll(reports);
-
-  return report;
+  const [full] = await attachNotes([row]);
+  return full;
 }
 
-export async function setReportStatus(
+export async function setReportStatus(id: string, status: ErrorReportStatus): Promise<ErrorReport | null> {
+  const [row] = await db
+    .update(errorReportsTable)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(errorReportsTable.id, id))
+    .returning();
+  if (!row) return null;
+  const [full] = await attachNotes([row]);
+  return full;
+}
+
+export async function addReportNote(
   id: string,
-  status: ErrorReportStatus
+  text: string,
+  opts?: { role?: "support" | "reporter"; isQuestion?: boolean; previewUrl?: string }
 ): Promise<ErrorReport | null> {
-  const reports = await readAll();
-  const report = reports.find((r) => r.id === id);
+  const [report] = await db.select().from(errorReportsTable).where(eq(errorReportsTable.id, id));
   if (!report) return null;
 
-  report.status = status;
-  report.updatedAt = new Date().toISOString();
-  await writeAll(reports);
+  await db.insert(errorReportNotesTable).values({
+    id: randomUUID(),
+    reportId: id,
+    text,
+    role: opts?.role ?? "support",
+    isQuestion: opts?.isQuestion ?? false,
+    ...(opts?.previewUrl ? { previewUrl: opts.previewUrl } : {}),
+  });
+  const [updated] = await db
+    .update(errorReportsTable)
+    .set({ updatedAt: new Date() })
+    .where(eq(errorReportsTable.id, id))
+    .returning();
 
-  return report;
+  const [full] = await attachNotes([updated]);
+  return full;
 }
 
-export async function addReportNote(id: string, text: string): Promise<ErrorReport | null> {
-  const reports = await readAll();
-  const report = reports.find((r) => r.id === id);
-  if (!report) return null;
+const AGENT_LOG_TITLE = "יומן הסוכן האוטומטי";
 
-  const now = new Date().toISOString();
-  report.notes.push({ id: randomUUID(), text, createdAt: now });
-  report.updatedAt = now;
-  await writeAll(reports);
+/** מוצא (או יוצר, בפעם הראשונה) את שרשור-העל הקבוע שבו הסוכן האוטומטי מדווח על עצמו — ר' .claude/commands/fix-reports.md */
+export async function getOrCreateAgentLog(): Promise<ErrorReport> {
+  const [existing] = await db.select().from(errorReportsTable).where(eq(errorReportsTable.kind, "agentLog"));
+  if (existing) {
+    const [full] = await attachNotes([existing]);
+    return full;
+  }
 
-  return report;
+  const [row] = await db
+    .insert(errorReportsTable)
+    .values({
+      id: randomUUID(),
+      status: "OPEN",
+      kind: "agentLog",
+      title: AGENT_LOG_TITLE,
+      lastButtons: JSON.stringify([]),
+      userText:
+        'שרשור-על קבוע: כאן הסוכן האוטומטי (fix-reports) מדווח על עבודתו ברמת-על, ואפשר לדבר איתו ישירות (למשל "תפסיק לרוץ").',
+    })
+    .returning();
+
+  const [full] = await attachNotes([row]);
+  return full;
 }

@@ -1,0 +1,110 @@
+# "סוכן תיקון אוטומטי" - מפעיל את Claude Code לבדוק דיווחי תקלות/שאלות פתוחים
+# (טבלת error_reports ב-Postgres/Neon, ר' src/lib/errorReports.ts) ולתקן אותם, לפי
+# הפרוטוקול ב-.claude/commands/fix-reports.md. הטריגר הוא cron (כל 5 דק') +
+# workflow_dispatch ידני. לפני שמפעילים את Claude בכלל, שלב זול בודק את הדגל ב-DB
+# (טבלת agent_loop_status) ומריץ את Claude רק אם הוא דלוק. "שינה" אוטומטית אחרי
+# 20 דק' בלי דיווחים חדשים ממומשת בתוך fix-reports.md עצמו (מכבה את הדגל בפועל),
+# לא כאן.
+#
+# הועתק ומותאם מ-.github/workflows/claude-fix-reports.yml בפרויקט gemach-app (שם:
+# שני "גמחים" מקבילים, Postgres נפרד לכל אחד; כאן: פרויקט יחיד, אין org1/org2).
+# אחסון הדיווחים היה במקור על Vercel Blob (כמו בגרסת gemach-app), אבל ה-Blob store
+# של הפרויקט הזה הושעה (מכסה) ב-09.2026 - אז המערכת נבנתה ישר על ה-Postgres
+# הקיים. ר' /agent-system באתר לתיעוד המלא של מה הועתק ומה שונה.
+#
+# דורש (מוסיף משה עצמו, לא בקוד - ארבעה דברים נפרדים):
+# 1. secret בשם CLAUDE_CODE_OAUTH_TOKEN ב-Settings -> Secrets and variables ->
+#    Actions של הריפו הזה - טוקן שנוצר מהמנוי הרגיל (Pro/Max) דרך `claude setup-token`.
+# 2. secret בשם DATABASE_URL - connection string של ה-Postgres (Neon) של האתר
+#    (כבר מוגדר ב-Vercel, צריך להעתיק ל-GitHub secret נפרד - ה-runner כאן לא רואה
+#    משתני סביבה של Vercel). הכרחי - גם הדגל וגם הדיווחים עצמם שם.
+# 3. secrets בשם DRIVE_BRIDGE_URL ו-DRIVE_BRIDGE_SECRET (אותם ערכים שכבר מוגדרים
+#    ב-Vercel) - כדי שהסוכן יוכל לזהות (מטא-דאטה בלבד, לא תוכן) לאיזה קובץ בארכיון
+#    הדרייב דיווח מתייחס, ר' scripts/drive-search.ts. לא חובה קשיח - בלעדיהם
+#    הסוכן פשוט מדווח שהדרייב לא זמין.
+# 4. אפליקציית GitHub בשם "Claude Code" מותקנת על הריפו - github.com/apps/claude
+#    (בלי זה: "Claude Code is not installed on this repository").
+#
+# הגבול: Claude תמיד עובד על ענף+PR, אף פעם לא push ישיר ל-main (ר' .claude/commands/
+# fix-reports.md) - claude-code-action חסום מבנית מלדחוף ישירות ל-branch שהוא לא
+# ה-checkout המקורי. מיזוג ל-main (ומכאן דיפלוי אוטומטי ב-Vercel) נשאר תמיד ביד משה.
+name: Claude Fix Reports (סוכן תיקון אוטומטי)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {} # מאפשר הרצה ידנית מיידית מתוך Actions ב-GitHub, לבדיקה
+
+jobs:
+  fix-reports:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write # claude-code-action מבקש OIDC token תמיד (גם עם claude_code_oauth_token) - בלי זה: "Could not fetch an OIDC token"
+      deployments: read # scripts/get-preview-deployment-url.ts קורא את ה-Deployments API כדי למצוא קישור Preview של Vercel לענף
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # workaround לבאג חוזר ב-claude-code-action@v1: ה-installer הפנימי שלו לפעמים
+      # מדפיס "successfully installed" אבל גם "claude command ... missing or broken"
+      # באותה נשימה - ואז ה-SDK נכשל בפועל. הפתרון: להתקין בעצמנו עם ה-installer
+      # הרשמי, לוודא בבדיקה מפורשת שהבינארי עובד, ולהעביר את הנתיב ל-action דרך
+      # path_to_claude_code_executable כדי שהוא ידלג על ההתקנה הפנימית שלו.
+      - name: Install Claude Code CLI ourselves (workaround for claude-code-action installer bug)
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          test -x "$HOME/.local/bin/claude"
+          "$HOME/.local/bin/claude" --version
+
+      # בדיקה זולה - קוראת את הדגל ישירות מול ה-DB, בלי להפעיל את Claude בכלל אם
+      # הוא כבוי. exit code לא אמור להכשיל את ה-step - לכן `|| true`.
+      - name: Check agent loop flag
+        id: check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          ENABLED=$(npx tsx scripts/agent-loop-status.ts) || true
+          echo "enabled=$ENABLED" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Code (fix-reports)
+        if: steps.check.outputs.enabled == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          path_to_claude_code_executable: /home/runner/.local/bin/claude
+          # allowedTools חייב לכלול Edit/Write/git/gh בפועל, לא רק node - fix-reports.md
+          # מצפה מהסוכן לתקן קבצים, לפתוח ענף+PR עם gh. בלי זה כל הרצה שבאמת מוצאת
+          # דיווח שדורש תיקון קוד נתקעת ומדווחת שאין לה הרשאת כתיבה, גם כשה-workflow
+          # permissions (contents/pull-requests: write) תקינים - אלה הרשאות
+          # ה-GITHUB_TOKEN, לא הרשאות הכלים שה-agent מותר לו להשתמש בהם.
+          prompt: |
+            REPO: ${{ github.repository }}
+
+            הפעילו את הפקודה /fix-reports בדיוק כפי שהיא מתועדת ב-
+            .claude/commands/fix-reports.md - קראו את הקובץ הזה ועקבו אחריו במדויק.
+            זו הרצה חד-פעמית (מגיעה מ-cron/workflow_dispatch חיצוניים) - אל תנסו
+            לתזמן הרצה נוספת בעצמכם.
+          claude_args: |
+            --model sonnet
+            --allowedTools "Bash(npx tsx:*),Bash(git:*),Bash(gh:*),Edit,Write"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DRIVE_BRIDGE_URL: ${{ secrets.DRIVE_BRIDGE_URL }}
+          DRIVE_BRIDGE_SECRET: ${{ secrets.DRIVE_BRIDGE_SECRET }}
+          # scripts/get-preview-deployment-url.ts בלבד - הטוקן האוטומטי של ה-workflow,
+          # לא secret נפרד; מוגבל ל-deployments:read למעלה.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

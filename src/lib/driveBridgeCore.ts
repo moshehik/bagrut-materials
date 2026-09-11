@@ -321,6 +321,76 @@ export async function convertOfficeToPdf({
   }
 }
 
+// --- רשימת/חיפוש קבצים בארכיון — לסוכן ה-fix-reports, כדי "להבין" לאיזה קובץ
+// דיווח/שאלה מתייחסים (ר' .claude/commands/fix-reports.md, /agent-system, ו-
+// "כללי עריכת קבצי וורד מבוקשים באתר.md"). מחזיר מטא-דאטה בלבד (שם/id/גודל/
+// קישור) - אף פעם לא תוכן/בייטים של הקובץ. חובה: אין כאן, ובשום מקום שקורא
+// לפונקציות האלה, זרימה שמחזירה בייטים של קובץ למדווח/ת (visitor אנונימי) -
+// זיהוי קובץ מותר, שליחת תוכן/הורדה ישירה למדווח/ת אסורה לגמרי.
+export type DriveFileMeta = {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number | null;
+  modifiedTime: string | null;
+  webViewLink: string | null;
+};
+
+/** רשימת כל הקבצים בתיקיית הארכיון (שטוחה - driveUpload תמיד מעלה ישירות ל-root, אין תיקיות-משנה) */
+export async function driveListFiles(): Promise<DriveFileMeta[]> {
+  const token = await getAccessToken();
+  const rootId = await getRootFolderId();
+  const files: DriveFileMeta[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      q: `'${rootId}' in parents and trashed=false`,
+      fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink)",
+      pageSize: "1000",
+      ...(pageToken ? { pageToken } : {}),
+    });
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`רשימת קבצי דרייב נכשלה (${res.status})`);
+    const json = (await res.json()) as {
+      files?: { id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; webViewLink?: string }[];
+      nextPageToken?: string;
+    };
+    for (const f of json.files ?? []) {
+      files.push({
+        id: f.id,
+        name: f.name,
+        mimeType: f.mimeType,
+        size: f.size ? Number(f.size) : null,
+        modifiedTime: f.modifiedTime ?? null,
+        webViewLink: f.webViewLink ?? null,
+      });
+    }
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+  return files;
+}
+
+/**
+ * מדרג קבצים מהארכיון לפי דמיון-שם לטקסט חיפוש חופשי — התאמת טוקנים פשוטה
+ * (לא AI/embeddings): "הבנה" בפועל של איזה קובץ מדובר נשארת אצל הסוכן (קלוד)
+ * שמפעיל את הפונקציה הזו ושופט את התוצאות, לא כאן.
+ */
+export function scoreDriveFilesByQuery(files: DriveFileMeta[], query: string) {
+  const tokens = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((t) => t.length >= 2);
+  return files
+    .map((f) => {
+      const name = f.name.toLowerCase();
+      const score = tokens.reduce((acc, t) => acc + (name.includes(t) ? 1 : 0), 0);
+      return { ...f, score };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
 // --- עזרי drive:// URL (נשמר ב-materials.fileUrl כשמאוחסן בדרייב) ---
 export const DRIVE_URL_PREFIX = "drive://";
 export function isDriveUrl(url: string | null | undefined) {

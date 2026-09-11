@@ -385,6 +385,54 @@ export const authTokens = pgTable(
   (t) => [uniqueIndex("auth_tokens_token_idx").on(t.token)],
 );
 
+/** דיווחי תקלות/שאלות מהאתר, לסוכן ה-fix-reports האוטומטי (ר' .claude/commands/fix-reports.md).
+ * היה מאוחסן ב-Vercel Blob; הועבר ל-DB אחרי שה-Blob store הושעה (מכסה), 09.2026 —
+ * ר' /agent-system לתיעוד המלא. */
+export const errorReportStatusEnum = pgEnum("error_report_status", ["OPEN", "ARCHIVED"]);
+export const errorReportKindEnum = pgEnum("error_report_kind", ["report", "agentLog"]);
+export const errorReportNoteRoleEnum = pgEnum("error_report_note_role", ["support", "reporter"]);
+
+export const errorReports = pgTable(
+  "error_reports",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    status: errorReportStatusEnum("status").notNull().default("OPEN"),
+    kind: errorReportKindEnum("kind").notNull().default("report"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    time: varchar("time", { length: 100 }),
+    url: varchar("url", { length: 500 }),
+    title: varchar("title", { length: 200 }),
+    queryParams: varchar("query_params", { length: 500 }),
+    lastButtons: text("last_buttons"), // JSON.stringify(string[])
+    userText: text("user_text").notNull(),
+  },
+  (t) => [index("error_reports_status_idx").on(t.status), index("error_reports_kind_idx").on(t.kind)],
+);
+
+export const errorReportNotes = pgTable(
+  "error_report_notes",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    reportId: varchar("report_id", { length: 36 })
+      .notNull()
+      .references(() => errorReports.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    role: errorReportNoteRoleEnum("role").notNull().default("support"),
+    isQuestion: boolean("is_question").notNull().default(false),
+    previewUrl: varchar("preview_url", { length: 500 }),
+  },
+  (t) => [index("error_report_notes_report_idx").on(t.reportId)],
+);
+
+/** דגל הפעלה/כיבוי + שעון-שקט של הסוכן האוטומטי — שורה יחידה (id קבוע = 1) */
+export const agentLoopStatus = pgTable("agent_loop_status", {
+  id: integer("id").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  lastActivityAt: timestamp("last_activity_at"),
+});
+
 export const categoriesRelations =relations(categories, ({ one, many }) => ({
   parent: one(categories, {
     fields: [categories.parentId],
