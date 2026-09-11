@@ -1,10 +1,12 @@
 # "סוכן תיקון אוטומטי" - מפעיל את Claude Code לבדוק דיווחי תקלות/שאלות פתוחים
 # (טבלת error_reports ב-Postgres/Neon, ר' src/lib/errorReports.ts) ולתקן אותם, לפי
-# הפרוטוקול ב-.claude/commands/fix-reports.md. הטריגר הוא cron (כל 5 דק') +
-# workflow_dispatch ידני. לפני שמפעילים את Claude בכלל, שלב זול בודק את הדגל ב-DB
-# (טבלת agent_loop_status) ומריץ את Claude רק אם הוא דלוק. "שינה" אוטומטית אחרי
-# 20 דק' בלי דיווחים חדשים ממומשת בתוך fix-reports.md עצמו (מכבה את הדגל בפועל),
-# לא כאן.
+# הפרוטוקול ב-.claude/commands/fix-reports.md. הטריגר הוא cron (כל 5 דק', רשת
+# ביטחון) + repository_dispatch מיידי (ר' src/lib/agentDispatch.ts - נורה מתוך
+# האתר עצמו ברגע שנוצר דיווח חדש, ב-createReport() ב-errorReports.ts, בלי לחכות
+# לסיבוב הבא של ה-cron) + workflow_dispatch ידני (הרצה מתוך Actions, לבדיקה).
+# לפני שמפעילים את Claude בכלל, שלב זול בודק את הדגל ב-DB (טבלת agent_loop_status)
+# ומריץ את Claude רק אם הוא דלוק. "שינה" אוטומטית אחרי 20 דק' בלי דיווחים חדשים
+# ממומשת בתוך fix-reports.md עצמו (מכבה את הדגל בפועל), לא כאן.
 #
 # הועתק ומותאם מ-.github/workflows/claude-fix-reports.yml בפרויקט gemach-app (שם:
 # שני "גמחים" מקבילים, Postgres נפרד לכל אחד; כאן: פרויקט יחיד, אין org1/org2).
@@ -25,6 +27,12 @@
 # 4. אפליקציית GitHub בשם "Claude Code" מותקנת על הריפו - github.com/apps/claude
 #    (בלי זה: "Claude Code is not installed on this repository").
 #
+# להפעלה מיידית (במקום לחכות ל-cron): ב-Vercel (env vars של הפרויקט, לא GitHub
+# secrets - אלה נקראים מתוך האתר עצמו) - GH_DISPATCH_TOKEN (GitHub PAT עם הרשאת
+# repo (classic) או Contents+Actions read&write (fine-grained) על הריפו הזה)
+# ו-GH_DISPATCH_REPO (ברירת מחדל "moshehik/bagrut-materials", אפשר לדרוס). בלי
+# זה: ה-cron כל 5 דק' עדיין מכסה הכל, פשוט בלי תגובה מיידית - ר' agentDispatch.ts.
+#
 # הגבול: Claude תמיד עובד על ענף+PR, אף פעם לא push ישיר ל-main (ר' .claude/commands/
 # fix-reports.md) - claude-code-action חסום מבנית מלדחוף ישירות ל-branch שהוא לא
 # ה-checkout המקורי. מיזוג ל-main (ומכאן דיפלוי אוטומטי ב-Vercel) נשאר תמיד ביד משה.
@@ -34,6 +42,8 @@ on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch: {} # מאפשר הרצה ידנית מיידית מתוך Actions ב-GitHub, לבדיקה
+  repository_dispatch:
+    types: [new-error-report] # נורה מ-src/lib/agentDispatch.ts בעת יצירת דיווח חדש
 
 jobs:
   fix-reports:

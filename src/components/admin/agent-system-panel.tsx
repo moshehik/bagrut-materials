@@ -87,7 +87,9 @@ export function AgentSystemPanel() {
           <FlaskConical className="h-4 w-4 text-pink" aria-hidden /> יצירת דיווח-בדיקה
         </h3>
         <p className="mt-1 text-xs text-muted">
-          יוצר דיווח כאילו הגיע מהאתר, כדי לראות איך הסוכן מטפל בו בריצה הבאה (עד 5 דק׳, או הפעלה ידנית מ-GitHub Actions).
+          יוצר דיווח כאילו הגיע מהאתר, כדי לראות איך הסוכן מטפל בו בריצה הבאה. מיידי
+          אם <code dir="ltr">GH_DISPATCH_TOKEN</code> מוגדר ב-Vercel, אחרת עד 5 דק׳
+          (cron) — או הפעלה ידנית מ-GitHub Actions.
         </p>
         <div className="mt-2 flex gap-2">
           <input

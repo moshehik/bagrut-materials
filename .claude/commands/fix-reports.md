@@ -10,11 +10,14 @@ argument-hint: "[all] — ברירת מחדל: רק דיווחים פתוחים 
 בנפרד.
 
 **הערה ארכיטקטונית חשובה**: הפקודה הזו **לא** מתזמנת את עצמה מחדש (אין
-`Skill(loop)` ואין `CronList`/`CronCreate` כאן). ההרצה החוזרת כל 5 דקות מגיעה
-מבחוץ — מ-`schedule: cron` ב-`.github/workflows/claude-fix-reports.yml`. כל
-invocation מפעיל אותך מחדש עם prompt נקי. **תרוץ פעם אחת ותסיים** — אל תנסה
-להשאיר את עצמך פעיל או לתזמן הרצה נוספת. "השינה" האוטומטית אחרי 20 דק' שקט
-ממומשת ע"י כיבוי הדגל בפועל (ר' שלב 0), לא ע"י session חי שנשאר פתוח.
+`Skill(loop)` ואין `CronList`/`CronCreate` כאן). ההרצה מגיעה מבחוץ — מ-`schedule:
+cron` ב-`.github/workflows/claude-fix-reports.yml` (כל 5 דק', רשת ביטחון), ומהרצה
+מיידית נוספת (`repository_dispatch`) שהאתר עצמו מפעיל ברגע שנוצר דיווח חדש (ר'
+`src/lib/agentDispatch.ts`, נקראת מ-`createReport()` ב-`errorReports.ts`) — אם
+`GH_DISPATCH_TOKEN` מוגדר ב-Vercel. כל invocation מפעיל אותך מחדש עם prompt נקי.
+**תרוץ פעם אחת ותסיים** — אל תנסה להשאיר את עצמך פעיל או לתזמן הרצה נוספת. "השינה"
+האוטומטית אחרי 20 דק' שקט ממומשת ע"י כיבוי הדגל בפועל (ר' שלב 0), לא ע"י session
+חי שנשאר פתוח.
 
 ## כלים
 - `npx tsx scripts/read-error-reports.ts` — רשימת דיווחים פתוחים (id, מדווח, מסך,

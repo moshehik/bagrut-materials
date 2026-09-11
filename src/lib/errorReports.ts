@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { errorReports as errorReportsTable, errorReportNotes as errorReportNotesTable } from "@/db/schema";
+import { dispatchFixReportsAgent } from "@/lib/agentDispatch";
 
 /**
  * דיווחי תקלות/שאלות מהאתר (מערכת "תמיכה ושגיאות") + שרשור-על ("יומן הסוכן").
@@ -105,6 +106,8 @@ export async function createReport(input: CreateReportInput): Promise<ErrorRepor
       userText: input.userText,
     })
     .returning();
+
+  void dispatchFixReportsAgent(); // לא ממתינים — אם זה נכשל/לא מוגדר, יצירת הדיווח לא נפגעת
 
   const [full] = await attachNotes([row]);
   return full;

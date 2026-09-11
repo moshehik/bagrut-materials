@@ -79,12 +79,18 @@ export default async function AgentSystemPage() {
           <li>
             דיווח תקלה/שאלה נוצר ונשמר בטבלת <Path>error_reports</Path> ב-Postgres (Neon)
             דרך <Path>src/lib/errorReports.ts</Path>. <strong>לא</strong> ב-Vercel Blob — ה-Blob
-            store של הפרויקט הושעה (מכסה), אז המערכת נבנתה ישר על ה-DB הקיים.
+            store של הפרויקט הושעה (מכסה), אז המערכת נבנתה ישר על ה-DB הקיים. באותו רגע
+            <Path>createReport()</Path> גם קוראת ל-<Path>src/lib/agentDispatch.ts</Path>, ששולחת
+            לגיטהאב <code dir="ltr" className="text-[13px]">repository_dispatch</code> כדי להפעיל
+            את ה-workflow <strong>מיד</strong> (לא ממתינים ל-cron) — אם{" "}
+            <code dir="ltr" className="text-[13px]">GH_DISPATCH_TOKEN</code> מוגדר ב-Vercel; בלעדיו
+            זה שקט, לא נכשל.
           </li>
           <li>
-            <Path>.github/workflows/claude-fix-reports.yml</Path> רץ כל 5 דקות (cron) או ידנית.
-            לפני שהוא מפעיל את קלוד בכלל, הוא בודק בזול דגל הפעלה ב-DB (
-            <Path>agent_loop_status</Path>) — אם כבוי, ה-workflow יוצא מיד כמעט בלי עלות.
+            <Path>.github/workflows/claude-fix-reports.yml</Path> רץ כל 5 דקות (cron, רשת ביטחון
+            למקרה שה-dispatch המיידי נכשל/לא מוגדר), מיד עם dispatch, או ידנית. לפני שהוא
+            מפעיל את קלוד בכלל, הוא בודק בזול דגל הפעלה ב-DB (<Path>agent_loop_status</Path>) —
+            אם כבוי, ה-workflow יוצא מיד כמעט בלי עלות.
           </li>
           <li>
             אם דלוק — הוא מפעיל את <Path>claude-code-action</Path>, שמריץ את הפקודה{" "}
@@ -138,6 +144,7 @@ export default async function AgentSystemPage() {
           <li><Path>src/lib/errorReports.ts</Path> — Postgres במקום Blob; תגובות עם <code dir="ltr" className="text-[13px]">role</code>/<code dir="ltr" className="text-[13px]">isQuestion</code>/<code dir="ltr" className="text-[13px]">previewUrl</code>, ושרשור-על קבוע</li>
           <li><Path>src/lib/agentLoopStatus.ts</Path> — דגל הפעלה/כיבוי + שעון שקט, Postgres (חדש)</li>
           <li><Path>src/lib/driveBridgeCore.ts</Path> — הורחב: <Path>driveListFiles</Path>/<Path>scoreDriveFilesByQuery</Path> (מטא-דאטה בלבד)</li>
+          <li><Path>src/lib/agentDispatch.ts</Path> — שולחת <code dir="ltr" className="text-[13px]">repository_dispatch</code> לגיטהאב מיד כשנוצר דיווח (חדש)</li>
           <li><Path>src/lib/actions/agentSystem.ts</Path>, <Path>src/components/admin/agent-system-panel.tsx</Path> — לוח הבקרה למעלה (אדמין-בלבד, חדש)</li>
           <li>
             <Path>scripts/read-error-reports.ts</Path>,{" "}
@@ -166,6 +173,15 @@ export default async function AgentSystemPage() {
           <li><code dir="ltr" className="text-[13px]">DRIVE_BRIDGE_URL</code> / <code dir="ltr" className="text-[13px]">DRIVE_BRIDGE_SECRET</code> — אותם ערכים שכבר מוגדרים ב-Vercel, כדי שהסוכן יוכל לזהות קבצים (ר׳ למעלה). בלעדיהם <Path>drive-search.ts</Path> פשוט מדווח שהדרייב לא מוגדר, לא נכשל קשות.</li>
           <li>התקנת אפליקציית GitHub &quot;Claude Code&quot; על הריפו — <span dir="ltr">github.com/apps/claude</span></li>
         </ul>
+        <p className="mt-3 text-muted leading-relaxed">
+          <strong>בנוסף</strong> (לא GitHub secret — env var בפרויקט <Path>bagrut-materials</Path>{" "}
+          ב-Vercel עצמו, כי זה נקרא מתוך האתר): <code dir="ltr" className="text-[13px]">GH_DISPATCH_TOKEN</code>{" "}
+          (GitHub PAT עם הרשאת <code dir="ltr" className="text-[13px]">repo</code>) — כדי שיצירת
+          דיווח תפעיל את ה-workflow <strong>מיד</strong> במקום לחכות עד 5 דק&apos; ל-cron הבא. אופציונלי:
+          <code dir="ltr" className="text-[13px]"> GH_DISPATCH_REPO</code> (ברירת מחדל{" "}
+          <span dir="ltr">moshehik/bagrut-materials</span>). בלעדיו — <Path>src/lib/agentDispatch.ts</Path>{" "}
+          פשוט לא שולחת כלום, בשקט; ה-cron עדיין מכסה הכל.
+        </p>
         <p className="mt-3 text-muted leading-relaxed">
           הדגל מתחיל <strong>כבוי</strong> כברירת מחדל. אפשר להדליק/לכבות אותו ולעשות ניסויים
           (ליצור דיווח-בדיקה, לחפש קובץ, לענות ידנית) ישירות מלוח הבקרה למעלה — לא צריך
