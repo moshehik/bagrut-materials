@@ -46,6 +46,10 @@ next-env.d.ts
 # lesson-materials working files (not part of the site)
 /חומרים מוכנים מחדש/
 
+# standalone content-authoring CLI tools (isolated from the site's own deps)
+/_tools/node_modules
+/_tools/package-lock.json
+
 # ad-hoc content-authoring scratch files (dumps/caches/one-off build scripts
 # used while hand-writing lesson materials — see CLAUDE.md "Content authoring")
 /_*.js

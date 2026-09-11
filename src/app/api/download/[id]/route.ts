@@ -7,9 +7,13 @@ import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { getNumber } from "@/lib/settings";
+import { fetchFile } from "@/lib/file-source";
+import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// המרת Word/PowerPoint ל-PDF דרך Drive לוקחת כ-10-20 שניות; מעל ברירת המחדל של Vercel
+export const maxDuration = 60;
 
 /** בונה כותרת Content-Disposition עם שם קובץ בעברית (RFC 5987) */
 function contentDisposition(fileName: string) {
@@ -23,26 +27,9 @@ function withSuffix(fileName: string, suffix: string) {
   return `${fileName.slice(0, dot)}-${suffix}${fileName.slice(dot)}`;
 }
 
-async function fetchFile(url: string): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string | null } | null> {
-  // קבצים ב-Vercel Blob פרטי; אם אין טוקן / נכשל – נופלים ל-fetch רגיל
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const { get } = await import("@vercel/blob");
-      const res = await get(url, { access: "private" });
-      if (res && res.stream) {
-        return { stream: res.stream, contentType: res.blob.contentType ?? null };
-      }
-    } catch {
-      /* fallback below */
-    }
-  }
-  try {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok || !r.body) return null;
-    return { stream: r.body, contentType: r.headers.get("content-type") };
-  } catch {
-    return null;
-  }
+function asPdfName(fileName: string) {
+  const dot = fileName.lastIndexOf(".");
+  return `${dot > 0 ? fileName.slice(0, dot) : fileName}.pdf`;
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -124,16 +111,48 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
 
+  const isOffice = isOfficeMime(material.mime) || /\.(docx?|pptx?)$/i.test(material.fileName);
   const isPdf =
-    material.mime === "application/pdf" ||
-    material.fileName.toLowerCase().endsWith(".pdf") ||
-    (file.contentType ?? "").startsWith("application/pdf");
+    !isOffice &&
+    (material.mime === "application/pdf" ||
+      material.fileName.toLowerCase().endsWith(".pdf") ||
+      (file.contentType ?? "").startsWith("application/pdf"));
   const isImage = /^image\/(png|jpe?g)$/.test(file.contentType ?? material.mime ?? "");
 
-  const outName = withSuffix(material.fileName, u.personalCode);
   let response: Response;
 
-  if (isPdf) {
+  if (isOffice && isDriveConfigured()) {
+    // Word/PowerPoint: תמיד ממירים ל-PDF "לפי דרישה" בכל הורדה (המקור ב-Blob/דרייב
+    // לא נוגע בו כלל) ומטביעים את המספר האישי, בדיוק כמו קובץ PDF רגיל.
+    const raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
+    let out: Uint8Array;
+    try {
+      const pdfBytes = await convertOfficeToPdf({
+        bytes: raw,
+        mimeType: material.mime,
+        name: material.fileName,
+      });
+      out = await stampPdf(pdfBytes, {
+        personalCode: u.personalCode,
+        userName: u.name,
+        email: u.email,
+      });
+    } catch (e) {
+      console.error("office->pdf conversion failed, serving original file", e);
+      out = raw;
+    }
+    const converted = out !== raw;
+    response = new Response(new Uint8Array(out), {
+      headers: {
+        "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
+        "Content-Length": String(out.byteLength),
+        "Content-Disposition": contentDisposition(
+          converted ? withSuffix(asPdfName(material.fileName), u.personalCode) : withSuffix(material.fileName, u.personalCode),
+        ),
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } else if (isPdf) {
     const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
     let out: Uint8Array;
     try {
@@ -150,7 +169,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       headers: {
         "Content-Type": "application/pdf",
         "Content-Length": String(out.byteLength),
-        "Content-Disposition": contentDisposition(outName),
+        "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
         "Cache-Control": "private, no-store",
       },
     });
@@ -167,7 +186,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       headers: {
         "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
         "Content-Length": String(out.byteLength),
-        "Content-Disposition": contentDisposition(outName),
+        "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
         "Cache-Control": "private, no-store",
       },
     });
@@ -175,7 +194,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     response = new Response(file.stream, {
       headers: {
         "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
-        "Content-Disposition": contentDisposition(outName),
+        "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
         "Cache-Control": "private, no-store",
       },
     });

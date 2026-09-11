@@ -221,6 +221,17 @@ async function collectDescendants(rootId: number): Promise<number[]> {
 }
 
 async function deleteBlobSafe(url: string) {
+  const { isDriveUrl, driveIdFromUrl, driveDelete } = await import("@/lib/driveBridge");
+  if (isDriveUrl(url)) {
+    const fileId = driveIdFromUrl(url);
+    if (!fileId) return;
+    try {
+      await driveDelete(fileId);
+    } catch {
+      // מתעלמים – הקובץ אולי כבר לא קיים / הגשר לא מוגדר
+    }
+    return;
+  }
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   if (!/^https?:\/\//.test(url) || url.includes("example.com")) return;
   try {

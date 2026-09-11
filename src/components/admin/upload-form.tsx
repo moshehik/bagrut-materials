@@ -18,7 +18,7 @@ import { createMaterial } from "@/lib/actions/admin";
 // מעלים בחתיכות דרך /api/admin/upload/chunk (הדומיין שלנו) ומאחדים ב-/finish.
 const CHUNK_BYTES = 4 * 1024 * 1024;
 
-async function postChunk(session: string, index: number, chunk: ArrayBuffer): Promise<string> {
+async function postChunk(session: string, index: number, chunk: ArrayBuffer): Promise<void> {
   const res = await fetch(`/api/admin/upload/chunk?session=${session}&index=${index}`, {
     method: "POST",
     body: chunk,
@@ -26,7 +26,6 @@ async function postChunk(session: string, index: number, chunk: ArrayBuffer): Pr
   });
   const j = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(j.error || `שגיאה ${res.status}`);
-  return j.url as string;
 }
 
 async function uploadChunked(
@@ -40,9 +39,8 @@ async function uploadChunked(
     .join("")
     .slice(0, 24);
   const totalParts = Math.max(1, Math.ceil(buf.byteLength / CHUNK_BYTES));
-  const urls: string[] = [];
   for (let i = 0, n = 0; i < buf.byteLength; i += CHUNK_BYTES, n++) {
-    urls.push(await postChunk(session, n, buf.slice(i, Math.min(i + CHUNK_BYTES, buf.byteLength))));
+    await postChunk(session, n, buf.slice(i, Math.min(i + CHUNK_BYTES, buf.byteLength)));
     onProgress(Math.round(((n + 1) / totalParts) * 100));
   }
   const res = await fetch("/api/admin/upload/finish", {
@@ -53,7 +51,6 @@ async function uploadChunked(
       name: file.name,
       mimeType: file.type || "application/octet-stream",
       size: buf.byteLength,
-      urls,
     }),
   });
   const j = await res.json().catch(() => ({}));
@@ -216,6 +213,7 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
             <option value="draft">טיוטה</option>
             <option value="suspended">מושהה</option>
           </select>
+          <span className="block mt-1 text-[11px] text-muted">יאוחסן בדרייב</span>
         </label>
         <label className="text-sm">
           <span className="block mb-1 font-medium">מחיר הורדה בודדת (₪)</span>

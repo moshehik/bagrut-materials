@@ -1,0 +1,101 @@
+# אחסון חומרים: Google Drive (09.2026)
+
+## למה
+Vercel Blob (החנות שהאתר השתמש בה עד עכשיו) **הושעתה** — חסימה מלאה, גם קריאה
+וגם כתיבה (403 "This store has been suspended" / "Your store is blocked").
+בדיקה ב-09.2026 הראתה שרוב הנפח (836MB מתוך ~836MB) היה טיוטות שלא פורסמו
+מעולם. הוחלט: לעבור לגמרי ל-Google Drive לאחסון קבצים; נאון ממשיך לשמש רק
+למטא-דאטה (כרגיל — הוא מעולם לא אחסן בייטים של קבצים, רק `materials.fileUrl`).
+
+## איך זה עובד
+גשר ל-Drive דרך **אותו** פרויקט Google Apps Script שכבר משמש את print-center
+(`מדפיס בוט/apps-script-send/ArchiveBridge.js`, פרוס תחת `/exec` אחד, מוגן
+ב-`ADMIN_SECRET` משותף). לא נוצר פרויקט GAS חדש, לא URL חדש, לא סוד חדש —
+משתמשים באותם ערכים שכבר קיימים שם, רק עם `root` (שם תיקיית ארכיון) נפרד
+(`bagrut-materials-archive`) כדי לא לערבב עם `print-center-archive`.
+
+### קבצים
+- `src/lib/driveBridgeCore.ts` — המימוש (בלי `"server-only"`, כדי שסקריפטים
+  עצמאיים כמו `scripts/migrate-drafts-to-drive.ts` יוכלו לייבא ישירות מחוץ ל-Next).
+- `src/lib/driveBridge.ts` — נקודת הכניסה לקוד האתר (`import "server-only"` +
+  `export * from "./driveBridgeCore"`). **קוד האתר תמיד מייבא מכאן, לא מ-Core.**
+- `src/lib/file-source.ts` — `fetchFile(url)`: מזהה `drive://<fileId>` ומוריד
+  מהדרייב; אחרת נופל ל-Blob הישן/fetch רגיל (למקרה ש-Blob יחזור לפעול אי-פעם).
+
+### פרוטוקול מול ה-Apps Script (POST JSON, תמיד `{secret, action, root, ...}`)
+- `archive_ping` — בדיקת קישוריות, מחזיר email + rootFolderId (יוצר את
+  התיקייה אם היא לא קיימת).
+- `archive_upload_small` — עד 25MB, קריאת GAS אחת (base64 בבקשה).
+- `archive_token` — טוקן OAuth קצר-מועד (~שעה) של הפרויקט, מאפשר לשרת לדבר
+  ישירות מול Drive REST v3 (resumable upload / `alt=media` download / export
+  להמרת PDF) לקבצים גדולים, עוקף את תקרת ~50MB של קריאת GAS רגילה.
+- `archive_append` / `archive_finish` — **מנגנון ההעלאה בחתיכות** (ר' למטה).
+- `archive_info` / `archive_delete` — מטא-דאטה / מחיקה. **מחיקה = Drive trash**
+  (`setTrashed(true)`), לא מחיקה קבועה — ניתן לשחזור מהאשפה של הדרייב.
+
+### העלאת אדמין (upload-form.tsx)
+הדפדפן שולח את הקובץ בחתיכות של 4MB ל-`/api/admin/upload/chunk` (כמו קודם —
+Vercel חוסם PUT ישיר > 4.5MB, ומסנני אינטרנט מקומיים חוסמים דיבור ישיר עם
+vercel.com). **09.2026: כל חתיכה נשמרת זמנית בדרייב עצמו** (`archive_append`,
+לא ב-Blob — כי Blob מושעה). אחרי כל החתיכות, `/api/admin/upload/finish`
+קורא ל-`archive_finish` שמאחד אותן לקובץ אחד בדרייב ומוחק את חלקי-הביניים.
+`materials.fileUrl` נשמר כ-`drive://<fileId>`.
+
+### הורדה (`/api/download/[id]`)
+`fetchFile()` מזהה `drive://` ומוריד (`driveDownload`): קודם ניסיון ישיר מול
+Drive REST (`alt=media`, מהיר, בלי תקרת GAS), ואם נכשל — נפילה לגשר GAS עצמו
+(`archive_download`, בנתחים). מעל זה ממשיך בדיוק כמו קודם: PDF/תמונה מקבלים
+הטבעת קוד אישי (`stampPdf`/`stampImage`).
+
+### בונוס לא-קשור שנוסף באותו זמן (session מקביל): המרת Word/PowerPoint ל-PDF
+`isOfficeMime` / `convertOfficeToPdf` ב-`driveBridgeCore.ts` — קובצי
+.docx/.pptx מומרים ל-PDF "לפי דרישה" בכל הורדה (מנוע ההמרה המובנה של Drive,
+לא LibreOffice/שירות חיצוני), ואז מוטבעים כמו PDF רגיל. העותק המומר זמני
+בלבד, נמחק תמיד. הקובץ המקורי באחסון לא נוגע בו כלל.
+
+## תקרות
+- קובץ בודד: 150MB (מעבר לזה `driveUpload` זורק שגיאה מפורשת).
+- עד 25MB: קריאת GAS אחת (`archive_upload_small`).
+- מעל 25MB: REST resumable ישיר (`archive_token` + Drive API).
+- `MAX_UPLOAD_BYTES` הכולל באתר (מ-`admin-utils.ts`): 200MB — כרגע גבוה
+  מתקרת הארכיון של 150MB; קובץ בין 150-200MB ייכשל בהעלאה. לא טופל (לא היה
+  קובץ כזה בפועל), אבל שווה לב אם יעלה קובץ ענק.
+
+## env vars נדרשים (`.env.local` + Vercel Production/Preview)
+```
+DRIVE_BRIDGE_URL=<אותו /exec שכבר בשימוש ב-print-center, MAILER_URL שם>
+DRIVE_BRIDGE_SECRET=<אותו ADMIN_SECRET כמו ב-apps-script-send/Admin.js>
+DRIVE_ROOT_FOLDER=bagrut-materials-archive
+```
+**שים לב לרדיוס הפיצוץ:** הסוד משותף עם print-center (בכוונה — "אין סוד
+חדש"). דליפה של `DRIVE_BRIDGE_SECRET` מהאתר הזה חושפת גם את הפעולות
+המנהלתיות של print-center (kill switch, ניהול משתמשים) ואת ארכיון הדרייב
+המשותף שם. שני הפרויקטים חולקים את אותה מכסת דרייב (2TB).
+
+## מה עם 397 החומרים שכבר תקועים ב-Blob המושעה?
+**לא טופל, לפי החלטת המורה (09.2026): "אין שם כלום, הבלוב לא מעניין."**
+`scripts/migrate-drafts-to-drive.ts` קיים ומתועד (כולל `--dry-run`) למקרה
+שהחסימה תשתחרר אי-פעם (שדרוג ל-Pro / חלון 30 יום), אבל **לא ניתן להרצה כרגע
+כי גם הקריאה מ-Blob חסומה** (403 על `get()`), לא רק הכתיבה. השורות
+הקיימות ב-`materials` עם `fileUrl` שמצביע ל-Blob יישארו שבורות (404/502
+בהורדה) עד שהחסימה תשתחרר או שהתוכן יועלה מחדש ידנית דרך טופס ההעלאה
+(שהולך לדרייב מעכשיו).
+
+## בדיקות אמת שבוצעו (09.2026, מול הגשר האמיתי, לא mock)
+1. `archive_ping` — קישוריות + יצירת תיקיית שורש
+2. העלאה קטנה + `archive_info` + הורדה (`archive_download`) + מחיקה + אימות ש-trash לא חוסם `info`
+3. `archive_token` + REST resumable upload (26MB סינתטי) + REST download (`alt=media`) — התאמת bytes מלאה
+4. `--dry-run` על סקריפט המיגרציה (397 שורות זוהו נכון)
+5. ניסיון מיגרציה אמיתי → גילה שגם קריאה מ-Blob חסומה (403), לא רק כתיבה
+6. **העלאה בחתיכות מלאה** (כמו טופס האדמין בפועל): קובץ 10MB, 3 חתיכות של
+   `archive_append`, `archive_finish`, הורדה ואימות bytes-for-bytes זהים
+   למקור, מחיקה
+7. `npx tsc --noEmit` נקי על כל הפרויקט אחרי כל שינוי (כולל תוספות ה-session
+   המקביל)
+
+**מה שלא נבדק end-to-end דרך הדפדפן/HTTP האמיתי:** session מקביל אחר החזיק
+את ה-lock היחיד של `next dev` על התיקייה הזו (Next מאפשר רק instance אחד
+לכל תיקייה), ו-Browser tools לא יכלו להגיע לשרת של session אחר. הלוגיקה
+נבדקה ישירות מול הגשר האמיתי (לא mock) בכל השלבים הקריטיים; הבדיקה
+שנשארה פתוחה היא רק "החיווט של route.ts עצמו" (auth/parsing) — מאומת
+בקומפילציה (`tsc`) אבל לא ב-request HTTP אמיתי.
