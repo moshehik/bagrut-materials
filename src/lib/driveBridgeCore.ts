@@ -40,12 +40,22 @@ async function callBridge(action: string, payload: Record<string, unknown> = {})
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), BRIDGE_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ secret, action, root, ...payload }),
       signal: ctrl.signal,
+      redirect: "manual",
     });
+    // ה-exec של Apps Script מריץ את doPost ומחזיר 302 להפניה שמגישה את
+    // התוצאה בפועל — ההפניה הזו עונה רק ל-GET (POST אליה מחזיר 405).
+    // מעקב-הפניות האוטומטי של fetch לא אמין מול זה (מגיע לפעמים ל-doGet
+    // הכללי במקום לתוצאה), אז עוקבים אחריה ידנית עם GET דווקא.
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) throw new Error(`הפניה מהגשר בלי כתובת יעד (${res.status})`);
+      res = await fetch(location, { method: "GET", signal: ctrl.signal });
+    }
     const text = await res.text();
     let json: Record<string, unknown>;
     try {
