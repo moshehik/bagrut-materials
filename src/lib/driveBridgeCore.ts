@@ -32,41 +32,77 @@ export function driveConfigStatus() {
   return { configured: Boolean(url && secret), hasUrl: Boolean(url), hasSecret: Boolean(secret), root };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// ה-echo endpoint שה-exec מפנה אליו (script.googleusercontent.com/macros/echo)
+// לפעמים מחזיר 404 (עמוד שגיאה גנרי של גוגל, לא תשובת ה-doPost) ברגע הראשון
+// אחרי ההפניה - כנראה עניין של consistency זמני בצד גוגל, לא שגיאה אמיתית.
+// נצפה אמפירית: ~40-50% מהקריאות נכשלות ככה, וכמעט כולן מצליחות בניסיון חוזר
+// מיידי (GET חוזר לאותה כתובת, ואם גם זה נכשל - POST חדש מקבל הפניה טרייה).
+async function fetchOnceThroughRedirect(
+  url: string,
+  body: string,
+  signal: AbortSignal,
+): Promise<{ res: Response; text: string }> {
+  let res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    signal,
+    redirect: "manual",
+  });
+  // ה-exec של Apps Script מריץ את doPost ומחזיר 302 להפניה שמגישה את
+  // התוצאה בפועל — ההפניה הזו עונה רק ל-GET (POST אליה מחזיר 405).
+  // מעקב-הפניות האוטומטי של fetch לא אמין מול זה (מגיע לפעמים ל-doGet
+  // הכללי במקום לתוצאה), אז עוקבים אחריה ידנית עם GET דווקא.
+  if (res.status >= 300 && res.status < 400) {
+    const location = res.headers.get("location");
+    if (!location) throw new Error(`הפניה מהגשר בלי כתובת יעד (${res.status})`);
+    res = await fetch(location, { method: "GET", signal });
+    if (!res.ok) {
+      // ניסיון חוזר אחד לאותה כתובת-הפניה לפני שמוותרים עליה
+      await sleep(400);
+      res = await fetch(location, { method: "GET", signal });
+    }
+  }
+  const text = await res.text();
+  return { res, text };
+}
+
 async function callBridge(action: string, payload: Record<string, unknown> = {}) {
   const { url, secret, root } = cfg();
   if (!url || !secret) {
     throw new Error("גשר הדרייב לא מוגדר (חסרים DRIVE_BRIDGE_URL / DRIVE_BRIDGE_SECRET)");
   }
+  const body = JSON.stringify({ secret, action, root, ...payload });
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), BRIDGE_TIMEOUT_MS);
   try {
-    let res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret, action, root, ...payload }),
-      signal: ctrl.signal,
-      redirect: "manual",
-    });
-    // ה-exec של Apps Script מריץ את doPost ומחזיר 302 להפניה שמגישה את
-    // התוצאה בפועל — ההפניה הזו עונה רק ל-GET (POST אליה מחזיר 405).
-    // מעקב-הפניות האוטומטי של fetch לא אמין מול זה (מגיע לפעמים ל-doGet
-    // הכללי במקום לתוצאה), אז עוקבים אחריה ידנית עם GET דווקא.
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get("location");
-      if (!location) throw new Error(`הפניה מהגשר בלי כתובת יעד (${res.status})`);
-      res = await fetch(location, { method: "GET", signal: ctrl.signal });
+    let lastErr: Error | null = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let res: Response;
+      let text: string;
+      try {
+        ({ res, text } = await fetchOnceThroughRedirect(url, body, ctrl.signal));
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") throw e;
+        lastErr = e instanceof Error ? e : new Error(String(e));
+        continue;
+      }
+      let json: Record<string, unknown>;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        lastErr = new Error(`תשובה לא תקינה מהגשר (${res.status}): ${text.slice(0, 200)}`);
+        if (attempt < 3) await sleep(500 * attempt);
+        continue;
+      }
+      if (!res.ok || json.ok === false) {
+        throw new Error((json.error as string) || `שגיאת גשר (${res.status})`);
+      }
+      return json;
     }
-    const text = await res.text();
-    let json: Record<string, unknown>;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      throw new Error(`תשובה לא תקינה מהגשר (${res.status}): ${text.slice(0, 200)}`);
-    }
-    if (!res.ok || json.ok === false) {
-      throw new Error((json.error as string) || `שגיאת גשר (${res.status})`);
-    }
-    return json;
+    throw lastErr ?? new Error("שגיאת גשר לא ידועה");
   } catch (e) {
     if (e instanceof Error && e.name === "AbortError") {
       throw new Error("גשר הדרייב לא ענה בזמן (timeout) — נסי שוב");
@@ -269,7 +305,7 @@ export function isOfficeMime(mimeType: string) {
   return mimeType in OFFICE_TO_GOOGLE_MIME;
 }
 
-export async function convertOfficeToPdf({
+async function convertOfficeToPdfViaDrive({
   bytes,
   mimeType,
   name,
@@ -329,6 +365,89 @@ export async function convertOfficeToPdf({
       }).catch(() => {});
     }
   }
+}
+
+// --- המרת Word/PowerPoint ל-PDF דרך LibreOffice אמיתי, על שרת Oracle קבוע (משותף
+// עם print-center) - שומר על גופנים עבריים מסחריים (FbPgisha/FbToccido/Kapriza/David
+// וכו') שמותקנים בפועל בשרת, בניגוד להמרה דרך Drive שמחליפה בשקט כל גופן שלא
+// בקטלוג שלה (ר' זיכרון drive-pdf-conversion-font-limitation). זו לא תחליף מלא
+// ל-Drive: אם השרת לא מוגדר/לא מגיב, נופלים חזרה ל-Drive באופן שקוף.
+function oracleConvertCfg() {
+  const url = (process.env.ORACLE_CONVERT_URL || "").trim().replace(/\/+$/, "");
+  const key = (process.env.ORACLE_CONVERT_API_KEY || "").trim();
+  return { url, key };
+}
+
+export function isOracleConvertConfigured() {
+  const { url, key } = oracleConvertCfg();
+  return Boolean(url && key);
+}
+
+// docx/pptx שנבנו ע"י סקריפט ה-JSZip הפנימי (ר' "Lesson-material authoring" ב-CLAUDE.md)
+// לפעמים נשמרים עם ערכי-נתיב עם backslash בתוך ה-zip (למשל "word\document.xml"
+// במקום "word/document.xml") - Word/Drive סולחים על זה, אבל LibreOffice מסרב לפתוח
+// את הקובץ כלל ("source file could not be loaded"). מנרמלים תמיד לפני שליחה ל-Oracle,
+// בלי תלות בזיהוי אם הקובץ הספציפי פגום - זה זול ובטוח להריץ גם על קובץ תקין.
+async function normalizeDocxZipPaths(bytes: Uint8Array): Promise<Uint8Array> {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(bytes);
+  const backslash = String.fromCharCode(92);
+  let changed = false;
+  const out = new JSZip();
+  for (const [entryName, file] of Object.entries(zip.files)) {
+    const fixedName = entryName.split(backslash).join("/");
+    if (fixedName !== entryName) changed = true;
+    const content = await file.async("uint8array");
+    out.file(fixedName, content, { binary: true });
+  }
+  if (!changed) return bytes;
+  return await out.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+}
+
+async function convertOfficeToPdfViaOracle({
+  bytes,
+  mimeType,
+  name,
+}: {
+  bytes: Uint8Array;
+  mimeType: string;
+  name: string;
+}): Promise<Uint8Array> {
+  const { url, key } = oracleConvertCfg();
+  if (!url || !key) throw new Error("שרת ההמרה של Oracle לא מוגדר");
+  const normalized = await normalizeDocxZipPaths(bytes);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 55000);
+  try {
+    const res = await fetch(`${url}/docx-to-pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key },
+      body: JSON.stringify({
+        fileDataBase64: b64encode(normalized),
+        fileName: name,
+        mimeType,
+      }),
+      signal: ctrl.signal,
+    });
+    const json = (await res.json().catch(() => ({}))) as { status?: string; error?: string; data?: { data: string } };
+    if (!res.ok || json.status !== "success" || !json.data?.data) {
+      throw new Error(json.error || `שרת ההמרה של Oracle החזיר שגיאה (${res.status})`);
+    }
+    return new Uint8Array(Buffer.from(json.data.data, "base64"));
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+export async function convertOfficeToPdf(args: { bytes: Uint8Array; mimeType: string; name: string }): Promise<Uint8Array> {
+  if (isOracleConvertConfigured()) {
+    try {
+      return await convertOfficeToPdfViaOracle(args);
+    } catch (e) {
+      console.warn("[convert] Oracle/LibreOffice נכשל, עובר ל-Drive:", e instanceof Error ? e.message : e);
+    }
+  }
+  return convertOfficeToPdfViaDrive(args);
 }
 
 // --- רשימת/חיפוש קבצים בארכיון — לסוכן ה-fix-reports, כדי "להבין" לאיזה קובץ
