@@ -129,7 +129,7 @@ async function uploadSmall({ name, mimeType, bytes }: { name: string; mimeType: 
 
 // --- מסלול ישיר מול Drive REST (קבצים גדולים, עוקף תקרת ~50MB של GAS) ---
 let tokenCache: { token: string; exp: number } | null = null;
-async function getAccessToken() {
+export async function getAccessToken() {
   if (tokenCache && Date.now() < tokenCache.exp) return tokenCache.token;
   const r = await callBridge("archive_token", {});
   if (!r.token) throw new Error("הגשר לא החזיר טוקן גישה לדרייב");
@@ -138,12 +138,76 @@ async function getAccessToken() {
 }
 
 let rootCache: string | null = null;
-async function getRootFolderId() {
+export async function getRootFolderId() {
   if (rootCache) return rootCache;
   const p = await drivePing();
   if (!p.rootFolderId) throw new Error("לא נמצאה תיקיית ארכיון בדרייב");
   rootCache = p.rootFolderId;
   return rootCache;
+}
+
+/** מוצא תיקיות בדרייב לפי שם מדויק (לאיתור עץ-מקור, למשל גיבוי מקומי). */
+export async function driveFindFoldersByName(name: string): Promise<{ id: string; name: string }[]> {
+  const token = await getAccessToken();
+  const q = `name = '${name.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const params = new URLSearchParams({ q, fields: "files(id,name)", pageSize: "20" });
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`חיפוש תיקייה בדרייב נכשל (${res.status})`);
+  const json = (await res.json()) as { files?: { id: string; name: string }[] };
+  return json.files ?? [];
+}
+
+/** רשימת הילדים הישירים (קבצים ותיקיות) של תיקייה נתונה בדרייב. */
+export async function driveListChildren(
+  folderId: string,
+): Promise<{ id: string; name: string; mimeType: string }[]> {
+  const token = await getAccessToken();
+  const out: { id: string; name: string; mimeType: string }[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: "nextPageToken,files(id,name,mimeType)",
+      pageSize: "1000",
+      ...(pageToken ? { pageToken } : {}),
+    });
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`רשימת קבצי תיקייה בדרייב נכשלה (${res.status})`);
+    const json = (await res.json()) as {
+      files?: { id: string; name: string; mimeType: string }[];
+      nextPageToken?: string;
+    };
+    for (const f of json.files ?? []) out.push(f);
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+  return out;
+}
+
+/**
+ * מעתיק קובץ קיים בדרייב לתיקיית יעד (פעולה בצד השרת של גוגל - אלפיות שנייה,
+ * בלי להעביר בייטים מהמחשב המקומי). שימושי כשיש כבר עותק של הקובץ בדרייב
+ * (למשל גיבוי מקומי לאותו חשבון) - הרבה יותר מהיר מ-driveUpload.
+ */
+export async function driveCopyFile(
+  fileId: string,
+  { name, parentId }: { name: string; parentId: string },
+): Promise<{ fileId: string; size: number }> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/copy?fields=id,size`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, parents: [parentId] }),
+    },
+  );
+  if (!res.ok) throw new Error(`העתקת קובץ בדרייב נכשלה (${res.status})`);
+  const json = (await res.json()) as { id: string; size?: string };
+  return { fileId: json.id, size: json.size ? Number(json.size) : 0 };
 }
 
 async function driveUploadRest({

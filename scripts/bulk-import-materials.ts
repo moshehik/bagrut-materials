@@ -27,7 +27,14 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
 import * as schema from "../src/db/schema";
-import { driveUpload, driveUrlFor } from "../src/lib/driveBridgeCore";
+import {
+  driveUpload,
+  driveUrlFor,
+  driveFindFoldersByName,
+  driveListChildren,
+  driveCopyFile,
+  getRootFolderId,
+} from "../src/lib/driveBridgeCore";
 import { detectKind, stripExtension } from "../src/lib/admin-utils";
 
 dotenv.config({ path: ".env.local" });
@@ -86,6 +93,37 @@ function resolveOnDisk(relFile: string): string | null {
   return cur;
 }
 
+/**
+ * בונה אינדקס path-יחסי -> {id,mimeType} מגיבוי מקומי שכבר יושב בדרייב (אותו
+ * חשבון), על ידי מעבר BFS על עץ התיקיות. מאפשר להעתיק קבצים בתוך דרייב
+ * (driveCopyFile - פעולת שרת, אלפיות שנייה) במקום לקרוא בייטים מהדיסק
+ * ולהעלות אותם מחדש דרך הגשר (driveUpload - שניות לקובץ, הצוואר-בקבוק
+ * העיקרי בהרצה על אלפי קבצים). מפתחות מנורמלים באותה נורמליזציה כמו
+ * resolveOnDisk (תווי Private-Use שמקורם בשכבת POSIX/WSL).
+ */
+async function buildDriveBackupIndex(
+  rootFolderId: string,
+): Promise<Map<string, { id: string; mimeType: string }>> {
+  const index = new Map<string, { id: string; mimeType: string }>();
+  const FOLDER_MIME = "application/vnd.google-apps.folder";
+  let foldersScanned = 0;
+  async function walk(folderId: string, prefix: string) {
+    const children = await driveListChildren(folderId);
+    foldersScanned++;
+    for (const child of children) {
+      const relPath = prefix ? `${prefix}/${child.name}` : child.name;
+      if (child.mimeType === FOLDER_MIME) {
+        await walk(child.id, relPath);
+      } else {
+        index.set(normalizeForCompare(relPath), { id: child.id, mimeType: child.mimeType });
+      }
+    }
+  }
+  await walk(rootFolderId, "");
+  console.log(`אינדקס גיבוי-דרייב: ${foldersScanned} תיקיות נסרקו, ${index.size} קבצים נמצאו.`);
+  return index;
+}
+
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
@@ -129,6 +167,24 @@ async function main() {
   const minConfidence = arg("confidence-at-least") || "high";
   const dryRun = hasFlag("dry-run");
   const limit = arg("limit") ? Number(arg("limit")) : Infinity;
+  const useDriveBackup = hasFlag("use-drive-backup");
+
+  let driveBackupIndex: Map<string, { id: string; mimeType: string }> | null = null;
+  let archiveRootId: string | null = null;
+  let copiedCount = 0;
+  let uploadedCount = 0;
+  if (useDriveBackup) {
+    const folders = await driveFindFoldersByName(path.basename(MATERIALS_ROOT));
+    if (folders.length !== 1) {
+      console.error(
+        `--use-drive-backup: נמצאו ${folders.length} תיקיות בשם "${MATERIALS_ROOT}" בדרייב (צריך בדיוק אחת) - ממשיך בלי אינדקס גיבוי, כל הקבצים יעלו מהדיסק.`,
+      );
+    } else {
+      console.log(`נמצאה תיקיית גיבוי בדרייב: ${folders[0].id} - בונה אינדקס...`);
+      driveBackupIndex = await buildDriveBackupIndex(folders[0].id);
+      archiveRootId = await getRootFolderId();
+    }
+  }
 
   const groups: MappingGroup[] = JSON.parse(fs.readFileSync(mappingPath, "utf-8"));
 
@@ -208,15 +264,42 @@ async function main() {
       const title = stripExtension(fileName);
       const kind = detectKind(fileName);
 
+      const backupEntry = driveBackupIndex?.get(normalizeForCompare(relFile));
+
       if (dryRun) {
-        console.log(`[dry-run] "${fileName}" → קטגוריה #${category.id} "${category.title}" (kind=${kind})`);
+        const via = backupEntry && archiveRootId ? "העתקה בדרייב" : "העלאה מהדיסק";
+        console.log(`[dry-run] "${fileName}" → קטגוריה #${category.id} "${category.title}" (kind=${kind}, ${via})`);
         continue;
       }
 
       try {
-        const bytes = fs.readFileSync(filePath);
-        console.log(`מעלה "${fileName}" (${(bytes.length / 1024).toFixed(0)}KB) → #${category.id} "${category.title}"...`);
-        const { fileId } = await driveUpload({ name: fileName, mimeType: mime, bytes });
+        let fileId: string;
+        let size: number;
+        if (backupEntry && archiveRootId) {
+          try {
+            console.log(`מעתיק (בתוך דרייב) "${fileName}" → #${category.id} "${category.title}"...`);
+            const copied = await driveCopyFile(backupEntry.id, { name: fileName, parentId: archiveRootId });
+            fileId = copied.fileId;
+            size = copied.size || fs.statSync(filePath).size;
+            copiedCount++;
+          } catch (copyErr) {
+            console.error(
+              `  העתקה נכשלה (${copyErr instanceof Error ? copyErr.message : copyErr}) - נופל חזרה להעלאה מהדיסק...`,
+            );
+            const bytes = fs.readFileSync(filePath);
+            const uploaded = await driveUpload({ name: fileName, mimeType: mime, bytes });
+            fileId = uploaded.fileId;
+            size = bytes.length;
+            uploadedCount++;
+          }
+        } else {
+          const bytes = fs.readFileSync(filePath);
+          console.log(`מעלה "${fileName}" (${(bytes.length / 1024).toFixed(0)}KB) → #${category.id} "${category.title}"...`);
+          const uploaded = await driveUpload({ name: fileName, mimeType: mime, bytes });
+          fileId = uploaded.fileId;
+          size = bytes.length;
+          uploadedCount++;
+        }
         const fileUrl = driveUrlFor(fileId);
 
         const [row] = await db
@@ -228,7 +311,7 @@ async function main() {
             fileUrl,
             fileName,
             mime,
-            size: bytes.length,
+            size,
             price: 1500,
             premiumOnly: false,
             minTier: "none",
@@ -258,8 +341,9 @@ async function main() {
   }
 
   if (!dryRun) saveLog();
+  const viaNote = useDriveBackup ? ` (${copiedCount} בהעתקה בדרייב, ${uploadedCount} בהעלאה מהדיסק)` : "";
   console.log(
-    `\nסיכום: ${imported} יובאו, ${skipped} דולגו (confidence/ללא קטגוריה), ${errors} שגיאות. יומן: ${statusPath}`,
+    `\nסיכום: ${imported} יובאו${viaNote}, ${skipped} דולגו (confidence/ללא קטגוריה), ${errors} שגיאות. יומן: ${statusPath}`,
   );
 }
 
