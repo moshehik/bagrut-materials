@@ -102,6 +102,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           path_to_claude_code_executable: /home/runner/.local/bin/claude
+          show_full_output: true # זמני - לאבחון כשל מיידי (is_error:true, 81ms) בלי פרטים
           # allowedTools חייב לכלול Edit/Write/git/gh בפועל, לא רק node - fix-reports.md
           # מצפה מהסוכן לתקן קבצים, לפתוח ענף+PR עם gh. בלי זה כל הרצה שבאמת מוצאת
           # דיווח שדורש תיקון קוד נתקעת ומדווחת שאין לה הרשאת כתיבה, גם כשה-workflow
