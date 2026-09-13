@@ -48,6 +48,12 @@ on:
 jobs:
   fix-reports:
     runs-on: ubuntu-latest
+    env:
+      # dotenv@17 מדפיס ל-stdout שורת "◇ injected env (N) from ..." בכל config()
+      # קריאה, גם כשהקובץ לא קיים (כמו כאן ב-CI) - זה פוצץ כל שלב שלוכד stdout של
+      # סקריפט tsx לתוך משתנה shell (למשל $(npx tsx scripts/agent-loop-status.ts)),
+      # כי הפלט הופך למספר שורות והפורמט של GITHUB_OUTPUT נשבר ("Invalid format").
+      DOTENV_CONFIG_QUIET: "true"
     permissions:
       contents: write
       pull-requests: write
