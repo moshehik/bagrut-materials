@@ -63,7 +63,11 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
       color: rgb(0.35, 0.35, 0.45),
     });
 
-    // סימן מים אלכסוני שקוף עם המספר האישי
+    // סימן מים אלכסוני "לבן": צבע כמעט-לבן (לא כחול) כדי שיתמזג לגמרי ברקע העמוד
+    // ולא ייראה בעין ולא בהדפסה. הזיהוי אינו תלוי בפיקסלים - הטקסט (מספר אישי +
+    // אימייל) נשאר טקסט אמיתי וניתן לחילוץ בתוך ה-content stream של ה-PDF (חיפוש
+    // טקסט / pdftotext / העתקה מהמסמך יחשפו אותו מיידית), ולכן אין דרך "לצבוע מעליו"
+    // או להסיר אותו בלי לערוך את ה-PDF הגולמי ולמצוא את אובייקט הטקסט הספציפי הזה.
     const dfs = Math.max(18, Math.min(width, height) / 18);
     const dw = font.widthOfTextAtSize(diagonal, dfs);
     page.drawText(diagonal, {
@@ -71,7 +75,7 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
       y: height / 2 - dfs,
       size: dfs,
       font,
-      color: rgb(0.2, 0.4, 0.8),
+      color: rgb(0.98, 0.98, 0.98),
       opacity: 0.09,
       rotate: degrees(32),
     });
