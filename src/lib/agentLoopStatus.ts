@@ -3,9 +3,16 @@ import { db } from "@/db";
 import { agentLoopStatus } from "@/db/schema";
 
 /**
- * דגל הפעלה/כיבוי + "שעון שקט" של סוכן ה-fix-reports האוטומטי — שורה יחידה ב-DB
- * (id קבוע = 1). היה מאוחסן ב-Vercel Blob; הועבר ל-Postgres (Neon) ב-09.2026 אחרי
- * שה-Blob store הושעה (מכסה). ר' .claude/commands/fix-reports.md לפרוטוקול המלא.
+ * דגל הפעלה/כיבוי ("המתג") + "שעון שקט" של סוכן ה-fix-reports האוטומטי — שורה
+ * יחידה ב-DB (id קבוע = 1). היה מאוחסן ב-Vercel Blob; הועבר ל-Postgres (Neon)
+ * ב-09.2026 אחרי שה-Blob store הושעה (מכסה). ר' .claude/commands/fix-reports.md
+ * לפרוטוקול המלא.
+ *
+ * חשוב: `enabled` משתנה **רק** דרך `setLoopEnabled` (לוח בקרה של אדמין, או
+ * הוראת-עצירה מפורשת שקלוד מקבל בתוך דיווח/יומן) — לעולם לא אוטומטית משום שקט.
+ * שעון השקט (`lastActivityAt`/`idleMinutes`) משמש את השלב הזול ב-workflow
+ * (`scripts/agent-loop-status.ts --should-run`) כדי להחליט אם *להריץ את קלוד*
+ * בטיק cron רגיל, בלי לגעת ב-`enabled` עצמו.
  */
 
 const ROW_ID = 1;

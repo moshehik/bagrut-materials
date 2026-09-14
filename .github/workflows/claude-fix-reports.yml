@@ -4,9 +4,14 @@
 # ביטחון) + repository_dispatch מיידי (ר' src/lib/agentDispatch.ts - נורה מתוך
 # האתר עצמו ברגע שנוצר דיווח חדש, ב-createReport() ב-errorReports.ts, בלי לחכות
 # לסיבוב הבא של ה-cron) + workflow_dispatch ידני (הרצה מתוך Actions, לבדיקה).
-# לפני שמפעילים את Claude בכלל, שלב זול בודק את הדגל ב-DB (טבלת agent_loop_status)
-# ומריץ את Claude רק אם הוא דלוק. "שינה" אוטומטית אחרי 20 דק' בלי דיווחים חדשים
-# ממומשת בתוך fix-reports.md עצמו (מכבה את הדגל בפועל), לא כאן.
+# לפני שמפעילים את Claude בכלל, שלב זול בודק את הדגל ב-DB (טבלת agent_loop_status,
+# scripts/agent-loop-status.ts --should-run) ומריץ את Claude רק אם הוא דלוק וגם -
+# למקרה של טיק cron רגיל (event_name=schedule) - פחות מ-20 דק' עברו בלי דיווחים
+# חדשים. "השינה" הזו זולה ומתבצעת כאן, ברמת ה-workflow, ולעולם לא מכבה את הדגל
+# עצמו (המתג נשאר דלוק תמיד עד שמישהו מכבה אותו בפועל, או עד הוראת-עצירה מפורשת -
+# ר' .claude/commands/fix-reports.md). דיווח חדש (repository_dispatch) או הרצה
+# ידנית (workflow_dispatch) תמיד מריצים את Claude בפועל גם אם היה שקט הרבה זמן -
+# זה "מעיר" את הסוכן לסבב נוסף בלי לגעת במתג.
 #
 # הועתק ומותאם מ-.github/workflows/claude-fix-reports.yml בפרויקט gemach-app (שם:
 # שני "גמחים" מקבילים, Postgres נפרד לכל אחד; כאן: פרויקט יחיד, אין org1/org2).
@@ -86,14 +91,15 @@ jobs:
           test -x "$HOME/.local/bin/claude"
           "$HOME/.local/bin/claude" --version
 
-      # בדיקה זולה - קוראת את הדגל ישירות מול ה-DB, בלי להפעיל את Claude בכלל אם
-      # הוא כבוי. exit code לא אמור להכשיל את ה-step - לכן `|| true`.
+      # בדיקה זולה - קוראת את הדגל+שעון השקט ישירות מול ה-DB, בלי להפעיל את Claude
+      # בכלל אם הוא כבוי, או אם זה טיק cron רגיל בזמן שקט (ר' הערה למעלה). exit
+      # code לא אמור להכשיל את ה-step - לכן `|| true`.
       - name: Check agent loop flag
         id: check
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          ENABLED=$(npx tsx scripts/agent-loop-status.ts) || true
+          ENABLED=$(npx tsx scripts/agent-loop-status.ts --should-run "${{ github.event_name }}") || true
           echo "enabled=$ENABLED" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude Code (fix-reports)
