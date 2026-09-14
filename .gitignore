@@ -64,3 +64,4 @@ next-env.d.ts
 /scratchpad_*/
 /_scratch_*/
 /_scratchpad_*/
+/_*_build_*/

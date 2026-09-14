@@ -7,6 +7,7 @@ import { Menu, X, LogIn, UserRound, ShieldCheck, ShoppingCart } from "lucide-rea
 import { TIERS } from "@/lib/constants";
 import type { Tier } from "@/db/schema";
 import { logoutAction } from "@/lib/actions/auth";
+import { SearchTriggerButton, SiteSearchOverlay } from "@/components/site-search";
 
 type HeaderUser = { name: string; role: "user" | "admin"; tier: Tier } | null;
 
@@ -114,6 +115,7 @@ export function Header({ user }: { user: HeaderUser }) {
               </Link>
             );
           })}
+          <SearchTriggerButton className="grid h-9 w-9 place-items-center rounded-full text-white/90 transition-colors transition-transform hover:-translate-y-0.5 hover:bg-white/10 hover:text-sun" />
         </nav>
 
         <div className="ms-auto hidden md:flex items-center gap-2">
@@ -183,6 +185,11 @@ export function Header({ user }: { user: HeaderUser }) {
                 {n.label}
               </Link>
             ))}
+            <SearchTriggerButton
+              onClick={() => setOpen(false)}
+              label="חיפוש"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-blue-soft font-semibold transition-transform hover:-translate-y-0.5"
+            />
             <div className="h-px bg-sea/10 my-2" />
             {user ? (
               <>
@@ -217,6 +224,8 @@ export function Header({ user }: { user: HeaderUser }) {
           </nav>
         </div>
       )}
+
+      <SiteSearchOverlay />
     </header>
   );
 }

@@ -18,9 +18,10 @@ import type { Material, MaterialKind } from "@/db/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
-import { SubjectIcon } from "@/components/subject-icons";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
+import Image from "next/image";
+import nutImg from "../../../../public/images/faq-nut.png";
 
 export const dynamic = "force-dynamic";
 
@@ -122,10 +123,10 @@ export default async function CategoryPage({ params }: Props) {
           />
           <div className="flex flex-col gap-5 md:flex-row md:items-center">
             <span
-              className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl animate-float"
+              className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-3xl animate-float"
               style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
             >
-              <SubjectIcon slug={root.slug} className="h-9 w-9" />
+              <Image src={nutImg} alt="" className="h-14 w-14 object-contain" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

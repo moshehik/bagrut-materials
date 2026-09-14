@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GitBranch, FolderTree, ChevronDown, ArrowUpLeft, Scissors, Check } from "lucide-react";
 import { getAllActiveCategories } from "@/lib/data";
+import { getCurrentUser } from "@/lib/session";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
@@ -10,10 +11,10 @@ import { FocusNotice } from "@/components/focus-notice";
 export const metadata: Metadata = { title: "מפת הבגרות המלאה" };
 export const dynamic = "force-dynamic";
 
-async function buildTree(): Promise<MapNode[]> {
+async function buildTree(isAdmin: boolean): Promise<MapNode[]> {
   try {
     // שאילתה אחת לכל הקטגוריות; הרכבת העץ בזיכרון (רקורסיה לפי parentId)
-    const all = await getAllActiveCategories();
+    const all = await getAllActiveCategories(isAdmin);
     const byParent = new Map<number | null, Category[]>();
     for (const cat of all) {
       const list = byParent.get(cat.parentId) ?? [];
@@ -33,7 +34,9 @@ async function buildTree(): Promise<MapNode[]> {
 }
 
 export default async function MapPage() {
-  const tree = await buildTree();
+  const user = await getCurrentUser().catch(() => null);
+  const isAdmin = user?.role === "admin";
+  const tree = await buildTree(isAdmin);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">

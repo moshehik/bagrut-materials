@@ -170,6 +170,20 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+/* הדגשת קלף חומר שהגיעו אליו מתוצאת חיפוש (עוגן #material-ID בכתובת) */
+.card:target {
+  animation: search-highlight 2.4s ease-out;
+}
+@keyframes search-highlight {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--sun), var(--shadow-soft);
+  }
+  100% {
+    box-shadow: var(--shadow-soft);
+  }
+}
+
 /* תרשים זרימה מצויר ביד (מפת הבגרות): ריבוע שקוף בקו דיו דק, מתמלא צבע בריחוף.
    הרדיוסים הלא-סימטריים יוצרים "רעד" של מלבן משורטט בעט. */
 .flow-node {

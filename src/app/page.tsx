@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
+import { getCurrentUser } from "@/lib/session";
 import { getPlanPrices } from "@/lib/pricing";
 import { PLANS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS, formatPrice } from "@/lib/constants";
 import type { Category } from "@/db/schema";
@@ -17,9 +18,9 @@ import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
 
-async function safeRootSubjects(): Promise<Category[]> {
+async function safeRootSubjects(isAdmin: boolean): Promise<Category[]> {
   try {
-    return await getRootSubjects();
+    return await getRootSubjects(isAdmin);
   } catch {
     return [];
   }
@@ -42,7 +43,13 @@ async function safePrices() {
 const num = (n: number) => n.toLocaleString("he-IL");
 
 export default async function HomePage() {
-  const [subjects, stats, prices] = await Promise.all([safeRootSubjects(), safeStats(), safePrices()]);
+  const user = await getCurrentUser().catch(() => null);
+  const isAdmin = user?.role === "admin";
+  const [subjects, stats, prices] = await Promise.all([
+    safeRootSubjects(isAdmin),
+    safeStats(),
+    safePrices(),
+  ]);
   const customPrice = prices?.plans.custom_monthly ?? PLANS.custom_monthly.price ?? 0;
 
   return (

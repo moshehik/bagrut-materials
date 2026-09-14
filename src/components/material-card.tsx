@@ -39,7 +39,7 @@ export function MaterialCard({ material: m, entitlement, loggedIn, currentPath =
   const size = formatSize(m.size);
 
   return (
-    <article className="card card-hover relative flex h-full flex-col p-5">
+    <article id={`material-${m.id}`} className="card card-hover relative flex h-full flex-col p-5 scroll-mt-24">
       {isPremium && (
         <span className="absolute -top-2 left-4 chip btn-gold shadow-md text-[11px]">
           <Crown className="h-3 w-3" aria-hidden /> פרימיום
