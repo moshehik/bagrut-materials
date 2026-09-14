@@ -43,8 +43,15 @@ next-env.d.ts
 .vercel
 .env*
 
-# lesson-materials working files (not part of the site)
-/חומרים מוכנים מחדש/
+# lesson-materials working files (not part of the site) - everything ignored
+# EXCEPT the two tracking/instructions logs below, which are plain text and
+# benefit from real git history (no docx/PDF deliverables or scratch/cache
+# files are tracked - see CLAUDE.md "Content authoring")
+/חומרים מוכנים מחדש/*
+!/חומרים מוכנים מחדש/הוראות לבניית כל החומרים החדשים/
+/חומרים מוכנים מחדש/הוראות לבניית כל החומרים החדשים/*
+!/חומרים מוכנים מחדש/הוראות לבניית כל החומרים החדשים/כל ההוראות לבניית החומרים.md
+!/חומרים מוכנים מחדש/הוראות לבניית כל החומרים החדשים/יומן תיקונים מבני (סטטוס קבצים).md
 
 # standalone content-authoring CLI tools (isolated from the site's own deps)
 /_tools/node_modules
