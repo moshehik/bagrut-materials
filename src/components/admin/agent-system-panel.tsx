@@ -188,7 +188,14 @@ export function AgentSystemPanel() {
                 <ul className="mt-2 space-y-1 border-t pt-2">
                   {r.notes.map((n) => (
                     <li key={n.id} className="text-xs">
-                      <span className="font-bold">{n.role === "reporter" ? "מדווח/ת" : "תמיכה"}:</span> {n.text}
+                      <span className="font-bold">
+                        {n.role === "reporter" ? "מדווח/ת" : "תמיכה"}
+                        {n.role === "support" && n.authorKind === "admin" && (
+                          <span className="text-muted font-normal"> (ידני)</span>
+                        )}
+                        :
+                      </span>{" "}
+                      {n.text}
                       {n.isQuestion && <span className="ms-1 chip bg-gold/20 text-gold">ממתין לתשובה</span>}
                       {n.previewUrl && (
                         <a href={n.previewUrl} target="_blank" rel="noreferrer" className="ms-1 text-blue-deep underline">
