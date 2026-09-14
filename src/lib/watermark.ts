@@ -16,16 +16,6 @@ async function loadFont() {
   return fontBytes;
 }
 
-/** מסדר טקסט עברי לתצוגה ויזואלית (pdf-lib לא מבצע bidi) */
-function visualHebrew(s: string) {
-  // מפצל למקטעים של עברית / לא-עברית, הופך את סדר המקטעים ואת האותיות העבריות
-  const tokens = s.match(/[֐-׿\s]+|[^֐-׿\s]+|\s+/g) ?? [s];
-  return tokens
-    .map((t) => (/[֐-׿]/.test(t) ? [...t].reverse().join("") : t))
-    .reverse()
-    .join("");
-}
-
 export type StampInfo = {
   personalCode: string;
   userName: string;
@@ -41,10 +31,11 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
   pdf.registerFontkit(fontkit);
   const font = await pdf.embedFont(await loadFont(), { subset: true });
 
-  // המספר האישי נשאר מחוץ למחרוזת העברית כדי שלא יתהפך; בהיפוך ויזואלי הוא יופיע בסוף המשפט (בצד שמאל)
-  const footer =
-    visualHebrew(`© ${SITE_NAME} – כל הזכויות שמורות. אין להעביר לאחר. הורד ע"י מנויה מס'`) +
-    ` ${info.personalCode}`;
+  // pdf-lib+fontkit כן מבצע bidi נכון בעצמו לטקסט עברי גולמי (לוגי) - לא צריך להפוך
+  // ידנית. אבל המספר האישי (מספרים/לטיני) בסוף אותה מחרוזת נסחף בטעות לתוך ההיפוך
+  // של הריצה העברית הצמודה אליו ומתהפך בעצמו - נשאר תמיד draw נפרד בשבילו, ממוקם
+  // ידנית לשמאל הטקסט העברי (סוף המשפט, בקריאה מימין-לשמאל).
+  const hebrewFooter = `© ${SITE_NAME} – כל הזכויות שמורות. אין להעביר לאחר. הורד ע"י מנויה מס'`;
   const diagonal = `${info.personalCode}  •  ${info.email}`;
 
   for (const page of pdf.getPages()) {
@@ -52,9 +43,20 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
 
     // כותרת תחתונה קטנה
     const fs = 8;
-    const tw = font.widthOfTextAtSize(footer, fs);
-    page.drawText(footer, {
-      x: Math.max(12, (width - tw) / 2),
+    const gap = font.widthOfTextAtSize(" ", fs);
+    const hebrewWidth = font.widthOfTextAtSize(hebrewFooter, fs);
+    const codeWidth = font.widthOfTextAtSize(info.personalCode, fs);
+    const totalWidth = hebrewWidth + gap + codeWidth;
+    const startX = Math.max(12, (width - totalWidth) / 2);
+    page.drawText(info.personalCode, {
+      x: startX,
+      y: 10,
+      size: fs,
+      font,
+      color: rgb(0.35, 0.35, 0.45),
+    });
+    page.drawText(hebrewFooter, {
+      x: startX + codeWidth + gap,
       y: 10,
       size: fs,
       font,
@@ -106,8 +108,8 @@ export async function stampPreview(input: Uint8Array | ArrayBuffer) {
   pdf.registerFontkit(fontkit);
   const font = await pdf.embedFont(await loadFont(), { subset: true });
 
-  const footer = visualHebrew(`© ${SITE_NAME} – תצוגה מקדימה בלבד, לרכישה באתר`);
-  const diagonal = visualHebrew("תצוגה מקדימה");
+  const footer = `© ${SITE_NAME} – תצוגה מקדימה בלבד, לרכישה באתר`;
+  const diagonal = "תצוגה מקדימה";
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
