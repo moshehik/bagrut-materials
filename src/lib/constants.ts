@@ -87,7 +87,6 @@ export const SUBJECT_ICONS: Record<string, string> = {
   chevra: "🤝",
   teacher: "🎓",
   megilot: "📃",
-  tichnut: "💻",
   minhal: "📊",
   "chinuch-pinansi": "💰",
 };
@@ -109,7 +108,6 @@ export const SUBJECT_COLORS: Record<string, string> = {
   sicha: "#e11d48", // אדום-ורדרד
   chevra: "#c026d3", // פוקסיה
   teacher: "#0d9488", // ירוק-ים כהה
-  tichnut: "#ea580c", // כתום עמוק
   "chinuch-pinansi": "#a3a86c", // ירוק-זית כספי
 };
 
@@ -130,7 +128,6 @@ const SUBJECT_HOUSE_FILES: Record<string, string> = {
   chevra: "house-chevra.png",
   math: "house-math.png",
   teacher: "house-teacher.png",
-  tichnut: "house-tichnut.png",
   minhal: "house-minhal.png",
   "chinuch-pinansi": "house-chinuch-pinansi.png",
 };
@@ -156,7 +153,6 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
   chevra: "#d99a5c",
   math: "#7a8a89",
   teacher: "#b0729a",
-  tichnut: "#a0cad2",
   minhal: "#bbba8d",
   "chinuch-pinansi": "#c3bd8e",
 };

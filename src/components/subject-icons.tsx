@@ -156,14 +156,6 @@ const ICONS: Record<string, IconFn> = {
       <path d="M20 21h10M20 27h10" />
     </Base>
   ),
-  /** תכנות — תגי קוד */
-  tichnut: (p) => (
-    <Base {...p}>
-      <path d="M16 14 6 24l10 10" />
-      <path d="M32 14l10 10-10 10" />
-      <path d="M27 10 21 38" />
-    </Base>
-  ),
   /** מנהל וכלכלה — גרף עולה */
   minhal: (p) => (
     <Base {...p}>
