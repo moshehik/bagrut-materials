@@ -46,7 +46,7 @@ export async function replyToReportAction(
   await requireAdmin();
   const clean = String(text || "").trim().slice(0, 2000);
   if (!clean) throw new Error("טקסט ריק");
-  await addReportNote(id, clean, { role: "support" });
+  await addReportNote(id, clean, { role: "support", authorKind: "admin" });
   if (opts?.archive) await setReportStatus(id, "ARCHIVED");
   revalidatePath("/agent-system");
 }

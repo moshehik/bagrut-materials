@@ -391,6 +391,9 @@ export const authTokens = pgTable(
 export const errorReportStatusEnum = pgEnum("error_report_status", ["OPEN", "ARCHIVED"]);
 export const errorReportKindEnum = pgEnum("error_report_kind", ["report", "agentLog"]);
 export const errorReportNoteRoleEnum = pgEnum("error_report_note_role", ["support", "reporter"]);
+/** מי בפועל כתב תגובת role="support" — פנימי בלבד, לא משפיע על התצוגה החיצונית (ר' agent-system-panel.tsx).
+ * קיים כדי שהסוכן האוטומטי יוכל להבדיל בין התגובה-המסכמת של עצמו (ממתינה לאישור משה) לבין תגובה שמנהל/ת הקליד/ה ידנית באותו thread. */
+export const errorReportNoteAuthorKindEnum = pgEnum("error_report_note_author_kind", ["agent", "admin"]);
 
 export const errorReports = pgTable(
   "error_reports",
@@ -422,6 +425,8 @@ export const errorReportNotes = pgTable(
     role: errorReportNoteRoleEnum("role").notNull().default("support"),
     isQuestion: boolean("is_question").notNull().default(false),
     previewUrl: varchar("preview_url", { length: 500 }),
+    /** רק כש-role="support": מי כתב בפועל — "agent" (הסוכן האוטומטי) או "admin" (הוקלד ידנית בלוח /agent-system). null עבור role="reporter". */
+    authorKind: errorReportNoteAuthorKindEnum("author_kind"),
   },
   (t) => [index("error_report_notes_report_idx").on(t.reportId)],
 );

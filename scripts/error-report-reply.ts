@@ -28,6 +28,7 @@ async function main() {
   const report = await addReportNote(id, text, {
     role: "support",
     isQuestion,
+    authorKind: "agent",
     ...(previewUrl ? { previewUrl } : {}),
   });
   if (!report) {

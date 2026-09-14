@@ -141,7 +141,7 @@ export default async function AgentSystemPage() {
           <li><Path>.github/workflows/claude-fix-reports.yml</Path> — ה-workflow המתוזמן</li>
           <li><Path>.claude/commands/fix-reports.md</Path> — הפרוטוקול המלא שקלוד עוקב אחריו</li>
           <li><Path>src/db/schema.ts</Path> — טבלאות <Path>error_reports</Path>/<Path>error_report_notes</Path>/<Path>agent_loop_status</Path> (חדש)</li>
-          <li><Path>src/lib/errorReports.ts</Path> — Postgres במקום Blob; תגובות עם <code dir="ltr" className="text-[13px]">role</code>/<code dir="ltr" className="text-[13px]">isQuestion</code>/<code dir="ltr" className="text-[13px]">previewUrl</code>, ושרשור-על קבוע</li>
+          <li><Path>src/lib/errorReports.ts</Path> — Postgres במקום Blob; תגובות עם <code dir="ltr" className="text-[13px]">role</code>/<code dir="ltr" className="text-[13px]">isQuestion</code>/<code dir="ltr" className="text-[13px]">previewUrl</code>/<code dir="ltr" className="text-[13px]">authorKind</code> (מבדיל תגובת סוכן מתגובה ידנית של מנהל/ת, פנימי בלבד), ושרשור-על קבוע</li>
           <li><Path>src/lib/agentLoopStatus.ts</Path> — דגל הפעלה/כיבוי + שעון שקט, Postgres (חדש)</li>
           <li><Path>src/lib/driveBridgeCore.ts</Path> — הורחב: <Path>driveListFiles</Path>/<Path>scoreDriveFilesByQuery</Path> (מטא-דאטה בלבד)</li>
           <li><Path>src/lib/agentDispatch.ts</Path> — שולחת <code dir="ltr" className="text-[13px]">repository_dispatch</code> לגיטהאב מיד כשנוצר דיווח (חדש)</li>

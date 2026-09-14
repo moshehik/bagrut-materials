@@ -23,6 +23,9 @@ export type ErrorReportNote = {
   isQuestion: boolean;
   /** קישור ל-Preview Deployment זמני של תיקון (מתווסף רק בסוף סבב תיקונים) */
   previewUrl?: string;
+  /** רק כש-role="support": מי כתב בפועל — "agent" (הסוכן האוטומטי) או "admin" (הוקלד ידנית ב-/agent-system).
+   * פנימי בלבד — לא משפיע על התצוגה כלפי מדווח/ת (ר' .claude/commands/fix-reports.md לשימוש בלוגיקת הסיווג). */
+  authorKind?: "agent" | "admin";
 };
 
 export type ErrorReport = {
@@ -68,6 +71,7 @@ async function attachNotes(reports: (typeof errorReportsTable.$inferSelect)[]): 
         role: n.role,
         isQuestion: n.isQuestion,
         ...(n.previewUrl ? { previewUrl: n.previewUrl } : {}),
+        ...(n.authorKind ? { authorKind: n.authorKind } : {}),
       })),
     });
   }
@@ -127,7 +131,13 @@ export async function setReportStatus(id: string, status: ErrorReportStatus): Pr
 export async function addReportNote(
   id: string,
   text: string,
-  opts?: { role?: "support" | "reporter"; isQuestion?: boolean; previewUrl?: string }
+  opts?: {
+    role?: "support" | "reporter";
+    isQuestion?: boolean;
+    previewUrl?: string;
+    /** רק רלוונטי כש-role="support" — ר' ErrorReportNote.authorKind. */
+    authorKind?: "agent" | "admin";
+  }
 ): Promise<ErrorReport | null> {
   const [report] = await db.select().from(errorReportsTable).where(eq(errorReportsTable.id, id));
   if (!report) return null;
@@ -139,6 +149,7 @@ export async function addReportNote(
     role: opts?.role ?? "support",
     isQuestion: opts?.isQuestion ?? false,
     ...(opts?.previewUrl ? { previewUrl: opts.previewUrl } : {}),
+    ...(opts?.authorKind ? { authorKind: opts.authorKind } : {}),
   });
   const [updated] = await db
     .update(errorReportsTable)
