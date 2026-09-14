@@ -1,0 +1,22 @@
+# קבצי scratch/עבודה של צינור כתיבת החומרים (ר' CLAUDE.md) - לא חלק מהאתר,
+# אבל לא כולם מכוסים בפועל ב-.gitignore. בלי הקובץ הזה, `vercel <deploy>` מקומי
+# (לא מ-git) מעלה גם אותם ותקוע על העלאה של מאות קבצים/תיקיות מיותרות.
+scratch_*
+_*
+ch54/
+micha-daled-phase2-retry2/
+links19.json
+links20.json
+links21.json
+rh23a.json
+rh23b.json
+hashraa54_text.txt
+meyum54_text.txt
+jonah4_text.json
+scratchpad/
+תמונות/
+תמונות מוכנים/
+חומרים/
+תכנית לימודים/
+*.xml
+*.bat
