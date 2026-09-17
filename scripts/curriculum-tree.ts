@@ -15,8 +15,16 @@ export type Node = {
   excludedNote?: string;
   /** כבר הוכן חומר בפועל (דף לתלמידה/למורה וכו') לצומת זה — מוצג במפה עם סימן וי */
   ready?: boolean;
+  /** "sichot" = צומת עלה שמציג את מודול מאגר השיחות (שיחה/חברה/כישורי חיים) במקום עמוד חומרים רגיל */
+  moduleType?: "sichot";
   children?: Node[];
 };
+
+/** שתי תיקיות מאגר השיחות המשותפות לשיחה/חברה/כישורי חיים */
+const SICHOT_FOLDERS: Node[] = [
+  { slug: "chagim", title: "חגים", moduleType: "sichot" },
+  { slug: "aktualia-hashkafa", title: "אקטואליה והשקפה", moduleType: "sichot" },
+];
 
 /* --- עזרי פרקים בגימטריה --- */
 const ONES = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
@@ -2038,11 +2046,19 @@ export const TREE: Node[] = [
     slug: "sicha",
     title: "שיחה",
     description: "אינו מקצוע בגרות רשמי — שיחת מוסר/השקפה פנימית, ללא סמל שאלון.",
+    children: SICHOT_FOLDERS,
   },
   {
     slug: "chevra",
     title: "חברה",
     description: "אינו מקצוע בגרות רשמי במגזר החרדי — ללא סמל שאלון.",
+    children: SICHOT_FOLDERS,
+  },
+  {
+    slug: "kishurei-chaim",
+    title: "כישורי חיים",
+    description: "אינו מקצוע בגרות רשמי — ללא סמל שאלון.",
+    children: SICHOT_FOLDERS,
   },
   {
     slug: "teacher",

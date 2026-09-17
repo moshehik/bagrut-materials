@@ -35,6 +35,11 @@ export const statusEnum = pgEnum("status", ["active", "suspended", "draft"]);
 export const purchaseStatusEnum = pgEnum("purchase_status", ["active", "cancelled", "refunded", "expired"]);
 export const txTypeEnum = pgEnum("tx_type", ["charge", "refund", "manual", "adjustment"]);
 
+/** סוג הסמינר שבו נמסרה השיחה — נבחר ע"י המורה המעלה, מוצג כתגית על כרטיס השיחה */
+export const sichaSeminarEnum = pgEnum("sicha_seminar", ["mainstream", "kiruv", "charedi_modern"]);
+/** האם קטגוריה זו מציגה את ה-UI הרגיל של חומרים, או את מודול מאגר השיחות (שיחה/חברה/כישורי חיים) */
+export const categoryModuleEnum = pgEnum("category_module", ["standard", "sichot"]);
+
 export const planEnum = pgEnum("plan", [
   "single", // הורדה בודדת
   "bundle", // קובץ מורחב (תיקייה)
@@ -106,6 +111,8 @@ export const categories = pgTable(
     status: statusEnum("status").notNull().default("active"),
     /** הגבלת גישה לכל התיקייה לרמת פרימיום מינימלית */
     minTier: tierEnum("min_tier").notNull().default("none"),
+    /** "standard" = עמוד חומרים רגיל; "sichot" = מציג את מודול מאגר השיחות (ר' sichot למטה) במקום זאת */
+    contentModule: categoryModuleEnum("content_module").notNull().default("standard"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
@@ -151,6 +158,97 @@ export const materials = pgTable(
   },
   (t) => [index("materials_category_idx").on(t.categoryId)],
 );
+
+/** מאגר שיחות מורות (שיחה / חברה / כישורי חיים) — שיחה/פעילות שמורה מעלה, לא "חומר" רגיל של המנהלת */
+export const sichot = pgTable(
+  "sichot",
+  {
+    id: serial("id").primaryKey(),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    seminarType: sichaSeminarEnum("seminar_type").notNull(),
+    fileUrl: text("file_url").notNull(),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    mime: varchar("mime", { length: 120 }).notNull(),
+    size: integer("size").notNull().default(0),
+    /** כלי השעיה בדיעבד למנהלת — פרסום עצמו פתוח וללא אישור מראש */
+    status: statusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("sichot_category_idx").on(t.categoryId), index("sichot_teacher_idx").on(t.teacherId)],
+);
+
+/** דירוג 1-5 של שיחה ע"י מורה — מורה יכולה לעדכן את הדירוג שלה (upsert לפי sichaId+teacherId) */
+export const sichaRatings = pgTable(
+  "sicha_ratings",
+  {
+    id: serial("id").primaryKey(),
+    sichaId: integer("sicha_id")
+      .notNull()
+      .references(() => sichot.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stars: integer("stars").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("sicha_ratings_sicha_teacher_idx").on(t.sichaId, t.teacherId)],
+);
+
+/** סימון "השתמשתי בשיחה הזו" — טוגל, שורה אחת למורה לכל שיחה; הספירה = מספר השורות */
+export const sichaUsages = pgTable(
+  "sicha_usages",
+  {
+    id: serial("id").primaryKey(),
+    sichaId: integer("sicha_id")
+      .notNull()
+      .references(() => sichot.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("sicha_usages_sicha_teacher_idx").on(t.sichaId, t.teacherId)],
+);
+
+/** רעיון (משחק/פעילות/סיפור/מדרש) שמורה אחרת הוסיפה על שיחה קיימת */
+export const sichaIdeas = pgTable(
+  "sicha_ideas",
+  {
+    id: serial("id").primaryKey(),
+    sichaId: integer("sicha_id")
+      .notNull()
+      .references(() => sichot.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("sicha_ideas_sicha_idx").on(t.sichaId)],
+);
+
+/** מעקב קצב-העלאה למורות שהצטרפו למאגר השיחות (שורה אחת למורה, נוצרת בהעלאה הראשונה) */
+export const sichaTeacherStatus = pgTable("sicha_teacher_status", {
+  teacherId: integer("teacher_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+  lastUploadAt: timestamp("last_upload_at").notNull().defaultNow(),
+  /** מועד היעד להעלאה הבאה: lastUploadAt + 6 או 10 שבועות, לפי דירוג המורה בעת ההעלאה */
+  nextDueAt: timestamp("next_due_at").notNull(),
+  /** מתאפס ל-null בכל העלאה חדשה; מסומן ע"י ה-cron כשנשלחה תזכורת למחזור הנוכחי */
+  reminderSentAt: timestamp("reminder_sent_at"),
+  /** חסימת גישה למאגר השיחות בלבד (לא לשאר האתר) — מבוטלת אוטומטית בהעלאה הבאה */
+  blocked: boolean("blocked").notNull().default(false),
+});
 
 export const purchases = pgTable(
   "purchases",
@@ -455,6 +553,29 @@ export const materialsRelations = relations(materials, ({ one }) => ({
   }),
 }));
 
+export const sichotRelations = relations(sichot, ({ one, many }) => ({
+  category: one(categories, { fields: [sichot.categoryId], references: [categories.id] }),
+  teacher: one(users, { fields: [sichot.teacherId], references: [users.id] }),
+  ratings: many(sichaRatings),
+  usages: many(sichaUsages),
+  ideas: many(sichaIdeas),
+}));
+
+export const sichaRatingsRelations = relations(sichaRatings, ({ one }) => ({
+  sicha: one(sichot, { fields: [sichaRatings.sichaId], references: [sichot.id] }),
+  teacher: one(users, { fields: [sichaRatings.teacherId], references: [users.id] }),
+}));
+
+export const sichaUsagesRelations = relations(sichaUsages, ({ one }) => ({
+  sicha: one(sichot, { fields: [sichaUsages.sichaId], references: [sichot.id] }),
+  teacher: one(users, { fields: [sichaUsages.teacherId], references: [users.id] }),
+}));
+
+export const sichaIdeasRelations = relations(sichaIdeas, ({ one }) => ({
+  sicha: one(sichot, { fields: [sichaIdeas.sichaId], references: [sichot.id] }),
+  teacher: one(users, { fields: [sichaIdeas.teacherId], references: [users.id] }),
+}));
+
 export const forumThreadsRelations = relations(forumThreads, ({ one, many }) => ({
   user: one(users, { fields: [forumThreads.userId], references: [users.id] }),
   posts: many(forumPosts),
@@ -484,3 +605,10 @@ export type Setting = typeof settings.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type UserInterest = typeof userInterests.$inferSelect;
+export type Sicha = typeof sichot.$inferSelect;
+export type SichaRating = typeof sichaRatings.$inferSelect;
+export type SichaUsage = typeof sichaUsages.$inferSelect;
+export type SichaIdea = typeof sichaIdeas.$inferSelect;
+export type SichaTeacherStatus = typeof sichaTeacherStatus.$inferSelect;
+export type SichaSeminar = (typeof sichaSeminarEnum.enumValues)[number];
+export type CategoryModule = (typeof categoryModuleEnum.enumValues)[number];

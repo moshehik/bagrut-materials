@@ -11,7 +11,20 @@ type Props = {
   loggedIn: boolean;
   /** הנתיב הנוכחי – לחזרה אחרי התחברות */
   currentPath?: string;
+  /** כמה פעמים המשתמשת הנוכחית הורידה את הקובץ הזה בעצמה */
+  myDownloadCount?: number;
 };
+
+/** נקודות נצנצים שיוצאות מכפתור ההורדה במעבר עכבר */
+function DownloadSparkles() {
+  return (
+    <span className="btn-download-sparkles" aria-hidden>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <span key={i} className="sparkle" />
+      ))}
+    </span>
+  );
+}
 
 function fileType(m: Material): { label: string; className: string } {
   const name = m.fileName.toLowerCase();
@@ -32,7 +45,13 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function MaterialCard({ material: m, entitlement, loggedIn, currentPath = "/subjects" }: Props) {
+export function MaterialCard({
+  material: m,
+  entitlement,
+  loggedIn,
+  currentPath = "/subjects",
+  myDownloadCount = 0,
+}: Props) {
   const kind = MATERIAL_KINDS[m.kind] ?? MATERIAL_KINDS.other;
   const isPremium = m.premiumOnly || m.access === "premium" || PREMIUM_KINDS.includes(m.kind);
   const ft = fileType(m);
@@ -110,6 +129,9 @@ export function MaterialCard({ material: m, entitlement, loggedIn, currentPath =
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted">
         <Fingerprint className="h-3.5 w-3.5 shrink-0" aria-hidden />
         מוטבע במספר האישי שלך
+        {myDownloadCount > 0 && (
+          <span>· הורדת קובץ זה {myDownloadCount.toLocaleString("he-IL")} פעמים</span>
+        )}
       </p>
     </article>
   );
@@ -160,10 +182,11 @@ function Actions({
       <>
         <a
           href={`/api/download/${m.id}`}
-          className={`btn text-sm py-2 ${entitlement.via === "free" ? "btn-oak" : "btn-primary"}`}
+          className="btn btn-download text-sm py-2"
           title="הקובץ יוטבע במספר האישי שלך"
         >
           <Download className="h-4 w-4" aria-hidden /> הורדה
+          <DownloadSparkles />
         </a>
         {viaLabel && <span className="text-xs text-muted">{viaLabel}</span>}
       </>

@@ -1,4 +1,4 @@
-import type { MaterialKind, Tier, Plan } from "@/db/schema";
+import type { MaterialKind, Tier, Plan, SichaSeminar } from "@/db/schema";
 
 export const SITE_NAME = "לו״ז העניין";
 export const SITE_TAGLINE = "מתמקדים בעיקר – שיעורים מוכנים למורות במחוז החרדי";
@@ -33,6 +33,19 @@ export const MATERIAL_KINDS: Record<MaterialKind, { label: string; icon: string;
 
 /** סוגי חומרים שנפתחים רק במנוי פרימיום */
 export const PREMIUM_KINDS: MaterialKind[] = ["past_exam", "presentation", "tips", "ideas"];
+
+/** סוג הסמינר שבו נמסרה שיחה במאגר השיחות (שיחה/חברה/כישורי חיים) */
+export const SICHA_SEMINARS: Record<SichaSeminar, { label: string; icon: string }> = {
+  mainstream: { label: "מיינסטרים", icon: "🏫" },
+  kiruv: { label: "קירוב", icon: "🌱" },
+  charedi_modern: { label: "חרדי מודרני", icon: "🕯️" },
+};
+
+/** קצב ההתחייבות להעלאת שיחה חדשה למאגר השיחות */
+export const SICHA_REGULAR_CADENCE_WEEKS = 6;
+export const SICHA_HIGH_RATED_CADENCE_WEEKS = 10;
+export const SICHA_HIGH_RATED_MIN_AVG = 4;
+export const SICHA_HIGH_RATED_MIN_COUNT = 3;
 
 export const PLANS: Record<
   Plan,

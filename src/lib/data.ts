@@ -1,8 +1,9 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, isNull, sql, gt, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNull, sql, gt, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
   categories,
+  downloads,
   materials,
   purchases,
   type Access,
@@ -368,6 +369,20 @@ export async function checkEntitlement(
   }
 
   return { ok: false, reason: "purchase" };
+}
+
+/** מספר ההורדות של המשתמשת הזו, לכל חומר מתוך הרשימה (Map<materialId, count>) */
+export async function getUserDownloadCounts(
+  userId: number,
+  materialIds: number[],
+): Promise<Map<number, number>> {
+  if (materialIds.length === 0) return new Map();
+  const rows = await db
+    .select({ materialId: downloads.materialId, n: count() })
+    .from(downloads)
+    .where(and(eq(downloads.userId, userId), inArray(downloads.materialId, materialIds)))
+    .groupBy(downloads.materialId);
+  return new Map(rows.map((r) => [r.materialId, Number(r.n)]));
 }
 
 export async function userHasPremium(user: User | null) {

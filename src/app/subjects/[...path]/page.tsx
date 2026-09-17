@@ -10,6 +10,7 @@ import {
   chainToHref,
   countMaterialsUnder,
   checkEntitlement,
+  getUserDownloadCounts,
   type Entitlement,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
@@ -20,8 +21,11 @@ import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
+import { SichotModule } from "@/components/sichot/sichot-module";
 import Image from "next/image";
-import nutImg from "../../../../public/images/faq-nut.png";
+import nutOneImg from "../../../../public/images/faq-nut.png";
+import nutTwoImg from "../../../../public/images/nuts/nut-two.png";
+import nutManyImg from "../../../../public/images/nuts/nut-many.png";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +103,10 @@ export default async function CategoryPage({ params }: Props) {
     mats.map((m) => checkEntitlement(user, m)),
   );
 
+  const downloadCounts = user
+    ? await getUserDownloadCounts(user.id, mats.map((m) => m.id))
+    : new Map<number, number>();
+
   const groups = KIND_ORDER.map((kind) => ({
     kind,
     items: mats
@@ -108,6 +116,11 @@ export default async function CategoryPage({ params }: Props) {
 
   const accent = category.color || root.color || "var(--blue)";
   const parentHref = chain.length > 1 ? chainToHref(chain.slice(0, -1)) : "/subjects";
+
+  // תיקייה ראשית (מקצוע) = הרבה אגוזים; תיקייה סופית (כבר יש בה חומרים, בלי תתי-תיקיות) = אגוז אחד; באמצע = שני אגוזים
+  const isRoot = chain.length === 1;
+  const isFinal = children.length === 0;
+  const nutImg = isRoot ? nutManyImg : isFinal ? nutOneImg : nutTwoImg;
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
@@ -145,12 +158,14 @@ export default async function CategoryPage({ params }: Props) {
               {category.description && (
                 <p className="mt-2 max-w-3xl leading-relaxed text-muted">{category.description}</p>
               )}
-              <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted">
-                <span className="chip bg-blue-soft text-blue-deep">
-                  <FolderOpen className="h-3.5 w-3.5" aria-hidden /> {children.length} תיקיות
-                </span>
-                <span className="chip bg-pink-soft text-[#9d4a2a]">{mats.length} חומרים כאן</span>
-              </div>
+              {category.contentModule !== "sichot" && (
+                <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted">
+                  <span className="chip bg-blue-soft text-blue-deep">
+                    <FolderOpen className="h-3.5 w-3.5" aria-hidden /> {children.length} תיקיות
+                  </span>
+                  <span className="chip bg-pink-soft text-[#9d4a2a]">{mats.length} חומרים כאן</span>
+                </div>
+              )}
             </div>
             {category.bundlePrice !== null && (
               <Link
@@ -165,6 +180,13 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       </header>
 
+      {/* מאגר שיחות מורות (שיחה / חברה / כישורי חיים) – מציג מודול ייעודי במקום עמוד חומרים רגיל */}
+      {category.contentModule === "sichot" ? (
+        <div className="mt-10">
+          <SichotModule categoryId={category.id} folderTitle={category.title} path={here} user={user} />
+        </div>
+      ) : (
+        <>
       {/* תיקיות משנה */}
       {children.length > 0 && (
         <section className="mt-10" aria-labelledby="children-h">
@@ -244,6 +266,7 @@ export default async function CategoryPage({ params }: Props) {
                         entitlement={ent}
                         loggedIn={!!user}
                         currentPath={here}
+                        myDownloadCount={downloadCounts.get(m.id) ?? 0}
                       />
                     ))}
                   </AnimatedGrid>
@@ -268,6 +291,8 @@ export default async function CategoryPage({ params }: Props) {
 
       {/* פורום מורות – רק ביחידות עצמן (תיקיות ללא תתי-תיקיות) */}
       {children.length === 0 && <UnitForum category={category} here={here} user={user} />}
+        </>
+      )}
     </div>
   );
 }
