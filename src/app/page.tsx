@@ -69,7 +69,7 @@ export default async function HomePage() {
                 text="לראשונה! אתר חדשני ומקצועי שמאגד את כל חומרי הבגרות ללמידה בכיתה, שכפול למורה ולתלמידה, חומר העשרה מגוון ומרתק, בוחן מסכם עם תשובון למורה ודף עם מיומנויות למידה המותאמות ליחידת החומר! תוספים מרעננים ומרגשים למנויות פרימיום. כן. הגיע הזמן להוציא את העז מהלו״ז, שתוכלי להתמקד בלוז העניין ולתת מעבר."
               />
               <div className={s.acts}>
-                <Link href="/subjects" className="btn btn-primary text-base">
+                <Link href="/subjects" className="btn btn-terra text-base">
                   למאגר המקצועות
                 </Link>
                 <Link href="/pricing" className="btn btn-ghost text-base">
