@@ -17,6 +17,14 @@
    - Corrections/instructions from the teacher are tracked two ways: full history+reasoning in `חומרים מוכנים מחדש/הוראות לבניית כל החומרים החדשים/כל ההוראות לבניית החומרים.md`, and a lean structured status ledger (which files already incorporate which correction #) in `יומן תיקונים מבני (סטטוס קבצים).md` in that same folder — update both when a new correction comes in, but only the ledger needs re-reading for a "which files still need this fix" sweep.
    - **Fill-in-the-blank lines: always use literal underscore characters (`____`), never spaces-with-underline-formatting (`<w:u/>` on a run of `" "` chars).** Confirmed bug (2026-09-14, "פרק כ" materials): a run of only spaces with underline formatting silently loses its underline when it lands at a line-wrap boundary in the exported PDF (the renderer trims trailing whitespace there) — the blank line just vanishes, mid-sentence, with no visual trace. Underscore characters are real glyphs and don't get trimmed, so they always render regardless of where the line wraps.
 
+## Netfree — all file transfer must go through our own domain
+
+Many students/teachers browse through Netfree (a content-filtering proxy common in the Charedi sector) which only lets the browser talk to the site's own domain — a direct request to a third-party host (Vercel Blob's `*.vercel-storage.com`, `drive.google.com`, etc.) is blocked outright. This is a hard constraint on the whole file-transfer design, not an edge case:
+- **Downloads**: never link directly to Blob/Drive. Every material download goes through `GET /api/download/[id]` ([route.ts](src/app/api/download/[id]/route.ts)), which fetches the file server-side (via `fetchFile()`/`driveDownload()`) and streams it back from our own domain, watermarking it on the way.
+- **Uploads**: same reasoning in reverse — a direct browser `PUT` to `vercel.com`/Blob is blocked, so admin uploads go in ≤4MB chunks through `POST /api/admin/upload/chunk` (see the comment at the top of [upload-form.tsx](src/components/admin/upload-form.tsx) and [chunk/route.ts](src/app/api/admin/upload/chunk/route.ts)), reassembled server-side.
+
+If a feature ever needs to hand the browser a file URL, it must be a same-origin route, never a raw third-party URL — otherwise it silently breaks for every Netfree-filtered visitor with no client-side error to debug from.
+
 ## Two computers — which folder to run from
 
 This repo is worked on from two physical Windows machines, both sometimes running Claude Code sessions on it at once. **Figure out which machine you're on before touching git**: run `$env:COMPUTERNAME` (PowerShell) or `echo $COMPUTERNAME` (bash).
