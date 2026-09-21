@@ -9,6 +9,7 @@ import {
   chainSuspended,
   chainToHref,
   countMaterialsUnder,
+  getIdsWithChildren,
   checkEntitlement,
   getUserDownloadCounts,
   type Entitlement,
@@ -23,9 +24,7 @@ import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 import { SichotModule } from "@/components/sichot/sichot-module";
 import Image from "next/image";
-import nutOneImg from "../../../../public/images/faq-nut.png";
-import nutTwoImg from "../../../../public/images/nuts/nut-two.png";
-import nutManyImg from "../../../../public/images/nuts/nut-many.png";
+import { pickNut } from "@/lib/nut-images";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +98,15 @@ export default async function CategoryPage({ params }: Props) {
     children.map((c) => countMaterialsUnder(c.id, isAdmin).catch(() => 0)),
   );
 
+  const hasKids = await getIdsWithChildren(children.map((c) => c.id), isAdmin).catch(() => new Set<number>());
+
+  // תמונת אגוז לכל כרטיס: רצים לפי הסדר בתוך כל סוג (אחד/שניים), כך שכרטיסים סמוכים לעולם לא מקבלים אותה תמונה
+  const nutSeen = { one: 0, two: 0 };
+  const childNuts = children.map((c) => {
+    const kind = hasKids.has(c.id) ? ("two" as const) : ("one" as const);
+    return { kind, idx: category.id + nutSeen[kind]++ };
+  });
+
   const entitlements: Entitlement[] = await Promise.all(
     mats.map((m) => checkEntitlement(user, m)),
   );
@@ -120,7 +128,7 @@ export default async function CategoryPage({ params }: Props) {
   // תיקייה ראשית (מקצוע) = הרבה אגוזים; תיקייה סופית (כבר יש בה חומרים, בלי תתי-תיקיות) = אגוז אחד; באמצע = שני אגוזים
   const isRoot = chain.length === 1;
   const isFinal = children.length === 0;
-  const nutImg = isRoot ? nutManyImg : isFinal ? nutOneImg : nutTwoImg;
+  const nutImg = pickNut(isRoot ? "many" : isFinal ? "one" : "two", category.id);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
@@ -139,7 +147,7 @@ export default async function CategoryPage({ params }: Props) {
               className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-3xl animate-float"
               style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
             >
-              <Image src={nutImg} alt="" className="h-14 w-14 object-contain" aria-hidden />
+              <Image src={nutImg} alt="" className="h-12 w-12 object-contain" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -205,6 +213,8 @@ export default async function CategoryPage({ params }: Props) {
                 questionnaireCode={c.questionnaireCode}
                 count={childCounts[i]}
                 color={c.color || accent}
+                nutKind={childNuts[i].kind}
+                nutId={childNuts[i].idx}
               />
             ))}
           </AnimatedGrid>

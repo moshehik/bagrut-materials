@@ -67,6 +67,20 @@ export async function getVisibleChildren(parentId: number, isAdmin: boolean) {
     .orderBy(asc(categories.sort), asc(categories.id));
 }
 
+/** מתוך רשימת תיקיות: אילו מהן יש להן תתי-תיקיות (גלויות למשתמשת) – לבחירת תמונת האגוז בכרטיס */
+export async function getIdsWithChildren(ids: number[], isAdmin: boolean): Promise<Set<number>> {
+  if (ids.length === 0) return new Set();
+  const rows = await db
+    .selectDistinct({ parentId: categories.parentId })
+    .from(categories)
+    .where(
+      isAdmin
+        ? inArray(categories.parentId, ids)
+        : and(inArray(categories.parentId, ids), eq(categories.status, "active")),
+    );
+  return new Set(rows.map((r) => r.parentId).filter((x): x is number => x !== null));
+}
+
 /** חומרים – למנהלת הכל, למשתמשות רק פעילים */
 export async function getVisibleMaterials(categoryId: number, isAdmin: boolean) {
   if (isAdmin) return getMaterials(categoryId);

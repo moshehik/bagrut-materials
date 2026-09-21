@@ -73,6 +73,20 @@
   transform: translateY(-2px) scale(1.06);
 }
 
+.nut {
+  position: absolute;
+  inset: 0;
+  width: 44%;
+  height: 54%;
+  margin: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 7px rgba(31, 45, 51, 0.18));
+  transition: transform 0.3s var(--ease-snap);
+}
+.card:hover .nut {
+  transform: translateY(-2px) scale(1.06);
+}
+
 .title {
   font-family: var(--font-hand);
   font-weight: 400;

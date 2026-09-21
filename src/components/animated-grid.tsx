@@ -1,11 +1,12 @@
-"use client";
-
-import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /**
  * רשת עם כניסה מדורגת (stagger) של הילדים – לשימוש ברכיבי שרת:
  * <AnimatedGrid className="grid ..."> {items.map(...)} </AnimatedGrid>
+ *
+ * האנימציה היא CSS בלבד (animate-fade-up + השהיה): התוכן גלוי כברירת מחדל,
+ * כך שאם האנימציה לא רצה (חלון מוסתר, JS שלא נטען, מפחיתי-תנועה) הכרטיסים עדיין מוצגים —
+ * בניגוד לגרסה הקודמת שהסתירה אותם (opacity 0) עד שאנימציית JS הופעלה.
  */
 export function AnimatedGrid({
   children,
@@ -18,36 +19,21 @@ export function AnimatedGrid({
 }) {
   const items = Array.isArray(children) ? children : [children];
   return (
-    <motion.div
-      className={className}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: "-40px" }}
-      variants={{
-        hidden: {},
-        show: { transition: { staggerChildren: 0.05, delayChildren: delay } },
-      }}
-    >
+    <div className={className}>
       {items.map((child, i) => (
-        <motion.div
+        <div
           key={i}
-          variants={{
-            hidden: { opacity: 0, y: 10 },
-            show: {
-              opacity: 1,
-              y: 0,
-              transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
-            },
-          }}
+          className="animate-fade-up"
+          style={{ animationDelay: `${delay + Math.min(i, 12) * 0.05}s` } as CSSProperties}
         >
           {child}
-        </motion.div>
+        </div>
       ))}
-    </motion.div>
+    </div>
   );
 }
 
-/** בלוק בודד שנכנס בעדינות כשמגיעים אליו בגלילה */
+/** בלוק בודד שנכנס בעדינות (גלוי כברירת מחדל, ראו AnimatedGrid) */
 export function Reveal({
   children,
   className = "",
@@ -58,14 +44,11 @@ export function Reveal({
   delay?: number;
 }) {
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
+    <div
+      className={`animate-fade-up ${className}`}
+      style={{ animationDelay: `${delay}s` } as CSSProperties}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

@@ -12,7 +12,7 @@ import { HeroTitle } from "@/components/hero-title";
 import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
-import { SubjectIcon } from "@/components/subject-icons";
+import { pickNut } from "@/lib/nut-images";
 import { FaqSection } from "@/components/faq-section";
 import s from "./home.module.css";
 
@@ -123,7 +123,7 @@ export default async function HomePage() {
           <EmptySubjects />
         ) : (
           <AnimatedGrid className={s.subjects}>
-            {subjects.map((c) => (
+            {subjects.map((c, i) => (
               <Link
                 key={c.id}
                 href={`/subjects/${encodeURIComponent(c.slug)}`}
@@ -149,7 +149,7 @@ export default async function HomePage() {
                       />
                     </div>
                   ) : (
-                    <SubjectIcon slug={c.slug} className={s.folderIcon} />
+                    <Image className={s.nut} src={pickNut("many", i)} alt="" aria-hidden />
                   )}
                 </div>
                 {!SUBJECT_HOUSES[c.slug] && <h3>{c.title}</h3>}
