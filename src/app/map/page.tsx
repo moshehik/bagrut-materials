@@ -7,6 +7,7 @@ import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
 import { FocusNotice } from "@/components/focus-notice";
+import { NutScrollHandleHorizontal } from "@/components/nut-scroll-handle";
 
 export const metadata: Metadata = { title: "מפת הבגרות המלאה" };
 export const dynamic = "force-dynamic";
@@ -90,9 +91,12 @@ export default async function MapPage() {
           <p className="mt-2 text-muted">ברגע שיתווספו מקצועות – הם יופיעו כאן.</p>
         </div>
       ) : (
-        <AnimatedGrid className="mt-8">
-          <BagrutMapTree tree={tree} />
-        </AnimatedGrid>
+        <>
+          <NutScrollHandleHorizontal />
+          <AnimatedGrid className="mt-8">
+            <BagrutMapTree tree={tree} />
+          </AnimatedGrid>
+        </>
       )}
     </div>
   );

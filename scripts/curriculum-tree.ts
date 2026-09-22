@@ -1041,12 +1041,23 @@ export const TREE: Node[] = [
             slug: "kohelet",
             title: "קהלת",
             description: 'פרקים נבחרים בהיקף של 3 פרקים לפחות, ע"פ בחירת ביה"ס.',
+            children: [
+              ready(perekM(1, "מדרש קהלת רבה")),
+              ready(perekM(3, "מדרש קהלת רבה")),
+              ready(perekM(7, "מדרש קהלת רבה")),
+              ready(perekM(12, "מדרש קהלת רבה")),
+            ],
           },
           { slug: "mishlei", title: "משלי", children: prakimOf(1, 3, 31) },
           {
             slug: "ezra-nechemia",
             title: "עזרא ונחמיה",
-            description: 'בהיקף של 10 פרקים לפחות ע"פ בחירת ביה"ס.',
+            description:
+              'בהיקף של 10 פרקים לפחות ע"פ בחירת ביה"ס. הוכנו 12 פרקים, ובית הספר בוחר מהם לפחות 10.',
+            children: [
+              { slug: "ezra", title: "עזרא", children: prakimOf(1, 3, 7, 9) },
+              { slug: "nechemia", title: "נחמיה", children: prakimOf(1, 2, 4, 5, 6, 8, 9, 13) },
+            ],
           },
         ],
       },

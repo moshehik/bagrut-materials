@@ -313,7 +313,7 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
   };
 
   return (
-    <div className="flex flex-col gap-16 overflow-x-auto pb-2 pt-12">
+    <div data-map-scroll-x="" className="flex flex-col gap-16 overflow-x-auto pb-2 pt-12">
       {tree.map((root) => (
         <div key={root.cat.id} className="min-w-max">
           <Branch
