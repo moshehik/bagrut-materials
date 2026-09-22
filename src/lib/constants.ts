@@ -143,6 +143,7 @@ const SUBJECT_HOUSE_FILES: Record<string, string> = {
   teacher: "house-teacher.png",
   minhal: "house-minhal.png",
   "chinuch-pinansi": "house-chinuch-pinansi.png",
+  "kishurei-chaim": "house-kishurei-chaim.png",
 };
 
 export const SUBJECT_HOUSES: Record<string, string> = Object.fromEntries(
@@ -168,6 +169,7 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
   teacher: "#b0729a",
   minhal: "#bbba8d",
   "chinuch-pinansi": "#c3bd8e",
+  "kishurei-chaim": "#059669",
 };
 
 export function formatPrice(agorot: number) {
