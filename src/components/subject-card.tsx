@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
 import Image from "next/image";
 import { SubjectIcon } from "./subject-icons";
-import { pickNut, type NutKind } from "@/lib/nut-images";
+import { nutForLevel } from "@/lib/nut-images";
 import s from "./subject-card.module.css";
 
 type Props = {
@@ -18,10 +18,10 @@ type Props = {
   countLabel?: string;
   color?: string | null;
   size?: "md" | "lg";
-  /** תמונת אגוז במקום האייקון (כשאין בית מאויר): many = תיקייה ראשית, two = אמצעית, one = סופית */
-  nutKind?: NutKind;
-  /** אינדקס לבחירת תמונה מתוך הקבוצה (הקורא מספק מספור רץ, כדי שכרטיסים סמוכים יקבלו תמונות שונות) */
-  nutId?: number;
+  /** תמונת אגוז במקום האייקון (כשאין בית מאויר): המפתח הוא slug של המקצוע השורשי */
+  nutKey?: string;
+  /** עומק התיקייה בעץ (0 = מקצוע) — כל התיקיות באותה רמה ובאותו מקצוע מקבלות אותה תמונה */
+  nutDepth?: number;
 };
 
 /**
@@ -39,10 +39,12 @@ export function SubjectCard({
   countLabel = "חומרים",
   color,
   size = "md",
-  nutKind,
-  nutId = 0,
+  nutKey,
+  nutDepth = 0,
 }: Props) {
-  const house = slug ? SUBJECT_HOUSES[slug] : undefined;
+  // בית מאויר רק לכרטיס של מקצוע ברמה הראשית (nutDepth === 0). תיקייה פנימית תמיד מקבלת אגוז,
+  // גם אם ה-slug שלה מתנגש בשם של מקצוע שיש לו בית (למשל "mishlei" שבתוך חלופות כתובים).
+  const house = nutDepth === 0 && slug ? SUBJECT_HOUSES[slug] : undefined;
   const accent = color || (slug ? SUBJECT_HOUSE_COLORS[slug] : undefined) || "var(--blue)";
   const big = size === "lg";
 
@@ -57,8 +59,8 @@ export function SubjectCard({
           <div className={s.houseWrap}>
             <img className={s.house} src={house} alt={title} width={356} height={266} />
           </div>
-        ) : nutKind ? (
-          <Image className={s.nut} src={pickNut(nutKind, nutId)} alt="" aria-hidden />
+        ) : nutKey ? (
+          <Image className={s.nut} src={nutForLevel(nutKey, nutDepth)} alt="" aria-hidden />
         ) : (
           <SubjectIcon slug={rootSlug || slug} className={s.folderIcon} />
         )}

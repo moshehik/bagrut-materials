@@ -56,3 +56,26 @@ export function pickNut(kind: NutKind, index: number): StaticImageData {
   const list = NUTS[kind];
   return list[Math.abs(index) % list.length];
 }
+
+/** hash יציב (לא תלוי-סביבה) לשם המקצוע, כדי שלכל מקצוע יהיה "מסלול אגוזים" קבוע משלו */
+function hashKey(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/** סוג האגוז נקבע לפי עומק התיקייה בלבד — כך שכל התיקיות באותה רמה נראות זהות */
+function kindForDepth(depth: number): NutKind {
+  return depth <= 0 ? "many" : depth === 1 ? "two" : "one";
+}
+
+/**
+ * תמונת האגוז של תיקייה, לפי המקצוע השורשי והעומק שלה בעץ (0 = המקצוע עצמו).
+ *
+ * הכלל: **אותו מקצוע + אותה רמה = בדיוק אותה תמונה** (למשל "תורה 5 יחידות" ו"תורה 3 יחידות"),
+ * רמה אחת פנימה = תמונה אחרת (אבל שוב זהה לכל האחיות שלה), ומקצוע אחר = מסלול תמונות אחר —
+ * כך יש גיוון בין המקצועות, וכל התמונות עדיין מאותו גיליון אגוזי לוז, כלומר נראות כאותו אגוז.
+ */
+export function nutForLevel(rootKey: string, depth: number): StaticImageData {
+  return pickNut(kindForDepth(depth), hashKey(rootKey) + depth);
+}

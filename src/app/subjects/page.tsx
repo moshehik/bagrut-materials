@@ -58,7 +58,7 @@ export default async function SubjectsPage() {
         </div>
       ) : (
         <AnimatedGrid className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {rows.map(({ subject: s, count }, i) => (
+          {rows.map(({ subject: s, count }) => (
             <SubjectCard
               key={s.id}
               size="lg"
@@ -69,8 +69,8 @@ export default async function SubjectsPage() {
               questionnaireCode={s.questionnaireCode}
               count={count}
               color={s.color}
-              nutKind="many"
-              nutId={i}
+              nutKey={s.slug}
+              nutDepth={0}
             />
           ))}
         </AnimatedGrid>

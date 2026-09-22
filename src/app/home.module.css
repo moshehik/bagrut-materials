@@ -322,8 +322,8 @@
 .nut {
   position: absolute;
   inset: 0;
-  width: 44%;
-  height: 54%;
+  width: 34%;
+  height: 42%;
   margin: auto;
   object-fit: contain;
   filter: drop-shadow(0 4px 7px rgba(31, 45, 51, 0.18));

@@ -28,6 +28,27 @@ const meforshimOf = (node: MapNode): string[] | null => {
     .filter(Boolean);
 };
 
+/**
+ * תיאור שמתחיל ב"בחירה:" מסמן אחים שבוחרים ביניהם (או/או) —
+ * הם מוצגים ריבוע ליד ריבוע עם סלש ביניהם, ומשפט ההסבר מתחת לקבוצה.
+ */
+const CHOICE_PREFIX = "בחירה:";
+const choiceNoteOf = (node: MapNode): string | null => {
+  const d = node.cat.description;
+  return d?.startsWith(CHOICE_PREFIX) ? d.slice(CHOICE_PREFIX.length).trim() : null;
+};
+/** מקבץ אחים סמוכים שחולקים אותו משפט בחירה לקבוצה אחת; כל השאר — קבוצה של אחד */
+function groupChoices(children: MapNode[]): MapNode[][] {
+  const groups: MapNode[][] = [];
+  for (const child of children) {
+    const note = choiceNoteOf(child);
+    const last = groups[groups.length - 1];
+    if (note && last && choiceNoteOf(last[0]) === note) last.push(child);
+    else groups.push([child]);
+  }
+  return groups;
+}
+
 type TreeCtx = {
   isOpen: (id: number) => boolean;
   toggle: (id: number) => void;
@@ -205,7 +226,10 @@ function NodeBox({
 function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; accent: string; ctx: TreeCtx }) {
   const open = ctx.isOpen(node.cat.id);
   const hasChildren = node.children.length > 0;
-  const allLeaves = hasChildren && node.children.every((c) => c.children.length === 0);
+  const allLeaves =
+    hasChildren &&
+    node.children.every((c) => c.children.length === 0) &&
+    !node.children.some((c) => choiceNoteOf(c));
 
   return (
     <div className="flex items-start">
@@ -218,9 +242,14 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
           onToggle={() => ctx.toggle(node.cat.id)}
           ctx={ctx}
         />
-        {open && node.cat.description && !node.cat.description.startsWith(MEFORSHIM_PREFIX) && (
-          <p className="max-w-[15rem] text-[11px] leading-relaxed text-muted">{node.cat.description}</p>
-        )}
+        {open &&
+          node.cat.description &&
+          !node.cat.description.startsWith(MEFORSHIM_PREFIX) &&
+          !node.cat.description.startsWith(CHOICE_PREFIX) && (
+            <p className="max-w-[15rem] text-[11px] leading-relaxed text-muted">
+              {node.cat.description}
+            </p>
+          )}
         {open && allLeaves && (
           <div className="flex flex-col">
             <span aria-hidden className="ms-6 h-3 w-px bg-ink/50" />
@@ -244,16 +273,118 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
         <>
           <span aria-hidden className="mt-4 h-px w-4 shrink-0 bg-ink/50" />
           <ul className="flex flex-col gap-6">
-            {node.children.map((child) => (
+            {groupChoices(node.children).map((group) => (
               <li
-                key={child.cat.id}
+                key={group[0].cat.id}
                 className="flow-branch-line relative flex items-start ps-4 after:absolute after:right-0 after:top-4 after:h-px after:w-4 after:-translate-y-1/2 after:bg-ink/50"
               >
-                <Branch node={child} level={level + 1} accent={child.cat.color || accent} ctx={ctx} />
+                {group.length > 1 ? (
+                  <ChoiceGroup members={group} level={level + 1} accent={accent} ctx={ctx} />
+                ) : (
+                  <Branch
+                    node={group[0]}
+                    level={level + 1}
+                    accent={group[0].cat.color || accent}
+                    ctx={ctx}
+                  />
+                )}
               </li>
             ))}
           </ul>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ילדי צומת מוצגים מתחתיו (ולא משמאלו) — משמש כשנפתח אחד מריבועי קבוצת "או/או",
+ * כדי שהפירוט לא ידחף הצידה את הריבוע השני של הקבוצה.
+ */
+function ChildrenBelow({
+  node,
+  level,
+  accent,
+  ctx,
+}: {
+  node: MapNode;
+  level: number;
+  accent: string;
+  ctx: TreeCtx;
+}) {
+  if (!node.children.length) return null;
+  return (
+    <div className="flex flex-col">
+      <span aria-hidden className="ms-6 h-3 w-px bg-ink/50" />
+      <ul className="flex flex-col gap-6 ps-4 pt-1">
+        {node.children.map((child) => (
+          <li
+            key={child.cat.id}
+            className="flow-branch-line relative flex items-start ps-4 after:absolute after:right-0 after:top-4 after:h-px after:w-4 after:-translate-y-1/2 after:bg-ink/50"
+          >
+            <Branch node={child} level={level + 1} accent={child.cat.color || accent} ctx={ctx} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * קבוצת "או/או": שני ריבועים (או יותר) זה לצד זה עם סלש ביניהם, ומתחתם משפט
+ * שמסביר שבוחרים ביניהם. לחיצה על ריבוע פותחת אותו מתחת לקבוצה וסוגרת את השני —
+ * כי בפועל לומדים רק אחד מהם.
+ */
+function ChoiceGroup({
+  members,
+  level,
+  accent,
+  ctx,
+}: {
+  members: MapNode[];
+  level: number;
+  accent: string;
+  ctx: TreeCtx;
+}) {
+  const note = choiceNoteOf(members[0]) ?? "";
+  const openMember = members.find((m) => ctx.isOpen(m.cat.id)) ?? null;
+  const pick = (m: MapNode) => {
+    for (const other of members)
+      if (other !== m && ctx.isOpen(other.cat.id)) ctx.toggle(other.cat.id);
+    ctx.toggle(m.cat.id);
+  };
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex items-center gap-2">
+        {members.map((m, i) => (
+          <div key={m.cat.id} className="flex items-center gap-2">
+            {i > 0 && (
+              <span aria-hidden className="flow-choice-slash">
+                /
+              </span>
+            )}
+            <div id={`map-cat-${m.cat.id}`} className="flex flex-col items-start">
+              <NodeBox
+                node={m}
+                level={level}
+                accent={m.cat.color || accent}
+                open={ctx.isOpen(m.cat.id)}
+                onToggle={() => pick(m)}
+                ctx={ctx}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {note && <p className="max-w-[22rem] text-[11px] leading-relaxed text-muted">{note}</p>}
+      {openMember && (
+        <ChildrenBelow
+          node={openMember}
+          level={level}
+          accent={openMember.cat.color || accent}
+          ctx={ctx}
+        />
       )}
     </div>
   );

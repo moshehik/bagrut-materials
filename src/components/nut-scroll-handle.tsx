@@ -5,10 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const TOP_MARGIN = 90; // מרווח קבוע מתחת לכותרת העליונה של האתר
 const BOTTOM_MARGIN = 24;
-const RIGHT_MARGIN = 16;
+// צמוד יחסית לקצה המסך בכוונה: כך נשאר מרווח גדול יותר בין האגוז לטקסט,
+// והאגוז לא עולה על הטקסט גם כשהוא גדל בלחיצה (scale 1.15)
+const RIGHT_MARGIN = 4;
 const HIT_SIZE = 52; // אזור אחיזה נוח לגרירה
-const ICON_SIZE = 28; // גודל האגוז המוצג בפועל
+const ICON_SIZE = 34; // גודל האגוז המוצג בפועל
 const MIN_SCROLLABLE = 400; // לא מציגים ציר בדפים קצרים מדי
+const MIN_SCROLLABLE_X = 24; // לא מציגים ציר אופקי כשאין ממש מה לגלול לצדדים
 
 function getMaxScroll() {
   return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
@@ -158,7 +161,7 @@ export function NutScrollHandleHorizontal({
   targetSelector?: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
+  const [canScroll, setCanScroll] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [percent, setPercent] = useState(0); // 0 = קצה ההתחלה (ימין), 1 = הקצה הרחוק (שמאל)
 
@@ -170,27 +173,55 @@ export function NutScrollHandleHorizontal({
     return Math.max(0, el.scrollWidth - el.clientWidth);
   }, [getTarget]);
 
-  // מוצג תמיד בעמוד המפה — גם אם כרגע אין מה לגלול, כדי שיהיה עקבי וברור שהוא שם
+  // מוצג רק כשהתרשים באמת רחב מהמסך וצריך להזיז כדי להמשיך לראות אותו
   const syncFromScroll = useCallback(() => {
     const el = getTarget();
     const max = getMaxScrollX();
-    setMounted(true);
+    setCanScroll(max > MIN_SCROLLABLE_X);
     setPercent(el && max > 0 ? Math.min(1, Math.max(0, Math.abs(el.scrollLeft) / max)) : 0);
   }, [getTarget, getMaxScrollX]);
 
   useEffect(() => {
-    const el = getTarget();
-    syncFromScroll();
-    el?.addEventListener("scroll", syncFromScroll, { passive: true });
-    window.addEventListener("resize", syncFromScroll);
+    let el: HTMLElement | null = null;
+    let raf = 0;
+    let findRaf = 0;
+    let tries = 0;
 
-    const ro = new ResizeObserver(() => syncFromScroll());
-    if (el) ro.observe(el);
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        syncFromScroll();
+      });
+    };
+
+    const ro = new ResizeObserver(schedule);
+    // פתיחה/סגירה של ענפים משנה את רוחב התוכן בלי אירוע scroll/resize ובלי לשנות את גודל המיכל
+    const mo = new MutationObserver(schedule);
+
+    const attach = () => {
+      findRaf = 0;
+      el = getTarget();
+      if (!el) {
+        if (tries++ < 60) findRaf = requestAnimationFrame(attach);
+        return;
+      }
+      el.addEventListener("scroll", schedule, { passive: true });
+      ro.observe(el);
+      mo.observe(el, { childList: true, subtree: true, attributes: true });
+      syncFromScroll();
+    };
+
+    attach();
+    window.addEventListener("resize", schedule);
 
     return () => {
-      el?.removeEventListener("scroll", syncFromScroll);
-      window.removeEventListener("resize", syncFromScroll);
+      if (raf) cancelAnimationFrame(raf);
+      if (findRaf) cancelAnimationFrame(findRaf);
+      el?.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
       ro.disconnect();
+      mo.disconnect();
     };
   }, [getTarget, syncFromScroll]);
 
@@ -246,7 +277,7 @@ export function NutScrollHandleHorizontal({
     [percentFromClientX, applyPercent]
   );
 
-  if (!mounted) return null;
+  if (!canScroll) return null;
 
   return (
     <div className="mx-auto mb-2 h-[52px] max-w-md" dir="ltr">

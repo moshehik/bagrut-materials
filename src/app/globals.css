@@ -252,6 +252,14 @@ body {
   background-color: transparent;
   transform: none;
 }
+/* קבוצת "או/או" — סלש בכתב יד בין שני ריבועים שבוחרים ביניהם */
+.flow-choice-slash {
+  font-family: var(--font-hand);
+  font-size: 1.9rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  user-select: none;
+}
 /* הבהוב כשמגיעים לצומת דרך הפניה */
 .flow-flash > .flow-node {
   background-color: color-mix(in srgb, var(--flow-accent, var(--sun)) 40%, transparent);
