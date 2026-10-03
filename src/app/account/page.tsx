@@ -25,7 +25,7 @@ import { getCurrentUser } from "@/lib/session";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { userHasPremium, getCategoryChain, chainToHref, getRootSubjects } from "@/lib/data";
 import { PLANS, TIERS, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
-import { EditNameForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
+import { EditNameForm, EditPhoneForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
 import { updateInterestsAction, requestCancelSubscriptionAction } from "@/lib/actions/profile";
 
 const TX_TYPE_LABEL: Record<string, string> = {
@@ -213,6 +213,16 @@ export default async function AccountPage({
               </dd>
             </div>
             <div>
+              <dt className="text-muted">טלפון</dt>
+              <dd className="font-semibold">
+                {user.phone ? (
+                  <span dir="ltr">{user.phone}</span>
+                ) : (
+                  <span className="text-gold font-normal">חסר – יש להשלים לפני ההורדה הבאה</span>
+                )}
+              </dd>
+            </div>
+            <div>
               <dt className="text-muted">חברה מאז</dt>
               <dd className="font-semibold">{fmtDate(user.createdAt)}</dd>
             </div>
@@ -233,6 +243,7 @@ export default async function AccountPage({
             </summary>
             <div className="mt-4 space-y-5 border-t border-foreground/10 pt-4">
               <EditNameForm currentName={user.name} />
+              <EditPhoneForm currentPhone={user.phone} />
               <ChangeEmailForm currentEmail={user.email} pendingEmail={user.pendingEmail} />
               <ChangePasswordForm />
             </div>
@@ -251,7 +262,7 @@ export default async function AccountPage({
             {user.personalCode}
           </div>
           <p className="text-sm text-muted mt-3 leading-relaxed">
-            מספר זה מוטבע על כל קובץ שאת מורידה – בשולי העמוד וכסימן מים שקוף. כך החומרים שומרים על
+            מספר זה מוטבע על כל קובץ שאת מורידה כסימן מים שקוף, יחד עם השם, המייל והטלפון שלך. כך החומרים שומרים על
             זכויות היוצרים של הכותבות, ואת יכולה להשתמש בהם בכיתה בחופשיות. נא לא להעביר קבצים
             הלאה.
           </p>

@@ -183,6 +183,19 @@ export function RegisterForm({ next, googleEnabled }: { next?: string; googleEna
           />
         </label>
         <label className="block">
+          <span className="text-sm font-semibold">מספר טלפון</span>
+          <input
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            required
+            dir="ltr"
+            className="input mt-1 text-left"
+            placeholder="050-1234567"
+          />
+        </label>
+        <label className="block">
           <span className="text-sm font-semibold">סיסמה</span>
           <input
             name="password"

@@ -64,7 +64,7 @@ const NAV = [
   { href: "/subjects", label: "המקצועות" },
   { href: "/map", label: "מפת הבגרות" },
   { href: "/pricing", label: "מסלולים" },
-  { href: "/sell", label: "מוכרות" },
+  { href: "/coupons", label: "קופונים זמינים" },
 ];
 
 /** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */

@@ -11,12 +11,18 @@ import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
 import { genPersonalCode } from "@/lib/auth-utils";
+import { normalizeIsraeliPhone, PHONE_ERROR } from "@/lib/phone";
 
 export type ActionState = { error?: string } | undefined;
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "שם קצר מדי").max(120),
   email: z.string().trim().toLowerCase().email("כתובת מייל לא תקינה"),
+  phone: z.string().transform((s, ctx) => {
+    const p = normalizeIsraeliPhone(s);
+    if (!p) ctx.addIssue({ code: "custom", message: PHONE_ERROR });
+    return p ?? "";
+  }),
   password: z.string().min(6, "סיסמה של 6 תווים לפחות"),
 });
 
@@ -24,7 +30,7 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
   if (!(await getBool("registration_open"))) return { error: "ההרשמה סגורה כרגע" };
   const parsed = registerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { name, email, password } = parsed.data;
+  const { name, email, phone, password } = parsed.data;
 
   const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
   if (exists) return { error: "כתובת המייל כבר רשומה. אפשר להתחבר." };
@@ -50,6 +56,7 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     .values({
       name,
       email,
+      phone,
       passwordHash,
       personalCode,
       role: adminEmails.includes(email) ? "admin" : "user",

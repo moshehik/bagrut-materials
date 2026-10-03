@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, KeyRound, Mail, UserRound } from "lucide-react";
-import { updateNameAction, changePasswordAction, requestEmailChangeAction } from "@/lib/actions/profile";
+import { AlertCircle, CheckCircle2, Loader2, KeyRound, Mail, Phone, UserRound } from "lucide-react";
+import {
+  updateNameAction,
+  updatePhoneAction,
+  changePasswordAction,
+  requestEmailChangeAction,
+} from "@/lib/actions/profile";
 
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
@@ -37,6 +42,38 @@ export function EditNameForm({ currentName }: { currentName: string }) {
         <input name="name" defaultValue={currentName} required minLength={2} className="input !py-1.5 flex-1 min-w-[180px]" />
         <button type="submit" disabled={pending} className="btn btn-ghost !py-1.5 text-sm">
           {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} עדכני
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function EditPhoneForm({ currentPhone, next }: { currentPhone?: string | null; next?: string }) {
+  const [state, action, pending] = useActionState(updatePhoneAction, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      {!next && (
+        <p className="text-sm font-bold flex items-center gap-2">
+          <Phone className="h-4 w-4 text-blue" /> מספר טלפון
+        </p>
+      )}
+      <ErrorBox error={state?.error} />
+      <SuccessBox message={state?.ok ? state.message : undefined} />
+      {next && <input type="hidden" name="next" value={next} />}
+      <div className="flex flex-wrap gap-2">
+        <input
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          defaultValue={currentPhone ?? ""}
+          required
+          dir="ltr"
+          placeholder="050-1234567"
+          className="input !py-1.5 flex-1 min-w-[180px] text-left"
+        />
+        <button type="submit" disabled={pending} className={next ? "btn btn-pink !py-1.5 text-sm" : "btn btn-ghost !py-1.5 text-sm"}>
+          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {next ? "שמירה והמשך להורדה" : "עדכני"}
         </button>
       </div>
     </form>

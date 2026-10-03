@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     out =
       fullView && user
-        ? await stampPdf(pdfBytes, { personalCode: user.personalCode, userName: user.name, email: user.email })
+        ? await stampPdf(pdfBytes, { personalCode: user.personalCode, userName: user.name, email: user.email, phone: user.phone })
         : await stampPreview(await firstPageOnly(pdfBytes));
   } catch (e) {
     console.error("preview stamp failed", e);

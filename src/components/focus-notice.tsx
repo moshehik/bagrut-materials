@@ -6,8 +6,8 @@ import { X } from "lucide-react";
 const DISMISS_KEY = "focus-notice-tashpaz-dismissed";
 
 /**
- * הודעה צפה מעוצבת שמסבירה את סימון "לא נדרש" (✂) במפה, לפי מיקוד תנ"ך תשפ"ז
- * ממשרד החינוך. נסגרת לצמיתות (נשמר ב-localStorage) עד שינוי מפורש.
+ * הודעה צפה מעוצבת שמסבירה את סימון "לא נדרש" (✂) במפה, לפי מיקודי משרד החינוך
+ * לתשפ"ז (תנ"ך, יהדות ודינים, לשון). נסגרת לצמיתות (נשמר ב-localStorage) עד שינוי מפורש.
  */
 export function FocusNotice() {
   const [dismissed, setDismissed] = useState(true);
@@ -29,11 +29,12 @@ export function FocusNotice() {
         🎯
       </span>
       <div className="min-w-[200px] flex-1">
-        <p className="text-sm font-semibold">מיקוד תנ"ך תשפ"ז</p>
+        <p className="text-sm font-semibold">מיקודים לתשפ&quot;ז</p>
         <p className="mt-0.5 text-xs leading-relaxed text-muted">
-          משרד החינוך פרסם השנה מה לא נכלל בבחינות החיצוניות בתנ"ך (שאלונים 3381, 3281). הנושאים
-          שהוצאו מהמיקוד מסומנים במפה בקו חוצה וסמל מספריים{" "}
-          <span aria-hidden>✂️</span> — כדי שתדעו בדיוק על מה להתמקד.
+          משרד החינוך פרסם השנה מה לא נכלל בבחינות החיצוניות בתנ&quot;ך, ביהדות ודינים ובלשון.
+          הנושאים שהוצאו מהמיקוד מסומנים במפה בקו חוצה וסמל מספריים{" "}
+          <span aria-hidden>✂️</span> — כדי שתדעו בדיוק על מה להתמקד. כל שאר החומר ממשיך להיבנות
+          במלואו באתר, גם מה שאינו נדרש לבחינה השנה.
         </p>
       </div>
       <button

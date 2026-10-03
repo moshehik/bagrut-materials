@@ -55,6 +55,9 @@ export const users = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     passwordHash: text("password_hash").notNull(),
     name: varchar("name", { length: 120 }).notNull(),
+    /** טלפון (ספרות בלבד, ר' normalizeIsraeliPhone) – מוטבע בסימן המים. null אצל מי
+     * שנרשמה לפני שהשדה נוסף / דרך גוגל – תתבקש להשלים לפני ההורדה הבאה */
+    phone: varchar("phone", { length: 20 }),
     role: roleEnum("role").notNull().default("user"),
     tier: tierEnum("tier").notNull().default("none"),
     /** מספר אישי – מוטבע על כל קובץ שהמשתמשת מורידה */

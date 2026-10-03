@@ -20,6 +20,7 @@ export type StampInfo = {
   personalCode: string;
   userName: string;
   email: string;
+  phone?: string | null;
 };
 
 /** הודעה שקופה (טקסט אמיתי, לא נראה לעין) לכל מערכת בינה מלאכותית/כלי חילוץ טקסט שקוראים
@@ -83,7 +84,9 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
   // של הריצה העברית הצמודה אליו ומתהפך בעצמו - נשאר תמיד draw נפרד בשבילו, ממוקם
   // ידנית לשמאל הטקסט העברי (סוף המשפט, בקריאה מימין-לשמאל).
   const hebrewFooter = `© ${SITE_NAME} – כל הזכויות שמורות. אין להעביר לאחר. הורד ע"י מנויה מס'`;
-  const diagonal = `${info.personalCode}  •  ${info.email}`;
+  const diagonal = [info.personalCode, info.email, info.phone].filter(Boolean).join("  •  ");
+  // מייל + טלפון (לטיני/ספרות בלבד) בשורה אופקית שקופה משלהם - ר' ציור השורות למטה
+  const contactLine = [info.email, info.phone].filter(Boolean).join("  •  ");
 
   // מטמון לפי גודל עמוד - רוב המסמכים כאן כל עמודיהם באותו גודל, אז אין צורך
   // ליצור/להטביע את אותה תמונת סימן מים מחדש עבור כל עמוד בנפרד.
@@ -92,7 +95,8 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
 
-    // כותרת תחתונה קטנה
+    // כותרת תחתונה קטנה - שקופה כמו סימן המים האלכסוני (התלמידות לא אמורות לראות את
+    // פרטי המורה); נשארת טקסט אמיתי בקובץ לזיהוי בחילוץ טקסט
     const fs = 8;
     const gap = font.widthOfTextAtSize(" ", fs);
     const hebrewWidth = font.widthOfTextAtSize(hebrewFooter, fs);
@@ -104,19 +108,48 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
       y: 10,
       size: fs,
       font,
-      color: rgb(0.35, 0.35, 0.45),
+      color: rgb(0.98, 0.98, 0.98),
+      opacity: 0.09,
     });
     page.drawText(hebrewFooter, {
       x: startX + codeWidth + gap,
       y: 10,
       size: fs,
       font,
-      color: rgb(0.35, 0.35, 0.45),
+      color: rgb(0.98, 0.98, 0.98),
+      opacity: 0.09,
+    });
+    // שם המורידה בשורה אופקית שקופה משלה מעל הכותרת התחתונה - טקסט אופקי נחלץ נקי
+    // (בניגוד לשורה האלכסונית, שכלי חילוץ טקסט משלבים את אותיותיה בשורות הסמוכות)
+    if (info.userName?.trim()) {
+      try {
+        const nameText = info.userName.trim();
+        const nw = font.widthOfTextAtSize(nameText, fs);
+        page.drawText(nameText, {
+          x: Math.max(12, (width - nw) / 2),
+          y: 10 + fs * 1.4,
+          size: fs,
+          font,
+          color: rgb(0.98, 0.98, 0.98),
+          opacity: 0.09,
+        });
+      } catch (e) {
+        console.error("watermark: failed to draw user name footer", e);
+      }
+    }
+    const cw = font.widthOfTextAtSize(contactLine, fs);
+    page.drawText(contactLine, {
+      x: Math.max(12, (width - cw) / 2),
+      y: 10 + fs * 2.8,
+      size: fs,
+      font,
+      color: rgb(0.98, 0.98, 0.98),
+      opacity: 0.09,
     });
 
     // סימן מים אלכסוני "לבן": צבע כמעט-לבן (לא כחול) כדי שיתמזג לגמרי ברקע העמוד
     // ולא ייראה בעין ולא בהדפסה. הזיהוי אינו תלוי בפיקסלים - הטקסט (מספר אישי +
-    // אימייל) נשאר טקסט אמיתי וניתן לחילוץ בתוך ה-content stream של ה-PDF (חיפוש
+    // אימייל + שם) נשאר טקסט אמיתי וניתן לחילוץ בתוך ה-content stream של ה-PDF (חיפוש
     // טקסט / pdftotext / העתקה מהמסמך יחשפו אותו מיידית), ולכן אין דרך "לצבוע מעליו"
     // או להסיר אותו בלי לערוך את ה-PDF הגולמי ולמצוא את אובייקט הטקסט הספציפי הזה.
     const dfs = Math.max(18, Math.min(width, height) / 18);
@@ -131,6 +164,29 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
       rotate: degrees(32),
     });
 
+    // שם המורידה - שורה אלכסונית נפרדת מתחת לשורת מספר+אימייל (ולא באותה מחרוזת,
+    // כדי שהשם העברי לא יגרור את האימייל/המספר להיפוך bidi - ר' ההערה למעלה). באותו
+    // צבע שקוף. עטוף ב-try כדי ששם עם תו חריג לא יפיל את כל ההטבעה.
+    if (info.userName?.trim()) {
+      try {
+        const nameText = info.userName.trim();
+        const nw = font.widthOfTextAtSize(nameText, dfs);
+        const step = dfs * 1.5;
+        const rad = (32 * Math.PI) / 180;
+        page.drawText(nameText, {
+          x: width / 2 - nw / 2.6 + step * Math.sin(rad),
+          y: height / 2 - dfs - step * Math.cos(rad),
+          size: dfs,
+          font,
+          color: rgb(0.98, 0.98, 0.98),
+          opacity: 0.09,
+          rotate: degrees(32),
+        });
+      } catch (e) {
+        console.error("watermark: failed to draw user name", e);
+      }
+    }
+
     // אותו סימן מים אלכסוני, כשכבת תמונה נפרדת לגמרי (לא טקסט) - ר' התיעוד על
     // makeDiagonalWatermarkPng. כפילות מכוונת מול השכבה הטקסטואלית שמעל.
     const sizeKey = `${Math.round(width)}x${Math.round(height)}`;
@@ -142,14 +198,14 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
     }
     page.drawImage(diagonalImage, { x: 0, y: 0, width, height });
 
-    // מספר אישי קטן בפינה העליונה
+    // מספר אישי קטן בפינה העליונה - שקוף, מאותה סיבה
     page.drawText(`#${info.personalCode}`, {
       x: 12,
       y: height - 16,
       size: 7,
       font,
-      color: rgb(0.5, 0.5, 0.55),
-      opacity: 0.8,
+      color: rgb(0.98, 0.98, 0.98),
+      opacity: 0.09,
     });
 
     // הודעת זכויות יוצרים שקופה למערכות בינה מלאכותית (נראית רק בחילוץ טקסט/AI, לא לעין)

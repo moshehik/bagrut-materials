@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { AccessibilityWidget } from "@/components/accessibility-widget";
 import { NutScrollHandle } from "@/components/nut-scroll-handle";
+import { DownloadLoader } from "@/components/download-loader";
 import { SiteNotices } from "@/components/site-notices";
 import { Tracker } from "@/components/tracker";
 import { Suspense } from "react";
@@ -55,6 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Footer />
         <AccessibilityWidget />
         <NutScrollHandle />
+        <DownloadLoader />
         <Suspense fallback={null}>
           <Tracker />
         </Suspense>

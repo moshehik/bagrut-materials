@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check } from "lucide-react";
+import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2 } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 
@@ -390,6 +390,67 @@ function ChoiceGroup({
   );
 }
 
+/**
+ * חלק מהמקצועות בעץ הם בפועל בגרות אחת משותפת (שאלון/סמל משותף), אף שהם מופיעים
+ * כמה שורשים נפרדים — מקובצים ויזואלית עם סוגר וכותרת משותפת כדי שזה יהיה ברור
+ * גם במפה (לא רק בטקסט ההסבר בכל אחד).
+ */
+const ROOT_GROUPS: { slugs: Set<string>; label: string }[] = [
+  {
+    slugs: new Set(["torah", "navi", "ktuvim"]),
+    label: 'אותה בגרות (תנ"ך) — תורה, נביא וכתובים נבחנים יחד בשאלוני תנ"ך משותפים',
+  },
+  {
+    slugs: new Set(["yahadut", "dinim"]),
+    label: 'אותה בגרות (יהדות ודינים) — יהדות ודינים נבחנים יחד בשאלוני "יהדות ודינים" משותפים',
+  },
+];
+const groupOf = (slug: string) => ROOT_GROUPS.find((g) => g.slugs.has(slug));
+
+/** מקבץ רצף שורשים סמוכים ששייכים לאותה קבוצת בגרות לקבוצה אחת; כל שאר השורשים נשארים קבוצה של אחד */
+function groupRoots(tree: MapNode[]): MapNode[][] {
+  const groups: MapNode[][] = [];
+  for (const root of tree) {
+    const def = groupOf(root.cat.slug);
+    const last = groups[groups.length - 1];
+    const lastDef = last?.[0] && groupOf(last[0].cat.slug);
+    if (def && lastDef === def) {
+      last.push(root);
+    } else {
+      groups.push([root]);
+    }
+  }
+  return groups;
+}
+
+/** כמה שורשים זה לצד זה, עם סוגר וכותרת שמסבירים שמדובר באותה בגרות */
+function RootsGroup({ roots, label, ctx }: { roots: MapNode[]; label: string; ctx: TreeCtx }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="mr-7 flex items-center gap-1.5 text-xs font-bold text-muted">
+        <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>{label}</span>
+      </div>
+      <div className="relative flex flex-col gap-16 pr-4">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-1 right-0 top-1 w-3 rounded-br-2xl rounded-tr-2xl border-y-2 border-r-2 border-ink/35"
+        />
+        {roots.map((root) => (
+          <div key={root.cat.id} className="min-w-max">
+            <Branch
+              node={root}
+              level={0}
+              accent={SUBJECT_COLORS[root.cat.slug] || root.cat.color || "var(--sun)"}
+              ctx={ctx}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
   // מקצוע שכל בניו סופיים (למשל אנגלית, אזרחות) מתחיל סגור — הפירוט רק בלחיצה
   const [openIds, setOpenIds] = useState<Set<number>>(
@@ -443,18 +504,29 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
     resolveRef,
   };
 
+  const rootGroups = useMemo(() => groupRoots(tree), [tree]);
+
   return (
     <div data-map-scroll-x="" className="flex flex-col gap-16 overflow-x-auto pb-2 pt-12">
-      {tree.map((root) => (
-        <div key={root.cat.id} className="min-w-max">
-          <Branch
-            node={root}
-            level={0}
-            accent={SUBJECT_COLORS[root.cat.slug] || root.cat.color || "var(--sun)"}
+      {rootGroups.map((group) =>
+        group.length > 1 ? (
+          <RootsGroup
+            key={group[0].cat.id}
+            roots={group}
+            label={groupOf(group[0].cat.slug)!.label}
             ctx={ctx}
           />
-        </div>
-      ))}
+        ) : (
+          <div key={group[0].cat.id} className="min-w-max">
+            <Branch
+              node={group[0]}
+              level={0}
+              accent={SUBJECT_COLORS[group[0].cat.slug] || group[0].cat.color || "var(--sun)"}
+              ctx={ctx}
+            />
+          </div>
+        ),
+      )}
     </div>
   );
 }

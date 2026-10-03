@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { sichot, sichaTeacherStatus } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { fetchFile } from "@/lib/file-source";
+import { markDownloadReady } from "@/lib/download-ready";
 
 // מוריד קובץ שיחה מהדרייב (fileUrl בפורמט drive://<fileId>, ר' driveBridgeCore.ts) —
 // כמו /api/download/[id] של חומרים רגילים, אך בלי הטבעת מספר אישי/רכישה/מכסה:
@@ -60,11 +61,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
 
-  return new Response(file.stream, {
+  return markDownloadReady(req.nextUrl, new Response(file.stream, {
     headers: {
       "Content-Type": file.contentType ?? sicha.mime ?? "application/octet-stream",
       "Content-Disposition": contentDisposition(sicha.fileName),
       "Cache-Control": "private, no-store",
     },
-  });
+  }));
 }

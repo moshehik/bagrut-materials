@@ -105,7 +105,9 @@ export async function GET(req: NextRequest) {
       entityId: u.id,
     });
 
-    const res = NextResponse.redirect(new URL(next, origin));
+    // גוגל לא מוסר טלפון - נרשמת חדשה משלימה אותו מיד (ממילא תתבקש לפני הורדה)
+    const dest = created && !u.phone ? `/account/phone?next=${encodeURIComponent(next)}` : next;
+    const res = NextResponse.redirect(new URL(dest, origin));
     res.cookies.delete(G_STATE_COOKIE);
     return res;
   } catch (e) {

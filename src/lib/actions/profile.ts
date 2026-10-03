@@ -11,6 +11,7 @@ import { sendMail, sendMailInBackground, adminEmail, siteUrl, templates } from "
 import { logAudit } from "@/lib/audit";
 import { randomToken } from "@/lib/auth-utils";
 import { PLANS } from "@/lib/constants";
+import { normalizeIsraeliPhone, PHONE_ERROR } from "@/lib/phone";
 
 export type ProfileState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -27,6 +28,20 @@ export async function updateNameAction(_: ProfileState, form: FormData): Promise
   await db.update(users).set({ name: parsed.data.name }).where(eq(users.id, user.id));
   await logAudit({ actorId: user.id, action: "profile.update_name", entityType: "user", entityId: user.id });
   return { ok: true, message: "השם עודכן בהצלחה." };
+}
+
+/** עדכון/השלמת טלפון. עם next (מעמוד ההשלמה שלפני הורדה) – מפנה לשם אחרי השמירה */
+export async function updatePhoneAction(_: ProfileState, form: FormData): Promise<ProfileState> {
+  const user = await requireUser();
+  const phone = normalizeIsraeliPhone(String(form.get("phone") ?? ""));
+  if (!phone) return { error: PHONE_ERROR };
+
+  await db.update(users).set({ phone }).where(eq(users.id, user.id));
+  await logAudit({ actorId: user.id, action: "profile.update_phone", entityType: "user", entityId: user.id });
+
+  const next = String(form.get("next") ?? "");
+  if (next.startsWith("/") && !next.startsWith("//")) redirect(next);
+  return { ok: true, message: "הטלפון עודכן בהצלחה." };
 }
 
 const pwSchema = z

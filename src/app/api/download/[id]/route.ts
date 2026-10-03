@@ -9,6 +9,7 @@ import { logAudit, requestMeta } from "@/lib/audit";
 import { getNumber } from "@/lib/settings";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
+import { markDownloadReady } from "@/lib/download-ready";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +76,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   // הורדה חופשית ללא התחברות (free_downloads_require_login=false): אין מספר אישי להטביע → מפנים להתחברות
   if (!user) return NextResponse.redirect(new URL(`/login?next=/api/download/${id}`, origin));
   const u = user;
+  // הטלפון מוטבע בסימן המים - מי שנרשמה לפני שהשדה נוסף / דרך גוגל משלימה אותו קודם
+  if (!u.phone && !isAdmin) {
+    return NextResponse.redirect(
+      new URL(`/account/phone?next=${encodeURIComponent(`/api/download/${materialId}`)}`, origin),
+    );
+  }
 
   // מגבלות הורדה (לא חלות על מנהלת)
   if (!isAdmin) {
@@ -136,6 +143,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         personalCode: u.personalCode,
         userName: u.name,
         email: u.email,
+        phone: u.phone,
       });
     } catch (e) {
       console.error("office->pdf conversion failed, serving original file", e);
@@ -160,6 +168,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         personalCode: u.personalCode,
         userName: u.name,
         email: u.email,
+        phone: u.phone,
       });
     } catch {
       // אם ההטבעה נכשלה (PDF פגום/מוצפן) – מחזירים את המקור
@@ -232,5 +241,5 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     console.error("download log failed", e);
   }
 
-  return response;
+  return markDownloadReady(req.nextUrl, response);
 }
