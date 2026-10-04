@@ -41,6 +41,22 @@ export default function CardPreviewPage() {
       <h1 className="font-display text-3xl font-black">דוגמת כרטיסיות – {folder}</h1>
       <p className="mt-2 text-muted">נתוני דמה בלבד. עמוד זה לא קיים באתר החי.</p>
 
+      <h2 className="mt-10 text-xl font-bold">כך נראית כרטיסייה של קובץ שכבר נעשו בו תיקונים (מי שרכשה)</h2>
+      <div className="mt-8 mtc-grid">
+        <MaterialTypeCard
+          material={fake(300, "student")}
+          entitlement={owner}
+          bundleHref="/checkout?bundle=1"
+          type="student"
+          folderTitle={folder}
+          currentPath="/card-preview"
+          fixes={[
+            { number: 1, originalText: "מצרים", correctedText: "מדין" },
+            { number: 2, originalText: "בשנת ג׳תתק״ד", correctedText: "בשנת ג׳תתקצ״ד" },
+          ]}
+        />
+      </div>
+
       <h2 className="mt-10 text-xl font-bold">כך רואה מי שעוד לא רכשה</h2>
       <div className="mt-6">
         <FolderBundleBanner categoryId={1} price={1500} owned={false} />
@@ -91,21 +107,6 @@ export default function CardPreviewPage() {
         <ForumCard folderTitle={folder} />
       </div>
 
-      <h2 className="mt-14 text-xl font-bold">כרטיסייה עם תיקונים (אגוז קובץ מתוקן + בחירת שינויים)</h2>
-      <div className="mt-8 mtc-grid">
-        <MaterialTypeCard
-          material={fake(300, "student")}
-          entitlement={owner}
-          bundleHref="/checkout?bundle=1"
-          type="student"
-          folderTitle={folder}
-          currentPath="/card-preview"
-          fixes={[
-            { number: 1, originalText: "מצרים", correctedText: "מדין" },
-            { number: 2, originalText: "בשנת ג׳תתק״ד", correctedText: "בשנת ג׳תתקצ״ד" },
-          ]}
-        />
-      </div>
     </div>
   );
 }

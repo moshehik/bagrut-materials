@@ -76,11 +76,11 @@ Step "Export clean copy of HEAD"
 $head = (& git rev-parse --short HEAD 2>$null).Trim()
 $tmp = Join-Path $env:TEMP ("bagrut-deploy-" + $head + "-" + (Get-Date -Format "HHmmss"))
 New-Item -ItemType Directory -Force $tmp | Out-Null
-$tar = "$tmp.tar"
-GitOk archive --format=tar -o $tar HEAD
-& tar -xf $tar -C $tmp
-if ($LASTEXITCODE -ne 0) { Fail "tar extract failed" }
-Remove-Item $tar -Force
+# checkout-index (not `git archive | tar`): Windows bsdtar chokes on the Hebrew-named tracked docs.
+$prefix = ($tmp -replace '\\', '/') + "/"
+GitOk checkout-index -a -f "--prefix=$prefix"
+# Hebrew-named tracked docs are lesson/teacher notes, not part of the site - keep them out of the upload.
+Get-ChildItem -LiteralPath $tmp -Force | Where-Object { $_.Name -match '[^\x00-\x7F]' } | Remove-Item -Recurse -Force
 New-Item -ItemType Directory -Force (Join-Path $tmp ".vercel") | Out-Null
 if (-not (Test-Path ".vercel\project.json")) { Fail ".vercel\project.json missing - run 'npx vercel link' once (project bagrut-materials)" }
 Copy-Item ".vercel\project.json" (Join-Path $tmp ".vercel\project.json")
