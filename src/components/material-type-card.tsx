@@ -119,13 +119,13 @@ export function MaterialTypeCard({
           </span>
         )}
 
-        {canView && (
+        {/* מי שלא שילמה: האגוז מוביל לאותו צעד חסר כמו ההורדה (התחברות / רכישה); הצפייה עצמה נאכפת בשרת */}
+        {(canView || (!viewOnly && target)) && (
           <a
-            href={`/api/preview/${m.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={canView ? `/api/preview/${m.id}` : target!}
+            {...(canView ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             className="mtc-download"
-            data-tip="לצפייה בקובץ באתר, בלי להוריד"
+            data-tip={canView ? "לצפייה בקובץ באתר, בלי להוריד" : "לצפייה בקובץ צריך קודם להשלים את השלב הבא"}
             aria-label={`צפייה ב${s.label} באתר`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
