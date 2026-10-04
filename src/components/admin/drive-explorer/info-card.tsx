@@ -14,6 +14,7 @@ type Props = {
   onRefresh: () => void;
   onUpload: () => void;
   onDownload: () => void;
+  onSync?: () => void;
 };
 
 type Line = { cls: string; s: string };
@@ -31,7 +32,7 @@ function classify(text: string): Line[] {
   });
 }
 
-export function InfoCard({ view, text, uploadedAt, fileId, busy, onRefresh, onUpload, onDownload }: Props) {
+export function InfoCard({ view, text, uploadedAt, fileId, busy, onRefresh, onUpload, onDownload, onSync }: Props) {
   const [big, setBig] = useState(false);
   const [nowMs] = useState(() => Date.now());
   const lines = useMemo(() => classify(text), [text]);
@@ -130,6 +131,12 @@ export function InfoCard({ view, text, uploadedAt, fileId, busy, onRefresh, onUp
               <Download className="ic" aria-hidden />
               הורד .txt
             </button>
+            {onSync && (
+              <button type="button" className="btn btn-ghost" onClick={onSync} disabled={!!busy} title="מצרף קבצים חדשים שנוספו לתיקייה בדרייב, ומעדכן קבצים שנגררו ידנית">
+                <RefreshCw className="ic" aria-hidden />
+                סנכרן תיקייה זו מהדרייב
+              </button>
+            )}
           </div>
           <p className="info-note">
             ההעלאה יוצרת/מחליפה בדרייב את <code>_מידע.txt</code> בתיקייה הזו. האתר הוא מקור האמת — עריכה ידנית של הקובץ בדרייב תידרס.

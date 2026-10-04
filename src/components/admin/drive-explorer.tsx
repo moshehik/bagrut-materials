@@ -724,6 +724,7 @@ export function DriveExplorer() {
                   onRefresh={() => void infoRefresh()}
                   onUpload={() => void infoUpload()}
                   onDownload={infoDownload}
+                  onSync={() => setDialog({ t: "sync" })}
                 />
               ) : !viewErr ? (
                 <section className="card info" aria-busy="true" aria-label="טוען קובץ מידע">

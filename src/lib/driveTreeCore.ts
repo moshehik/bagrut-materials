@@ -320,7 +320,11 @@ export async function driveTrash(fileId: string) {
 
 /** יוצר או מעדכן במקום קובץ טקסט בתיקייה (לפי שם + תגית appProperties.siteInfo). מחזיר את ה-id. */
 export async function driveUpsertTextFile(folderId: string, name: string, text: string): Promise<string> {
-  const existing = (await driveListFolder(folderId)).find((f) => f.name === name && f.appProperties.siteInfo === "1");
+  // מחפשים קודם קובץ מתויג; ואם אין (למשל הועלה/נערך ידנית ואיבד את התגית) — כל קובץ טקסט באותו שם, כדי לא ליצור כפילות
+  const listing = await driveListFolder(folderId);
+  const existing =
+    listing.find((f) => f.name === name && f.appProperties.siteInfo === "1") ??
+    listing.find((f) => f.name === name && f.mimeType !== FOLDER_MIME);
   const bytes = Buffer.from(text, "utf-8");
   if (existing) {
     await json(
@@ -331,6 +335,7 @@ export async function driveUpsertTextFile(folderId: string, name: string, text: 
       }),
       "עדכון קובץ מידע",
     );
+    if (existing.appProperties.siteInfo !== "1") await drivePatch(existing.id, { appProperties: { siteInfo: "1" } });
     return existing.id;
   }
   const boundary = `info-${Date.now()}-${Math.random().toString(36).slice(2)}`;

@@ -148,7 +148,7 @@ export function renderFolderInfo(snap: InfoSnapshot, categoryId: number | null, 
 
   // --- היסטוריית שמות והעברות ---
   const matIds = new Set(snap.mats.filter((m) => scopeCats.has(m.categoryId)).map((m) => m.id));
-  const kinds = ["file.rename", "file.move", "file.archive", "file.restore", "folder.rename", "folder.move", "folder.create", "file.add"];
+  const kinds = ["file.edit", "file.rename", "file.move", "file.archive", "file.restore", "folder.rename", "folder.move", "folder.create", "file.add"];
   const hist = snap.events
     .filter((e) => kinds.includes(e.kind))
     .filter((e) => (e.materialId && matIds.has(e.materialId)) || (e.categoryId && scopeCats.has(e.categoryId)))
@@ -162,6 +162,7 @@ export function renderFolderInfo(snap: InfoSnapshot, categoryId: number | null, 
           ? snap.byId.get(e.categoryId)?.title ?? ""
           : "";
       const what: Record<string, string> = {
+        "file.edit": `נערך ע"י הסוכן: "${e.oldValue}" ← "${e.newValue}"`,
         "file.rename": `שונה שם: "${e.oldValue}" ← "${e.newValue}"`,
         "file.move": `הועבר: ${folderLabel(snap, e.oldValue)} ← ${folderLabel(snap, e.newValue)}`,
         "file.archive": `הועבר לארכיון (${e.newValue}) — שם: "${e.oldValue}"`,
