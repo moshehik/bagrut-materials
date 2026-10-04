@@ -65,6 +65,8 @@ async function transportAppsScript(input: SendMailInput): Promise<{ ok: boolean;
     body: input.text,
     htmlBody: input.html ?? "",
     fromName: process.env.MAIL_FROM_NAME ?? SITE_NAME,
+    // הסקריפט המשותף ("מערכת מייל פתוח") מכבד senderName בלבד; בלעדיו השם נשאר 'גמ"ח שמלות'
+    senderName: process.env.MAIL_FROM_NAME ?? SITE_NAME,
     fileName: attachment.fileName,
     fileContent: attachment.base64,
     mimeType: attachment.mimeType ?? "application/octet-stream",
