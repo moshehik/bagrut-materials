@@ -59,7 +59,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
   let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
 
-  // ?fixes=all | ?fixes=1,3 – הצפייה בשינויים: מה שהתבקש לתקן בורוד והתיקון בתכלת.
+  // ?fixes=all | ?fixes=1,3 – הצפייה בשינויים: הדף במלואו, מה שהתבקש לתקן בזהב והתיקון בתכלת, עם מספר ליד כל תיקון.
   // הסימון קיים רק בצפייה באתר; ההורדה (api/download) מחליפה את הטקסט בנראות רגילה.
   const wantFixes = fullView ? parseFixesParam(req.nextUrl.searchParams.get("fixes")) : null;
   if (wantFixes && isDocxName(material.fileName)) {
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       if (chosen.length > 0) {
         const r = await applyDocxFixes(
           raw,
-          chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText })),
+          chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, number: f.number })),
           "marked",
         );
         if (r.applied.length > 0) raw = new Uint8Array(r.bytes);

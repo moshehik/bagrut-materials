@@ -3,14 +3,20 @@ import JSZip from "jszip";
 
 /**
  * החלת תיקונים על קובץ Word (הקובץ השמור לא משתנה לעולם). שני מצבים:
- *  - "marked" – לצפייה באתר: הטקסט המקורי מסומן בורוד ומיד אחריו התיקון מסומן בתכלת.
+ *  - "marked" – לצפייה באתר: כל הדף מוצג במלואו, והטקסט המקורי מסומן בזהב ומיד אחריו התיקון בתכלת, עם מספר התיקון לידו.
  *  - "clean"  – להורדה: הטקסט המקורי מוחלף בתיקון, בנראות רגילה לגמרי (בלי צבע ובלי מספרים).
  * מספרי התיקונים מוצגים באתר בלבד – לא נכנסים לקובץ בשום מצב.
  */
 
 export type FixMode = "marked" | "clean";
 
-export type DocxFix = { id: number; originalText: string; correctedText: string };
+export type DocxFix = {
+  id: number;
+  originalText: string;
+  correctedText: string;
+  /** מספר התיקון כפי שמוצג ברשימה – מודפס ליד התיקון בתצוגה בלבד (mode "marked") */
+  number?: number;
+};
 
 export type ApplyFixesResult = {
   bytes: Uint8Array;
@@ -20,8 +26,8 @@ export type ApplyFixesResult = {
   missing: number[];
 };
 
-const PINK = "FFC2DC";
-const BLUE = "BFE9F7";
+const PINK = "E9D08A"; // הצבע של הטעות
+const BLUE = "9AC7BC"; // הצבע של התיקון
 
 const TEXT_RUN =
   /^<w:r(?:\s[^>]*)?>(<w:rPr>[\s\S]*?<\/w:rPr>|<w:rPr\/>)?((?:<w:t(?:\s[^>]*)?>[^<]*<\/w:t>|<w:t\/>)+)<\/w:r>$/;
@@ -79,6 +85,11 @@ function textRun(rPr: string, text: string, fill?: string) {
   return `<w:r>${props}${body}</w:r>`;
 }
 
+/** מספר התיקון: קטן, מודגש ומורם, בכחול כהה – ליד התיקון */
+function numberRun(n: number) {
+  return `<w:r><w:rPr><w:b/><w:bCs/><w:color w:val="16244E"/><w:vertAlign w:val="superscript"/></w:rPr><w:t xml:space="preserve"> ${n}</w:t></w:r>`;
+}
+
 function tokenize(paragraph: string): Token[] {
   const tokens: Token[] = [];
   let offset = 0;
@@ -131,6 +142,7 @@ function rebuild(tokens: Token[], edits: Edit[], mode: FixMode): string {
         if (mode === "marked") {
           out.push(textRun("", " "));
           out.push(textRun(editRPr.get(finished) ?? tok.rPr, finished.fix.correctedText, BLUE));
+          if (finished.fix.number != null) out.push(numberRun(finished.fix.number));
         } else {
           out.push(textRun(editRPr.get(finished) ?? tok.rPr, finished.fix.correctedText));
         }

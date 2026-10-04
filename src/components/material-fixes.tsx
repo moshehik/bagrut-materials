@@ -1,15 +1,16 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
-import { submitFixRequest, type FixState } from "@/lib/actions/fixes";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { ArrowLeft, Check, Download, Plus, Send, X } from "lucide-react";
+import { submitFixRequests, type FixState } from "@/lib/actions/fixes";
+import { PdfViewer, type PdfMark } from "@/components/pdf-viewer";
 
 export type CardFix = { number: number; originalText: string; correctedText: string };
 
 /** נוסחי הטולטיפ של שלושת אגוזי התיקונים (כתב גברת לוין, מוצג במעבר עכבר / מיקוד) */
 export const FIX_TIPS = {
-  edit: "בעריכת שינויים – כאן תוכלי לתקן טעויות",
-  view: "לצפייה בשינויים – כאן תוכלי לראות תיקונים שכבר נעשו ולסמן אם את מעוניינת בהם.",
+  edit: "בעריכת שינויים – תוכלי לתקן טעויות",
+  view: "לצפייה בשינויים – תוכלי לראות תיקונים שכבר נעשו ולסמן אם את מעוניינת בהם.",
   download: "להורדת הקובץ המתוקן: להורדת הדף עם השינויים.",
 } as const;
 
@@ -20,14 +21,30 @@ function FixNotice() {
       <b>שימי לב!</b>
       <ol>
         <li>
-          מערכת לו&quot;ז העניין עוברת על השינויים הנערכים. אם יתברר שאכן חלה טעות היא תתוקן ותשולב בקובץ המקורי
+          מערכת לו&quot;ז העניין עוברת על השינויים הנערכים.<br />אם יתברר שאכן חלה טעות היא תתוקן ותשולב בקובץ המקורי
           תוך מספר ימים.
         </li>
         <li>
-          הסימונים שאת מסמנת וכן הצבע המודגש של הטעות ותיקונה מופיעים רק בקובץ לצפייה. כשתורידי אותו תקבלי אותו
+          הסימונים שאת מסמנת וכן הצבע המודגש של הטעות ותיקונה מופיעים <strong className="fix-emph">רק בקובץ לצפייה</strong>.<br />כשתורידי אותו תקבלי אותו
           בנראות רגילה.
         </li>
       </ol>
+    </div>
+  );
+}
+
+/** תוכן שלב ההודעה "שימי לב!" – משותף לעריכת שינויים ולצפייה בשינויים (אותו עיצוב בכל מקום) */
+function NoticeGate({ onContinue }: { onContinue: () => void }) {
+  return (
+    <div className="fix-gate">
+      <FixNotice />
+      {/* לוגו האתר (הלבן, על הרקע הכחול) מתחת להודעה ומעל הלחצן */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-gate-logo" />
+      <button type="button" className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={onContinue}>
+        הבנתי, להמשיך
+        <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
+      </button>
     </div>
   );
 }
@@ -55,23 +72,85 @@ function Nut({ src }: { src: string }) {
   return <img src={src} alt="" width={40} height={40} className="mtc-rownut" aria-hidden />;
 }
 
-/** "לעריכת שינויים בקובץ" – אגוז-כפתור שפותח חלון לכתיבת מה צריך לשנות */
+type Edit = { id: number; quote: string; correction: string; mark: PdfMark | null; applied: boolean };
+let editSeq = 0;
+const newEdit = (): Edit => ({ id: ++editSeq, quote: "", correction: "", mark: null, applied: false });
+
+/**
+ * "לעריכת שינויים בקובץ": אחרי ההודעה "שימי לב!" נפתח הקובץ עצמו; המורה מסמנת בו את הטקסט שצריך
+ * תיקון ("סימון לתיקון"), כותבת מתחת את התיקון שלה, ויכולה להוסיף עוד תיקונים. כל התיקונים נשלחים
+ * יחד לטיפול המנהלת (ר' /admin/fixes).
+ */
 export function FixRequestButton({
   materialId,
   materialTitle,
   lockedHref,
   nutSrc,
+  viewSrc: viewSrcOverride,
 }: {
   materialId: number;
   materialTitle: string;
   /** אם אין גישה לקובץ – לאן לשלוח במקום לפתוח את החלון (התחברות / רכישה) */
   lockedHref?: string | null;
   nutSrc: string;
+  /** רק לדוגמאות פיתוח: קובץ PDF קבוע להצגה במקום הצפייה האמיתית */
+  viewSrc?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<FixState, FormData>(submitFixRequest, undefined);
-  const close = () => setOpen(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [edits, setEdits] = useState<Edit[]>(() => [newEdit()]);
+  const [activeId, setActiveId] = useState<number>(() => edits[0].id);
+  const [result, setResult] = useState<FixState>(undefined);
+  const [pending, startSend] = useTransition();
+  const close = () => {
+    setOpen(false);
+    setAcknowledged(false);
+  };
   const ref = useDialog(open, close);
+
+  const update = (id: number, patch: Partial<Edit>) =>
+    setEdits((list) => list.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const addEdit = () => {
+    const e = newEdit();
+    setEdits((list) => [...list, e]);
+    setActiveId(e.id);
+  };
+  const removeEdit = (id: number) =>
+    setEdits((list) => {
+      const rest = list.filter((e) => e.id !== id);
+      if (rest.length === 0) {
+        const e = newEdit();
+        setActiveId(e.id);
+        return [e];
+      }
+      if (id === activeId) setActiveId(rest[rest.length - 1].id);
+      return rest;
+    });
+  const onMark = (mark: PdfMark) => {
+    // אם התיקון הפעיל כבר לא קיים – הסימון נכנס לתיקון האחרון ברשימה
+    const target = edits.find((e) => e.id === activeId) ?? edits[edits.length - 1];
+    setActiveId(target.id);
+    update(target.id, { mark, quote: mark.text });
+  };
+
+  const marks = edits.flatMap((e) => (e.mark ? [e.mark] : []));
+  const active = edits.find((e) => e.id === activeId);
+  const canApply = !!active && !active.applied && active.quote.trim().length >= 2 && active.correction.trim().length > 0;
+  const applyActive = () => {
+    if (active) update(active.id, { applied: true });
+  };
+  const ready = edits.filter((e) => e.quote.trim().length >= 2 && e.correction.trim());
+  const send = () => {
+    setResult(undefined);
+    startSend(async () => {
+      const res = await submitFixRequests({
+        materialId,
+        items: ready.map((e) => ({ quote: e.quote.trim(), correction: e.correction.trim() })),
+      });
+      setResult(res);
+    });
+  };
+  const viewSrc = viewSrcOverride ?? `/api/preview/${materialId}`;
 
   const label = (
     <>
@@ -93,55 +172,144 @@ export function FixRequestButton({
       )}
       <dialog
         ref={ref}
-        className="fix-dialog"
+        className={`fix-dialog fix-dialog-dark ${acknowledged ? "fix-dialog-wide" : ""}`}
         onClick={(e) => {
           if (e.target === ref.current) close();
         }}
       >
         <div className="fix-dialog-box">
-          <div className="fix-dialog-head">
-            <h3>שינויים בקובץ</h3>
+          <div className={`fix-dialog-head ${acknowledged ? "fix-dialog-head-centered" : ""}`}>
+            {acknowledged && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
+            )}
+            <div className="fix-head-title">
+              <h3>{acknowledged ? "לעריכת שינויים בקובץ" : "לפני שממשיכות!"}</h3>
+              {acknowledged && <p className="fix-dialog-sub">{materialTitle}</p>}
+            </div>
             <button type="button" className="fix-close" aria-label="סגירה" onClick={close}>
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
-          <p className="fix-dialog-sub">{materialTitle}</p>
 
-          {state?.ok ? (
-            <div className="fix-done">
+          {!acknowledged ? (
+            <NoticeGate onContinue={() => setAcknowledged(true)} />
+          ) : result?.ok ? (
+            <div className="fix-inner fix-done">
               <p>
                 הבקשה נשלחה. כשהשינוי יתווסף לקובץ יופיעו בכרטיסייה האפשרויות &quot;לצפייה בשינויים שכבר נעשו&quot; ו
                 &quot;להורדת הקובץ המתוקן&quot;.
               </p>
-              <button type="button" className="btn btn-primary text-sm py-2" onClick={close}>
+              <button type="button" className="btn btn-gold text-sm py-2" onClick={close}>
                 סגירה
               </button>
             </div>
           ) : (
-            <form action={action} className="fix-form">
-              <input type="hidden" name="materialId" value={materialId} />
-              <label>
-                מה צריך לשנות?
-                <textarea
-                  name="requestText"
-                  required
-                  minLength={3}
-                  maxLength={2000}
-                  rows={4}
-                  className="input"
-                  placeholder="למשל: בשאלה 3 כתוב ״מצרים״ וצריך להיות ״מדין״"
-                />
-              </label>
-              <label>
-                הטקסט שצריך לתקן, כפי שהוא כתוב בקובץ <span className="fix-optional">(לא חובה, מזרז את הטיפול)</span>
-                <textarea name="quoteText" maxLength={1000} rows={2} className="input" />
-              </label>
-              <FixNotice />
-              {state?.error && <p className="fix-error">{state.error}</p>}
-              <button type="submit" disabled={pending} className="btn btn-primary text-sm py-2">
-                {pending ? "שולחת…" : "שליחת הבקשה"}
-              </button>
-            </form>
+            <div className="fix-inner fix-viewer">
+              <div className="fix-pane">
+                <p className="fix-dialog-sub">
+                  סמני בקובץ את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז כתבי מתחת את התיקון שלך.
+                </p>
+                <ul className="fix-edits">
+                  {edits.map((e, i) => (
+                    <li
+                      key={e.id}
+                      className={`fix-edit ${e.id === activeId ? "fix-edit-active" : ""}`}
+                      onClick={() => setActiveId(e.id)}
+                    >
+                      <div className="fix-edit-head">
+                        <span className="fix-num">{i + 1}</span>
+                        <button
+                          type="button"
+                          className="fix-edit-remove"
+                          aria-label="הסרת התיקון"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            removeEdit(e.id);
+                          }}
+                        >
+                          <X className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                      {e.applied ? (
+                        <div className="fix-edit-applied">
+                          <span className="fix-pink">{e.quote}</span>
+                          <span className="fix-arrow" aria-hidden>←</span>
+                          <span className="fix-blue">{e.correction}</span>
+                          <button
+                            type="button"
+                            className="fix-edit-reopen"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              update(e.id, { applied: false });
+                              setActiveId(e.id);
+                            }}
+                          >
+                            עריכה
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                      <label>
+                        מה שצריך תיקון (מסמנים בקובץ)
+                        <textarea
+                          className="fix-edit-quote"
+                          rows={2}
+                          maxLength={1000}
+                          value={e.quote}
+                          placeholder="סמני בקובץ את הטעות…"
+                          onFocus={() => setActiveId(e.id)}
+                          onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null })}
+                        />
+                      </label>
+                      <label>
+                        התיקון שלך
+                        <textarea
+                          className="fix-edit-fix"
+                          rows={2}
+                          maxLength={2000}
+                          value={e.correction}
+                          placeholder="כתבי כאן איך זה צריך להיות"
+                          onFocus={() => setActiveId(e.id)}
+                          onChange={(ev) => update(e.id, { correction: ev.target.value })}
+                        />
+                      </label>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {active && !active.applied && (
+                  <button type="button" className="fix-apply" disabled={!canApply} onClick={applyActive}>
+                    <Check className="h-4 w-4" strokeWidth={2} aria-hidden />
+                    החל תיקון
+                  </button>
+                )}
+                <button type="button" className="fix-add" onClick={addEdit}>
+                  <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  הוספת תיקון נוסף
+                </button>
+                {result?.error && <p className="fix-error">{result.error}</p>}
+                <div className="fix-actions">
+                  <button
+                    type="button"
+                    disabled={pending || ready.length === 0}
+                    className="btn btn-gold text-sm py-2 fix-gate-btn"
+                    onClick={send}
+                  >
+                    {pending ? "שולחת…" : ready.length > 1 ? `שליחת ${ready.length} התיקונים` : "שליחת התיקון"}
+                    <Send className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
+                  </button>
+                </div>
+              </div>
+              <div className="fix-frame-wrap">
+                <p className="fix-legend">
+                  <span className="fix-pink">מה שצריך תיקון</span>
+                  <span className="fix-blue">התיקון</span>
+                </p>
+                {open && <PdfViewer src={viewSrc} className="fix-frame" selectable marks={marks} onMark={onMark} />}
+              </div>
+            </div>
           )}
         </div>
       </dialog>
@@ -159,12 +327,15 @@ export function FixViewer({
   fixes,
   downloadHref,
   nutSrc,
+  viewSrc: viewSrcOverride,
 }: {
   materialId: number;
   fixes: CardFix[];
   /** כתובת ההורדה הבסיסית (בלי ?fixes) */
   downloadHref: string;
   nutSrc: string;
+  /** רק לדוגמאות פיתוח: קובץ PDF קבוע להצגה במקום הצפייה האמיתית */
+  viewSrc?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -184,7 +355,7 @@ export function FixViewer({
     });
   const allPicked = picked.size === fixes.length;
   const href = picked.size ? `${downloadHref}?fixes=${[...picked].sort((a, b) => a - b).join(",")}` : null;
-  const viewSrc = `/api/preview/${materialId}?fixes=all`;
+  const viewSrc = viewSrcOverride ?? `/api/preview/${materialId}?fixes=all`;
 
   return (
     <>
@@ -194,28 +365,29 @@ export function FixViewer({
       </button>
       <dialog
         ref={ref}
-        className={`fix-dialog ${acknowledged ? "fix-dialog-wide" : ""}`}
+        className={`fix-dialog fix-dialog-dark ${acknowledged ? "fix-dialog-wide" : ""}`}
         onClick={(e) => {
           if (e.target === ref.current) close();
         }}
       >
         <div className="fix-dialog-box">
-          <div className="fix-dialog-head">
-            <h3>{acknowledged ? "השינויים שכבר נעשו בקובץ" : "לפני שממשיכות"}</h3>
+          <div className={`fix-dialog-head ${acknowledged ? "fix-dialog-head-centered" : ""}`}>
+            {acknowledged && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
+            )}
+            <div className="fix-head-title">
+              <h3>{acknowledged ? "השינויים שכבר נעשו בקובץ" : "לפני שממשיכות!"}</h3>
+            </div>
             <button type="button" className="fix-close" aria-label="סגירה" onClick={close}>
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
 
           {!acknowledged ? (
-            <div className="fix-gate">
-              <FixNotice />
-              <button type="button" className="btn btn-primary text-sm py-2" onClick={() => setAcknowledged(true)}>
-                הבנתי, להמשיך
-              </button>
-            </div>
+            <NoticeGate onContinue={() => setAcknowledged(true)} />
           ) : (
-            <div className="fix-viewer">
+            <div className="fix-inner fix-viewer">
               <div className="fix-pane">
                 <p className="fix-dialog-sub">
                   סמני וי ליד כל שינוי שאת רוצה. במקום שלא סימנת יישאר הטקסט המקורי.
@@ -225,6 +397,7 @@ export function FixViewer({
                     <li key={f.number}>
                       <label className="fix-row">
                         <input type="checkbox" checked={picked.has(f.number)} onChange={() => toggle(f.number)} />
+                        <span className="fix-check" aria-hidden />
                         <span className="fix-num">{f.number}</span>
                         <span className="fix-texts">
                           <span className="fix-pink">{f.originalText}</span>
@@ -244,12 +417,14 @@ export function FixViewer({
                     {allPicked ? "ניקוי הסימונים" : "סימון הכול"}
                   </button>
                   {href ? (
-                    <a href={href} className="btn btn-primary text-sm py-2" onClick={close}>
+                    <a href={href} className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={close}>
                       הורדה עם {picked.size} {picked.size === 1 ? "שינוי" : "שינויים"}
+                      <Download className="h-4 w-4 fix-gate-arrow fix-gate-down" strokeWidth={1.75} aria-hidden />
                     </a>
                   ) : (
-                    <span className="btn btn-primary text-sm py-2 fix-disabled" aria-disabled>
+                    <span className="btn btn-gold text-sm py-2 fix-gate-btn fix-disabled" aria-disabled>
                       סמני לפחות שינוי אחד
+                      <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                     </span>
                   )}
                 </div>
@@ -258,11 +433,8 @@ export function FixViewer({
                 <p className="fix-legend">
                   <span className="fix-pink">מה שהתבקש לתקן</span>
                   <span className="fix-blue">התיקון</span>
-                  <a href={viewSrc} target="_blank" rel="noopener noreferrer" className="underline">
-                    פתיחה בלשונית חדשה
-                  </a>
                 </p>
-                <iframe src={viewSrc} title="הקובץ עם השינויים" className="fix-frame" />
+                <PdfViewer src={viewSrc} className="fix-frame" />
               </div>
             </div>
           )}

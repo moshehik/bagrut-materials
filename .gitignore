@@ -74,3 +74,6 @@ next-env.d.ts
 /_scratchpad_*/
 /_*_build_*/
 /_*_build/
+
+# דוגמאות פיתוח בלבד (card-preview) – לא עולות לאתר
+public/_demo/

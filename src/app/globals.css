@@ -829,9 +829,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.7rem;
+  gap: 0.45rem;
   min-height: 4.2rem;
-  padding: 0.4rem 0.9rem;
+  padding: 0.4rem 0.8rem;
   background: var(--mtc-body);
   border-radius: 0 0 0.9rem 0.9rem;
   font-family: var(--font-hand);
@@ -841,7 +841,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   line-height: 1.15;
 }
@@ -856,8 +856,8 @@ body {
 .mtc-download {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.95rem;
+  gap: 0.3rem;
+  font-size: 1.15rem;
   white-space: nowrap;
   color: inherit;
   text-decoration: none;
@@ -868,8 +868,10 @@ body {
   transform: scale(1.07) rotate(-2deg);
 }
 .mtc-nut {
-  width: 1.85rem;
-  height: auto;
+  /* אותו מלבן לכל האגוזים בשורה (הורדה / צפייה), כדי שיהיו באותו גודל גם כשהצורות שונות */
+  width: 2.4rem;
+  height: 2rem;
+  object-fit: contain;
 }
 .mtc-disabled {
   opacity: 0.6;
@@ -917,67 +919,181 @@ body {
   transform: scale(1.04);
 }
 .mtc-rownut {
-  width: 1.9rem;
-  height: auto;
+  width: 2rem;
+  height: 1.8rem;
+  object-fit: contain;
   flex-shrink: 0;
   filter: drop-shadow(0 1px 2px rgba(60, 40, 10, 0.35));
 }
 
-/* טולטיפ מודרני בכתב גברת לוין – על כל אלמנט עם data-tip */
-[data-tip] {
+/* אנימציית אגוז-כפתור: כשעומדים עליו האגוז קופץ כמו ג׳לי (מתכווץ, מזנק, נוחת ומתרסק קצת)
+   ומנצנצים סביבו ניצוצות קטנים – כדי שיהיה ברור שזה לחצן */
+@keyframes nut-boing {
+  0%   { transform: translateY(0) scale(1, 1) rotate(0deg); }
+  14%  { transform: translateY(1px) scale(1.14, 0.86) rotate(0deg); }
+  38%  { transform: translateY(-2px) scale(0.96, 1.06) rotate(-5deg); }
+  58%  { transform: translateY(0) scale(1.1, 0.9) rotate(4deg); }
+  74%  { transform: translateY(0) scale(0.99, 1.02) rotate(-1deg); }
+  100% { transform: translateY(0) scale(1, 1) rotate(0deg); }
+}
+@keyframes nut-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  45% { opacity: 1; transform: scale(1) rotate(35deg); }
+  80% { opacity: 0; transform: scale(0.4) rotate(70deg); }
+}
+.mtc-download {
   position: relative;
 }
-[data-tip]::after {
-  content: attr(data-tip);
+.mtc-row:hover .mtc-rownut,
+.mtc-row:focus-visible .mtc-rownut,
+.mtc-download:hover .mtc-nut,
+.mtc-download:focus-visible .mtc-nut {
+  transform-origin: 50% 90%;
+  animation: nut-boing 0.9s ease-in-out infinite;
+  filter: drop-shadow(0 5px 4px rgba(60, 40, 10, 0.35));
+}
+.mtc-row:active .mtc-rownut,
+.mtc-download:active .mtc-nut {
+  animation: none;
+  transform: scale(1.2, 0.8);
+}
+.mtc-row::before,
+.mtc-row::after,
+.mtc-download::before,
+.mtc-download::after {
+  content: "✦";
   position: absolute;
-  inset-inline-start: 0;
-  bottom: calc(100% + 0.55rem);
-  z-index: 40;
+  color: #f2b53a;
+  text-shadow: 0 0 6px rgba(255, 214, 102, 0.9);
+  font-size: 0.8rem;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+}
+.mtc-row::before,
+.mtc-download::before {
+  inset-inline-start: -0.2rem;
+  top: -0.25rem;
+}
+.mtc-row::after,
+.mtc-download::after {
+  inset-inline-start: 1.5rem;
+  top: -0.35rem;
+  font-size: 0.6rem;
+  color: #fff;
+}
+.mtc-row:hover::before,
+.mtc-row:focus-visible::before,
+.mtc-download:hover::before,
+.mtc-download:focus-visible::before {
+  animation: nut-twinkle 0.9s ease-in-out infinite;
+}
+.mtc-row:hover::after,
+.mtc-row:focus-visible::after,
+.mtc-download:hover::after,
+.mtc-download:focus-visible::after {
+  animation: nut-twinkle 0.9s ease-in-out 0.3s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mtc-row:hover .mtc-rownut,
+  .mtc-row:focus-visible .mtc-rownut,
+  .mtc-download:hover .mtc-nut,
+  .mtc-download:focus-visible .mtc-nut {
+    animation: none;
+    transform: scale(1.12);
+  }
+  .mtc-row::before, .mtc-row::after, .mtc-download::before, .mtc-download::after {
+    display: none;
+  }
+}
+
+/* אנימציות חמודות לדמות שבראש הכרטיסייה ולסימון "הפרטים שלך על הקובץ" (טביעת האצבע) */
+/* דמות הציור בראש הכרטיסייה: ריחוף עדין ואיטי (שונה בכוונה מהקפיצה של האגוזים) */
+@keyframes art-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }
+  25% { transform: translateY(-4px) rotate(0deg) scale(1.04); }
+  50% { transform: translateY(-1px) rotate(3deg) scale(1.02); }
+  75% { transform: translateY(-4px) rotate(0deg) scale(1.04); }
+}
+@keyframes print-pulse {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  30% { transform: scale(1.22) rotate(-8deg); }
+  60% { transform: scale(0.96) rotate(5deg); }
+}
+@keyframes print-flow {
+  to { stroke-dashoffset: -16; }
+}
+@keyframes print-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.mtc-art {
+  transform-origin: 50% 90%;
+}
+.mtc-head:hover .mtc-art {
+  animation: art-float 2.6s ease-in-out infinite;
+}
+.mtc-print {
+  cursor: default;
+}
+.mtc-print:hover .mtc-print-icon {
+  animation: print-pulse 0.9s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9));
+}
+.mtc-print:hover .mtc-print-icon * {
+  stroke-dasharray: 5 3;
+  animation: print-flow 0.7s linear infinite;
+}
+.mtc-print:hover span {
+  display: inline-block;
+  animation: print-bob 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mtc-head:hover .mtc-art,
+  .mtc-print:hover .mtc-print-icon,
+  .mtc-print:hover .mtc-print-icon *,
+  .mtc-print:hover span {
+    animation: none;
+  }
+}
+
+/* טולטיפ מודרני בכתב גברת לוין, מעט שקוף – מיקום חכם ב-NutTooltip (בוחר צד שלא מסתיר טקסט) */
+.nut-tip {
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  top: 0;
   width: max-content;
   max-width: min(15.5rem, 78vw);
   padding: 0.5rem 0.8rem;
   border-radius: 0.8rem;
-  background: #2f3b57;
+  background: rgba(47, 59, 87, 0.86);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
   color: #fff;
   font-family: var(--font-hand);
   font-size: 1rem;
-  font-weight: 400;
   line-height: 1.35;
   text-align: start;
-  box-shadow: 0 10px 26px rgba(25, 30, 50, 0.35);
+  box-shadow: 0 10px 26px rgba(25, 30, 50, 0.3);
   opacity: 0;
-  transform: translateY(6px) scale(0.97);
+  transform: scale(0.96);
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  display: none;
 }
-[data-tip]::before {
-  content: "";
-  position: absolute;
-  inset-inline-start: 1.2rem;
-  bottom: calc(100% + 0.15rem);
-  z-index: 40;
-  width: 0.7rem;
-  height: 0.7rem;
-  background: #2f3b57;
-  transform: translateY(6px) rotate(45deg);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.nut-tip[data-on] {
+  display: block;
 }
-[data-tip]:hover::after,
-[data-tip]:focus-visible::after {
+.nut-tip[data-show] {
   opacity: 1;
   transform: none;
 }
-[data-tip]:hover::before,
-[data-tip]:focus-visible::before {
-  opacity: 1;
-  transform: translateY(0) rotate(45deg);
-}
 
-/* חלונות בקשת שינוי / בחירת שינויים */
+/* חלונות בקשת שינוי / צפייה בשינויים */
 .fix-dialog {
   font-family: var(--font-sans);
+  inset: 0;
   width: min(34rem, calc(100vw - 2rem));
   max-height: calc(100vh - 3rem);
   padding: 0;
@@ -992,9 +1108,14 @@ body {
   background: rgba(30, 25, 15, 0.5);
 }
 .fix-dialog-box {
+  /* פס הגלילה של החלון בצד ימין; התוכן נשאר ב-RTL */
+  direction: ltr;
   padding: 1.1rem 1.25rem 1.25rem;
   overflow-y: auto;
   max-height: calc(100vh - 3rem);
+}
+.fix-dialog-box > * {
+  direction: rtl;
 }
 .fix-dialog-head {
   display: flex;
@@ -1075,11 +1196,49 @@ body {
   background: #f1fafd;
 }
 .fix-row input {
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-top: 0.15rem;
+  /* תיבת הסימון המקורית מוסתרת (נשארת נגישה למקלדת וקורא מסך) – במקומה הלחצן העגול .fix-check */
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+.fix-row {
+  position: relative;
+}
+/* לחצן עגול: כחול כהה, וזהב כהה ל"וי" בכתב גברת לוין */
+.fix-check {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-top: -0.05rem;
   flex-shrink: 0;
-  accent-color: #3b8fb4;
+  border-radius: 999px;
+  background: #16244e;
+  border: 2px solid #9a7418;
+  transition: box-shadow 0.15s;
+}
+.fix-check::before {
+  content: "";
+  width: 1.05rem;
+  height: 1.05rem;
+  /* סימן וי בכתב יד, לבן */
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M3.5 13.2c1.6 1.3 3.2 3.2 4.6 5.4 3.1-6.4 7.3-10.7 12.4-14.2'/></svg>") center / contain no-repeat;
+  opacity: 0;
+  transform: scale(0.6) rotate(-6deg);
+  transition: opacity 0.12s, transform 0.12s;
+}
+.fix-row input:checked + .fix-check::before {
+  opacity: 1;
+  transform: scale(1) rotate(-6deg);
+}
+.fix-row:hover .fix-check {
+  box-shadow: 0 0 0 3px rgba(154, 116, 24, 0.25);
+}
+.fix-row input:focus-visible + .fix-check {
+  box-shadow: 0 0 0 3px rgba(154, 116, 24, 0.6);
 }
 .fix-num {
   display: grid;
@@ -1102,12 +1261,12 @@ body {
   font-size: 0.92rem;
 }
 .fix-pink {
-  background: #ffc2dc;
+  background: #e9d08a;
   border-radius: 0.25rem;
   padding: 0 0.25rem;
 }
 .fix-blue {
-  background: #bfe9f7;
+  background: #9ac7bc;
   border-radius: 0.25rem;
   padding: 0 0.25rem;
 }
@@ -1123,6 +1282,338 @@ body {
 .fix-disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* הצופה שלנו (pdf.js על קנבס – בלי סרגל כלים ובלי כפתורי הורדה/הדפסה) */
+button.mtc-download,
+button.underline {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pdfv {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 0.7rem;
+  background: #e7e7ea;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.pdfv-bar {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 0.5rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(47, 59, 87, 0.85);
+  color: #fff;
+  font-size: 0.8rem;
+}
+.pdfv-bar button {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+.pdfv-bar button:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+.pdfv-bar span {
+  min-width: 2.6rem;
+  text-align: center;
+}
+.pdfv-scroll {
+  /* פס הגלילה בצד ימין (בעברית הוא בדרך כלל בשמאל); התוכן עצמו נשאר ב-RTL */
+  direction: ltr;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+}
+.pdfv-pages,
+.pdfv-msg {
+  direction: rtl;
+}
+.pdfv-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.pdfv-page {
+  display: block;
+  max-width: none;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.pdfv-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.view-dialog {
+  font-family: var(--font-sans);
+  inset: 0;
+  margin: auto;
+  width: min(60rem, calc(100vw - 1rem));
+  height: calc(100vh - 2rem);
+  padding: 0.75rem;
+  border: 0;
+  border-radius: 1rem;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.view-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.view-dialog::backdrop {
+  background: rgba(30, 25, 15, 0.55);
+}
+.view-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.view-dialog-head h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.view-dialog-viewer {
+  flex: 1;
+}
+
+/* פסי גלילה אלגנטיים בחלונות (דקים, מעוגלים, כחול עמוק עם הילה זהובה) */
+.pdfv-scroll,
+.fix-dialog-box,
+.fix-list,
+.view-dialog {
+  scrollbar-width: thin;
+  scrollbar-color: #2f3b57 transparent;
+}
+.pdfv-scroll::-webkit-scrollbar,
+.fix-dialog-box::-webkit-scrollbar,
+.fix-list::-webkit-scrollbar,
+.view-dialog::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.pdfv-scroll::-webkit-scrollbar-track,
+.fix-dialog-box::-webkit-scrollbar-track,
+.fix-list::-webkit-scrollbar-track,
+.view-dialog::-webkit-scrollbar-track {
+  background: rgba(47, 59, 87, 0.08);
+  border-radius: 999px;
+  margin-block: 6px;
+}
+.pdfv-scroll::-webkit-scrollbar-thumb,
+.fix-dialog-box::-webkit-scrollbar-thumb,
+.fix-list::-webkit-scrollbar-thumb,
+.view-dialog::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3d4f7c, #1f2c4d);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.pdfv-scroll::-webkit-scrollbar-thumb:hover,
+.fix-dialog-box::-webkit-scrollbar-thumb:hover,
+.fix-list::-webkit-scrollbar-thumb:hover,
+.view-dialog::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e0aa22, #b8860b);
+  background-clip: padding-box;
+}
+.fix-dialog-dark .fix-dialog-box {
+  scrollbar-color: #e0aa22 transparent;
+}
+.fix-dialog-dark .fix-dialog-box::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f1c24d, #b8860b);
+  background-clip: padding-box;
+}
+.fix-dialog-dark .fix-dialog-box::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* שכבת הטקסט בצופה (מצב סימון) והסימונים הוורודים */
+.pdfv-pagewrap {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.pdfv-pagewrap .pdfv-page {
+  box-shadow: none;
+}
+.pdfv-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pdfv-mark {
+  position: absolute;
+  background: rgba(233, 208, 138, 1);
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+}
+.pdfv-selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.pdfv-selectable .textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  transform-origin: 0 0;
+  z-index: 2;
+  mix-blend-mode: multiply; /* הבחירה צובעת מאחורי האותיות – האותיות נשארות מעל הצבע */
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+.pdfv-selectable .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.pdfv-selectable .textLayer ::selection {
+  background: rgba(233, 208, 138, 1);
+}
+.pdfv-selectable .textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.pdfv-markbtn {
+  position: absolute;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e0aa22, #b8860b);
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(255, 233, 160, 0.6);
+}
+.pdfv-markbtn:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+/* חלון "לעריכת שינויים": רשימת התיקונים של המורה */
+.fix-edits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+.fix-edit {
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+.fix-edit-active {
+  border-color: #0a0a0a;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(224, 170, 34, 0.45);
+}
+.fix-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 1.05rem;
+}
+.fix-edit-remove {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #000;
+  cursor: pointer;
+}
+.fix-edit-remove:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+.fix-edit label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.05rem;
+}
+.fix-edit textarea {
+  width: 100%;
+  margin-top: 0.2rem;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.fix-edit-quote {
+  background: #e9d08a; /* הצבע של הטעות */
+}
+.fix-edit-fix {
+  background: rgba(154, 199, 188, 0.45); /* הצבע של התיקון */
+  border-color: #9ac7bc !important;
+}
+.fix-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+  padding: 0.3rem 0.9rem;
+  border: 1.5px dashed #0a0a0a;
+  border-radius: 999px;
+  background: transparent;
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.fix-add:hover {
+  background: rgba(255, 255, 255, 0.6);
 }
 
 /* ההודעה הצפה "שימי לב!" */
@@ -1145,8 +1636,223 @@ body {
   padding-inline-start: 1.2rem;
   list-style: decimal;
 }
+.fix-emph {
+  font-weight: 700;
+  /* גברת לוין קיים רק במשקל רגיל – מעבה את האותיות כדי שההדגשה תיראה גם בה, בלי צבע רקע */
+  -webkit-text-stroke: 0.3px currentColor;
+}
 .fix-notice li + li {
-  margin-top: 0.3rem;
+  margin-top: 1.1rem;
+}
+/* שלב ההודעה "שימי לב!": חלונית כחולה כהה בשקיפות 35%, ובתוכה חלונית זהב בהיר עם אותיות שחורות */
+.fix-dialog-dark {
+  background: rgba(22, 36, 78, 0.65);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: 0;
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  overflow: visible;
+}
+.fix-dialog-dark .fix-dialog-head h3 {
+  color: #fff;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.5rem;
+}
+.fix-dialog-dark .fix-close {
+  color: #fff;
+}
+.fix-dialog-dark .fix-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.fix-dialog-dark .fix-notice {
+  position: relative;
+  background: #fbefc2;
+  border: 2.5px solid #0a0a0a; /* מסגרת פנימית שחורה קבועה – הניצוץ הזהב רק על החיצונית */
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  line-height: 1.55;
+}
+.fix-dialog-dark .fix-notice b {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.4rem;
+}
+/* החלונית הפנימית (טופס העריכה / צפייה בשינויים) באותו סגנון של "שימי לב!": זהב בהיר, מסגרת שחורה, אותיות שחורות */
+.fix-dialog-dark .fix-inner {
+  background: #fbefc2;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.8rem;
+  padding: 1rem 1.1rem;
+  color: #000;
+}
+.fix-dialog-dark .fix-dialog-sub {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+}
+.fix-dialog-dark .fix-inner .fix-dialog-sub {
+  color: #000;
+  font-size: 1.15rem;
+}
+.fix-dialog-dark .fix-form {
+  font-weight: 400;
+  font-size: 1.15rem;
+}
+.fix-dialog-dark .fix-optional {
+  color: #3b3000;
+  font-size: 0.95rem;
+}
+.fix-dialog-dark .input {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  background: #fff;
+  border: 1.5px solid #0a0a0a;
+}
+.fix-dialog-dark .fix-error {
+  color: #8a1508;
+}
+.fix-dialog-dark .btn {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.2rem;
+  color: #000;
+}
+.fix-dialog-dark .btn-ghost {
+  border-color: #0a0a0a;
+  color: #000;
+}
+.fix-dialog-dark .fix-row {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(0, 0, 0, 0.35);
+}
+.fix-dialog-dark .fix-row:has(input:checked) {
+  background: #fff;
+  border-color: #0a0a0a;
+}
+.fix-dialog-dark .fix-texts {
+  font-size: 1.05rem;
+}
+.fix-dialog-dark .fix-legend {
+  font-size: 1rem;
+}
+.fix-gate-btn {
+  gap: 0.45rem;
+  color: #000;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.2rem;
+}
+
+/* מסגרת שחורה עם ניצוץ זהב שמסתובב סביבה (לחלונית ולחלונית הפנימית) */
+@property --fx-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes fx-spin {
+  to {
+    --fx-angle: 360deg;
+  }
+}
+.fix-dialog-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--fx-angle),
+    #0a0a0a 0deg,
+    #0a0a0a 292deg,
+    #b8860b 312deg,
+    #ffd45a 330deg,
+    #fffbe0 342deg,
+    #ffd45a 352deg,
+    #0a0a0a 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: fx-spin 11s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fix-dialog-dark::before {
+    animation: none;
+  }
+}
+
+/* לחצן "הבנתי, להמשיך": בעמידה עליו – זהב יוקרתי עמוק יותר, ברק שעובר והחץ מהנהן */
+.fix-gate-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.fix-gate-btn::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.fix-dialog-dark .fix-gate-btn:hover,
+.fix-dialog-dark .fix-gate-btn:focus-visible {
+  background: linear-gradient(135deg, #e0aa22 0%, #b8860b 55%, #8f6508 100%);
+  color: #000;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 10px 24px rgba(143, 101, 8, 0.55), 0 0 0 2px rgba(255, 233, 160, 0.55);
+}
+.fix-dialog-dark .fix-gate-btn:hover::after,
+.fix-dialog-dark .fix-gate-btn:focus-visible::after {
+  opacity: 1;
+  animation: gate-shine 1.5s ease-in-out infinite;
+}
+.fix-dialog-dark .fix-gate-btn:hover .fix-gate-arrow,
+.fix-dialog-dark .fix-gate-btn:focus-visible .fix-gate-arrow {
+  animation: gate-arrow 0.9s ease-in-out infinite;
+}
+.fix-dialog-dark .fix-gate-btn:hover .fix-gate-down,
+.fix-dialog-dark .fix-gate-btn:focus-visible .fix-gate-down {
+  animation-name: gate-down;
+}
+.fix-dialog-dark .fix-gate-btn.fix-disabled {
+  pointer-events: none;
+}
+.fix-dialog-dark .fix-gate-btn.fix-disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+@keyframes gate-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+@keyframes gate-shine {
+  from { inset-inline-start: -60%; }
+  to { inset-inline-start: 120%; }
+}
+@keyframes gate-arrow {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fix-dialog-dark .fix-gate-btn:hover::after,
+  .fix-dialog-dark .fix-gate-btn:hover .fix-gate-arrow {
+    animation: none;
+  }
+}
+.fix-gate-logo {
+  align-self: center;
+  width: min(11rem, 55%);
+  height: auto;
+  margin: 0.2rem 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
 }
 .fix-gate {
   display: flex;
@@ -1162,7 +1868,7 @@ body {
 .fix-viewer {
   display: grid;
   grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
-  gap: 1rem;
+  gap: 2.25rem;
   align-items: start;
 }
 @media (max-width: 800px) {
@@ -1175,15 +1881,12 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.8rem;
-  margin: 0 0 0.4rem;
+  margin: 0 0 1rem;
   font-size: 0.82rem;
 }
 .fix-frame {
   width: 100%;
   height: min(70vh, 46rem);
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 0.7rem;
-  background: #f4f4f4;
 }
 
 .mtc-foot {
@@ -1262,4 +1965,79 @@ body {
 }
 .mtc-forum-body:hover .mtc-forum-nuts {
   transform: scale(1.08) rotate(-3deg);
+}
+.fix-pane-logo {
+  filter: none;
+  display: block;
+  width: min(9rem, 50%);
+  margin: 1.4rem auto 0.2rem;
+}
+
+.fix-dialog-dark .fix-dialog-head {
+  margin-bottom: 1.5rem;
+}
+
+/* "החל תיקון": מעל "הוספת תיקון נוסף" */
+.fix-apply {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin-bottom: 0.7rem;
+  padding: 0.45rem 1rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  background: #16244e;
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.fix-apply:hover:not(:disabled) {
+  background: #1f3270;
+}
+.fix-apply:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.fix-edit-applied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.fix-edit-reopen {
+  margin-inline-start: auto;
+  padding: 0 0.7rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-hand);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* כותרת החלון אחרי "שימי לב": לוגו בצד ימין, הכותרת והשם באמצע, סגירה בשמאל */
+.fix-dialog-head-centered {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+.fix-dialog-head-centered .fix-head-title {
+  text-align: center;
+}
+.fix-dialog-head-centered .fix-head-title .fix-dialog-sub {
+  margin: 0.15rem 0 0;
+}
+.fix-dialog-head-centered .fix-head-logo {
+  justify-self: start;
+  width: min(6.5rem, 22vw);
+  height: auto;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+.fix-dialog-head-centered .fix-close {
+  justify-self: end;
 }

@@ -19,23 +19,34 @@ const emptyToUndef = (v: unknown) => (typeof v === "string" && v.trim() === "" ?
 
 const requestSchema = z.object({
   materialId: z.coerce.number().int().positive(),
-  requestText: z.string().trim().min(3, "כתבי מה צריך לשנות").max(2000, "ההודעה ארוכה מדי"),
-  quoteText: z.preprocess(emptyToUndef, z.string().trim().max(1000, "הציטוט ארוך מדי").optional()),
+  items: z
+    .array(
+      z.object({
+        /** מה שהמורה סימנה בקובץ כטעות */
+        quote: z.string().trim().min(2, "יש לסמן בקובץ את הטקסט שצריך תיקון").max(1000, "הטקסט המסומן ארוך מדי"),
+        /** התיקון שהמורה כתבה */
+        correction: z.string().trim().min(1, "יש לכתוב את התיקון").max(2000, "התיקון ארוך מדי"),
+      }),
+    )
+    .min(1, "הוסיפי לפחות תיקון אחד")
+    .max(10, "אפשר לשלוח עד 10 תיקונים בבת אחת"),
 });
 
-/** מורה מבקשת שינוי בקובץ – נשמר לטיפול המנהלת */
-export async function submitFixRequest(_prev: FixState, form: FormData): Promise<FixState> {
+/**
+ * מורה שולחת תיקון אחד או יותר: לכל אחד – הטקסט שסימנה בקובץ והתיקון שכתבה. נשמר לטיפול המנהלת
+ * (quoteText = מה שסומן, requestText = התיקון המוצע).
+ */
+export async function submitFixRequests(input: {
+  materialId: number;
+  items: { quote: string; correction: string }[];
+}): Promise<FixState> {
   const user = await getCurrentUser();
   if (!user) return { error: "יש להתחבר כדי לבקש שינוי" };
   if (user.suspended) return { error: "החשבון מושהה" };
 
-  const parsed = requestSchema.safeParse({
-    materialId: form.get("materialId"),
-    requestText: form.get("requestText"),
-    quoteText: form.get("quoteText"),
-  });
+  const parsed = requestSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { materialId, requestText, quoteText } = parsed.data;
+  const { materialId, items } = parsed.data;
 
   const [material] = await db.select().from(materials).where(eq(materials.id, materialId)).limit(1);
   if (!material) return { error: "הקובץ לא נמצא" };
@@ -52,22 +63,24 @@ export async function submitFixRequest(_prev: FixState, form: FormData): Promise
         eq(materialFixes.status, "pending"),
       ),
     );
-  if (Number(pending?.n ?? 0) >= MAX_PENDING_PER_MATERIAL) {
+  if (Number(pending?.n ?? 0) + items.length > MAX_PENDING_PER_MATERIAL) {
     return { error: "יש כבר כמה בקשות שממתינות לטיפול בקובץ הזה – נחכה שנטפל בהן" };
   }
 
-  await db.insert(materialFixes).values({
-    materialId,
-    userId: user.id,
-    requestText,
-    quoteText: quoteText ?? null,
-  });
+  await db.insert(materialFixes).values(
+    items.map((it) => ({
+      materialId,
+      userId: user.id,
+      requestText: it.correction,
+      quoteText: it.quote,
+    })),
+  );
   void logAudit({
     actorId: user.id,
     action: "fix.request",
     entityType: "material",
     entityId: materialId,
-    details: { title: material.title },
+    details: { title: material.title, count: items.length },
   });
   revalidatePath("/admin/fixes");
   return { ok: true };
@@ -158,7 +171,7 @@ export async function publishFix(id: number, _prev: FixState, form: FormData): P
   return { ok: true };
 }
 
-async function setStatus(id: number, status: "pending" | "rejected", action: string) {
+async function setStatus(id: number, status: "pending" | "rejected" | "merged", action: string) {
   const me = await admin();
   if (!me) return;
   const [fix] = await db.select().from(materialFixes).where(eq(materialFixes.id, id)).limit(1);
@@ -172,6 +185,14 @@ async function setStatus(id: number, status: "pending" | "rejected", action: str
 
 export async function rejectFix(id: number): Promise<void> {
   await setStatus(id, "rejected", "fix.reject");
+}
+
+/**
+ * התיקון שולב בקובץ המקורי (המנהלת עדכנה את הקובץ עצמו): מפסיק להופיע בכרטיסייה, כך שאין יותר צורך
+ * ב"צפייה בשינויים" / "הורדת הקובץ המתוקן" עליו. אם יתקנו שוב – תיווצר בקשה חדשה ותופיע מחדש.
+ */
+export async function markFixMerged(id: number): Promise<void> {
+  await setStatus(id, "merged", "fix.merge");
 }
 
 export async function unpublishFix(id: number): Promise<void> {

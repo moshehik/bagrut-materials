@@ -1,10 +1,18 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { publishFix, rejectFix, unpublishFix, type FixState } from "@/lib/actions/fixes";
+import { markFixMerged, publishFix, rejectFix, unpublishFix, type FixState } from "@/lib/actions/fixes";
 
 /** טיפול בבקשת שינוי: מזינים את הטקסט המקורי (בדיוק כמו בקובץ) ואת התיקון, ומפרסמים */
-export function FixPublishForm({ id, defaultOriginal }: { id: number; defaultOriginal: string }) {
+export function FixPublishForm({
+  id,
+  defaultOriginal,
+  defaultCorrected,
+}: {
+  id: number;
+  defaultOriginal: string;
+  defaultCorrected: string;
+}) {
   const [state, action, pending] = useActionState<FixState, FormData>(publishFix.bind(null, id), undefined);
   const [rejecting, startReject] = useTransition();
 
@@ -16,7 +24,7 @@ export function FixPublishForm({ id, defaultOriginal }: { id: number; defaultOri
       </label>
       <label className="grid gap-1 text-xs font-semibold">
         הטקסט המתוקן (יסומן בתכלת)
-        <textarea name="correctedText" rows={2} required className="input" />
+        <textarea name="correctedText" rows={2} required defaultValue={defaultCorrected} className="input" />
       </label>
       <label className="grid gap-1 text-xs font-semibold">
         הערה פנימית (לא חובה)
@@ -44,13 +52,28 @@ export function FixPublishForm({ id, defaultOriginal }: { id: number; defaultOri
 export function UnpublishFixButton({ id }: { id: number }) {
   const [pending, start] = useTransition();
   return (
-    <button
-      type="button"
-      disabled={pending}
-      className="btn btn-ghost text-xs py-1"
-      onClick={() => start(() => unpublishFix(id))}
-    >
-      ביטול פרסום
-    </button>
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        className="btn btn-primary text-xs py-1"
+        title="אחרי שעדכנת את הקובץ המקורי עצמו: התיקון יוסתר מהכרטיסייה"
+        onClick={() => {
+          if (confirm("לוודא: הקובץ המקורי כבר עודכן עם התיקון הזה? התיקון יפסיק להופיע בכרטיסייה.")) {
+            start(() => markFixMerged(id));
+          }
+        }}
+      >
+        שולב בקובץ המקורי
+      </button>
+      <button
+        type="button"
+        disabled={pending}
+        className="btn btn-ghost text-xs py-1"
+        onClick={() => start(() => unpublishFix(id))}
+      >
+        ביטול פרסום
+      </button>
+    </div>
   );
 }

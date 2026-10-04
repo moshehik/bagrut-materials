@@ -179,7 +179,7 @@ export const materialFixes = pgTable(
     userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
     requestText: text("request_text").notNull(),
     quoteText: text("quote_text"),
-    /** pending = ממתינה למנהלת, published = תיקון מפורסם, rejected = נדחתה */
+    /** pending = ממתינה למנהלת, published = תיקון מפורסם, merged = שולב בקובץ המקורי (לא מוצג יותר), rejected = נדחתה */
     status: varchar("status", { length: 12 }).notNull().default("pending"),
     fixNumber: integer("fix_number"),
     originalText: text("original_text"),

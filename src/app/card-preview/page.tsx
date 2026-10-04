@@ -50,9 +50,12 @@ export default function CardPreviewPage() {
           type="student"
           folderTitle={folder}
           currentPath="/card-preview"
+          fixesViewSrc="/_demo/view-with-changes.pdf"
+          plainViewSrc="/_demo/plain.pdf"
           fixes={[
-            { number: 1, originalText: "מצרים", correctedText: "מדין" },
+            { number: 1, originalText: "ירד אל מצרים", correctedText: "ירד אל ארץ גושן" },
             { number: 2, originalText: "בשנת ג׳תתק״ד", correctedText: "בשנת ג׳תתקצ״ד" },
+            { number: 3, originalText: "המלך שלח את שליחיו", correctedText: "המלך שלח את שריו" },
           ]}
         />
       </div>

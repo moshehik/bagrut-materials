@@ -3,6 +3,7 @@ import { Eye, Fingerprint, PauseCircle } from "lucide-react";
 import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, type CardType } from "@/lib/material-card-types";
+import { FileViewerButton } from "@/components/pdf-viewer";
 import { FIX_TIPS, FixRequestButton, FixViewer, type CardFix } from "@/components/material-fixes";
 
 type Props = {
@@ -17,6 +18,10 @@ type Props = {
   myDownloadCount?: number;
   /** תיקונים מפורסמים לקובץ (ר' src/lib/fixes.ts) – מציגים אגוזי "קובץ מתוקן" ו"בחירת שינויים" */
   fixes?: CardFix[];
+  /** רק לדוגמאות פיתוח (card-preview): PDF קבוע בחלון הצפייה בשינויים */
+  fixesViewSrc?: string;
+  /** רק לדוגמאות פיתוח: PDF נקי (בלי סימונים) בחלון העריכה */
+  plainViewSrc?: string;
 };
 
 /** לאן מובילה לחיצה על האגוז האדום – הורדה למי שמורשית, אחרת הצעד החסר (התחברות / רכישת התיקייה) */
@@ -46,6 +51,8 @@ export function MaterialTypeCard({
   bundleHref,
   myDownloadCount = 0,
   fixes = [],
+  fixesViewSrc,
+  plainViewSrc,
 }: Props) {
   const s = CARD_STYLES[type];
   const target = downloadTarget(m, entitlement, currentPath, bundleHref);
@@ -98,10 +105,10 @@ export function MaterialTypeCard({
         </div>
 
         {viewOnly ? (
-          <a href={`/api/preview/${m.id}`} target="_blank" rel="noopener noreferrer" className="mtc-download">
+          <FileViewerButton src={`/api/preview/${m.id}`} title={`${s.label} - ${folderTitle}`} className="mtc-download">
             <Eye className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
-          </a>
+          </FileViewerButton>
         ) : target ? (
           <a
             href={target}
@@ -120,18 +127,32 @@ export function MaterialTypeCard({
         )}
 
         {/* מי שלא שילמה: האגוז מוביל לאותו צעד חסר כמו ההורדה (התחברות / רכישה); הצפייה עצמה נאכפת בשרת */}
-        {(canView || (!viewOnly && target)) && (
-          <a
-            href={canView ? `/api/preview/${m.id}` : target!}
-            {...(canView ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        {canView ? (
+          <FileViewerButton
+            src={`/api/preview/${m.id}`}
+            title={`${s.label} - ${folderTitle}`}
             className="mtc-download"
-            data-tip={canView ? "לצפייה בקובץ באתר, בלי להוריד" : "לצפייה בקובץ צריך קודם להשלים את השלב הבא"}
-            aria-label={`צפייה ב${s.label} באתר`}
+            tip="לצפייה בקובץ באתר, בלי להוריד"
+            label={`צפייה ב${s.label} באתר`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/nuts/one-03.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+            <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
-          </a>
+          </FileViewerButton>
+        ) : (
+          !viewOnly &&
+          target && (
+            <a
+              href={target}
+              className="mtc-download"
+              data-tip="לצפייה בקובץ צריך קודם להשלים את השלב הבא"
+              aria-label={`צפייה ב${s.label} באתר`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+              <span>לצפייה</span>
+            </a>
+          )
         )}
       </div>
 
@@ -142,13 +163,15 @@ export function MaterialTypeCard({
             materialId={m.id}
             materialTitle={`${s.label} - ${folderTitle}`}
             lockedHref={lockedHref}
-            nutSrc="/images/nuts/one-03.webp"
+            nutSrc="/images/nuts/one-02.webp"
+            viewSrc={plainViewSrc}
           />
           {canFix && (
             <>
-              <FixViewer materialId={m.id} fixes={fixes} downloadHref={target!} nutSrc="/images/nuts/one-06.webp" />
+              <FixViewer materialId={m.id} fixes={fixes} downloadHref={target!} nutSrc="/images/nuts/one-06.webp" viewSrc={fixesViewSrc} />
               <a href={`${target}?fixes=all`} className="mtc-row" data-tip={FIX_TIPS.download}>
-                <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-rownut" aria-hidden />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/mat-cards/nut-download-light.webp" alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
                 <span>להורדת הקובץ המתוקן</span>
               </a>
             </>
@@ -164,9 +187,9 @@ export function MaterialTypeCard({
             </span>
           )}
           {m.allowPreview && !entitlement.ok && (
-            <a href={`/api/preview/${m.id}`} target="_blank" rel="noopener noreferrer" className="underline">
+            <FileViewerButton src={`/api/preview/${m.id}`} title={`${s.label} - ${folderTitle}`} className="underline">
               תצוגה מקדימה (עמוד ראשון)
-            </a>
+            </FileViewerButton>
           )}
           {myDownloadCount > 0 && <span>הורדת קובץ זה {myDownloadCount.toLocaleString("he-IL")} פעמים</span>}
         </div>

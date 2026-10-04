@@ -29,6 +29,7 @@ export default async function AdminFixesPage() {
   const pending = rows.filter((r) => r.status === "pending");
   const published = rows.filter((r) => r.status === "published");
   const rejected = rows.filter((r) => r.status === "rejected");
+  const merged = rows.filter((r) => r.status === "merged");
 
   return (
     <div className="space-y-6">
@@ -53,12 +54,19 @@ export default async function AdminFixesPage() {
                     {r.userName ?? "—"} · {r.createdAt.toLocaleDateString("he-IL")}
                   </span>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{r.requestText}</p>
-                {r.quoteText && (
-                  <p className="mt-1 whitespace-pre-wrap rounded-lg bg-[#ffc2dc]/60 px-2 py-1 text-sm">{r.quoteText}</p>
+                {r.quoteText ? (
+                  <div className="mt-2 text-sm leading-7">
+                    <span className="text-xs text-muted">המורה סימנה: </span>
+                    <span className="whitespace-pre-wrap rounded bg-[#e9d08a] px-1">{r.quoteText}</span>
+                    <span className="mx-2 text-muted">←</span>
+                    <span className="text-xs text-muted">התיקון שהציעה: </span>
+                    <span className="whitespace-pre-wrap rounded bg-[#9ac7bc] px-1">{r.requestText}</span>
+                  </div>
+                ) : (
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{r.requestText}</p>
                 )}
                 {/\.docx$/i.test(r.fileName) ? (
-                  <FixPublishForm id={r.id} defaultOriginal={r.quoteText ?? ""} />
+                  <FixPublishForm id={r.id} defaultOriginal={r.quoteText ?? ""} defaultCorrected={r.quoteText ? r.requestText : ""} />
                 ) : (
                   <p className="mt-3 text-sm text-red-700">
                     הקובץ אינו Word – תיקון מסומן נתמך רק ב-docx. את השינוי יש לבצע ידנית בקובץ.
@@ -72,6 +80,10 @@ export default async function AdminFixesPage() {
 
       <section>
         <h3 className="mb-2 font-bold">תיקונים מפורסמים</h3>
+        <p className="mb-2 text-xs text-muted">
+          אחרי שהתיקון נבדק ושולב בקובץ המקורי עצמו – לחצי &quot;שולב בקובץ המקורי&quot;: הוא ייעלם מהכרטיסייה, וכשאין עוד
+          תיקונים פעילים נשארת רק השורה &quot;לעריכת שינויים בקובץ&quot;.
+        </p>
         {published.length === 0 ? (
           <div className="card p-6 text-center text-muted">עדיין לא פורסמו תיקונים.</div>
         ) : (
@@ -84,9 +96,9 @@ export default async function AdminFixesPage() {
                 <div className="min-w-0 flex-1 text-sm">
                   <div className="font-semibold">{r.materialTitle}</div>
                   <div className="mt-1 leading-7">
-                    <span className="rounded bg-[#ffc2dc] px-1">{r.originalText}</span>
+                    <span className="rounded bg-[#e9d08a] px-1">{r.originalText}</span>
                     <span className="mx-2 text-muted">←</span>
-                    <span className="rounded bg-[#bfe9f7] px-1">{r.correctedText}</span>
+                    <span className="rounded bg-[#9ac7bc] px-1">{r.correctedText}</span>
                   </div>
                 </div>
                 <UnpublishFixButton id={r.id} />
@@ -95,6 +107,19 @@ export default async function AdminFixesPage() {
           </ul>
         )}
       </section>
+
+      {merged.length > 0 && (
+        <details className="card p-4">
+          <summary className="cursor-pointer font-bold">שולבו בקובץ המקורי ({merged.length})</summary>
+          <ul className="mt-2 space-y-2 text-sm text-muted">
+            {merged.map((r) => (
+              <li key={r.id}>
+                {r.materialTitle}: {r.originalText} ← {r.correctedText}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {rejected.length > 0 && (
         <details className="card p-4">
