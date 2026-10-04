@@ -40,7 +40,7 @@ npm run dev
 אם פעם push שוב נחסם, או כשרוצים להעלות מיד מהמחשב — הפקודה המהירה (או `/deploy` ב-Claude Code):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scriptsdeploy-site.ps1 -Message "מה השתנה"
+powershell -ExecutionPolicy Bypass -File scripts\deploy-site.ps1 -Message "מה השתנה"
 ```
 
 טבלאות/עמודות חדשות ב-`schema.ts` צריך ליצור ב-DB **לפני** ה-push (`db:push` שבור במחשב הזה — ר' `scripts/create-fix-tables.ts`), כי push מעלה מיד.
