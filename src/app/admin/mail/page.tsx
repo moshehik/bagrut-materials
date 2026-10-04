@@ -13,6 +13,7 @@ const KIND_LABEL: Record<string, string> = {
   purchase: "אישור רכישה",
   sell_offer: "הצעת מכירה",
   forum_reply: "תגובה בפורום",
+  forum_report: "דיווח בפורום",
   contact: "צור קשר",
   manual: "ידני",
   broadcast: "דיוור",

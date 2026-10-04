@@ -5,6 +5,7 @@ import { pageViews, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { parseDate, toCsv, csvResponse } from "@/lib/admin-analytics";
 import { shortUA } from "@/lib/ua";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,5 +66,15 @@ export async function GET(req: NextRequest) {
       r.userAgent,
     ]),
   );
+  // רישום ייצוא נתוני פעילות (מידע אישי של משתמשות) ביומן הפעולות
+  await logAudit({
+    actorId: user.id,
+    action: "activity.export",
+    entityType: "page_view",
+    details: {
+      rows: rows.length,
+      filters: { user: userQ || null, path: pathQ || null, from: q.get("from") || null, to: q.get("to") || null, loggedInOnly: onlyLoggedIn },
+    },
+  });
   return csvResponse(`activity-${new Date().toISOString().slice(0, 10)}.csv`, csv);
 }

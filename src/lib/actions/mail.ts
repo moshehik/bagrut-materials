@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users, purchases, type Tier } from "@/db/schema";
 import { requireAdmin, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates, type MailAttachment } from "@/lib/mail";
+import { logAudit } from "@/lib/audit";
 
 export type MailState = { error?: string; ok?: string } | undefined;
 
@@ -61,6 +62,20 @@ export async function sendManualMail(_prev: MailState, form: FormData): Promise<
     kind: "manual",
     sentById: admin.id,
   });
+  await logAudit({
+    actorId: admin.id,
+    action: "mail.manual",
+    entityType: "email",
+    entityId: r.logId || null,
+    details: {
+      to,
+      cc: cc || null,
+      subject,
+      attachment: attachment?.fileName ?? null,
+      result: r.ok ? "success" : "error",
+      error: r.ok ? null : r.error,
+    },
+  });
   revalidatePath("/admin/mail");
   return r.ok ? { ok: "המייל נשלח בהצלחה" } : { error: "השליחה נכשלה: " + r.error };
 }
@@ -103,7 +118,15 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
     if (ids.length) recipients = await base.where(inArray(users.id, ids.map((r) => r.id)));
   }
 
-  if (!recipients.length) return { error: "לא נמצאו נמענות בקבוצה שנבחרה" };
+  if (!recipients.length) {
+    await logAudit({
+      actorId: admin.id,
+      action: "mail.broadcast_denied",
+      entityType: "email",
+      details: { audience, tier: tier || null, subject, reason: "no_recipients" },
+    });
+    return { error: "לא נמצאו נמענות בקבוצה שנבחרה" };
+  }
 
   let attachment: MailAttachment | undefined;
   try {
@@ -126,6 +149,20 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
     if (res.ok) ok++;
     else fail++;
   }
+  await logAudit({
+    actorId: admin.id,
+    action: "mail.broadcast",
+    entityType: "email",
+    details: {
+      audience,
+      tier: audience === "tier" ? tier || "none" : null,
+      subject,
+      attachment: attachment?.fileName ?? null,
+      recipients: recipients.length,
+      ok,
+      fail,
+    },
+  });
   revalidatePath("/admin/mail");
   return fail ? { error: `נשלחו ${ok}, נכשלו ${fail} (ראי בלוג)` } : { ok: `נשלחו ${ok} מיילים בהצלחה` };
 }

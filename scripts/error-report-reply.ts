@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { addReportNote, setReportStatus } from "../src/lib/errorReports";
+import { logAgentEvent } from "../src/lib/agentEvents";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -40,6 +41,12 @@ async function main() {
     await setReportStatus(id, "ARCHIVED");
   }
 
+  await logAgentEvent({
+    source: "claude",
+    kind: "cli",
+    summary: `error-report-reply → ${id}${isQuestion ? " (שאלה)" : ""}${statusArg === "ARCHIVED" ? " + ARCHIVED" : ""}${previewUrl ? " + preview" : ""}`,
+    reportId: id,
+  });
   console.log(`OK: תגובה נוספה לדיווח ${id}${statusArg === "ARCHIVED" ? " (סומן ARCHIVED)" : ""}`);
 }
 

@@ -6,6 +6,8 @@ import { users, categories, materials, downloads, purchases, pageViews, transact
 import { formatPrice } from "@/lib/constants";
 import { getNumber } from "@/lib/settings";
 import { daysAgo, minutesAgo, startOfToday } from "@/lib/admin-analytics";
+import { isLoopEnabled, idleMinutes } from "@/lib/agentLoopStatus";
+import { AgentToggle } from "@/components/admin/agent-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,8 @@ export default async function AdminDashboard() {
   const since = minutesAgo(windowMin);
   const today = startOfToday();
   const d30 = daysAgo(30);
+
+  const [agentEnabled, agentIdle] = await Promise.all([isLoopEnabled().catch(() => false), idleMinutes().catch(() => -1)]);
 
   const [onlineNow, dlToday, viewsToday, revenue30] = await Promise.all([
     safeCount(db.select({ n: count() }).from(users).where(gte(users.lastSeenAt, since))),
@@ -92,6 +96,8 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-2xl font-bold">לוח בקרה</h2>
+
+      <AgentToggle initialEnabled={agentEnabled} idleMinutes={agentIdle} compact />
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {quick.map((q) => {

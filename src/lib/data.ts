@@ -377,8 +377,9 @@ export async function checkEntitlement(
     ["subject_monthly", "custom_monthly", "yearly"].includes(p.plan),
   );
   for (const s of subs) {
-    const inScope =
-      s.plan === "yearly" || s.categoryId === null || chainIds.has(s.categoryId);
+    // categoryId ריק = גישה לכל המקצועות (מנויים שנתיים ישנים, מלפני בחירת 3 המקצועות)
+    if (s.subjectsPending) continue; // מנוי שנתי שעוד לא נבחרו בו מקצועות – אין גישה עד הבחירה
+    const inScope = s.categoryId === null || chainIds.has(s.categoryId);
     if (!inScope) continue;
     if (s.downloadsLimit !== null && s.downloadsUsed >= s.downloadsLimit) {
       return { ok: false, reason: "quota" };
@@ -423,9 +424,10 @@ export async function userHasPremium(user: User | null) {
   return !!row;
 }
 
-/** מספרים לדף הבית: מקצועות, פרקים (תיקיות), קבצים והורדות — כולם מהנתונים האמיתיים */
+/** מספרים לדף הבית: מקצועות, פרקים (תיקיות), קבצים, הורדות וכניסות — כולם מהנתונים האמיתיים.
+ *  "כניסה" = גולש (סשן) שנכנס ביום מסוים, מכל הגולשים. */
 export async function getHomeStats() {
-  const [[subj], [cats], [mats]] = await Promise.all([
+  const [[subj], [cats], [mats], visitRows] = await Promise.all([
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(categories)
@@ -440,12 +442,17 @@ export async function getHomeStats() {
         d: sql<number>`coalesce(sum(${materials.downloads}),0)::int`,
       })
       .from(materials)
-      .where(eq(materials.status, "active")),
+      .where(inArray(materials.status, ["active", "draft"])),
+    db.execute(
+      sql`SELECT count(*)::int AS n FROM (SELECT DISTINCT coalesce(session_id, ip, id::text) AS who, created_at::date AS d FROM page_views) v`,
+    ),
   ]);
+  const visits = Number((visitRows.rows[0] as { n?: number } | undefined)?.n ?? 0);
   return {
     subjects: subj?.n ?? 0,
     folders: cats?.n ?? 0,
     files: mats?.n ?? 0,
     downloads: mats?.d ?? 0,
+    visits,
   };
 }

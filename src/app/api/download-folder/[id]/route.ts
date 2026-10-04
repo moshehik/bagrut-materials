@@ -87,8 +87,22 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!user) {
     return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(`/api/download-folder/${categoryId}`)}`, origin));
   }
-  if (user.suspended) return NextResponse.redirect(new URL("/login?suspended=1", origin));
   const isAdmin = user.role === "admin";
+
+  // תיעוד סירוב הורדת תיקייה (לא זורק)
+  const deny = (reason: string, extra?: Record<string, unknown>) =>
+    logAudit({
+      actorId: user.id,
+      action: "download.denied",
+      entityType: "category",
+      entityId: categoryId,
+      details: { reason, ...extra },
+    });
+
+  if (user.suspended) {
+    await deny("user_suspended");
+    return NextResponse.redirect(new URL("/login?suspended=1", origin));
+  }
 
   const [cat] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
   if (!cat) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -96,6 +110,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const here = chainToHref(chain);
 
   if (!user.phone && !isAdmin) {
+    await deny("no_phone");
     return NextResponse.redirect(
       new URL(`/account/phone?next=${encodeURIComponent(`/api/download-folder/${categoryId}`)}`, origin),
     );
@@ -115,6 +130,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const owned = candidates.filter((_, i) => ents[i].ok);
   if (owned.length === 0) {
     // אין הרשאה לאף קובץ – מפנים לרכישת התיקייה
+    await deny("no_entitlement", { candidates: candidates.length });
     return NextResponse.redirect(new URL(`/checkout?bundle=${categoryId}`, origin));
   }
 
@@ -130,6 +146,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           .from(downloads)
           .where(and(eq(downloads.userId, user.id), gte(downloads.createdAt, startOfDay)));
         if (Number(row?.n ?? 0) + owned.length > dailyLimit) {
+          await deny("daily_limit", { dailyLimit, files: owned.length });
           return NextResponse.redirect(new URL("/account?limit=1", origin));
         }
       }
@@ -158,7 +175,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   );
 
   const ready = results.filter((r): r is Ready => !!r);
+  // קבצים שנכשלו בהכנה (לא התקבלו מהדרייב וכד') ושדולגו (אין הרשאה / לא פעילים)
+  const failedIds = owned.filter((_, i) => !results[i]).map((m) => m.id);
+  const skippedIds = all.filter((m) => !owned.includes(m)).map((m) => m.id);
   if (ready.length === 0) {
+    await deny("all_failed", { failedIds });
     return NextResponse.json({ error: "הקבצים אינם זמינים כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
 
@@ -202,12 +223,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         .set({ downloadsUsed: sql`${purchases.downloadsUsed} + ${n}` })
         .where(eq(purchases.id, pid));
     }
-    void logAudit({
+    await logAudit({
       actorId: user.id,
       action: "download",
       entityType: "category",
       entityId: categoryId,
-      details: { folder: cat.title, files: ready.length, here },
+      details: { folder: cat.title, files: ready.length, here, failedIds, skippedIds },
     });
   } catch (e) {
     console.error("folder download log failed", e);

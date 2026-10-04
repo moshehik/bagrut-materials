@@ -129,6 +129,10 @@ async function uploadSmall({ name, mimeType, bytes }: { name: string; mimeType: 
 
 // --- מסלול ישיר מול Drive REST (קבצים גדולים, עוקף תקרת ~50MB של GAS) ---
 let tokenCache: { token: string; exp: number } | null = null;
+/** מאלץ שליפת טוקן חדש (אחרי 401 בריצה ארוכה) */
+export function resetAccessToken() {
+  tokenCache = null;
+}
 export async function getAccessToken() {
   if (tokenCache && Date.now() < tokenCache.exp) return tokenCache.token;
   const r = await callBridge("archive_token", {});

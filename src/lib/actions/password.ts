@@ -38,6 +38,15 @@ export async function requestPasswordReset(_: PasswordState, form: FormData): Pr
       userId: u.id,
     });
     await logAudit({ actorId: u.id, action: "password.reset_request", entityType: "user", entityId: u.id });
+  } else {
+    // לא חושפים כלום למשתמשת – התגובה זהה; הרישום פנימי בלבד
+    await logAudit({
+      actorId: u?.id ?? null,
+      action: "password.reset_request",
+      entityType: "user",
+      entityId: u?.id ?? null,
+      details: u ? { unknown: true, suspended: true } : { unknown: true },
+    });
   }
   return { ok: true, message: "אם הכתובת רשומה אצלנו – שלחנו אלייך מייל עם קישור לאיפוס הסיסמה." };
 }
@@ -68,7 +77,10 @@ export async function resetPassword(_: PasswordState, form: FormData): Promise<P
       ),
     )
     .limit(1);
-  if (!t) return { error: "הקישור אינו תקף או שפג תוקפו. בקשי קישור חדש." };
+  if (!t) {
+    await logAudit({ action: "password.reset_failed", entityType: "user", details: { reason: "invalid_or_expired" } });
+    return { error: "הקישור אינו תקף או שפג תוקפו. בקשי קישור חדש." };
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
   await db.update(users).set({ passwordHash }).where(eq(users.id, t.userId));

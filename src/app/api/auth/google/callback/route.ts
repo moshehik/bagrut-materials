@@ -16,20 +16,24 @@ export const dynamic = "force-dynamic";
 /** קולבק מגוגל: אימות state, החלפת code, איתור/קישור/יצירת משתמשת, פתיחת session */
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
-  const fail = (q = "error=google") => {
+  // כל נתיב כשל נרשם ביומן (login.failed) עם הסיבה; log=false כשהכשל כבר נרשם בנפרד
+  const fail = async (reason: string, q = "error=google", log = true) => {
+    if (log) {
+      await logAudit({ action: "login.failed", entityType: "user", details: { via: "google", reason } });
+    }
     const r = NextResponse.redirect(new URL(`/login?${q}`, origin));
     r.cookies.delete(G_STATE_COOKIE);
     return r;
   };
 
   try {
-    if (!googleConfigured() || !(await getBool("google_login_enabled"))) return fail();
+    if (!googleConfigured() || !(await getBool("google_login_enabled"))) return fail("disabled");
 
     const sp = req.nextUrl.searchParams;
     const code = sp.get("code");
     const state = sp.get("state") ?? "";
     const cookieState = req.cookies.get(G_STATE_COOKIE)?.value ?? "";
-    if (!code || !state || !cookieState || state !== cookieState) return fail();
+    if (!code || !state || !cookieState || state !== cookieState) return fail("bad_state");
 
     const dot = state.indexOf(".");
     const nextRaw = dot > 0 ? Buffer.from(state.slice(dot + 1), "base64url").toString("utf8") : "";
@@ -37,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const info = await exchangeGoogleCode(code, googleRedirectUri(req));
     const email = info.email?.trim().toLowerCase();
-    if (!email) return fail();
+    if (!email) return fail("no_email");
 
     // 1) לפי googleId
     let [u] = await db.select().from(users).where(eq(users.googleId, info.sub)).limit(1);
@@ -55,10 +59,19 @@ export async function GET(req: NextRequest) {
             emailVerified: true,
           })
           .where(eq(users.id, byEmail.id));
+        await logAudit({
+          actorId: byEmail.id,
+          action: "account.google_linked",
+          entityType: "user",
+          entityId: byEmail.id,
+        });
         u = { ...byEmail, googleId: info.sub, avatarUrl: info.picture ?? byEmail.avatarUrl, emailVerified: true };
       } else {
         // 3) יצירת משתמשת חדשה
-        if (!(await getBool("registration_open"))) return fail("error=registration_closed");
+        if (!(await getBool("registration_open"))) {
+          await logAudit({ action: "register.failed", entityType: "user", details: { via: "google", reason: "closed" } });
+          return fail("registration_closed", "error=registration_closed", false);
+        }
         const passwordHash = await bcrypt.hash(randomToken(24), 10);
         const personalCode = await uniquePersonalCode();
         const name = (info.name || info.given_name || email.split("@")[0]).slice(0, 120);
@@ -94,7 +107,7 @@ export async function GET(req: NextRequest) {
         entityId: u.id,
         details: { reason: "suspended", via: "google" },
       });
-      return fail("suspended=1");
+      return fail("suspended", "suspended=1", false);
     }
 
     await createSession(u.id);
@@ -105,13 +118,13 @@ export async function GET(req: NextRequest) {
       entityId: u.id,
     });
 
-    // גוגל לא מוסר טלפון - נרשמת חדשה משלימה אותו מיד (ממילא תתבקש לפני הורדה)
-    const dest = created && !u.phone ? `/account/phone?next=${encodeURIComponent(next)}` : next;
+    // גוגל לא מוסר עיר, תיכון וטלפון - נרשמת חדשה משלימה אותם מיד (הטלפון ממילא נדרש לפני הורדה)
+    const dest = created ? `/account/complete?next=${encodeURIComponent(next)}` : next;
     const res = NextResponse.redirect(new URL(dest, origin));
     res.cookies.delete(G_STATE_COOKIE);
     return res;
   } catch (e) {
     console.error("[google-oauth] failed", e);
-    return fail();
+    return fail("exception");
   }
 }

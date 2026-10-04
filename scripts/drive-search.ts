@@ -14,6 +14,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { driveListFiles, scoreDriveFilesByQuery, isDriveConfigured } from "../src/lib/driveBridgeCore";
+import { logAgentEvent } from "../src/lib/agentEvents";
 
 async function main() {
   if (!isDriveConfigured()) {
@@ -30,6 +31,12 @@ async function main() {
   }
 
   const ranked = scoreDriveFilesByQuery(files, query).slice(0, 15);
+  await logAgentEvent({
+    source: "claude",
+    kind: "cli",
+    summary: `drive-search "${query.slice(0, 120)}": ${ranked.length} תוצאות`,
+    details: ranked.slice(0, 5).map((f) => ({ name: f.name, id: f.id, score: f.score })),
+  });
   console.log(JSON.stringify(ranked, null, 2));
 }
 

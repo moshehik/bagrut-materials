@@ -8,7 +8,8 @@ import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getCategoryChain, chainToHref, getDescendantIds, getRootSubjects } from "@/lib/data";
-import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, bundlePriceFor, formatPrice } from "@/lib/constants";
+import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, bundlePriceFor, formatPrice, subjectDisplayTitle } from "@/lib/constants";
+import { PlanCheckoutView } from "@/components/plan-checkout";
 import { getPlanPrices } from "@/lib/pricing";
 import { CheckoutForm, type CheckoutFormProps, type CheckoutSubject } from "@/components/checkout-form";
 
@@ -63,7 +64,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     const roots = await getRootSubjects();
     subjects = roots.map((r) => ({
       id: r.id,
-      title: r.title,
+      title: subjectDisplayTitle(r.slug, r.title),
+      slug: r.slug,
       icon: r.icon ?? SUBJECT_ICONS[r.slug] ?? "📘",
     }));
   };
@@ -141,7 +143,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       scopeTitle = s ? `${s.icon} ${s.title}` : null;
     }
     const pre =
-      planKey === "custom_monthly"
+      planKey === "custom_monthly" || planKey === "yearly"
         ? (sp.categories ?? "")
             .split(",")
             .map((x) => num(x.trim()))
@@ -225,6 +227,20 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     );
   }
 
+  // מסלולי מנוי – באותו עיצוב של עמוד "מסלולים ומחירים"
+  if (formProps.kind === "plan" && formProps.plan) {
+    return (
+      <PlanCheckoutView
+        formProps={formProps}
+        prices={prices}
+        firstName={user.name.split(" ")[0]}
+        fullName={user.name}
+        email={user.email}
+        phone={user.phone}
+        personalCode={user.personalCode}
+      />
+    );
+  }
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
       <div className="mb-6 animate-fade-up">

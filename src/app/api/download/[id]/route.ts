@@ -49,19 +49,34 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const origin = req.nextUrl.origin;
   const isAdmin = user?.role === "admin";
 
+  // תיעוד סירוב הורדה (לא זורק)
+  // אנונימיים (ללא user) לא נרשמים — מניעת הצפת הלוג ע"י בוטים; הניסיון נראה ב-page_views
+  const deny = (reason: string, extra?: Record<string, unknown>) =>
+    !user ? Promise.resolve() : logAudit({
+      actorId: user?.id ?? null,
+      action: "download.denied",
+      entityType: "material",
+      entityId: material.id,
+      details: { reason, ...extra },
+    });
+
   if (user?.suspended) {
+    await deny("user_suspended");
     return NextResponse.redirect(new URL("/login?suspended=1", origin));
   }
   if (material.status !== "active" && !isAdmin) {
+    await deny("material_inactive");
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   if (material.allowDownload === false && !isAdmin) {
+    await deny("view_only");
     return NextResponse.json({ error: "צפייה בלבד" }, { status: 403 });
   }
 
   const ent = await checkEntitlement(user, material);
 
   if (!ent.ok) {
+    await deny(ent.reason);
     switch (ent.reason) {
       case "login":
         return NextResponse.redirect(
@@ -76,10 +91,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
   }
   // הורדה חופשית ללא התחברות (free_downloads_require_login=false): אין מספר אישי להטביע → מפנים להתחברות
-  if (!user) return NextResponse.redirect(new URL(`/login?next=/api/download/${id}`, origin));
+  if (!user) {
+    await deny("login");
+    return NextResponse.redirect(new URL(`/login?next=/api/download/${id}`, origin));
+  }
   const u = user;
   // הטלפון מוטבע בסימן המים - מי שנרשמה לפני שהשדה נוסף / דרך גוגל משלימה אותו קודם
   if (!u.phone && !isAdmin) {
+    await deny("no_phone");
     return NextResponse.redirect(
       new URL(`/account/phone?next=${encodeURIComponent(`/api/download/${materialId}`)}`, origin),
     );
@@ -98,6 +117,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           .from(downloads)
           .where(and(eq(downloads.userId, u.id), gte(downloads.createdAt, startOfDay)));
         if (Number(row?.n ?? 0) >= dailyLimit) {
+          await deny("daily_limit", { dailyLimit });
           return NextResponse.redirect(new URL("/account?limit=1", origin));
         }
       }
@@ -107,6 +127,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           .from(downloads)
           .where(and(eq(downloads.userId, u.id), eq(downloads.materialId, material.id)));
         if (Number(row?.n ?? 0) >= material.maxDownloadsPerUser) {
+          await deny("material_limit", { maxDownloadsPerUser: material.maxDownloadsPerUser });
           return NextResponse.redirect(new URL("/account?limit=1&material=" + material.id, origin));
         }
       }
@@ -117,6 +138,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const file = await fetchFile(material.fileUrl);
   if (!file) {
+    // רק מזהה הקובץ בדרייב (לא סודות)
+    await logAudit({
+      actorId: u.id,
+      action: "download.file_missing",
+      entityType: "material",
+      entityId: material.id,
+      details: { driveId: material.fileUrl.startsWith("drive://") ? material.fileUrl.slice("drive://".length) : null },
+    });
     return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
 
@@ -154,6 +183,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         }
       } catch (e) {
         console.error("applying fixes failed, serving original", e);
+        await logAudit({
+          actorId: u.id,
+          action: "download.degraded",
+          entityType: "material",
+          entityId: material.id,
+          details: { stage: "apply_fixes" },
+        });
       }
     }
     const baseName = fixesApplied ? withSuffix(material.fileName, "מתוקן") : material.fileName;
@@ -172,6 +208,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       });
     } catch (e) {
       console.error("office->pdf conversion failed, serving original file", e);
+      await logAudit({
+        actorId: u.id,
+        action: "download.degraded",
+        entityType: "material",
+        entityId: material.id,
+        details: { stage: "office_to_pdf_or_stamp" },
+      });
       out = raw;
     }
     const converted = out !== raw;
@@ -197,6 +240,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       });
     } catch {
       // אם ההטבעה נכשלה (PDF פגום/מוצפן) – מחזירים את המקור
+      await logAudit({
+        actorId: u.id,
+        action: "download.degraded",
+        entityType: "material",
+        entityId: material.id,
+        details: { stage: "pdf_stamp" },
+      });
       out = bytes;
     }
     response = new Response(new Uint8Array(out), {
@@ -214,6 +264,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       out = await stampImage(bytes, { personalCode: u.personalCode });
     } catch {
       // אם ההטבעה נכשלה (תמונה פגומה/פורמט לא נתמך) – מחזירים את המקור
+      await logAudit({
+        actorId: u.id,
+        action: "download.degraded",
+        entityType: "material",
+        entityId: material.id,
+        details: { stage: "image_stamp" },
+      });
       out = bytes;
     }
     response = new Response(new Uint8Array(out), {
@@ -245,7 +302,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       userAgent,
       via: ent.via,
     });
-    void logAudit({
+    await logAudit({
       actorId: u.id,
       action: "download",
       entityType: "material",

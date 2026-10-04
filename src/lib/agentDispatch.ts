@@ -13,10 +13,11 @@
 
 const EVENT_TYPE = "new-error-report";
 
-export async function dispatchFixReportsAgent(): Promise<void> {
+/** מחזיר true אם ה-dispatch נשלח בהצלחה; false אם לא מוגדר טוקן או שהקריאה נכשלה. */
+export async function dispatchFixReportsAgent(): Promise<boolean> {
   const token = process.env.GH_DISPATCH_TOKEN;
   const repo = process.env.GH_DISPATCH_REPO || "moshehik/bagrut-materials";
-  if (!token) return;
+  if (!token) return false;
 
   try {
     const res = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
@@ -30,8 +31,11 @@ export async function dispatchFixReportsAgent(): Promise<void> {
     });
     if (!res.ok) {
       console.error(`[agentDispatch] repository_dispatch failed: ${res.status} ${await res.text().catch(() => "")}`);
+      return false;
     }
+    return true;
   } catch (e) {
     console.error("[agentDispatch] repository_dispatch request failed", e);
+    return false;
   }
 }

@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Power, FlaskConical, Search, FolderOpen, MessageSquare } from "lucide-react";
+import { FlaskConical, Search, FolderOpen, MessageSquare } from "lucide-react";
 import {
   getAgentSystemStatus,
-  setLoopEnabledAction,
   createTestReportAction,
   replyToReportAction,
   searchDriveFilesAction,
@@ -57,31 +56,6 @@ export function AgentSystemPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-blue-soft/50 p-4">
-        <Power className={`h-5 w-5 ${status.loopEnabled ? "text-green-600" : "text-muted"}`} aria-hidden />
-        <div className="flex-1">
-          <div className="font-bold text-sm">
-            הלולאה האוטומטית {status.loopEnabled ? "דלוקה" : "כבויה"}
-          </div>
-          <div className="text-xs text-muted">
-            {status.idle < 0 ? "אין עדיין תיעוד פעילות" : `${status.idle} דקות מאז הפעילות האחרונה`}
-          </div>
-        </div>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              await setLoopEnabledAction(!status.loopEnabled);
-              refresh();
-            })
-          }
-          className="rounded-xl bg-blue px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-        >
-          {status.loopEnabled ? "כבה" : "הדלק"}
-        </button>
-      </div>
-
       <div>
         <h3 className="flex items-center gap-2 text-sm font-bold">
           <FlaskConical className="h-4 w-4 text-pink" aria-hidden /> יצירת דיווח-בדיקה

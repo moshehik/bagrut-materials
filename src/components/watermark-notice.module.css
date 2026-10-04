@@ -1,0 +1,67 @@
+/* המשך הטקסט שטרם נכתב — תופס מקום אבל בלתי נראה */
+.rest {
+  opacity: 0;
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-inline: 1px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  animation: caret-blink 0.8s steps(1) infinite;
+}
+
+.print {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.print svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* קו סריקה שעובר על טביעת האצבע */
+.scan {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 0 8px 1px currentColor;
+  opacity: 0;
+  animation: fp-scan 2.6s ease-in-out 0.4s infinite;
+}
+
+@keyframes fp-scan {
+  0%,
+  100% {
+    top: 0;
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 0.85;
+  }
+  50% {
+    top: calc(100% - 2px);
+  }
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan,
+  .caret {
+    display: none;
+  }
+}

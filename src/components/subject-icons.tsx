@@ -53,7 +53,7 @@ const ICONS: Record<string, IconFn> = {
     </Base>
   ),
   /** לשון — נוצה כותבת */
-  lashon: (p) => (
+  "lashon-tzurot": (p) => (
     <Base {...p}>
       <path d="M14 34 32 16" />
       <path d="M32 16l4-4 4 4-4 4z" />
@@ -174,6 +174,9 @@ const ICONS: Record<string, IconFn> = {
     </Base>
   ),
 };
+// שלושת מקצועות הלשון חולקים את אותה נוצה
+ICONS["lashon-tachbir"] = ICONS["lashon-tzurot"];
+ICONS["lashon-havaa"] = ICONS["lashon-tzurot"];
 
 /** ברירת מחדל — בית פשוט, למקצוע/תיקייה שאין להם עדיין אייקון ייעודי */
 const DEFAULT_ICON: IconFn = (p) => (

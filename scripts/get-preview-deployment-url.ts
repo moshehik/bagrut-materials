@@ -10,6 +10,8 @@ import "dotenv/config";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
+import { logAgentEvent } from "../src/lib/agentEvents";
+
 async function main() {
   const branchArg = process.argv.find((a) => a.startsWith("--branch="))?.split("=")[1];
   if (!branchArg) {
@@ -54,11 +56,17 @@ async function main() {
   }
 
   if (!urls.length) {
+    await logAgentEvent({ source: "claude", kind: "cli", summary: `get-preview-deployment-url: TIMEOUT (${branchArgForLog()})` });
     console.log("TIMEOUT");
     process.exit(1);
   }
 
+  await logAgentEvent({ source: "claude", kind: "pr", summary: `קישור Preview נמצא (${branchArgForLog()})`, details: urls });
   console.log(JSON.stringify(urls, null, 2));
+}
+
+function branchArgForLog() {
+  return process.argv.find((a) => a.startsWith("--branch="))?.slice(9) ?? "?";
 }
 
 main().catch((e) => {

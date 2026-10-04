@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { parseDate, toCsv, csvResponse } from "@/lib/admin-analytics";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,5 +67,15 @@ export async function GET(req: NextRequest) {
       r.ip,
     ]),
   );
+  // רישום ייצוא יומן הפעולות עצמו (נרשם אחרי השליפה, כך שהשורה לא נכללת בקובץ)
+  await logAudit({
+    actorId: user.id,
+    action: "logs.export",
+    entityType: "audit_log",
+    details: {
+      rows: rows.length,
+      filters: { action: actionQ || null, actor: actorQ || null, entity: entityQ || null, from: q.get("from") || null, to: q.get("to") || null },
+    },
+  });
   return csvResponse(`audit-log-${new Date().toISOString().slice(0, 10)}.csv`, csv);
 }

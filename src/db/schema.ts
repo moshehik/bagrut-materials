@@ -55,6 +55,16 @@ export const users = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     passwordHash: text("password_hash").notNull(),
     name: varchar("name", { length: 120 }).notNull(),
+    /** פרטי הרשמה (null אצל מי שנרשמה לפני שהשדות נוספו / דרך גוגל). name = שם פרטי + משפחה */
+    firstName: varchar("first_name", { length: 60 }),
+    lastName: varchar("last_name", { length: 60 }),
+    city: varchar("city", { length: 80 }),
+    /** שם התיכון שבו היא מלמדת */
+    school: varchar("school", { length: 120 }),
+    /** אישור דיוור (שיווקי) */
+    marketingConsent: boolean("marketing_consent").notNull().default(false),
+    /** מתי אישרה את תקנון האתר */
+    termsAcceptedAt: timestamp("terms_accepted_at"),
     /** טלפון (ספרות בלבד, ר' normalizeIsraeliPhone) – מוטבע בסימן המים. null אצל מי
      * שנרשמה לפני שהשדה נוסף / דרך גוגל – תתבקש להשלים לפני ההורדה הבאה */
     phone: varchar("phone", { length: 20 }),
@@ -116,6 +126,8 @@ export const categories = pgTable(
     minTier: tierEnum("min_tier").notNull().default("none"),
     /** "standard" = עמוד חומרים רגיל; "sichot" = מציג את מודול מאגר השיחות (ר' sichot למטה) במקום זאת */
     contentModule: categoryModuleEnum("content_module").notNull().default("standard"),
+    /** מזהה תיקיית הדרייב של הקטגוריה (עץ התיקיות משקף את עץ האתר — ר' src/lib/driveTreeCore.ts) */
+    driveFolderId: varchar("drive_folder_id", { length: 80 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
@@ -157,6 +169,8 @@ export const materials = pgTable(
     allowPreview: boolean("allow_preview").notNull().default(false),
     /** מגבלת הורדות לכל משתמשת לחומר זה (null = ללא) */
     maxDownloadsPerUser: integer("max_downloads_per_user"),
+    /** השם שהיה לקובץ בדרייב לפני הארגון מחדש לפי עץ האתר — "תגית השם הישן" (נשמר גם ב-description של הקובץ בדרייב) */
+    driveOriginalName: text("drive_original_name"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("materials_category_idx").on(t.categoryId)],
@@ -306,6 +320,8 @@ export const purchases = pgTable(
     startsAt: timestamp("starts_at").notNull().defaultNow(),
     endsAt: timestamp("ends_at"),
     premium: boolean("premium").notNull().default(false),
+    /** מנוי שנתי שנרכש עם "דלג" – המקצועות ייבחרו מאוחר יותר (עד אז אין גישה); ראו /account/subjects */
+    subjectsPending: boolean("subjects_pending").notNull().default(false),
     paymentRef: varchar("payment_ref", { length: 120 }),
     status: purchaseStatusEnum("status").notNull().default("active"),
     notes: text("notes"),
@@ -342,6 +358,9 @@ export const forumThreads = pgTable("forum_threads", {
   categoryId: integer("category_id").references(() => categories.id, {
     onDelete: "set null",
   }),
+  /** סוג ההודעה בפורום: question = שאלה (אפשר להשיב עליה), note = הערה, tip = טיפ */
+  kind: varchar("kind", { length: 12 }).notNull().default("question"),
+  /** נגזר מתחילת הטקסט (אין יותר כותרת נפרדת) – משמש את הניהול ואת המייל */
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -361,6 +380,23 @@ export const forumPosts = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("forum_posts_thread_idx").on(t.threadId)],
+);
+
+/** דיווח מורה על תוכן לא הולם בפורום (על הודעה = thread או על תשובה = post). המנהלת רואה ב-/admin/forum */
+export const forumReports = pgTable(
+  "forum_reports",
+  {
+    id: serial("id").primaryKey(),
+    reporterId: integer("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    threadId: integer("thread_id").references(() => forumThreads.id, { onDelete: "cascade" }),
+    postId: integer("post_id").references(() => forumPosts.id, { onDelete: "cascade" }),
+    /** open = ממתין לטיפול, handled = טופל/נסגר */
+    status: varchar("status", { length: 12 }).notNull().default("open"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("forum_reports_status_idx").on(t.status)],
 );
 
 /** הצעות מכירת חומרים למנהל האתר */
@@ -570,6 +606,62 @@ export const agentLoopStatus = pgTable("agent_loop_status", {
   enabled: boolean("enabled").notNull().default(false),
   lastActivityAt: timestamp("last_activity_at"),
 });
+
+/**
+ * יומן מלא של כל פעולה של סוכן ה-fix-reports (הרצת workflow, כל קריאת כלי של קלוד,
+ * כל הודעה שלו, תגובות/PR-ים, הדלקה/כיבוי מהניהול). נכתב ע"י src/lib/agentEvents.ts —
+ * מהאתר, מהסקריפטים, ומ-scripts/agent-log-ingest.ts (שמייבא את תמליל ההרצה המלא).
+ * מוצג ב-/admin/agent. נוצר ב-SQL גולמי (scripts/_create-agent-events.ts) — db:push שבור כאן.
+ */
+export const agentEvents = pgTable(
+  "agent_events",
+  {
+    id: serial("id").primaryKey(),
+    /** מזהה הרצה: GITHUB_RUN_ID ב-Actions, "admin" לפעולות מהאתר, "local" מקומית */
+    runId: varchar("run_id", { length: 64 }),
+    /** workflow | claude | script | admin | site */
+    source: varchar("source", { length: 20 }).notNull(),
+    /** run.check | run.start | run.skip | run.end | toggle | dispatch | message | tool | tool.result | reply | pr | cli | error */
+    kind: varchar("kind", { length: 30 }).notNull(),
+    summary: text("summary").notNull(),
+    details: text("details"),
+    reportId: varchar("report_id", { length: 36 }),
+    actorId: integer("actor_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_events_created_idx").on(t.createdAt),
+    index("agent_events_run_idx").on(t.runId),
+    index("agent_events_kind_idx").on(t.kind),
+  ],
+);
+
+/**
+ * היסטוריית הדרייב: הוספה/שינוי שם/העברה/העברה לארכיון של קבצים ותיקיות. נכתב ע"י src/lib/driveTreeCore.ts
+ * (דרך סקריפט הארגון, הסייר בניהול והעלאות חדשות); מזין את קובץ המידע _מידע.txt של כל תיקייה.
+ * נוצר ב-SQL גולמי (scripts/_create-drive-events.ts).
+ */
+export const driveEvents = pgTable(
+  "drive_events",
+  {
+    id: serial("id").primaryKey(),
+    /** file.add | file.rename | file.move | file.archive | file.restore | folder.create | folder.rename | folder.move | info.update */
+    kind: varchar("kind", { length: 30 }).notNull(),
+    materialId: integer("material_id"),
+    categoryId: integer("category_id"),
+    driveId: varchar("drive_id", { length: 80 }),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    details: text("details"),
+    actorId: integer("actor_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("drive_events_material_idx").on(t.materialId),
+    index("drive_events_category_idx").on(t.categoryId),
+    index("drive_events_created_idx").on(t.createdAt),
+  ],
+);
 
 export const categoriesRelations =relations(categories, ({ one, many }) => ({
   parent: one(categories, {

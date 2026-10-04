@@ -5,7 +5,7 @@ import { z } from "zod";
 import { eq, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, materials, purchases, transactions, type Tier } from "@/db/schema";
-import { PLANS, bundlePriceFor, formatPrice } from "@/lib/constants";
+import { PLANS, YEARLY_INCLUDED_SUBJECTS, bundlePriceFor, formatPrice } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
@@ -39,7 +39,13 @@ const schema = z.discriminatedUnion("kind", [
     plan: z.literal("custom_monthly"),
     categoryIds: z.array(idNum).min(1, "בחרי לפחות מקצוע אחד").max(3, "עד 3 מקצועות"),
   }),
-  z.object({ kind: z.literal("plan"), plan: z.literal("yearly") }),
+  z.object({
+    kind: z.literal("plan"),
+    plan: z.literal("yearly"),
+    categoryIds: z.array(idNum).default([]),
+    /** "דלג" – רכישה בלי בחירת מקצועות כעת (נבחרים אחר כך בחשבון) */
+    skipSubjects: z.string().optional(),
+  }),
   z.object({ kind: z.literal("premium") }),
 ]);
 
@@ -77,15 +83,27 @@ async function assertRootSubject(id: number) {
 export async function purchaseAction(_prev: PurchaseState, form: FormData): Promise<PurchaseState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/checkout");
-  if (user.suspended) return { error: "החשבון מושהה – לא ניתן לבצע רכישות" };
 
   const raw: Record<string, unknown> = Object.fromEntries(form);
+  // תיעוד סירוב רכישה – מחזיר את הודעת השגיאה כרגיל (לא משנה התנהגות)
+  const denied = async (reason: string, error: string, extra?: Record<string, unknown>): Promise<PurchaseState> => {
+    await logAudit({
+      actorId: user.id,
+      action: "purchase.denied",
+      details: { reason, kind: typeof raw.kind === "string" ? raw.kind : null, ...extra },
+    });
+    return { error };
+  };
+  if (user.suspended) return denied("user_suspended", "החשבון מושהה – לא ניתן לבצע רכישות");
+
   const ids = form.getAll("categoryIds").map(String).filter(Boolean);
   if (ids.length) raw.categoryIds = ids;
   const premium = form.get("premium") === "on";
 
   const parsed = schema.safeParse(raw);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "נתוני הזמנה לא תקינים" };
+  if (!parsed.success) {
+    return denied("invalid_input", parsed.error.issues[0]?.message ?? "נתוני הזמנה לא תקינים");
+  }
   const input = parsed.data;
 
   const prices = await getPlanPrices();
@@ -98,8 +116,10 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   switch (input.kind) {
     case "single": {
       const [m] = await db.select().from(materials).where(eq(materials.id, input.materialId)).limit(1);
-      if (!m) return { error: "החומר לא נמצא" };
-      if (m.status !== "active") return { error: "החומר מושהה זמנית ואינו זמין לרכישה" };
+      if (!m) return denied("material_not_found", "החומר לא נמצא", { materialId: input.materialId });
+      if (m.status !== "active") {
+        return denied("material_inactive", "החומר מושהה זמנית ואינו זמין לרכישה", { materialId: m.id });
+      }
       rows.push({
         userId: user.id,
         plan: "single",
@@ -117,8 +137,10 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
     }
     case "bundle": {
       const [c] = await db.select().from(categories).where(eq(categories.id, input.categoryId)).limit(1);
-      if (!c) return { error: "התיקייה לא נמצאה" };
-      if (c.status !== "active") return { error: "התיקייה מושהית זמנית ואינה זמינה לרכישה" };
+      if (!c) return denied("folder_not_found", "התיקייה לא נמצאה", { categoryId: input.categoryId });
+      if (c.status !== "active") {
+        return denied("folder_inactive", "התיקייה מושהית זמנית ואינה זמינה לרכישה", { categoryId: c.id });
+      }
       const ids = await getDescendantIds(c.id);
       const ms = ids.length
         ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
@@ -129,7 +151,7 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
         materialsTotal: ms.reduce((s, x) => s + x.price, 0),
       });
       bundleCategoryId = c.id;
-      if (amount <= 0) return { error: "אין חומרים לרכישה בתיקייה זו" };
+      if (amount <= 0) return denied("empty_folder", "אין חומרים לרכישה בתיקייה זו", { categoryId: c.id });
       rows.push({
         userId: user.id,
         plan: "bundle",
@@ -152,7 +174,7 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       const endsAt = addDays(days);
       if (input.plan === "subject_monthly") {
         const c = await assertRootSubject(input.categoryId);
-        if (!c) return { error: "יש לבחור מקצוע ראשי" };
+        if (!c) return denied("not_root_subject", "יש לבחור מקצוע ראשי", { categoryId: input.categoryId, plan: input.plan });
         rows.push({
           userId: user.id,
           plan: "subject_monthly",
@@ -163,36 +185,52 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
           premium,
           paymentRef,
         });
-      } else if (input.plan === "custom_monthly") {
-        const uniq = [...new Set(input.categoryIds)];
-        const roots = await db
-          .select()
-          .from(categories)
-          .where(and(inArray(categories.id, uniq), isNull(categories.parentId)));
-        if (roots.length !== uniq.length) return { error: "יש לבחור מקצועות ראשיים בלבד" };
-        // הסכום הכולל נרשם על השורה הראשונה; שאר השורות ב-0 כדי לא לספור פעמיים
-        roots.forEach((c, i) => {
-          rows.push({
-            userId: user.id,
-            plan: "custom_monthly",
-            categoryId: c.id,
-            amount: i === 0 ? basePrice + addon : 0,
-            downloadsLimit: def.downloadsLimit ?? null,
-            endsAt,
-            premium,
-            paymentRef,
-          });
-        });
-      } else {
+      } else if (input.plan === "yearly" && input.skipSubjects) {
+        // בלי מקצועות כרגע: שורה אחת "ממתינה" שהופכת ל-3 מקצועות ב-/account/subjects
         rows.push({
           userId: user.id,
           plan: "yearly",
           categoryId: null,
+          subjectsPending: true,
           amount: basePrice + addon,
           downloadsLimit: def.downloadsLimit ?? null,
           endsAt,
           premium,
           paymentRef,
+        });
+      } else {
+        // custom_monthly / yearly: שורה לכל מקצוע שנבחר (שנתי – בדיוק YEARLY_INCLUDED_SUBJECTS)
+        const uniq = [...new Set(input.categoryIds)];
+        if (input.plan === "yearly" && uniq.length < YEARLY_INCLUDED_SUBJECTS) {
+          return denied("yearly_too_few_subjects", `יש לבחור לפחות ${YEARLY_INCLUDED_SUBJECTS} מקצועות שונים`, {
+            plan: input.plan,
+            selected: uniq.length,
+          });
+        }
+        // מנוי שנתי: כל מקצוע מעבר ל-3 הכלולים = תוספת חודשית × 12
+        const extras =
+          input.plan === "yearly"
+            ? (uniq.length - YEARLY_INCLUDED_SUBJECTS) * prices.yearlyExtraSubject * 12
+            : 0;
+        const roots = await db
+          .select()
+          .from(categories)
+          .where(and(inArray(categories.id, uniq), isNull(categories.parentId)));
+        if (roots.length !== uniq.length) {
+          return denied("not_root_subject", "יש לבחור מקצועות ראשיים בלבד", { plan: input.plan, categoryIds: uniq });
+        }
+        // הסכום הכולל נרשם על השורה הראשונה; שאר השורות ב-0 כדי לא לספור פעמיים
+        roots.forEach((c, i) => {
+          rows.push({
+            userId: user.id,
+            plan: input.plan,
+            categoryId: c.id,
+            amount: i === 0 ? basePrice + extras + addon : 0,
+            downloadsLimit: def.downloadsLimit ?? null,
+            endsAt,
+            premium,
+            paymentRef,
+          });
         });
       }
       if (premium) tierTarget = premiumTierFor("plan", input.plan);
@@ -207,7 +245,7 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
 
   if (premium && !tierTarget) tierTarget = premiumTierFor(input.kind);
 
-  if (!rows.length) return { error: "לא נוצרה הזמנה" };
+  if (!rows.length) return denied("no_rows", "לא נוצרה הזמנה");
   const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
   if (tierTarget) await raiseTier(user.id, user.tier, tierTarget);
 
@@ -234,13 +272,28 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
     });
   } catch (e) {
     console.error("[purchase] transaction insert failed", e);
+    await logAudit({
+      actorId: user.id,
+      action: "purchase.tx_failed",
+      entityType: "purchase",
+      entityId: inserted[0]?.id ?? null,
+      details: { purchaseId: inserted[0]?.id ?? null, error: e instanceof Error ? `${e.name}: ${e.message.slice(0, 160).replace(/\s+/g, " ")}` : "unknown" },
+    });
   }
   await logAudit({
     actorId: user.id,
     action: "purchase.create",
     entityType: "purchase",
     entityId: inserted[0]?.id ?? null,
-    details: { kind: input.kind, total, paymentRef, premium },
+    details: {
+      kind: input.kind,
+      total,
+      paymentRef,
+      premium,
+      categoryId: bundleCategoryId ?? ("categoryId" in input ? input.categoryId : null),
+      categoryIds: "categoryIds" in input ? input.categoryIds : undefined,
+      materialId: input.kind === "single" ? input.materialId : null,
+    },
   });
 
   // מייל אישור רכישה

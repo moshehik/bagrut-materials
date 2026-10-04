@@ -65,8 +65,6 @@ export default async function SubjectsPage() {
               href={`/subjects/${encodeURIComponent(s.slug)}`}
               title={s.title}
               slug={s.slug}
-              description={s.description}
-              questionnaireCode={s.questionnaireCode}
               count={count}
               color={s.color}
               nutKey={s.slug}

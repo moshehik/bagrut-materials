@@ -33,7 +33,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const user = await getCurrentUser();
   const isAdmin = user?.role === "admin";
+
+  // תיעוד סירוב/כשל בתצוגה מקדימה (גם למבקרת אנונימית; לא זורק)
+  const fail = (action: "preview.denied" | "preview.failed", reason: string) =>
+    logAudit({
+      actorId: user?.id ?? null,
+      action,
+      entityType: "material",
+      entityId: material.id,
+      details: { reason },
+    });
+
   if (material.status !== "active" && !isAdmin) {
+    await fail("preview.denied", "material_inactive");
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
@@ -42,6 +54,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const fullView = isAdmin || (ent.ok && !!user);
 
   if (!fullView && !material.allowPreview) {
+    await fail("preview.denied", "no_preview_allowed");
     return NextResponse.json({ error: "אין תצוגה מקדימה לחומר זה" }, { status: 403 });
   }
 
@@ -50,11 +63,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     !isOffice &&
     (material.mime === "application/pdf" || material.fileName.toLowerCase().endsWith(".pdf"));
   if (!isOffice && !isPdfSource) {
+    await fail("preview.denied", "unsupported_type");
     return NextResponse.json({ error: "אין תצוגה מקדימה לסוג קובץ זה" }, { status: 400 });
   }
 
   const file = await fetchFile(material.fileUrl);
   if (!file) {
+    await fail("preview.failed", "file_missing");
     return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
   let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
@@ -86,6 +101,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       : raw;
   } catch (e) {
     console.error("preview conversion failed", e);
+    await fail("preview.failed", "conversion_failed");
     return NextResponse.json({ error: "לא ניתן להציג תצוגה מקדימה כרגע" }, { status: 502 });
   }
 
@@ -97,6 +113,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         : await stampPreview(await firstPageOnly(pdfBytes));
   } catch (e) {
     console.error("preview stamp failed", e);
+    await fail("preview.failed", "stamp_failed");
     out = pdfBytes;
   }
 
@@ -105,15 +122,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       .update(materials)
       .set({ views: sql`${materials.views} + 1` })
       .where(eq(materials.id, material.id));
-    if (user) {
-      void logAudit({
-        actorId: user.id,
-        action: "preview",
-        entityType: "material",
-        entityId: material.id,
-        details: { title: material.title, fullView },
-      });
-    }
+    // גם מבקרת אנונימית (actorId null) – תצוגה מקדימה ציבורית
+    await logAudit({
+      actorId: user?.id ?? null,
+      action: "preview",
+      entityType: "material",
+      entityId: material.id,
+      details: { title: material.title, fullView },
+    });
   } catch (e) {
     console.error("preview view log failed", e);
   }

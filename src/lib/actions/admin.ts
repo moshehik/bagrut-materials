@@ -10,6 +10,8 @@ import {
   users,
   sellOffers,
   forumThreads,
+  forumPosts,
+  forumReports,
   purchases,
   transactions,
   materialKindEnum,
@@ -23,6 +25,7 @@ import {
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
+import { driveSafe, ensureCategoryFolder, loadCategories, placeMaterial, syncCategoryFolderName, driveTrash, logDriveEvent, folderHasLiveFiles } from "@/lib/driveTree";
 import { PLANS } from "@/lib/constants";
 import { addDays, premiumTierForPlan, raiseTier } from "@/lib/purchase-helpers";
 
@@ -74,6 +77,17 @@ function revalidateAll() {
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : String(e);
+}
+
+/** מזהה קובץ הדרייב מתוך drive://<id> (null לכל כתובת אחרת – לא כותבים כתובות לקובץ ליומן) */
+function driveIdOf(url: string): string | null {
+  return url.startsWith("drive://") ? url.slice("drive://".length).split("?")[0] : null;
+}
+
+/** חיתוך טקסט ארוך לפני כתיבה ליומן (ברירת מחדל 500 תווים) */
+function clip(s: string | null | undefined, max = 500): string | null {
+  if (s === null || s === undefined) return null;
+  return s.length > max ? s.slice(0, max) + "…" : s;
 }
 
 /* ---------- categories ---------- */
@@ -128,10 +142,20 @@ export async function createCategory(
       entityId: row.id,
       details: { title: d.title, parentId },
     });
+    // עץ הדרייב משקף את עץ האתר: תיקייה לקטגוריה החדשה
+    await driveSafe(me.id, `category.create #${row.id}`, async () =>
+      ensureCategoryFolder(row.id, { ...(await loadCategories()), names: new Map(), actorId: me.id }),
+    );
     revalidateAll();
     return { ok: true, id: row.id };
   } catch (e) {
     const msg = errMsg(e);
+    await logAudit({
+      actorId: me.id,
+      action: "category.create_failed",
+      entityType: "category",
+      details: { title: d.title, parentId, slug, error: clip(msg) },
+    });
     if (msg.includes("categories_parent_slug_idx")) {
       return { error: "כבר קיימת קטגוריה עם אותו slug תחת אותו הורה" };
     }
@@ -153,6 +177,21 @@ export async function updateCategory(
   let slug = slugifySync(d.slug ?? d.title);
   if (!slug) slug = randomSlug();
   try {
+    // המצב הקודם – לפני/אחרי ביומן
+    const [old] = await db
+      .select({
+        title: categories.title,
+        slug: categories.slug,
+        status: categories.status,
+        minTier: categories.minTier,
+        bundlePrice: categories.bundlePrice,
+        sort: categories.sort,
+        description: categories.description,
+      })
+      .from(categories)
+      .where(eq(categories.id, idParsed.data))
+      .limit(1);
+    const newBundlePrice = d.bundlePrice !== undefined ? Math.round(d.bundlePrice * 100) : null;
     await db
       .update(categories)
       .set({
@@ -163,7 +202,7 @@ export async function updateCategory(
         icon: d.icon ?? null,
         color: d.color ?? null,
         sort: d.sort ?? 0,
-        bundlePrice: d.bundlePrice !== undefined ? Math.round(d.bundlePrice * 100) : null,
+        bundlePrice: newBundlePrice,
         status: d.status,
         minTier: d.minTier,
       })
@@ -173,12 +212,45 @@ export async function updateCategory(
       action: "category.update",
       entityType: "category",
       entityId: idParsed.data,
-      details: { title: d.title, status: d.status, minTier: d.minTier },
+      details: {
+        title: d.title,
+        status: d.status,
+        minTier: d.minTier,
+        before: old
+          ? {
+              title: old.title,
+              slug: old.slug,
+              status: old.status,
+              minTier: old.minTier,
+              price: old.bundlePrice,
+              sort: old.sort,
+              description: clip(old.description, 200),
+            }
+          : null,
+        after: {
+          title: d.title,
+          slug,
+          status: d.status,
+          minTier: d.minTier,
+          price: newBundlePrice,
+          sort: d.sort ?? 0,
+          description: clip(d.description ?? null, 200),
+        },
+      },
     });
+    // שינוי כותרת ← שינוי שם תיקיית הדרייב
+    await driveSafe(me.id, `category.update #${idParsed.data}`, () => syncCategoryFolderName(idParsed.data, me.id));
     revalidateAll();
     return { ok: true, id: idParsed.data };
   } catch (e) {
     const msg = errMsg(e);
+    await logAudit({
+      actorId: me.id,
+      action: "category.update_failed",
+      entityType: "category",
+      entityId: idParsed.data,
+      details: { title: d.title, slug, error: clip(msg) },
+    });
     if (msg.includes("categories_parent_slug_idx")) {
       return { error: "כבר קיימת קטגוריה עם אותו slug תחת אותו הורה" };
     }
@@ -220,15 +292,22 @@ async function collectDescendants(rootId: number): Promise<number[]> {
   return ids;
 }
 
-async function deleteStoredFile(url: string) {
+async function deleteStoredFile(url: string, ctx: { actorId: number; materialId?: number | null }) {
   const { isDriveUrl, driveIdFromUrl, driveDelete } = await import("@/lib/driveBridge");
   if (isDriveUrl(url)) {
     const fileId = driveIdFromUrl(url);
     if (!fileId) return;
     try {
       await driveDelete(fileId);
-    } catch {
-      // מתעלמים – הקובץ אולי כבר לא קיים / הגשר לא מוגדר
+    } catch (e) {
+      // לא מפילים את המחיקה (הקובץ אולי כבר לא קיים / הגשר לא מוגדר) – אבל רושמים, כדי שאפשר יהיה לנקות ידנית
+      await logAudit({
+        actorId: ctx.actorId,
+        action: "material.drive_delete_failed",
+        entityType: "material",
+        entityId: ctx.materialId ?? null,
+        details: { fileId, error: clip(errMsg(e)) },
+      });
     }
     return;
   }
@@ -240,22 +319,46 @@ export async function deleteCategory(id: number): Promise<AdminActionState> {
   if (!me) return { error: "אין הרשאה" };
   if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
   const ids = await collectDescendants(id);
+  // כותרות הקטגוריות שיימחקו – נשמרות ליומן לפני המחיקה
+  const catRows = await db
+    .select({ id: categories.id, title: categories.title })
+    .from(categories)
+    .where(inArray(categories.id, ids));
+  // תיקיית הדרייב של שורש העץ שנמחק (נשלחת לאשפה אחרי שהקבצים שבתוכה נמחקו)
+  const [rootCat] = await db.select({ f: categories.driveFolderId }).from(categories).where(eq(categories.id, id));
   // מחיקת קבצי הדרייב של חומרים תחת העץ
   const mats = await db
-    .select({ fileUrl: materials.fileUrl })
+    .select({ id: materials.id, fileUrl: materials.fileUrl })
     .from(materials)
     .where(inArray(materials.categoryId, ids));
-  await Promise.all(mats.map((m) => deleteStoredFile(m.fileUrl)));
+  await Promise.all(mats.map((m) => deleteStoredFile(m.fileUrl, { actorId: me.id, materialId: m.id })));
   // materials נמחקים ב-cascade; מוחקים את הקטגוריות מהעלים אל השורש
   for (const cid of [...ids].reverse()) {
     await db.delete(categories).where(eq(categories.id, cid));
+  }
+  if (rootCat?.f) {
+    await driveSafe(me.id, `category.delete #${id}`, async () => {
+      // לא שולחים לאשפה תיקייה שעדיין יש בה קבצים חיים (למשל חומר שה-DB שלו וה-Drive שלו לא מסונכרנים) — רק מתעדים
+      if (await folderHasLiveFiles(rootCat.f!)) {
+        await logDriveEvent({ kind: "folder.delete_skipped", categoryId: id, driveId: rootCat.f, details: "נשארו קבצים חיים בתיקייה", actorId: me.id });
+        return;
+      }
+      await driveTrash(rootCat.f!);
+      await logDriveEvent({ kind: "folder.delete", categoryId: id, driveId: rootCat.f, details: { deletedCategories: ids.length }, actorId: me.id });
+    });
   }
   await logAudit({
     actorId: me.id,
     action: "category.delete",
     entityType: "category",
     entityId: id,
-    details: { deletedCategories: ids.length, deletedMaterials: mats.length },
+    details: {
+      deletedCategories: ids.length,
+      deletedMaterials: mats.length,
+      // עץ הקטגוריות שנמחק (מזהה + כותרת); מוגבל ל-200 כדי שהלוג לא יתנפח
+      categories: catRows.slice(0, 200).map((c) => ({ id: c.id, title: c.title })),
+      materialIds: mats.slice(0, 500).map((m) => m.id),
+    },
   });
   revalidateAll();
   return { ok: true };
@@ -319,11 +422,39 @@ export async function createMaterial(input: MaterialInput): Promise<AdminActionS
       action: "material.create",
       entityType: "material",
       entityId: row.id,
-      details: { title: d.title, categoryId: d.categoryId, access: d.access, status: d.status },
+      details: {
+        title: d.title,
+        categoryId: d.categoryId,
+        access: d.access,
+        status: d.status,
+        fileName: d.fileName,
+        size: d.size,
+        kind: d.kind,
+        price: d.price !== undefined ? Math.round(d.price * 100) : 1500,
+        fileId: driveIdOf(d.fileUrl),
+      },
+    });
+    // העלאה חדשה ← הקובץ עובר לתיקיית הקטגוריה שלו ומקבל את שם הקובץ באתר; ההוספה נרשמת בהיסטוריית הדרייב
+    await driveSafe(me.id, `material.create #${row.id}`, async () => {
+      await logDriveEvent({ kind: "file.add", materialId: row.id, categoryId: d.categoryId, driveId: driveIdOf(d.fileUrl), newValue: d.fileName, details: { via: "upload-form" }, actorId: me.id });
+      await placeMaterial(row.id, { actorId: me.id });
     });
     revalidateAll();
     return { ok: true, id: row.id };
   } catch (e) {
+    await logAudit({
+      actorId: me.id,
+      action: "material.create_failed",
+      entityType: "material",
+      details: {
+        title: d.title,
+        categoryId: d.categoryId,
+        fileName: d.fileName,
+        size: d.size,
+        kind: d.kind,
+        error: clip(errMsg(e)),
+      },
+    });
     return { error: "שגיאה בשמירה: " + errMsg(e) };
   }
 }
@@ -354,13 +485,18 @@ export async function updateMaterial(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   try {
+    // המצב הקודם – לפני/אחרי ביומן
+    const [old] = await db.select().from(materials).where(eq(materials.id, d.id)).limit(1);
+    const newPrice = d.price !== undefined ? Math.round(d.price * 100) : 1500;
+    const newMaxDl =
+      d.maxDownloadsPerUser !== undefined && d.maxDownloadsPerUser > 0 ? d.maxDownloadsPerUser : null;
     await db
       .update(materials)
       .set({
         title: d.title,
         description: d.description ?? null,
         kind: d.kind,
-        price: d.price !== undefined ? Math.round(d.price * 100) : 1500,
+        price: newPrice,
         premiumOnly: d.premiumOnly,
         minTier: d.minTier,
         sort: d.sort ?? 0,
@@ -368,10 +504,7 @@ export async function updateMaterial(
         status: d.status,
         allowDownload: d.allowDownload,
         allowPreview: d.allowPreview,
-        maxDownloadsPerUser:
-          d.maxDownloadsPerUser !== undefined && d.maxDownloadsPerUser > 0
-            ? d.maxDownloadsPerUser
-            : null,
+        maxDownloadsPerUser: newMaxDl,
       })
       .where(eq(materials.id, d.id));
     await logAudit({
@@ -386,11 +519,48 @@ export async function updateMaterial(
         allowDownload: d.allowDownload,
         allowPreview: d.allowPreview,
         minTier: d.minTier,
+        before: old
+          ? {
+              title: old.title,
+              kind: old.kind,
+              price: old.price,
+              premiumOnly: old.premiumOnly,
+              minTier: old.minTier,
+              access: old.access,
+              status: old.status,
+              allowDownload: old.allowDownload,
+              allowPreview: old.allowPreview,
+              sort: old.sort,
+              description: clip(old.description, 200),
+              maxDownloadsPerUser: old.maxDownloadsPerUser,
+            }
+          : null,
+        after: {
+          title: d.title,
+          kind: d.kind,
+          price: newPrice,
+          premiumOnly: d.premiumOnly,
+          minTier: d.minTier,
+          access: d.access,
+          status: d.status,
+          allowDownload: d.allowDownload,
+          allowPreview: d.allowPreview,
+          sort: d.sort ?? 0,
+          description: clip(d.description ?? null, 200),
+          maxDownloadsPerUser: newMaxDl,
+        },
       },
     });
     revalidateAll();
     return { ok: true, id: d.id };
   } catch (e) {
+    await logAudit({
+      actorId: me.id,
+      action: "material.update_failed",
+      entityType: "material",
+      entityId: d.id,
+      details: { title: d.title, error: clip(errMsg(e)) },
+    });
     return { error: "שגיאה בשמירה: " + errMsg(e) };
   }
 }
@@ -421,7 +591,7 @@ export async function deleteMaterial(id: number): Promise<AdminActionState> {
   if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
   const [m] = await db.select().from(materials).where(eq(materials.id, id)).limit(1);
   if (!m) return { error: "החומר לא נמצא" };
-  await deleteStoredFile(m.fileUrl);
+  await deleteStoredFile(m.fileUrl, { actorId: me.id, materialId: id });
   await db.delete(materials).where(eq(materials.id, id));
   await logAudit({
     actorId: me.id,
@@ -456,13 +626,25 @@ export async function updateUser(
   if (me.id === id && role !== "admin") {
     return { error: "לא ניתן להסיר הרשאת ניהול מעצמך" };
   }
+  // המצב הקודם – לפני/אחרי ביומן (שינוי הרשאה/רמה/מכסה הוא פעולה רגישה)
+  const [old] = await db
+    .select({
+      role: users.role,
+      tier: users.tier,
+      dailyDownloadLimit: users.dailyDownloadLimit,
+      notes: users.notes,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  const newLimit =
+    dailyDownloadLimit !== undefined && dailyDownloadLimit >= 0 ? dailyDownloadLimit : null;
   await db
     .update(users)
     .set({
       role,
       tier,
-      dailyDownloadLimit:
-        dailyDownloadLimit !== undefined && dailyDownloadLimit >= 0 ? dailyDownloadLimit : null,
+      dailyDownloadLimit: newLimit,
       notes: notes ?? null,
     })
     .where(eq(users.id, id));
@@ -471,8 +653,30 @@ export async function updateUser(
     action: "user.update",
     entityType: "user",
     entityId: id,
-    details: { role, tier, dailyDownloadLimit: dailyDownloadLimit ?? null },
+    details: {
+      role,
+      tier,
+      dailyDownloadLimit: newLimit,
+      before: old
+        ? {
+            role: old.role,
+            tier: old.tier,
+            limit: old.dailyDownloadLimit,
+            notes: clip(old.notes, 200),
+          }
+        : null,
+      after: { role, tier, limit: newLimit, notes: clip(notes ?? null, 200) },
+    },
   });
+  if (old && old.role !== role) {
+    await logAudit({
+      actorId: me.id,
+      action: "user.role_change",
+      entityType: "user",
+      entityId: id,
+      details: { from: old.role, to: role },
+    });
+  }
   revalidatePath("/admin/users");
   revalidatePath("/account");
   return { ok: true, id };
@@ -538,6 +742,11 @@ export async function updateSellOffer(
   if (!me) return { error: "אין הרשאה" };
   const parsed = offerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const [prevOffer] = await db
+    .select({ status: sellOffers.status, title: sellOffers.title })
+    .from(sellOffers)
+    .where(eq(sellOffers.id, parsed.data.id))
+    .limit(1);
   await db
     .update(sellOffers)
     .set({ status: parsed.data.status })
@@ -547,7 +756,12 @@ export async function updateSellOffer(
     action: "sell_offer.update",
     entityType: "sell_offer",
     entityId: parsed.data.id,
-    details: { status: parsed.data.status },
+    details: {
+      title: prevOffer?.title ?? null,
+      from: prevOffer?.status ?? null,
+      to: parsed.data.status,
+      status: parsed.data.status,
+    },
   });
   revalidatePath("/admin/offers");
   return { ok: true, id: parsed.data.id };
@@ -559,10 +773,57 @@ export async function deleteThread(id: number): Promise<AdminActionState> {
   const me = await admin();
   if (!me) return { error: "אין הרשאה" };
   if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
+  // שומרים כותרת וכותבת לפני המחיקה, כדי שאפשר יהיה לדעת בדיעבד מה נמחק
+  const [t] = await db
+    .select({ title: forumThreads.title, authorId: forumThreads.userId })
+    .from(forumThreads)
+    .where(eq(forumThreads.id, id))
+    .limit(1);
   await db.delete(forumThreads).where(eq(forumThreads.id, id));
-  await logAudit({ actorId: me.id, action: "forum.thread.delete", entityType: "forum_thread", entityId: id });
+  await logAudit({
+    actorId: me.id,
+    action: "forum.thread.delete",
+    entityType: "forum_thread",
+    entityId: id,
+    details: { title: t?.title ?? null, authorId: t?.authorId ?? null },
+  });
   revalidatePath("/admin/forum");
   revalidatePath("/forum", "layout");
+  revalidatePath("/subjects", "layout");
+  return { ok: true };
+}
+
+/** מחיקת תשובה בפורום (מהמנהלת, גם של אחרות) */
+export async function deleteForumPost(id: number): Promise<AdminActionState> {
+  const me = await admin();
+  if (!me) return { error: "אין הרשאה" };
+  if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
+  const [p] = await db
+    .select({ authorId: forumPosts.userId, threadId: forumPosts.threadId })
+    .from(forumPosts)
+    .where(eq(forumPosts.id, id))
+    .limit(1);
+  await db.delete(forumPosts).where(eq(forumPosts.id, id));
+  await logAudit({
+    actorId: me.id,
+    action: "forum.post.delete",
+    entityType: "forum_post",
+    entityId: id,
+    details: { byAdmin: true, authorId: p?.authorId ?? null, threadId: p?.threadId ?? null },
+  });
+  revalidatePath("/admin/forum");
+  revalidatePath("/subjects", "layout");
+  return { ok: true };
+}
+
+/** סגירת דיווח בפורום (התוכן נבדק ונמצא תקין, או שכבר נמחק) */
+export async function closeForumReport(id: number): Promise<AdminActionState> {
+  const me = await admin();
+  if (!me) return { error: "אין הרשאה" };
+  if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
+  await db.update(forumReports).set({ status: "handled" }).where(eq(forumReports.id, id));
+  await logAudit({ actorId: me.id, action: "forum.report.close", entityType: "forum_report", entityId: id });
+  revalidatePath("/admin/forum");
   return { ok: true };
 }
 
@@ -713,8 +974,15 @@ export async function updatePurchaseNotes(id: number, notes: string): Promise<Ad
   if (!me) return { error: "אין הרשאה" };
   if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
   const clean = notes.trim().slice(0, 5000);
+  const old = await getPurchase(id);
   await db.update(purchases).set({ notes: clean || null }).where(eq(purchases.id, id));
-  await logAudit({ actorId: me.id, action: "purchase.notes", entityType: "purchase", entityId: id });
+  await logAudit({
+    actorId: me.id,
+    action: "purchase.notes",
+    entityType: "purchase",
+    entityId: id,
+    details: { before: clip(old?.notes, 200), after: clip(clean || null, 200) },
+  });
   revalidateSubs();
   return { ok: true, id };
 }
@@ -826,6 +1094,12 @@ export async function createManualPurchase(
     revalidateSubs();
     return { ok: true, id: row.id };
   } catch (e) {
+    await logAudit({
+      actorId: me.id,
+      action: "purchase.manual_failed",
+      entityType: "purchase",
+      details: { userId: u.id, plan: d.plan, amount, days, premium: d.premium, paymentRef, error: clip(errMsg(e)) },
+    });
     return { error: "שגיאה בשמירה: " + errMsg(e) };
   }
 }
@@ -885,6 +1159,12 @@ export async function createTransaction(
     revalidatePath("/admin/finance");
     return { ok: true, id: row.id };
   } catch (e) {
+    await logAudit({
+      actorId: me.id,
+      action: "transaction.create_failed",
+      entityType: "transaction",
+      details: { userId, type: d.type, amount, error: clip(errMsg(e)) },
+    });
     return { error: "שגיאה בשמירה: " + errMsg(e) };
   }
 }

@@ -53,7 +53,7 @@ export const PLANS: Record<
 > = {
   single: {
     label: "הורדה בודדת",
-    description: "היחידה הקטנה ביותר – פרק אחד / נושא אחד",
+    description: "היחידה הקטנה ביותר – יחידת חומר",
   },
   bundle: {
     label: "קובץ מורחב",
@@ -75,7 +75,7 @@ export const PLANS: Record<
   },
   yearly: {
     label: "מנוי שנתי",
-    description: "גישה מלאה לכל המקצועות, כל השנה",
+    description: "גישה מלאה ל-3 מקצועות, כל השנה",
     price: 58800,
     downloadsLimit: 2000,
     days: 365,
@@ -84,11 +84,33 @@ export const PLANS: Record<
 
 export const PREMIUM_ADDON_PRICE = 1900; // לחודש
 
+/** המנוי השנתי מיועד ל-3 מקצועות; כל מקצוע נוסף בתוספת חודשית (באגורות, × 12 חודשים) */
+export const YEARLY_INCLUDED_SUBJECTS = 3;
+export const YEARLY_EXTRA_SUBJECT_PRICE = 1900;
+/** המחיר החודשי המלא של המנוי השנתי (באגורות) – מוצג מחוק ליד מחיר המבצע בפועל (PLANS.yearly.price / 12) */
+export const YEARLY_LIST_PRICE_MONTHLY = 7900;
+
+/** מסלול "ממלאת מקום 3 חודשים": מחיר חודשי רגיל ומחיר קופון ההשקה (באגורות). כרגע לתצוגה בלבד – אין לו עדיין רכישה בסל */
+export const SUBSTITUTE_MONTHS = 3;
+export const SUBSTITUTE_PRICE_MONTHLY = 18000;
+export const SUBSTITUTE_LAUNCH_PRICE_MONTHLY = 13000;
+/** מסלול "ממלאת מקום יומית": סל של צפיות או הורדות (לא לפי חודש), מחיר רגיל ומחיר מבצע (באגורות). גם הוא לתצוגה בלבד */
+export const SUBSTITUTE_DAILY_DOWNLOADS = 20;
+export const SUBSTITUTE_DAILY_PRICE = 20000;
+export const SUBSTITUTE_DAILY_LAUNCH_PRICE = 16000;
+
+/** שם מקצוע לתצוגה בבחירת מקצועות: שלושת תחומי הלשון מוצגים כ"לשון – מערכת הצורות" וכו' */
+export function subjectDisplayTitle(slug: string, title: string): string {
+  return slug.startsWith("lashon-") && !title.startsWith("לשון") ? `לשון – ${title}` : title;
+}
+
 export const SUBJECT_ICONS: Record<string, string> = {
   torah: "📜",
   navi: "🕊️",
   ktuvim: "🎼",
-  lashon: "✒️",
+  "lashon-tzurot": "✒️",
+  "lashon-tachbir": "✒️",
+  "lashon-havaa": "✒️",
   sifrut: "📖",
   english: "🔤",
   yahadut: "🕯️",
@@ -109,7 +131,9 @@ export const SUBJECT_COLORS: Record<string, string> = {
   torah: "#2f6fed", // כחול
   navi: "#14b8a6", // טורקיז
   ktuvim: "#8b5cf6", // סגול
-  lashon: "#f59e0b", // ענבר
+  "lashon-tzurot": "#f59e0b", // ענבר
+  "lashon-tachbir": "#d97706", // ענבר כהה
+  "lashon-havaa": "#fbbf24", // ענבר בהיר
   sifrut: "#ec4899", // ורוד
   english: "#dc2626", // אדום
   yahadut: "#4f46e5", // אינדיגו
@@ -130,7 +154,9 @@ const SUBJECT_HOUSE_FILES: Record<string, string> = {
   navi: "house-navi.png",
   ktuvim: "house-ktuvim.png",
   mishlei: "house-mishlei.png",
-  lashon: "house-lashon.png",
+  "lashon-tzurot": "house-lashon-tzurot.png",
+  "lashon-tachbir": "house-lashon-tachbir.png",
+  "lashon-havaa": "house-lashon-havaa.png",
   sifrut: "house-sifrut.png",
   english: "house-english.png",
   yahadut: "house-yahadut.png",
@@ -156,7 +182,9 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
   navi: "#8a9bb8",
   ktuvim: "#c9a15e",
   mishlei: "#7fa87f",
-  lashon: "#6b7f99",
+  "lashon-tzurot": "#a493cf",
+  "lashon-tachbir": "#d98a5f",
+  "lashon-havaa": "#d58a9c",
   sifrut: "#b5766a",
   english: "#5a9bb0",
   yahadut: "#9b8bc4",

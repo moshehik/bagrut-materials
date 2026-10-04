@@ -10,11 +10,17 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { listReports } from "../src/lib/errorReports";
+import { logAgentEvent } from "../src/lib/agentEvents";
 
 async function main() {
   const all = process.argv.includes("ALL");
   const reports = await listReports();
   const filtered = all ? reports : reports.filter((r) => r.status === "OPEN" || r.kind === "agentLog");
+  await logAgentEvent({
+    source: "claude",
+    kind: "cli",
+    summary: `read-error-reports${all ? " ALL" : ""}: ${filtered.length} דיווחים (${filtered.filter((r) => r.status === "OPEN" && r.kind === "report").length} פתוחים)`,
+  });
   console.log(JSON.stringify(filtered, null, 2));
 }
 

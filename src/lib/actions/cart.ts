@@ -92,6 +92,17 @@ export async function addToCart(input: AddToCartInput): Promise<CartActionResult
   if (existing.length) return { ok: true, count: await cartCount(user.id), existed: true };
 
   await db.insert(cartItems).values(values);
+  await logAudit({
+    actorId: user.id,
+    action: "cart.add",
+    entityType: "cart",
+    details: {
+      plan: values.plan,
+      materialId: values.materialId ?? null,
+      categoryId: values.categoryId ?? null,
+      premium: values.premium ?? false,
+    },
+  });
   revalidatePath("/cart");
   return { ok: true, count: await cartCount(user.id) };
 }
@@ -100,6 +111,7 @@ export async function removeFromCart(id: number): Promise<CartActionResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "login" };
   await db.delete(cartItems).where(and(eq(cartItems.id, id), eq(cartItems.userId, user.id)));
+  await logAudit({ actorId: user.id, action: "cart.remove", entityType: "cart", details: { cartItemId: id } });
   revalidatePath("/cart");
   return { ok: true, count: await cartCount(user.id) };
 }
@@ -108,6 +120,7 @@ export async function clearCart(): Promise<CartActionResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "login" };
   await db.delete(cartItems).where(eq(cartItems.userId, user.id));
+  await logAudit({ actorId: user.id, action: "cart.clear", entityType: "cart" });
   revalidatePath("/cart");
   return { ok: true, count: 0 };
 }
@@ -120,6 +133,12 @@ export async function setCartItemPremium(id: number, premium: boolean): Promise<
     .update(cartItems)
     .set({ premium })
     .where(and(eq(cartItems.id, id), eq(cartItems.userId, user.id)));
+  await logAudit({
+    actorId: user.id,
+    action: "cart.premium_toggle",
+    entityType: "cart",
+    details: { cartItemId: id, premium },
+  });
   revalidatePath("/cart");
   return { ok: true, count: await cartCount(user.id) };
 }
@@ -149,10 +168,15 @@ async function raiseTier(userId: number, current: Tier, target: Tier) {
 export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): Promise<CheckoutCartState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/cart");
-  if (user.suspended) return { error: "החשבון מושהה. פני למנהלת האתר." };
+  // תיעוד סירוב בקופת העגלה – מחזיר את הודעת השגיאה כרגיל (לא משנה התנהגות)
+  const denied = async (reason: string, error: string, extra?: Record<string, unknown>): Promise<CheckoutCartState> => {
+    await logAudit({ actorId: user.id, action: "cart.checkout_denied", entityType: "cart", details: { reason, ...extra } });
+    return { error };
+  };
+  if (user.suspended) return denied("user_suspended", "החשבון מושהה. פני למנהלת האתר.");
 
   const cart = await getCart(user.id);
-  if (!cart.items.length) return { error: "העגלה ריקה" };
+  if (!cart.items.length) return denied("empty_cart", "העגלה ריקה");
 
   const paymentRef = `MOCK-CART-${Date.now()}`;
   type Row = typeof purchases.$inferInsert;
@@ -173,7 +197,9 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
         paymentRef,
       });
     } else if (it.kind === "bundle") {
-      if (it.price <= 0) return { error: `אין חומרים לרכישה בתיקייה "${it.title}"` };
+      if (it.price <= 0) {
+        return denied("empty_folder", `אין חומרים לרכישה בתיקייה "${it.title}"`, { categoryId: it.categoryId });
+      }
       rows.push({
         userId: user.id,
         plan: "bundle",
@@ -187,7 +213,9 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
     } else {
       const def = PLANS[it.plan];
       const days = def.days ?? 30;
-      if (it.plan === "subject_monthly" && !it.categoryId) return { error: "מנוי למקצוע דורש בחירת מקצוע" };
+      if (it.plan === "subject_monthly" && !it.categoryId) {
+        return denied("subject_required", "מנוי למקצוע דורש בחירת מקצוע", { plan: it.plan });
+      }
       rows.push({
         userId: user.id,
         plan: it.plan,
@@ -205,17 +233,28 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
     }
   }
 
-  if (!rows.length) return { error: "לא נוצרה הזמנה" };
+  if (!rows.length) return denied("no_rows", "לא נוצרה הזמנה");
   const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
-  await db.insert(transactions).values({
-    userId: user.id,
-    purchaseId: inserted[0]?.id ?? null,
-    type: "charge",
-    amount: cart.total,
-    method: "mock",
-    reference: paymentRef,
-    note: `עגלה: ${cart.items.length} פריטים`,
-  });
+  try {
+    await db.insert(transactions).values({
+      userId: user.id,
+      purchaseId: inserted[0]?.id ?? null,
+      type: "charge",
+      amount: cart.total,
+      method: "mock",
+      reference: paymentRef,
+      note: `עגלה: ${cart.items.length} פריטים`,
+    });
+  } catch (e) {
+    console.error("[cart] transaction insert failed", e);
+    await logAudit({
+      actorId: user.id,
+      action: "purchase.tx_failed",
+      entityType: "purchase",
+      entityId: inserted[0]?.id ?? null,
+      details: { purchaseId: inserted[0]?.id ?? null, error: e instanceof Error ? `${e.name}: ${e.message.slice(0, 160).replace(/\s+/g, " ")}` : "unknown" },
+    });
+  }
   if (tierTarget) await raiseTier(user.id, user.tier, tierTarget);
 
   await db.delete(cartItems).where(eq(cartItems.userId, user.id));

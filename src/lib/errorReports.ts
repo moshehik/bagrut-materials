@@ -3,6 +3,7 @@ import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { errorReports as errorReportsTable, errorReportNotes as errorReportNotesTable } from "@/db/schema";
 import { dispatchFixReportsAgent } from "@/lib/agentDispatch";
+import { logAgentEvent } from "@/lib/agentEvents";
 
 /**
  * דיווחי תקלות/שאלות מהאתר (מערכת "תמיכה ושגיאות") + שרשור-על ("יומן הסוכן").
@@ -112,6 +113,14 @@ export async function createReport(input: CreateReportInput): Promise<ErrorRepor
     .returning();
 
   void dispatchFixReportsAgent(); // לא ממתינים — אם זה נכשל/לא מוגדר, יצירת הדיווח לא נפגעת
+  await logAgentEvent({
+    source: "site",
+    kind: "report.create",
+    summary: `דיווח חדש: ${input.title || input.userText.slice(0, 80)}`,
+    details: { url: input.url, title: input.title, userText: input.userText.slice(0, 1000) },
+    reportId: id,
+    runId: "site",
+  });
 
   const [full] = await attachNotes([row]);
   return full;
@@ -124,6 +133,7 @@ export async function setReportStatus(id: string, status: ErrorReportStatus): Pr
     .where(eq(errorReportsTable.id, id))
     .returning();
   if (!row) return null;
+  await logAgentEvent({ source: "script", kind: "report.status", summary: `סטטוס דיווח → ${status}`, reportId: id });
   const [full] = await attachNotes([row]);
   return full;
 }
@@ -156,6 +166,14 @@ export async function addReportNote(
     .set({ updatedAt: new Date() })
     .where(eq(errorReportsTable.id, id))
     .returning();
+  const noteRole = opts?.role ?? "support";
+  await logAgentEvent({
+    source: noteRole === "reporter" ? "site" : opts?.authorKind === "admin" ? "admin" : "claude",
+    kind: "reply",
+    summary: `${noteRole === "reporter" ? "תגובת מדווח/ת" : opts?.authorKind === "admin" ? "תגובה ידנית של מנהלת" : "תגובת הסוכן"}${opts?.isQuestion ? " (שאלה)" : ""}`,
+    details: { text, previewUrl: opts?.previewUrl },
+    reportId: id,
+  });
 
   const [full] = await attachNotes([updated]);
   return full;

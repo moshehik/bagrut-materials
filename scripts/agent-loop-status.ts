@@ -23,6 +23,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { isLoopEnabled, setLoopEnabled, touchActivity, idleMinutes } from "../src/lib/agentLoopStatus";
+import { logAgentEvent } from "../src/lib/agentEvents";
 
 const IDLE_SLEEP_MINUTES = 20;
 
@@ -31,16 +32,19 @@ async function main() {
 
   if (args.includes("--disable")) {
     await setLoopEnabled(false);
+    await logAgentEvent({ source: "claude", kind: "toggle", summary: "הסוכן כובה (הוראת עצירה / CLI)" });
     console.log("false");
     return;
   }
   if (args.includes("--enable")) {
     await setLoopEnabled(true);
+    await logAgentEvent({ source: "script", kind: "toggle", summary: "הסוכן הודלק (CLI)" });
     console.log("true");
     return;
   }
   if (args.includes("--touch")) {
     await touchActivity();
+    await logAgentEvent({ source: "claude", kind: "touch", summary: "אופס שעון השקט (טופל דיווח)" });
     console.log("OK");
     return;
   }
@@ -51,16 +55,22 @@ async function main() {
   if (args.includes("--should-run")) {
     const eventName = args[args.indexOf("--should-run") + 1];
     const enabled = await isLoopEnabled();
-    if (!enabled) {
-      console.log("false");
-      return;
-    }
-    if (eventName !== "schedule") {
-      console.log("true");
-      return;
-    }
     const idle = await idleMinutes();
-    console.log(String(idle < 0 || idle < IDLE_SLEEP_MINUTES));
+    const run = !enabled ? false : eventName !== "schedule" ? true : idle < 0 || idle < IDLE_SLEEP_MINUTES;
+    const reason = !enabled
+      ? "המתג כבוי"
+      : eventName !== "schedule"
+        ? `הופעל ע"י ${eventName} (מעיר את הסוכן)`
+        : run
+          ? "טיק cron, פעילות אחרונה לפני פחות מ-20 דק'"
+          : `טיק cron בזמן שקט (${idle} דק')`;
+    await logAgentEvent({
+      source: "workflow",
+      kind: run ? "run.start" : "run.skip",
+      summary: `${run ? "ההרצה אושרה" : "ההרצה דולגה"}: ${reason}`,
+      details: { event: eventName, enabled, idleMinutes: idle, repo: process.env.GITHUB_REPOSITORY, runUrl: process.env.GITHUB_RUN_ID ? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : undefined },
+    });
+    console.log(String(run));
     return;
   }
 

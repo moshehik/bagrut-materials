@@ -30,10 +30,10 @@
 /* מיקום העט בתוך תמונת הפתיח (1528×587): x=1275, y=220, רוחב 255. נקודת הציר בקצה הימני של התמונה, כדי שהקצה החתוך לא יזוז */
 .heroPen {
   position: absolute;
-  left: 83.443%;
-  top: 37.479%;
-  width: 16.688%;
-  aspect-ratio: 255 / 339;
+  left: 82.657%;
+  top: 36.29%;
+  width: 17.016%;
+  aspect-ratio: 260 / 352;
   transform-origin: 98% 22%;
   animation: penWrite 7s ease-in-out infinite;
   will-change: transform;
@@ -342,56 +342,6 @@
     transform: translateY(-10px) rotate(1deg);
   }
 }
-/* ---------- STATS ---------- */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 90px;
-}
-.stat {
-  background: #fff;
-  border-radius: 120px 120px 20px 20px;
-  padding: 36px 20px 26px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(31, 45, 51, 0.08);
-  border-top: 6px solid var(--sea);
-  transition:
-    transform 0.25s var(--ease-snap),
-    box-shadow 0.25s var(--ease-snap);
-}
-.stat:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 34px rgba(31, 45, 51, 0.14);
-}
-.stat b {
-  transition: transform 0.25s var(--ease-snap);
-}
-.stat:hover b {
-  transform: scale(1.08);
-}
-.stat:nth-child(2) {
-  border-top-color: var(--terra);
-}
-.stat:nth-child(3) {
-  border-top-color: var(--sun);
-}
-.stat:nth-child(4) {
-  border-top-color: var(--sea2);
-}
-.stat b {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 42px;
-  color: var(--sea2);
-  line-height: 1.1;
-}
-.stat span {
-  font-size: 15px;
-  opacity: 0.75;
-}
-
 /* ---------- LESSON CONTENTS (מה לו"ז השיעור) ---------- */
 .lessonItems {
   display: grid;
@@ -482,8 +432,10 @@
 .lessonNote {
   margin: 34px 0 0;
   text-align: center;
-  font-size: 13px;
-  opacity: 0.65;
+  font-family: var(--font-hand);
+  font-size: 28px;
+  line-height: 1.2;
+  opacity: 0.85;
 }
 .lessonNuts {
   display: flex;
@@ -645,6 +597,119 @@
   background: var(--blue-soft);
   border-radius: 999px;
   padding: 3px 10px;
+}
+
+/* ---------- SUBJECTS — בתים על רקע השלג, לצד בית-השעון של לו"ז העניין ---------- */
+/* הכותרת מעל ההר (שמצויר בתוך .snowHouses עם z-index משלו), כדי שפסגות ההר לא יסתירו אותה */
+.subjectsTitle {
+  position: relative;
+  z-index: 2;
+}
+.snowScene {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 100px;
+  padding-top: 60px;
+}
+/* ההר ברקע — הפסגות מעל הבתים, והבתים יושבים על המדרון */
+.snowMountain {
+  position: absolute;
+  right: 0;
+  bottom: 30%;
+  width: 78%;
+  max-width: none;
+  height: auto;
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+.snowHouses {
+  position: relative;
+  z-index: 1;
+  flex: 0 1 790px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 44px;
+}
+.snowRow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0;
+}
+.snowRow > * {
+  flex: 0 0 88px;
+  min-width: 0;
+}
+.snowHouse {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.snowHouseImg {
+  width: 88px;
+  aspect-ratio: 435 / 389;
+  object-fit: contain;
+  object-position: bottom;
+  filter: drop-shadow(0 6px 10px rgba(31, 45, 51, 0.15));
+  transition: transform 0.3s var(--ease-snap);
+}
+.snowNut {
+  width: 60px;
+  height: auto;
+  object-fit: contain;
+  transition: transform 0.3s var(--ease-snap);
+}
+.snowHouse:hover .snowHouseImg,
+.snowHouse:hover .snowNut {
+  transform: translateY(-5px) scale(1.04);
+}
+.snowHouse .houseLabel {
+  white-space: normal;
+  font-size: 14px;
+}
+.snowLogo {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 34%;
+  width: 34%;
+  margin-right: -26px;
+  left: -3.5vw;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+@media (max-width: 900px) {
+  .snowScene {
+    flex-direction: column-reverse;
+    align-items: center;
+    padding-top: 120px;
+  }
+  .snowMountain {
+    width: 100%;
+  }
+  .snowLogo {
+    left: 0;
+    flex-basis: auto;
+    width: min(70%, 300px);
+  }
+  .snowHouses {
+    margin-bottom: 0;
+    width: 100%;
+  }
+  .snowRow {
+    flex-wrap: wrap;
+  }
 }
 
 /* ---------- PACK (מסלול מומלץ) ---------- */
@@ -875,73 +940,13 @@
   margin: 0;
 }
 
-/* ---------- KINDS HEAD (קשת מרקרים מסביב לכותרת) ---------- */
-.kindsHeadWrap {
-  position: relative;
-  width: min(100%, 640px);
-  aspect-ratio: 1920 / 1080;
-  margin: 0 auto 24px;
-}
-.kindsHeadImg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.kindsHeadTitle {
-  position: absolute;
-  left: 14%;
-  right: 14%;
-  top: 56%;
-  bottom: 4%;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(18px, 2.6vw, 26px);
-  line-height: 1.3;
-}
-
-/* ---------- KINDS INTRO (עט מצייר מסגרת, המשפט "רק מה שצריך" בפנים) ---------- */
-.kindsNote {
-  position: relative;
-  width: min(100%, 620px);
-  aspect-ratio: 1920 / 1080;
-  margin: -2cm auto 46px;
-}
-.kindsNoteImg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.kindsNoteText {
-  position: absolute;
-  left: 28%;
-  right: 40%;
-  top: 62%;
-  bottom: 8%;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: var(--font-hand);
-  font-size: clamp(15px, 1.575vw, 19.5px);
-  line-height: 1.3;
-  color: var(--ink);
-  padding: 0 8px;
-}
-
 /* ---------- KINDS (מה בכל ערכה) ---------- */
 .kinds {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 100px;
+  gap: 8px;
+  max-width: 760px;
+  margin: 40px auto 80px;
 }
 /* כרטיס "כתם" מאויר — כתם צבע עם עיגול עט, הטקסט יושב בתוכו. שקוף 50% ומתמלא ב-hover */
 .kind {
@@ -991,18 +996,20 @@
 .kind b {
   font-family: var(--font-hand);
   font-weight: 400;
-  font-size: 24px;
+  font-size: 32px;
+  line-height: 1.1;
   color: var(--sea2);
 }
-.kind span {
-  font-size: 14px;
-  opacity: 0.75;
-  line-height: 1.5;
+.kind > span {
+  font-family: var(--font-hand);
+  font-size: 17px;
+  opacity: 0.8;
+  line-height: 1.3;
 }
 /* אייקון קו דק שחור — מצייר את עצמו קו-אחר-קו כשעומדים על הכרטיס */
 .kindIcon {
-  width: 38px;
-  height: 38px;
+  width: 28px;
+  height: 28px;
   color: var(--ink);
   transition:
     transform 0.3s var(--ease-snap),
@@ -1051,8 +1058,8 @@
 /* אזור הכתיבה בתוך המכתב — משאיר מרווח מהמסגרת המחוררת משמאל ומעמודת תיבות הסימון מימין, ומתחיל גבוה כדי לפנות מקום לכל הפסקאות עד לחתימה */
 .aboutText {
   position: absolute;
-  top: 5%;
-  bottom: 5%;
+  top: 7%;
+  bottom: 7%;
   right: 26%;
   left: 9%;
   display: flex;
@@ -1060,11 +1067,11 @@
   justify-content: center;
 }
 .aboutText p {
-  font-size: clamp(13px, 1.5vw, 18px);
-  line-height: 1.5;
+  font-size: clamp(12px, 1.4vw, 16.5px);
+  line-height: 1.45;
   color: var(--ink);
   text-align: center;
-  margin: 0 0 10px;
+  margin: 0 0 6px;
 }
 .aboutText p:last-child {
   margin-bottom: 0;
@@ -1081,6 +1088,12 @@
 }
 .aboutSign {
   margin-top: 4px;
+}
+.aboutLogo {
+  display: block;
+  width: clamp(120px, 16vw, 230px);
+  height: auto;
+  margin: 6px auto 0;
 }
 .aboutHeart {
   display: inline-block;
@@ -1244,8 +1257,51 @@
   margin: 0 auto;
 }
 .faqItem {
+  /* אותו סגנון של ההודעה "לפני שממשיכות!": כחול כהה, ובתוכו חלונית זהב בהיר עם מסגרת ואותיות שחורות */
+  position: relative;
   border-radius: 22px;
   overflow: hidden;
+  background: rgba(22, 36, 78, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+/* מסגרת שחורה עם ברק זהב שמסתובב סביבה — כמו בהודעה "לפני שממשיכות!" */
+.faqItem::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  background: #0a0a0a;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* הברק עובר רק על השאלה הפתוחה */
+.faqItemOpen::before {
+  background: conic-gradient(
+    from var(--fx-angle),
+    #0a0a0a 0deg,
+    #0a0a0a 292deg,
+    #b8860b 312deg,
+    #ffd45a 330deg,
+    #fffbe0 342deg,
+    #ffd45a 352deg,
+    #0a0a0a 360deg
+  );
+  animation: faqSpin 11s linear infinite;
+}
+@keyframes faqSpin {
+  to {
+    --fx-angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faqItemOpen::before {
+    animation: none;
+  }
 }
 .faqQ {
   width: 100%;
@@ -1253,20 +1309,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  /* שאלה: כחול שקוף, עם סימון זהב בקצה השמאלי */
   background: linear-gradient(
     to left,
-    var(--sea) 0,
-    var(--sea) calc(100% - 1.5cm),
+    transparent 0,
+    transparent calc(100% - 1.5cm),
     #c9973f calc(100% - 1.5cm),
     #f2ce7a 100%
   );
   color: #fff;
   border: none;
   border-radius: 22px;
-  padding: 18px 26px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
+  padding: 14px 24px;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.25;
   text-align: right;
   cursor: pointer;
   transition: background 0.25s var(--ease-snap);
@@ -1275,8 +1333,8 @@
 .faqQ[aria-expanded="true"] {
   background: linear-gradient(
     to left,
-    var(--sea2) 0,
-    var(--sea2) calc(100% - 1.5cm),
+    rgba(255, 255, 255, 0.1) 0,
+    rgba(255, 255, 255, 0.1) calc(100% - 1.5cm),
     #c9973f calc(100% - 1.5cm),
     #f2ce7a 100%
   );
@@ -1290,6 +1348,71 @@
   flex-shrink: 0;
   width: 30px;
   height: auto;
+  /* האגוז מתנדנד בעדינות, ומסתובב קצת בריחוף */
+  transform-origin: 50% 70%;
+  animation: faqNutRock 5s ease-in-out infinite;
+  transition: transform 0.35s var(--ease-snap);
+}
+.faqQ:hover .faqNutIcon {
+  animation-play-state: paused;
+  transform: rotate(-18deg) scale(1.12);
+}
+@keyframes faqNutRock {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0deg);
+  }
+  78% {
+    transform: rotate(-9deg);
+  }
+  86% {
+    transform: rotate(7deg);
+  }
+  94% {
+    transform: rotate(-3deg);
+  }
+}
+/* ברק אור רך וחולף על פני השאלה, לאט ובלי לסנוור; כל שאלה מתחילה בזמן אחר */
+.faqQ {
+  position: relative;
+  overflow: hidden;
+}
+.faqQ::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 28%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+}
+/* הברק עובר רק על השאלה שעומדים עליה */
+.faqQ:hover::after {
+  animation: faqSheen 4s ease-in-out infinite;
+}
+@keyframes faqSheen {
+  0% {
+    left: -40%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85%,
+  100% {
+    left: 120%;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faqNutIcon,
+  .faqQ::after {
+    animation: none;
+  }
 }
 .faqChevron {
   flex-shrink: 0;
@@ -1301,33 +1424,83 @@
   transform: rotate(180deg);
 }
 .faqA {
-  background: #e6f6fb;
-  color: var(--ink);
-  border-radius: 0 0 22px 22px;
-  margin-top: -10px;
-  padding: 24px 26px 18px;
+  /* תשובה: אפרסק */
+  background: #fbefc2;
+  color: #000;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 1rem;
+  margin: 12px 14px 14px;
+  padding: 14px 20px;
+  font-family: var(--font-hand);
+  font-size: 18px;
 }
 .faqA p {
   margin: 0;
-  line-height: 1.8;
+  white-space: pre-line;
+  line-height: 1.6;
 }
 
 .faqAsk {
-  max-width: 640px;
+  max-width: 760px;
   margin: 44px auto 0;
   text-align: center;
+}
+/* מסגרת כחולה שקופה עם ברק זהב שמסתובב, כמו בשאלות */
+.faqAskForm {
+  position: relative;
+  border-radius: 22px;
+  padding: 22px 26px 24px;
+  background: rgba(22, 36, 78, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.faqAskForm::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--fx-angle),
+    #0a0a0a 0deg,
+    #0a0a0a 292deg,
+    #b8860b 312deg,
+    #ffd45a 330deg,
+    #fffbe0 342deg,
+    #ffd45a 352deg,
+    #0a0a0a 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: faqSpin 11s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .faqAskForm::before {
+    animation: none;
+  }
 }
 .faqAskForm h3 {
   font-family: var(--font-hand);
   font-weight: 400;
   font-size: 28px;
   margin: 0 0 16px;
+  color: #fff;
 }
 .faqAskLabel {
   display: block;
   text-align: right;
   font-weight: 600;
   font-size: 14px;
+  color: #fff;
+}
+/* פנים השדה באותו צבע ומסגרת של חלונית התשובה */
+.faqAskLabel textarea {
+  background: #fbefc2;
+  color: #000;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 1rem;
 }
 .faqAskActions {
   margin-top: 14px;
@@ -1335,6 +1508,10 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
+}
+/* כחול בהתחלה; בעמידה עליו הופך לזהב עם ברק, כמו הלחצן "הבנתי" (הכללים ב-globals.css תחת fix-gate-scope) */
+.faqAskActions .faqSend {
+  color: #fff;
 }
 .faqAskOk {
   font-family: var(--font-hand);
@@ -1345,11 +1522,13 @@
 
 @media (max-width: 900px) {
   .faqQ {
-    padding: 15px 18px;
-    font-size: 15.5px;
+    padding: 12px 18px;
+    font-size: 18px;
   }
   .faqA {
-    padding: 18px 18px 16px;
+    margin: 10px 10px 10px;
+    padding: 12px 16px;
+    font-size: 17px;
   }
 }
 

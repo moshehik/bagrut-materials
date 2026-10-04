@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookOpen, Tags } from "lucide-react";
+import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
-import { getPlanPrices } from "@/lib/pricing";
-import { PLANS, SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS, formatPrice } from "@/lib/constants";
+import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 import type { CSSProperties } from "react";
 import Image from "next/image";
@@ -11,7 +11,8 @@ import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { HeroTitle } from "@/components/hero-title";
 import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
-import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
+import { IconMaterials, IconSubjects, IconDownloads, IconVisits } from "@/components/kind-icons";
+import { CountUp } from "@/components/count-up";
 import { nutForLevel } from "@/lib/nut-images";
 import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
 import { FaqSection } from "@/components/faq-section";
@@ -26,22 +27,14 @@ async function safeRootSubjects(isAdmin: boolean): Promise<Category[]> {
     return [];
   }
 }
+
 async function safeStats() {
   try {
     return await getHomeStats();
   } catch {
-    return { subjects: 0, folders: 0, files: 0, downloads: 0 };
+    return { subjects: 0, folders: 0, files: 0, downloads: 0, visits: 0 };
   }
 }
-async function safePrices() {
-  try {
-    return await getPlanPrices();
-  } catch {
-    return null;
-  }
-}
-
-const num = (n: number) => n.toLocaleString("he-IL");
 
 /** סדר הכרטיסיות בתוך תיקיית שיעור (אותו סדר כמו CARD_ROWS) */
 const LESSON_ITEMS: CardType[] = CARD_ROWS.flat();
@@ -49,12 +42,7 @@ const LESSON_ITEMS: CardType[] = CARD_ROWS.flat();
 export default async function HomePage() {
   const user = await getCurrentUser().catch(() => null);
   const isAdmin = user?.role === "admin";
-  const [subjects, stats, prices] = await Promise.all([
-    safeRootSubjects(isAdmin),
-    safeStats(),
-    safePrices(),
-  ]);
-  const customPrice = prices?.plans.custom_monthly ?? PLANS.custom_monthly.price ?? 0;
+  const [subjects, stats] = await Promise.all([safeRootSubjects(isAdmin), safeStats()]);
 
   return (
     <div className="overflow-x-clip">
@@ -64,7 +52,7 @@ export default async function HomePage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <span className={s.heroPen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/hero-pen.png" alt="" className={s.heroPenImg} width={255} height={339} />
+            <img src="/images/hero-pen.png" alt="" className={s.heroPenImg} width={260} height={352} />
           </span>
           <span className={s.heroGoatRun}>
             <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={428} height={443} />
@@ -79,10 +67,13 @@ export default async function HomePage() {
                 text={'בלו"ז העניין תקבלי את המעטפת המושלמת לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור! בואי להיות חלק ממשהו גדול, להוציא את העז מהלו"ז, ולתת לתלמידות שלך מעבר.'}
               />
               <div className={s.acts}>
-                <Link href="/subjects" className="btn btn-terra text-base">
+                <Link href="/subjects" className="btn btn-gold btn-gate">
+                  <BookOpen className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                   למאגר המקצועות
+                  <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
                 </Link>
-                <Link href="/pricing" className="btn btn-ghost text-base">
+                <Link href="/pricing" className="btn btn-ghost btn-plans text-base">
+                  <Tags className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
                   מסלולים ומחירים
                 </Link>
               </div>
@@ -92,32 +83,33 @@ export default async function HomePage() {
       </div>
 
       <div className={s.wrap}>
-        {/* ================= STATS ================= */}
-        <div className={s.stats}>
-          <div className={s.stat}>
-            <b>{num(stats.subjects)}</b>
+        {/* ================= KINDS — הנתונים המשתנים של האתר (קופצים מ-0 בכל כניסה, לפי העדכון האחרון) ================= */}
+        <AnimatedGrid className={s.kinds}>
+          <div className={s.kind}>
+            <img src="/images/kind-blob-1.png" alt="" className={s.kindBlob} />
+            <IconMaterials className={s.kindIcon} />
+            <b><CountUp value={stats.files} /></b>
+            <span>חומרים באתר</span>
+          </div>
+          <div className={s.kind}>
+            <img src="/images/kind-blob-2.png" alt="" className={s.kindBlob} />
+            <IconSubjects className={s.kindIcon} />
+            <b><CountUp value={stats.subjects} /></b>
             <span>מקצועות</span>
           </div>
-          <div className={s.stat}>
-            <b>{num(stats.folders)}</b>
-            <span>יחידות, נושאים ופרקים</span>
+          <div className={s.kind}>
+            <img src="/images/kind-blob-3.png" alt="" className={s.kindBlob} />
+            <IconDownloads className={s.kindIcon} />
+            <b><CountUp value={stats.downloads} /></b>
+            <span>הורדות</span>
           </div>
-          <div className={s.stat}>
-            <b>{num(stats.files)}</b>
-            <span>קבצי שיעור מוכנים</span>
+          <div className={s.kind}>
+            <img src="/images/kind-blob-4.png" alt="" className={s.kindBlob} />
+            <IconVisits className={s.kindIcon} />
+            <b><CountUp value={stats.visits} /></b>
+            <span>כניסות לאתר</span>
           </div>
-          {stats.downloads > 0 ? (
-            <div className={s.stat}>
-              <b>{num(stats.downloads)}</b>
-              <span>הורדות של מורות</span>
-            </div>
-          ) : (
-            <div className={s.stat}>
-              <b>{formatPrice(prices?.defaultSingle ?? 1500)}</b>
-              <span>החל מ־ להורדת פרק בודד</span>
-            </div>
-          )}
-        </div>
+        </AnimatedGrid>
 
         {/* ================= LESSON CONTENTS (לו"ז השיעור) ================= */}
         <Reveal>
@@ -176,7 +168,7 @@ export default async function HomePage() {
               <img src="/images/marker-1.png" alt="" className={s.stepMarker} />
               <mark className={s.highlight}>בוחרים מקצוע</mark>
             </h4>
-            <p>תורה, נביא, כתובים, לשון, ספרות, אנגלית, יהדות, מתמטיקה, דינים, היסטוריה ועוד.</p>
+            <p>תורה, נביא, כתובים, לשון, ספרות, אנגלית, מחשבת ישראל, מתמטיקה, דינים, היסטוריה ועוד.</p>
           </div>
           <div className={s.step}>
             <div className={s.n}>
@@ -201,119 +193,26 @@ export default async function HomePage() {
         </AnimatedGrid>
 
         {/* ================= SUBJECTS ================= */}
-        <Reveal>
-          <h2 className="sec-h" id="subjects-h">
+        <Reveal className={s.subjectsTitle}>
+          <h2 className="sec-h" id="subjects-h" style={{ marginBottom: 0 }}>
             המקצועות
           </h2>
-          <p className="sec-sub" style={{ marginBottom: 46 }}>
-            בחרי לך בית, היכנסי — ומהמקצוע יורדים ליחידות, לפנימי/חיצוני, לנושא ועד לפרק שאת
-            מלמדת מחר.
-          </p>
         </Reveal>
         {subjects.length === 0 ? (
           <EmptySubjects />
         ) : (
-          <AnimatedGrid className={s.subjects}>
-            {subjects.map((c) => (
-              <Link
-                key={c.id}
-                href={`/subjects/${encodeURIComponent(c.slug)}`}
-                className={s.subj}
-                aria-label={`פתיחת ${c.title}`}
-              >
-                <div
-                  className={s.arch}
-                  style={
-                    SUBJECT_HOUSE_COLORS[c.slug]
-                      ? ({ "--accent": SUBJECT_HOUSE_COLORS[c.slug] } as CSSProperties)
-                      : undefined
-                  }
-                >
-                  {SUBJECT_HOUSES[c.slug] ? (
-                    <div className={s.houseStack}>
-                      <div className={s.houseWrap}>
-                        <img
-                          className={s.house}
-                          src={SUBJECT_HOUSES[c.slug]}
-                          alt=""
-                          width={356}
-                          height={266}
-                        />
-                      </div>
-                      <span className={s.houseLabel}>{c.title}</span>
-                    </div>
-                  ) : (
-                    <Image className={s.nut} src={nutForLevel(c.slug, 0)} alt="" aria-hidden />
-                  )}
-                </div>
-                {!SUBJECT_HOUSES[c.slug] && <h3>{c.title}</h3>}
-                {c.questionnaireCode && <span className={s.code}>שאלון {c.questionnaireCode}</span>}
-                <em>לחומרים ←</em>
-              </Link>
-            ))}
-          </AnimatedGrid>
+          <div className={s.snowScene}>
+            <HouseCluster subjects={subjects} />
+            <img
+              src="/images/luz-house-only.png"
+              alt=""
+              aria-hidden
+              className={s.snowLogo}
+              width={1451}
+              height={800}
+            />
+          </div>
         )}
-
-        {/* ================= PACK ================= */}
-        <Reveal>
-          <div className={s.packWrap}>
-            <div className={s.pack}>
-              <div className={s.packBody}>
-                <h3>{PLANS.custom_monthly.label}</h3>
-                <ul>
-                  <li>עד 3 מקצועות לפי המערכת</li>
-                  <li>עד {PLANS.custom_monthly.downloadsLimit} הורדות בחודש</li>
-                  <li>רק הפרקים שאת מלמדת</li>
-                  <li>פורום מורות לשאלות</li>
-                </ul>
-                <div className={s.price}>
-                  {formatPrice(customPrice)} <small>· לחודש</small>
-                </div>
-                <Link href="/pricing" className="btn btn-gold">
-                  לכל המסלולים
-                </Link>
-              </div>
-            </div>
-          </div>
-        </Reveal>
-
-        {/* ================= KINDS ================= */}
-        <Reveal>
-          <div className={s.kindsHeadWrap}>
-            <img src="/images/markers-arc.png" alt="" className={s.kindsHeadImg} />
-            <h2 className={`sec-h ${s.kindsHeadTitle}`}>מה בכל ערכת שיעור</h2>
-          </div>
-          <div className={s.kindsNote}>
-            <img src="/images/pen-note.png" alt="" className={s.kindsNoteImg} />
-            <p className={s.kindsNoteText}>כל מה שצריך כדי להרים בכיתה שיעור מעולה, במינימום מאמץ.</p>
-          </div>
-        </Reveal>
-        <AnimatedGrid className={s.kinds}>
-          <div className={s.kind}>
-            <img src="/images/kind-blob-1.png" alt="" className={s.kindBlob} />
-            <IconStudentPage className={s.kindIcon} />
-            <b>דף לתלמידה</b>
-            <span>משפטים להשלמה תוך כדי השיעור — הכיתה נשארת ערנית</span>
-          </div>
-          <div className={s.kind}>
-            <img src="/images/kind-blob-2.png" alt="" className={s.kindBlob} />
-            <IconTeacherPage className={s.kindIcon} />
-            <b>דף למורה</b>
-            <span>אותו דף עם התשובות, סיפורים, שאלות לחידוד וחידות</span>
-          </div>
-          <div className={s.kind}>
-            <img src="/images/kind-blob-3.png" alt="" className={s.kindBlob} />
-            <IconPresentation className={s.kindIcon} />
-            <b>מצגת מלווה</b>
-            <span>לפי מהלך השיעור, למקרן או ללוח חכם</span>
-          </div>
-          <div className={s.kind}>
-            <img src="/images/kind-blob-4.png" alt="" className={s.kindBlob} />
-            <IconPastExams className={s.kindIcon} />
-            <b>בגרויות קודמות</b>
-            <span>שאלות לפי פרק עם פתרונות — לפרימיום</span>
-          </div>
-        </AnimatedGrid>
 
         {/* ================= QUOTES ================= */}
         <Reveal>
@@ -355,7 +254,7 @@ export default async function HomePage() {
                 לסיפור, גם לחידה — וגם לבגרות.
               </p>
               <div className={s.who}>
-                <span className={s.av}>ש</span>שרה, מורה להיסטוריה
+                <span className={s.av}>ש</span>שרה, מורה לתהילים
               </div>
             </div>
           </div>
@@ -431,6 +330,7 @@ export default async function HomePage() {
                 <br />
                 בהנהלת חיה שיינווטר
               </p>
+              <img src="/images/logo.png" alt="לו״ז העניין — בית לחומרי הבגרות" className={s.aboutLogo} />
             </div>
           </div>
         </Reveal>
@@ -438,18 +338,19 @@ export default async function HomePage() {
         {/* ================= SECURITY ================= */}
         <Reveal>
           <div className={`sea-panel ${s.secure}`}>
+            <span className="gold-ring" aria-hidden="true" />
             <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-white/15">
-              <ShieldCheck className={`h-9 w-9 ${s.shieldIcon}`} aria-hidden />
+              <FingerprintMark className={`h-10 w-10 ${s.shieldIcon}`} />
             </span>
             <div className="flex-1 relative">
-              <h3>כל קובץ מוטבע במספר האישי שלך</h3>
+              <h3>כל קובץ מוטבע בפרטי המורה</h3>
               <p>
-                בכל הורדה מוטבעים בקובץ המספר האישי של המורידה והודעת זכויות יוצרים. כך אנחנו
-                שומרות על היוצרות — ועל המחירים הנמוכים.
+                <WatermarkText />
               </p>
             </div>
-            <Link href="/terms" className="btn btn-gold relative">
+            <Link href="/terms" className="btn btn-gold btn-gate text-sm py-2 relative">
               לתנאי השימוש
+              <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
             </Link>
           </div>
         </Reveal>
@@ -466,6 +367,53 @@ export default async function HomePage() {
           </div>
         </Reveal>
       </div>
+    </div>
+  );
+}
+
+/** כל הבתים בשתי שורות — העליונה קצרה בבית אחד, כך שהן מוסטות זו מול זו כמו בעיצוב */
+function HouseCluster({ subjects }: { subjects: Category[] }) {
+  const items: { key: string; c: Category; title: string }[] = subjects.map((c) => ({
+    key: String(c.id),
+    c,
+    title: c.title,
+  }));
+  const half = Math.floor(items.length / 2);
+  return (
+    <div className={s.snowHouses}>
+      <img
+        src="/images/snow-mountain.webp"
+        alt=""
+        aria-hidden
+        className={s.snowMountain}
+        width={700}
+        height={402}
+      />
+      {[items.slice(0, half), items.slice(half)].map((row, i) => (
+        <AnimatedGrid key={i} className={s.snowRow}>
+          {row.map(({ key, c, title }) => (
+            <Link
+              key={key}
+              href={`/subjects/${encodeURIComponent(c.slug)}`}
+              className={s.snowHouse}
+              aria-label={`פתיחת ${title}`}
+            >
+              {SUBJECT_HOUSES[c.slug] ? (
+                <img
+                  className={s.snowHouseImg}
+                  src={SUBJECT_HOUSES[c.slug]}
+                  alt=""
+                  width={356}
+                  height={266}
+                />
+              ) : (
+                <Image className={s.snowNut} src={nutForLevel(c.slug, 0)} alt="" aria-hidden />
+              )}
+              <span className={s.houseLabel}>{title}</span>
+            </Link>
+          ))}
+        </AnimatedGrid>
+      ))}
     </div>
   );
 }

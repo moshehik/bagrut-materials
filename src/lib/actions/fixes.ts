@@ -75,7 +75,7 @@ export async function submitFixRequests(input: {
       quoteText: it.quote,
     })),
   );
-  void logAudit({
+  await logAudit({
     actorId: user.id,
     action: "fix.request",
     entityType: "material",
@@ -159,12 +159,21 @@ export async function publishFix(id: number, _prev: FixState, form: FormData): P
     console.error("publishFix failed", e);
     return { error: "השמירה נכשלה (ייתכן שפורסם תיקון אחר באותו רגע) – נסי שוב" };
   }
-  void logAudit({
+  // הטקסטים נחתכים ל-300 תווים כדי שהלוג לא יתנפח
+  const clip = (s: string | null | undefined) => (s && s.length > 300 ? s.slice(0, 300) + "…" : (s ?? null));
+  await logAudit({
     actorId: me.id,
     action: "fix.publish",
     entityType: "material",
     entityId: fix.materialId,
-    details: { fixId: id, number },
+    details: {
+      fixId: id,
+      number,
+      previousStatus: fix.status,
+      originalText: clip(parsed.data.originalText),
+      correctedText: clip(parsed.data.correctedText),
+      adminNote: clip(parsed.data.adminNote),
+    },
   });
   revalidatePath("/admin/fixes");
   revalidatePath("/subjects", "layout");
@@ -178,7 +187,13 @@ async function setStatus(id: number, status: "pending" | "rejected" | "merged", 
   if (!fix) return;
   // המספר נשמר ב-fixNumber גם אחרי ביטול פרסום, כדי שמספרי התיקונים האחרים לא ישתנו
   await db.update(materialFixes).set({ status }).where(eq(materialFixes.id, id));
-  void logAudit({ actorId: me.id, action, entityType: "material", entityId: fix.materialId, details: { fixId: id } });
+  await logAudit({
+    actorId: me.id,
+    action,
+    entityType: "material",
+    entityId: fix.materialId,
+    details: { fixId: id, from: fix.status, to: status, number: fix.fixNumber },
+  });
   revalidatePath("/admin/fixes");
   revalidatePath("/subjects", "layout");
 }

@@ -6,34 +6,47 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { createSession, destroySession } from "@/lib/session";
+import { createSession, destroySession, getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
 import { genPersonalCode } from "@/lib/auth-utils";
-import { normalizeIsraeliPhone, PHONE_ERROR } from "@/lib/phone";
+import { citySchema, personName, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 
 export type ActionState = { error?: string } | undefined;
 
 const registerSchema = z.object({
-  name: z.string().trim().min(2, "שם קצר מדי").max(120),
+  firstName: personName("יש להזין שם פרטי תקין"),
+  lastName: personName("יש להזין שם משפחה תקין"),
+  city: citySchema,
+  school: schoolSchema,
   email: z.string().trim().toLowerCase().email("כתובת מייל לא תקינה"),
-  phone: z.string().transform((s, ctx) => {
-    const p = normalizeIsraeliPhone(s);
-    if (!p) ctx.addIssue({ code: "custom", message: PHONE_ERROR });
-    return p ?? "";
-  }),
+  phone: phoneSchema,
   password: z.string().min(6, "סיסמה של 6 תווים לפחות"),
+  /** אישור דיוור – אופציונלי */
+  marketing: z.string().optional(),
+  /** התחייבות לתקנון – חובה */
+  terms: z.literal("on", { message: "כדי להירשם יש לאשר את תקנון האתר" }),
 });
 
 export async function registerAction(_: ActionState, form: FormData): Promise<ActionState> {
-  if (!(await getBool("registration_open"))) return { error: "ההרשמה סגורה כרגע" };
+  if (!(await getBool("registration_open"))) {
+    await logAudit({ action: "register.failed", entityType: "user", details: { reason: "closed" } });
+    return { error: "ההרשמה סגורה כרגע" };
+  }
   const parsed = registerSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { name, email, phone, password } = parsed.data;
+  if (!parsed.success) {
+    await logAudit({ action: "register.failed", entityType: "user", details: { reason: "invalid_input" } });
+    return { error: parsed.error.issues[0].message };
+  }
+  const { firstName, lastName, city, school, email, phone, password, marketing } = parsed.data;
+  const name = `${firstName} ${lastName}`;
 
   const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
-  if (exists) return { error: "כתובת המייל כבר רשומה. אפשר להתחבר." };
+  if (exists) {
+    await logAudit({ action: "register.failed", entityType: "user", details: { reason: "duplicate_email" } });
+    return { error: "כתובת המייל כבר רשומה. אפשר להתחבר." };
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const adminEmails = (process.env.ADMIN_EMAILS ?? "")
@@ -55,6 +68,12 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     .insert(users)
     .values({
       name,
+      firstName,
+      lastName,
+      city,
+      school,
+      marketingConsent: marketing === "on",
+      termsAcceptedAt: new Date(),
       email,
       phone,
       passwordHash,
@@ -64,6 +83,7 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     .returning({ id: users.id });
 
   await createSession(u.id);
+  await logAudit({ actorId: u.id, action: "register", entityType: "user", entityId: u.id });
   sendMailInBackground({
     to: email,
     ...templates.welcome(name, personalCode),
@@ -81,7 +101,10 @@ const loginSchema = z.object({
 
 export async function loginAction(_: ActionState, form: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) {
+    await logAudit({ action: "login.failed", entityType: "user", details: { reason: "invalid_input" } });
+    return { error: parsed.error.issues[0].message };
+  }
   const { email, password, next } = parsed.data;
 
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -111,6 +134,15 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
 }
 
 export async function logoutAction() {
+  // קוראים את המשתמשת לפני שהסשן נהרס, כדי לדעת מי התנתקה
+  // אם ה-DB נופל כרגע — היציאה חייבת להצליח בכל זאת, אז הזיהוי לצורך הלוג הוא best-effort
+  const current = await getCurrentUser().catch(() => null);
   await destroySession();
+  await logAudit({
+    actorId: current?.id ?? null,
+    action: "logout",
+    entityType: "user",
+    entityId: current?.id ?? null,
+  });
   redirect("/");
 }

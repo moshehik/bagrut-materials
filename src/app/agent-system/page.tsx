@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Bot, GitBranch, MessageCircleQuestion, ShieldAlert, FileCode2, ListChecks, LockKeyhole } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
-import { AgentSystemPanel } from "@/components/admin/agent-system-panel";
 
 export const metadata: Metadata = {
   title: "מערכת הסוכן האוטומטי",
@@ -40,7 +39,11 @@ export default async function AgentSystemPage() {
         </h2>
         {isAdmin ? (
           <div className="mt-4">
-            <AgentSystemPanel />
+            <p className="text-muted leading-relaxed">
+              הדלקה/כיבוי, הרצה מיידית, יומן הפעולות המלא של הסוכן, דיווחים וחיפוש בדרייב עברו
+              לאזור הניהול:{" "}
+              <a href="/admin/agent" className="text-blue-deep underline font-bold">/admin/agent</a>.
+            </p>
           </div>
         ) : (
           <p className="mt-2 text-muted leading-relaxed">

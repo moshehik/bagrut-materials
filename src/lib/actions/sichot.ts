@@ -14,6 +14,7 @@ import {
   type SichaSeminar,
 } from "@/db/schema";
 import { requireUser } from "@/lib/session";
+import { logAudit } from "@/lib/audit";
 import {
   SICHA_REGULAR_CADENCE_WEEKS,
   SICHA_HIGH_RATED_CADENCE_WEEKS,
@@ -59,6 +60,13 @@ async function bumpTeacherStatus(teacherId: number, count: number): Promise<numb
       target: sichaTeacherStatus.teacherId,
       set: { lastUploadAt: now, nextDueAt, reminderSentAt: null, blocked: false },
     });
+  await logAudit({
+    actorId: teacherId,
+    action: "sicha.teacher_status",
+    entityType: "user",
+    entityId: teacherId,
+    details: { weeks, count, nextDueAt: nextDueAt.toISOString(), unblocked: true },
+  });
   return weeks;
 }
 
@@ -123,6 +131,13 @@ export async function createSichaBatch(input: {
     .returning({ id: sichot.id });
 
   const cadenceWeeks = await bumpTeacherStatus(user.id, items.length);
+  await logAudit({
+    actorId: user.id,
+    action: "sicha.create",
+    entityType: "sicha",
+    entityId: rows[0]?.id ?? null,
+    details: { ids: rows.map((r) => r.id), count: rows.length, categoryIds, cadenceWeeks },
+  });
   revalidatePath(path);
   return { ok: true, ids: rows.map((r) => r.id), cadenceWeeks };
 }
@@ -152,6 +167,13 @@ export async function rateSicha(_prev: SichaActionState, form: FormData): Promis
       set: { stars, updatedAt: new Date() },
     });
 
+  await logAudit({
+    actorId: user.id,
+    action: "sicha.rate",
+    entityType: "sicha",
+    entityId: sichaId,
+    details: { stars },
+  });
   revalidatePath(path);
   return { ok: true };
 }
@@ -176,6 +198,13 @@ export async function toggleUsage(_prev: SichaActionState, form: FormData): Prom
   if (deleted.length === 0) {
     await db.insert(sichaUsages).values({ sichaId, teacherId: user.id });
   }
+  await logAudit({
+    actorId: user.id,
+    action: "sicha.usage.toggle",
+    entityType: "sicha",
+    entityId: sichaId,
+    details: { on: deleted.length === 0 },
+  });
 
   revalidatePath(path);
   return { ok: true };
@@ -199,6 +228,13 @@ export async function addIdea(_prev: SichaActionState, form: FormData): Promise<
   const { sichaId, body, path } = parsed.data;
 
   await db.insert(sichaIdeas).values({ sichaId, teacherId: user.id, body });
+  await logAudit({
+    actorId: user.id,
+    action: "sicha.idea.create",
+    entityType: "sicha",
+    entityId: sichaId,
+    details: { length: body.length },
+  });
 
   revalidatePath(path);
   return { ok: true };

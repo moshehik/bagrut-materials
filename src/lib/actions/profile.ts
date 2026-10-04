@@ -12,12 +12,20 @@ import { logAudit } from "@/lib/audit";
 import { randomToken } from "@/lib/auth-utils";
 import { PLANS } from "@/lib/constants";
 import { normalizeIsraeliPhone, PHONE_ERROR } from "@/lib/phone";
+import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 
 export type ProfileState = { error?: string; ok?: boolean; message?: string } | undefined;
 
 const EMAIL_CHANGE_TTL_MS = 24 * 60 * 60 * 1000;
 
-const nameSchema = z.object({ name: z.string().trim().min(2, "שם קצר מדי").max(120) });
+/** מסכה לטלפון ביומן – רק 3 הספרות האחרונות */
+function maskPhone(p: string | null | undefined): string | null {
+  if (!p) return null;
+  const digits = p.replace(/\D/g, "");
+  return `***${digits.slice(-3)}`;
+}
+
+const nameSchema =z.object({ name: z.string().trim().min(2, "שם קצר מדי").max(120) });
 
 /** עדכון שם תצוגה */
 export async function updateNameAction(_: ProfileState, form: FormData): Promise<ProfileState> {
@@ -26,7 +34,13 @@ export async function updateNameAction(_: ProfileState, form: FormData): Promise
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   await db.update(users).set({ name: parsed.data.name }).where(eq(users.id, user.id));
-  await logAudit({ actorId: user.id, action: "profile.update_name", entityType: "user", entityId: user.id });
+  await logAudit({
+    actorId: user.id,
+    action: "profile.update_name",
+    entityType: "user",
+    entityId: user.id,
+    details: { from: user.name, to: parsed.data.name },
+  });
   return { ok: true, message: "השם עודכן בהצלחה." };
 }
 
@@ -37,11 +51,39 @@ export async function updatePhoneAction(_: ProfileState, form: FormData): Promis
   if (!phone) return { error: PHONE_ERROR };
 
   await db.update(users).set({ phone }).where(eq(users.id, user.id));
-  await logAudit({ actorId: user.id, action: "profile.update_phone", entityType: "user", entityId: user.id });
+  await logAudit({
+    actorId: user.id,
+    action: "profile.update_phone",
+    entityType: "user",
+    entityId: user.id,
+    details: { from: maskPhone(user.phone), to: maskPhone(phone) },
+  });
 
   const next = String(form.get("next") ?? "");
   if (next.startsWith("/") && !next.startsWith("//")) redirect(next);
   return { ok: true, message: "הטלפון עודכן בהצלחה." };
+}
+
+const completeSchema = z.object({ city: citySchema, school: schoolSchema, phone: phoneSchema });
+
+/** השלמת פרטים אחרי הרשמה דרך גוגל (גוגל לא מוסר עיר, תיכון וטלפון) – הכל חובה */
+export async function completeProfileAction(_: ProfileState, form: FormData): Promise<ProfileState> {
+  const user = await requireUser();
+  const parsed = completeSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { city, school, phone } = parsed.data;
+
+  await db.update(users).set({ city, school, phone }).where(eq(users.id, user.id));
+  await logAudit({
+    actorId: user.id,
+    action: "profile.complete",
+    entityType: "user",
+    entityId: user.id,
+    details: { city, school, phone: maskPhone(phone) },
+  });
+
+  const next = String(form.get("next") ?? "");
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/account");
 }
 
 const pwSchema = z
@@ -59,7 +101,16 @@ export async function changePasswordAction(_: ProfileState, form: FormData): Pro
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const ok = await bcrypt.compare(parsed.data.current, user.passwordHash);
-  if (!ok) return { error: "הסיסמה הנוכחית שגויה" };
+  if (!ok) {
+    await logAudit({
+      actorId: user.id,
+      action: "profile.change_password_failed",
+      entityType: "user",
+      entityId: user.id,
+      details: { reason: "wrong_current_password" },
+    });
+    return { error: "הסיסמה הנוכחית שגויה" };
+  }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
   await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
@@ -138,13 +189,23 @@ export async function requestCancelSubscriptionAction(form: FormData) {
     .select()
     .from(purchases)
     .where(and(eq(purchases.id, purchaseId), eq(purchases.userId, user.id)));
-  if (!p) redirect("/account");
+  if (!p) {
+    await logAudit({
+      actorId: user.id,
+      action: "purchase.cancel_request_failed",
+      entityType: "purchase",
+      entityId: purchaseId,
+      details: { reason: "not_found" },
+    });
+    redirect("/account");
+  }
 
   await logAudit({
     actorId: user.id,
     action: "purchase.cancel_requested",
     entityType: "purchase",
     entityId: p.id,
+    details: { plan: p.plan, premium: p.premium },
   });
   const admin = adminEmail();
   if (admin) {

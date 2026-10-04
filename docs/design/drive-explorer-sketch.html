@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>סייר קבצי דרייב — סקיצה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Gveret+Levin&display=swap" rel="stylesheet" />
+<style>
+/* =====================================================================
+   סקיצה: /admin/drive — "סייר קבצי דרייב"
+   הטוקנים מועתקים מ-src/app/globals.css ("פנקס המורה"): עט כחול, סימון אדום,
+   מרקר חרדל, זית. הפונטים כמו באתר: Assistant (גוף) + גברת לוין (כתב-יד).
+   מצב כהה: prefers-color-scheme (באתר האמיתי אין מצב כהה — כאן נגזר מאותם גוונים).
+   ===================================================================== */
+:root{
+  --sea:#33456e; --sea2:#212f4d; --plaster:#fbf9f5; --terra:#b23a2e; --terra-deep:#8a2c22;
+  --sun:#d9a441; --ink:#2e2a20;
+  --background:var(--plaster); --foreground:var(--ink);
+  --blue-soft:#e3e7f0; --pink-soft:#f4e1db; --oak:#6e8b54; --oak-deep:#4f6b3b; --oak-soft:#e6ebdc;
+  --gold-soft:#f7ead0; --gold-ink:#7a5712; --card:#ffffff; --muted:#756b57;
+  --ring:rgba(51,69,110,.35);
+  --rule:rgba(94,186,224,.55); --margin:rgba(178,58,46,.38);
+  --line:rgba(46,42,32,.08); --hover:rgba(230,235,220,.55); --input-bg:#fff; --input-bd:rgba(31,45,51,.14);
+  --shadow-soft:0 10px 30px rgba(31,45,51,.08); --shadow-lift:0 20px 50px rgba(31,45,51,.18);
+  --ease-snap:cubic-bezier(.16,1,.3,1);
+  --font-sans:"Assistant",system-ui,sans-serif; --font-hand:"Gveret Levin",cursive;
+  --mono:"Courier New","Miriam Fixed",ui-monospace,monospace;
+  --paper:#fffdf6; --paper-rule:rgba(94,186,224,.35);
+  --ok:#3d7a37; --bad:#b23a2e; --warn-bg:#fff3d6; --warn-bd:#e8cf6a; --warn-ink:#5a4300;
+  /* צבעי סוגי קבצים */
+  --k-teacher-bg:#e3e7f0; --k-teacher-fg:#212f4d;
+  --k-student-bg:#e6ebdc; --k-student-fg:#4f6b3b;
+  --k-quiz-bg:#f7ead0;    --k-quiz-fg:#7a5712;
+  --k-quizans-bg:#f4e1db; --k-quizans-fg:#8a2c22;
+  --k-enrich-bg:#ece6f4;  --k-enrich-fg:#5a3f86;
+  --k-summary-bg:#dcefec; --k-summary-fg:#2f6b61;
+  --k-slides-bg:#fde9d8;  --k-slides-fg:#9a4b12;
+  --k-bagrut-bg:#ebe6d6;  --k-bagrut-fg:#2e2a20;
+  --k-other-bg:#ececec;   --k-other-fg:#555;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --plaster:#15171e; --ink:#ece7da; --background:#15171e; --foreground:#ece7da;
+    --sea:#5b78bd; --sea2:#2a3a63; --terra:#e0675a; --terra-deep:#c4493d; --sun:#e2b34f;
+    --blue-soft:#273250; --pink-soft:#3b2421; --oak:#8aa96d; --oak-deep:#bcd6a2; --oak-soft:#2b3626;
+    --gold-soft:#3b3219; --gold-ink:#f0cf86; --card:#1f222c; --muted:#a59f8e; --ring:rgba(139,166,230,.45);
+    --rule:rgba(94,186,224,.09); --margin:rgba(224,103,90,.22);
+    --line:rgba(236,231,218,.1); --hover:rgba(139,166,230,.1); --input-bg:#14161c; --input-bd:rgba(236,231,218,.18);
+    --shadow-soft:0 10px 30px rgba(0,0,0,.35); --shadow-lift:0 20px 50px rgba(0,0,0,.55);
+    --paper:#191b23; --paper-rule:rgba(94,186,224,.1);
+    --ok:#8fd486; --bad:#f4857a; --warn-bg:#3b3219; --warn-bd:#6b5a22; --warn-ink:#f0d58b;
+    --k-teacher-bg:#273250; --k-teacher-fg:#b8c7ee;
+    --k-student-bg:#2b3626; --k-student-fg:#b5d19a;
+    --k-quiz-bg:#3b3219;    --k-quiz-fg:#f0cf86;
+    --k-quizans-bg:#3b2421; --k-quizans-fg:#f4a79c;
+    --k-enrich-bg:#342b47;  --k-enrich-fg:#cdb8f0;
+    --k-summary-bg:#1f3a36; --k-summary-fg:#9fdcd0;
+    --k-slides-bg:#44291a;  --k-slides-fg:#f5bf94;
+    --k-bagrut-bg:#333126;  --k-bagrut-fg:#e0dac6;
+    --k-other-bg:#2c2e36;   --k-other-fg:#b6b6bd;
+  }
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{
+  background-color:var(--background);
+  background-image:repeating-linear-gradient(var(--background) 0 35px,var(--rule) 35px 36px);
+  background-attachment:fixed; color:var(--foreground); font-family:var(--font-sans);
+  font-size:16px; line-height:1.5; min-height:100vh;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sea);outline-offset:2px;border-radius:6px}
+@media (prefers-color-scheme:dark){:focus-visible{outline-color:#8fa6e0}}
+.ic{width:1em;height:1em;flex:none;vertical-align:-.125em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---- כלים משותפים (מועתק מהאתר) ---- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px 16px 14px 18px;box-shadow:var(--shadow-soft)}
+.wood{background:linear-gradient(135deg,#33456e,#212f4d)}
+.font-display{font-weight:800;letter-spacing:-.01em}
+.font-hand{font-family:var(--font-hand);font-weight:400;letter-spacing:.01em}
+.chip{display:inline-flex;align-items:center;gap:.35rem;border-radius:9999px;padding:.2rem .7rem;font-size:.78rem;font-weight:700;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:9999px;padding:.45rem 1.05rem;font-size:.875rem;font-weight:700;
+  transition:transform .16s var(--ease-snap),box-shadow .16s var(--ease-snap),background .16s var(--ease-snap),opacity .16s;white-space:nowrap}
+.btn:hover{transform:translateY(-2px)} .btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-oak{background:var(--sea2);color:#fff;box-shadow:0 8px 20px rgba(33,47,77,.32)}
+.btn-oak:hover{background:var(--sea)}
+.btn-primary{background:var(--sea);color:#fff;box-shadow:0 8px 20px rgba(51,69,110,.32)}
+.btn-primary:hover{background:var(--sun);color:#2e2a20;box-shadow:0 12px 26px rgba(217,164,65,.45)}
+.btn-terra{background:var(--terra);color:#fff;box-shadow:0 8px 20px rgba(178,58,46,.3)}
+.btn-ghost{border:2px solid var(--sea);color:var(--sea2)}
+.btn-ghost:hover{background:var(--blue-soft)}
+@media (prefers-color-scheme:dark){.btn-ghost{color:#c9d5f3;border-color:#5b78bd}.btn-oak{background:#3d56a0}}
+.input{width:100%;border-radius:1rem;border:1.5px solid var(--input-bd);background:var(--input-bg);padding:.5rem .9rem;outline:none;transition:border-color .2s,box-shadow .2s}
+.input:focus{border-color:var(--sea);box-shadow:0 0 0 4px var(--ring)}
+.muted{color:var(--muted)}
+
+/* ---- כותרת אתר (פשוטה) ---- */
+.site-h{background:var(--card);border-bottom:1px solid var(--line)}
+.site-h .in{max-width:80rem;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;gap:1.4rem}
+.site-h .logo{font-family:var(--font-hand);font-size:1.6rem;color:var(--sea2)}
+@media (prefers-color-scheme:dark){.site-h .logo{color:#c9d5f3}}
+.site-h nav{display:flex;gap:1.1rem;font-size:.9rem;font-weight:600;color:var(--muted)}
+@media (max-width:640px){.site-h nav{display:none}}
+
+/* ---- פריסת הניהול (admin/layout.tsx) ---- */
+.adm{max-width:80rem;margin:auto;padding:2rem 1.5rem}
+@media (max-width:640px){.adm{padding:1rem}}
+.banner{color:#fff;border-radius:1rem;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow-soft);display:flex;flex-wrap:wrap;align-items:center;gap:1rem}
+.banner small{font-size:.75rem;opacity:.8;display:block}
+.banner h1{font-size:1.5rem;line-height:1.3}
+.banner .chip{margin-inline-start:auto;background:rgba(255,255,255,.2);color:#fff}
+.adm-grid{display:grid;gap:1.5rem;align-items:start;grid-template-columns:minmax(0,1fr)}
+@media (min-width:1024px){.adm-grid{grid-template-columns:220px minmax(0,1fr)}}
+.anav{padding:.5rem}
+@media (min-width:1024px){.anav{position:sticky;top:1rem}}
+.anav ul{list-style:none;padding:0;display:flex;gap:.25rem;overflow-x:auto}
+@media (min-width:1024px){.anav ul{flex-direction:column;overflow:visible}}
+.anav li{flex:none}
+.anav a{display:flex;align-items:center;gap:.5rem;border-radius:.75rem;padding:.5rem .75rem;font-size:.875rem;font-weight:500;color:color-mix(in srgb,var(--foreground) 80%,transparent);text-decoration:none;transition:background .15s,color .15s}
+.anav a:hover{background:var(--hover);color:var(--oak-deep)}
+.anav a.on{background:var(--oak-soft);color:var(--oak-deep)}
+.anav a .ic{width:1rem;height:1rem}
+.anav .new{font-size:.62rem;padding:.05rem .4rem;background:var(--sun);color:#2e2a20;border-radius:99px;font-weight:800;margin-inline-start:auto}
+
+/* ---- כותרת העמוד ---- */
+.page-h{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-bottom:1rem}
+.page-h h2{font-size:1.5rem;line-height:1.2}
+.chip-oak{background:var(--oak-soft);color:var(--oak-deep)}
+.chip-blue{background:var(--blue-soft);color:var(--sea2)}
+@media (prefers-color-scheme:dark){.chip-blue{color:#c9d5f3}}
+.chip-gold{background:var(--gold-soft);color:var(--gold-ink)}
+.chip-red{background:var(--terra);color:#fff}
+.chip-pink{background:var(--pink-soft);color:var(--terra-deep)}
+@media (prefers-color-scheme:dark){.chip-pink{color:#f4a79c}}
+.chip-gray{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
+.sync-note{margin-inline-start:auto;font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.4rem}
+.dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--oak)}
+
+/* ---- סרגל כלים ---- */
+.toolbar{padding:.8rem 1rem;display:grid;gap:.7rem;margin-bottom:1rem}
+.tb-row{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:.1rem;font-size:.9rem;min-width:0;flex:1 1 280px}
+.crumbs button{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;color:var(--muted);transition:background .15s,color .15s}
+.crumbs button:hover{background:var(--hover);color:var(--oak-deep)}
+.crumbs button.last{color:var(--foreground);font-weight:800;cursor:default}
+.crumbs .sep{color:var(--muted);opacity:.6;font-size:.8rem}
+.search{position:relative;flex:0 1 300px;min-width:180px}
+.search .ic{position:absolute;inset-inline-start:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);width:1rem;height:1rem;pointer-events:none}
+.search input{padding-inline-start:2.4rem;padding-block:.4rem;font-size:.9rem}
+.seg{display:inline-flex;border:1.5px solid var(--input-bd);border-radius:99px;padding:2px;background:var(--input-bg)}
+.seg button{display:grid;place-items:center;width:2.1rem;height:1.9rem;border-radius:99px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--sea2);color:#fff}
+.tb-actions{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.tb-actions .btn{padding:.38rem .9rem;font-size:.82rem}
+.tb-actions .btn .ic{width:1rem;height:1rem}
+.drawer-btn{display:none}
+.hint{font-size:.78rem;color:var(--muted);margin-inline-start:auto}
+@media (max-width:900px){.drawer-btn{display:inline-flex}.hint{display:none}}
+
+/* ---- פריסת הסייר ---- */
+.xp{display:grid;grid-template-columns:268px minmax(0,1fr);gap:1rem;align-items:start}
+@media (max-width:900px){.xp{grid-template-columns:minmax(0,1fr)}}
+
+/* עץ תיקיות */
+.tree{position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow:auto;padding:.6rem .5rem .8rem;scrollbar-width:thin;scrollbar-color:#3d4f7c transparent}
+.tree-h{display:flex;align-items:center;gap:.4rem;padding:.2rem .5rem .5rem;font-weight:800;font-size:.9rem}
+.tree-h .tiny{margin-inline-start:auto;display:flex;gap:.25rem}
+.tiny button{font-size:.72rem;color:var(--muted);padding:.1rem .45rem;border-radius:.4rem}
+.tiny button:hover{background:var(--hover);color:var(--oak-deep)}
+.tree ul{list-style:none;padding:0}
+.trow{--d:0;display:flex;align-items:center;gap:.25rem;padding:.28rem .4rem;padding-inline-start:calc(.3rem + var(--d)*.95rem);border-radius:.6rem;cursor:pointer;font-size:.86rem;font-weight:500;border:1.5px dashed transparent;user-select:none;transition:background .12s}
+.trow:hover{background:var(--hover)}
+.trow.on{background:var(--oak-soft);color:var(--oak-deep);font-weight:700}
+.trow.dragover{background:var(--gold-soft);border-color:var(--sun);color:var(--gold-ink)}
+.trow.nodrop{cursor:no-drop;background:color-mix(in srgb,var(--terra) 8%,transparent);border-color:color-mix(in srgb,var(--terra) 40%,transparent)}
+.tog{display:grid;place-items:center;width:1.35rem;height:1.35rem;border-radius:.4rem;color:var(--muted);flex:none}
+.tog:hover{background:var(--line)}
+.tog .ic{transition:transform .18s var(--ease-snap);width:.9rem;height:.9rem}
+.tog.open .ic{transform:rotate(-90deg)}
+.tog.none{visibility:hidden}
+.ticon{display:grid;place-items:center;flex:none;width:1.25rem;font-size:1rem}
+.ticon .ic{width:1.05rem;height:1.05rem;color:var(--sun)}
+.trow.on .ticon .ic{color:var(--oak-deep)}
+.tname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cnt{font-size:.7rem;font-weight:700;color:var(--muted);background:var(--line);border-radius:99px;padding:0 .45rem;min-width:1.4rem;text-align:center}
+.miss{font-size:.66rem;font-weight:800;color:#fff;background:var(--terra);border-radius:99px;padding:.02rem .45rem;white-space:nowrap}
+.tsep{height:1px;background:var(--line);margin:.6rem .4rem}
+.trow.arch{background:color-mix(in srgb,var(--sun) 10%,transparent)}
+.trow.arch.on{background:var(--gold-soft);color:var(--gold-ink)}
+.scrim{display:none}
+@media (max-width:900px){
+  .tree{position:fixed;z-index:70;top:0;bottom:0;inset-inline-start:0;max-height:none;width:min(86vw,320px);border-radius:0 0 0 0;transform:translateX(105%);transition:transform .25s var(--ease-snap);padding-top:1rem;box-shadow:var(--shadow-lift)}
+  .tree.open{transform:none}
+  .scrim{position:fixed;inset:0;z-index:65;background:rgba(30,25,15,.5);opacity:0;pointer-events:none;transition:opacity .2s}
+  .scrim.on{display:block;opacity:1;pointer-events:auto}
+}
+
+/* ---- קובץ מידע (לב העמוד) ---- */
+.main{min-width:0;display:grid;gap:1rem}
+.info{overflow:hidden;border-top:4px solid var(--sun)}
+.info-h{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.85rem 1.1rem;background:linear-gradient(180deg,var(--gold-soft),transparent)}
+.info-h h3{font-family:var(--font-hand);font-weight:400;font-size:1.55rem;line-height:1.1;color:var(--sea2)}
+@media (prefers-color-scheme:dark){.info-h h3{color:#dbe3f7}}
+.info-h .fname{font-family:var(--mono);font-size:.8rem;font-weight:700;background:var(--sea2);color:#fff;border-radius:.5rem;padding:.12rem .55rem;direction:ltr}
+.upl{margin-inline-start:auto;display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:700;border-radius:99px;padding:.2rem .75rem}
+.upl.ok{background:var(--oak-soft);color:var(--oak-deep)}
+.upl.stale{background:var(--warn-bg);color:var(--warn-ink);border:1px solid var(--warn-bd)}
+.upl.none{background:var(--pink-soft);color:var(--terra-deep)}
+@media (prefers-color-scheme:dark){.upl.none{color:#f4a79c}}
+.info-body{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:1rem;padding:0 1.1rem 1.1rem}
+@media (max-width:1100px){.info-body{grid-template-columns:minmax(0,1fr)}}
+.paper{position:relative;border:1px solid var(--line);border-radius:.8rem;overflow:hidden;background:var(--paper)}
+.paper::before{content:"";position:absolute;inset-block:0;inset-inline-start:2.4rem;width:1px;background:var(--margin);pointer-events:none;z-index:1}
+.paper-scroll{max-height:290px;overflow:auto;scrollbar-width:thin;scrollbar-color:#3d4f7c transparent;
+  background-image:repeating-linear-gradient(transparent 0 23px,var(--paper-rule) 23px 24px);background-attachment:local}
+.paper.big .paper-scroll{max-height:none}
+.paper pre{font-family:var(--mono);font-size:.88rem;font-weight:700;line-height:24px;padding:.35rem 3.3rem .35rem 1rem;white-space:pre-wrap;word-break:break-word;direction:rtl;text-align:right;color:var(--foreground)}
+.paper pre .h{color:var(--sea2);font-weight:800;background:linear-gradient(transparent 55%,color-mix(in srgb,var(--sun) 45%,transparent) 55%)}
+@media (prefers-color-scheme:dark){.paper pre .h{color:#dbe3f7}}
+.paper pre .ok{color:var(--ok)} .paper pre .bad{color:var(--bad)} .paper pre .dim{color:var(--muted);font-weight:400}
+.paper-more{position:absolute;inset-inline:0;bottom:0;display:flex;justify-content:center;padding:1.6rem 0 .45rem;background:linear-gradient(transparent,var(--paper) 70%);pointer-events:none}
+.paper-more button{pointer-events:auto;font-size:.78rem;font-weight:700;color:var(--sea2);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:.15rem .8rem;box-shadow:var(--shadow-soft)}
+@media (prefers-color-scheme:dark){.paper-more button{color:#c9d5f3}}
+.paper.big .paper-more{position:static;padding:.4rem;background:none}
+.info-side{display:grid;gap:.6rem;align-content:start}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
+.stat{border-radius:.8rem;padding:.5rem .65rem;background:var(--line)}
+.stat b{display:block;font-size:1.35rem;line-height:1.1;font-weight:800}
+.stat span{font-size:.72rem;color:var(--muted);font-weight:600}
+.stat.bad{background:var(--pink-soft)} .stat.bad b{color:var(--terra)}
+.stat.good{background:var(--oak-soft)} .stat.good b{color:var(--oak-deep)}
+.info-actions{display:grid;gap:.45rem}
+.info-actions .btn{width:100%;justify-content:flex-start;padding:.5rem 1rem}
+.info-actions .btn .ic{width:1.05rem;height:1.05rem}
+.info-note{font-size:.74rem;color:var(--muted);line-height:1.45}
+.info-note code{font-family:var(--mono);direction:ltr;unicode-bidi:embed;font-size:.72rem;background:var(--line);padding:0 .3rem;border-radius:.3rem}
+.spin .ic{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---- רשימת קבצים ---- */
+.listcard{padding:.4rem .5rem .6rem;overflow:hidden}
+.list-h{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.5rem .6rem}
+.list-h h3{font-weight:800;font-size:1.05rem}
+.toggle{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;margin-inline-start:auto}
+.toggle input{accent-color:var(--sea)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.875rem}
+th{text-align:right;color:var(--muted);font-weight:700;font-size:.78rem;padding:.45rem .6rem;white-space:nowrap}
+td{padding:.5rem .6rem;border-top:1px solid var(--line);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--hover)}
+tbody tr.sel{background:var(--blue-soft)}
+tbody tr.focus{box-shadow:inset -3px 0 0 var(--sun)}
+tbody tr.dragging{opacity:.45}
+tbody tr.dragover td{background:var(--gold-soft)}
+td.c-chk,th.c-chk{width:2.2rem;padding-inline-end:.1rem}
+td.c-ico{width:2.4rem;padding-inline:.2rem}
+.chk{width:1.05rem;height:1.05rem;accent-color:var(--sea);cursor:pointer}
+.fi{display:grid;place-items:center;width:2rem;height:2rem;border-radius:.6rem;font-size:1rem}
+.fi .ic{width:1.1rem;height:1.1rem}
+.fi.folder{background:var(--gold-soft);color:var(--gold-ink)}
+.nm{display:flex;flex-wrap:wrap;align-items:center;gap:.15rem .5rem;min-width:0}
+.nm .t{font-weight:700;cursor:pointer;text-decoration:none}
+.nm .t:hover{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.nm .path{flex-basis:100%;font-size:.72rem;color:var(--muted)}
+.old{display:inline-flex;align-items:center;gap:.25rem;font-size:.68rem;font-weight:700;color:var(--muted);border:1px dashed color-mix(in srgb,var(--muted) 60%,transparent);border-radius:99px;padding:0 .5rem;max-width:15rem;cursor:help}
+.old .ic{width:.7rem;height:.7rem}
+.old span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
+.kind{font-size:.72rem}
+.st-draft{background:var(--gold-soft);color:var(--gold-ink)} .st-active{background:var(--oak-soft);color:var(--oak-deep)} .st-paused{background:color-mix(in srgb,var(--muted) 20%,transparent);color:var(--muted)}
+.k-teacher{background:var(--k-teacher-bg);color:var(--k-teacher-fg)} .k-student{background:var(--k-student-bg);color:var(--k-student-fg)}
+.k-quiz{background:var(--k-quiz-bg);color:var(--k-quiz-fg)} .k-quizans{background:var(--k-quizans-bg);color:var(--k-quizans-fg)}
+.k-enrich{background:var(--k-enrich-bg);color:var(--k-enrich-fg)} .k-summary{background:var(--k-summary-bg);color:var(--k-summary-fg)}
+.k-slides{background:var(--k-slides-bg);color:var(--k-slides-fg)} .k-bagrut{background:var(--k-bagrut-bg);color:var(--k-bagrut-fg)}
+.k-other{background:var(--k-other-bg);color:var(--k-other-fg)}
+.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.sz{direction:ltr;unicode-bidi:isolate;display:inline-block}
+.ext{direction:ltr;unicode-bidi:isolate;display:inline-block;font-weight:600;opacity:.75}
+.sub{display:block;font-size:.7rem;color:var(--muted)}
+.kebab{display:grid;place-items:center;width:1.9rem;height:1.9rem;border-radius:.6rem;color:var(--muted)}
+.kebab:hover,.kebab[aria-expanded="true"]{background:var(--line);color:var(--foreground)}
+.reason{display:inline-flex;align-items:center;gap:.3rem;font-size:.76rem;font-weight:700;border-radius:.6rem;padding:.15rem .6rem}
+.r-orph{background:var(--pink-soft);color:var(--terra-deep)} .r-old{background:var(--gold-soft);color:var(--gold-ink)} .r-unk{background:var(--k-other-bg);color:var(--k-other-fg)}
+@media (prefers-color-scheme:dark){.r-orph{color:#f4a79c}}
+.btn-sm{padding:.2rem .75rem;font-size:.76rem}
+.empty{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:.9rem}
+@media (max-width:1100px){.c-add{display:none}}
+@media (max-width:760px){.c-size,.c-mod,.c-st{display:none}}
+@media (max-width:520px){.c-kind{display:none}}
+
+/* גריד */
+.gridv{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:.7rem;padding:.4rem .6rem .6rem}
+.gcard{position:relative;border:1px solid var(--line);border-radius:.9rem;padding:.8rem;display:grid;gap:.45rem;background:var(--card);cursor:pointer;transition:transform .16s var(--ease-snap),box-shadow .16s,border-color .16s}
+.gcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-soft)}
+.gcard.sel{border-color:var(--sea);background:var(--blue-soft)}
+.gcard.dragover{border-color:var(--sun);background:var(--gold-soft)}
+.gcard .chk{position:absolute;inset-block-start:.7rem;inset-inline-end:.7rem}
+.gcard .fi{width:2.6rem;height:2.6rem;border-radius:.8rem}
+.gcard .gn{font-weight:700;font-size:.85rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.2em}
+.gcard .gm{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;font-size:.7rem;color:var(--muted)}
+
+/* פס פעולות קבוצתי */
+.bulk{position:sticky;bottom:1rem;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.6rem .8rem;border-radius:1rem;background:var(--sea2);color:#fff;box-shadow:var(--shadow-lift);animation:fade-up .3s var(--ease-snap) both}
+.bulk b{margin-inline-end:.4rem;font-size:.95rem}
+.bulk .btn{background:rgba(255,255,255,.14);color:#fff;padding:.3rem .85rem;font-size:.8rem;box-shadow:none}
+.bulk .btn:hover{background:rgba(255,255,255,.26)}
+.bulk .btn.x{margin-inline-start:auto;background:transparent}
+.bulk .btn .ic{width:.95rem;height:.95rem}
+@keyframes fade-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* תפריט ⋯ וטולטיפ */
+.menu{position:fixed;z-index:90;min-width:12.5rem;padding:.35rem;border-radius:.9rem;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-lift);animation:pop .16s var(--ease-snap) both}
+@keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+.menu button{display:flex;align-items:center;gap:.6rem;width:100%;text-align:right;padding:.45rem .65rem;border-radius:.55rem;font-size:.85rem;font-weight:600}
+.menu button:hover{background:var(--hover)}
+.menu button.danger{color:var(--terra)} .menu button.danger:hover{background:var(--pink-soft)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:.25rem .2rem}
+.menu .ic{width:1rem;height:1rem;color:var(--muted)}
+.menu .danger .ic{color:var(--terra)}
+.tip{position:fixed;z-index:95;max-width:22rem;padding:.6rem .8rem;border-radius:.8rem;background:rgba(47,59,87,.95);color:#fff;font-size:.78rem;line-height:1.5;box-shadow:var(--shadow-lift);pointer-events:none;opacity:0;transition:opacity .12s}
+.tip.on{opacity:1}
+.tip h5{font-size:.72rem;opacity:.7;font-weight:700;margin-bottom:.25rem}
+.tip div{display:flex;gap:.5rem}
+.tip i{font-style:normal;opacity:.65;white-space:nowrap}
+
+/* פאנל פרטים */
+.panel{position:fixed;z-index:75;top:0;bottom:0;inset-inline-end:0;width:min(390px,94vw);background:var(--card);box-shadow:var(--shadow-lift);transform:translateX(-105%);transition:transform .28s var(--ease-snap);display:flex;flex-direction:column;border-inline-start:1px solid var(--line)}
+.panel.open{transform:none}
+.panel-h{display:flex;align-items:flex-start;gap:.7rem;padding:1rem 1rem .8rem;border-bottom:1px solid var(--line)}
+.panel-h .fi{width:2.8rem;height:2.8rem;border-radius:.9rem}
+.panel-h h4{font-weight:800;font-size:1rem;line-height:1.35;word-break:break-word}
+.panel-h .xbtn{margin-inline-start:auto;display:grid;place-items:center;width:2rem;height:2rem;border-radius:99px;flex:none}
+.xbtn:hover{background:var(--line)}
+.panel-b{overflow:auto;padding:1rem;display:grid;gap:1.1rem;align-content:start;scrollbar-width:thin}
+.chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:.45rem .8rem;font-size:.84rem}
+.dl dt{color:var(--muted);font-weight:600}
+.dl dd{margin:0;word-break:break-all;font-weight:600}
+.mono{font-family:var(--mono);direction:ltr;unicode-bidi:embed;font-size:.76rem;font-weight:700}
+.idrow{display:flex;gap:.4rem;align-items:center}
+.idrow .copy{font-size:.7rem;font-weight:700;color:var(--sea2);border:1px solid var(--line);border-radius:.4rem;padding:0 .4rem;white-space:nowrap}
+@media (prefers-color-scheme:dark){.idrow .copy{color:#c9d5f3}}
+.sec-t{font-weight:800;font-size:.85rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.tl{list-style:none;padding:0;position:relative;display:grid;gap:.75rem}
+.tl::before{content:"";position:absolute;inset-block:.5rem;inset-inline-start:.38rem;width:2px;background:var(--line)}
+.tl li{position:relative;padding-inline-start:1.5rem;font-size:.83rem;line-height:1.5}
+.tl li::before{content:"";position:absolute;inset-inline-start:.1rem;top:.38rem;width:.7rem;height:.7rem;border-radius:50%;background:var(--card);border:2.5px solid var(--sea)}
+.tl li.rename::before{border-color:var(--sun);background:var(--sun)}
+.tl li.move::before{border-color:var(--oak)}
+.tl li.archive::before,.tl li.restore::before{border-color:var(--terra)}
+.tl .when{display:block;font-size:.72rem;font-weight:700;color:var(--muted)}
+.tl bdi{background:var(--gold-soft);color:var(--gold-ink);border-radius:.35rem;padding:0 .3rem;font-weight:700;font-size:.78rem}
+.panel-f{display:flex;flex-wrap:wrap;gap:.4rem;padding:.8rem 1rem;border-top:1px solid var(--line)}
+.panel-f .btn{padding:.35rem .85rem;font-size:.8rem}
+.panel-f .btn .ic{width:.95rem;height:.95rem}
+.pscrim{display:none}
+@media (min-width:1100px){.adm{transition:margin .28s var(--ease-snap),max-width .28s}body.panel-open .adm{margin-inline-end:400px;margin-inline-start:auto;max-width:min(80rem,calc(100vw - 400px))}}
+@media (max-width:900px){.pscrim.on{display:block;position:fixed;inset:0;z-index:72;background:rgba(30,25,15,.45)}}
+
+/* דיאלוגים */
+dialog{border:0;padding:0;margin:auto;border-radius:1rem;background:var(--card);color:var(--foreground);width:min(34rem,calc(100vw - 2rem));max-height:calc(100vh - 3rem);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(30,25,15,.5)}
+.dlg-box{padding:1.1rem 1.25rem 1.2rem;display:grid;gap:.85rem;max-height:calc(100vh - 3rem);overflow:auto}
+.dlg-h{display:flex;align-items:center;gap:.5rem}
+.dlg-h h3{font-size:1.15rem;font-weight:800}
+.dlg-h .xbtn{margin-inline-start:auto;display:grid;place-items:center;width:2rem;height:2rem;border-radius:99px}
+.dlg-sub{font-size:.85rem;color:var(--muted);line-height:1.5;margin-top:-.4rem}
+.dlg-f{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end;align-items:center}
+.dlg-f .grow{margin-inline-end:auto;font-size:.8rem;color:var(--muted);min-width:0}
+.field{display:grid;gap:.3rem;font-size:.85rem;font-weight:700}
+.field small{font-weight:400;color:var(--muted)}
+.notice{border-radius:.8rem;padding:.7rem .9rem;background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-ink);font-size:.84rem;line-height:1.55;display:flex;gap:.6rem}
+.notice .ic{width:1.1rem;height:1.1rem;margin-top:.15rem}
+.notice b{font-weight:800}
+.diff{display:grid;gap:.25rem;font-size:.82rem;border:1px solid var(--line);border-radius:.8rem;padding:.6rem .8rem}
+.diff div{display:flex;gap:.5rem;align-items:baseline}
+.diff i{font-style:normal;font-weight:800;width:3rem;color:var(--muted);flex:none;font-size:.74rem}
+.diff s{color:var(--terra);text-decoration-thickness:1.5px}
+.diff em{font-style:normal;font-weight:700;color:var(--oak-deep)}
+.picker{border:1px solid var(--line);border-radius:.8rem;max-height:46vh;overflow:auto;padding:.3rem}
+.prow{--d:0;display:flex;align-items:center;gap:.4rem;width:100%;text-align:right;padding:.32rem .5rem;padding-inline-start:calc(.4rem + var(--d)*1rem);border-radius:.55rem;font-size:.86rem;font-weight:500;border:1.5px solid transparent}
+.prow .ic{width:1rem;height:1rem;color:var(--sun)}
+.prow:hover:not(:disabled){background:var(--hover)}
+.prow.on{background:var(--oak-soft);color:var(--oak-deep);border-color:var(--oak);font-weight:700}
+.prow:disabled{color:var(--muted);cursor:not-allowed;opacity:.65}
+.prow .rad{width:.95rem;height:.95rem;border-radius:50%;border:2px solid var(--muted);flex:none;margin-inline-start:auto}
+.prow.on .rad{border-color:var(--oak-deep);background:radial-gradient(var(--oak-deep) 45%,transparent 50%)}
+.prow:disabled .rad{visibility:hidden}
+.opt{display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .7rem;border:1.5px solid var(--line);border-radius:.8rem;cursor:pointer;font-size:.88rem}
+.opt:has(input:checked){border-color:var(--sea);background:var(--blue-soft)}
+.opt input{accent-color:var(--sea);margin-top:.3rem}
+.opt small{display:block;color:var(--muted);font-size:.76rem;font-weight:400}
+
+/* toast */
+.toasts{position:fixed;z-index:120;inset-inline:0;bottom:1.2rem;display:grid;gap:.5rem;justify-items:center;pointer-events:none}
+.toast{pointer-events:auto;display:flex;gap:.8rem;align-items:center;background:#2f3b57;color:#fff;border-radius:.9rem;padding:.6rem 1rem;font-size:.86rem;box-shadow:var(--shadow-lift);animation:pop .22s var(--ease-snap) both;max-width:min(92vw,34rem)}
+.toast button{font-weight:800;color:var(--sun);text-decoration:underline;white-space:nowrap}
+.ghost-drag{position:fixed;top:-100px;left:-100px;background:var(--sea2);color:#fff;padding:.35rem .9rem;border-radius:99px;font-weight:800;font-size:.85rem}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<header class="site-h"><div class="in">
+  <span class="logo">חומרים לבגרות</span>
+  <nav><span>מקצועות</span><span>מחירים</span><span>פורום</span><span>החשבון שלי</span></nav>
+</div></header>
+
+<div class="adm">
+  <div class="wood banner">
+    <div><small>אזור הניהול</small><h1 class="font-display">שלום, משה</h1></div>
+    <span class="chip">מנהלת</span>
+  </div>
+
+  <div class="adm-grid">
+    <nav class="card anav" aria-label="ניווט ניהול"><ul id="anav"></ul></nav>
+
+    <div style="min-width:0">
+      <div class="page-h">
+        <h2 class="font-display">סייר קבצי דרייב</h2>
+        <span class="chip chip-oak" id="totalChip"></span>
+        <span class="chip chip-red" id="missChip"></span>
+        <span class="sync-note"><span class="dot"></span><span id="syncNote">סונכרן לאחרונה: לפני 12 דקות</span></span>
+      </div>
+
+      <!-- סרגל כלים -->
+      <section class="card toolbar">
+        <div class="tb-row">
+          <button class="btn btn-ghost drawer-btn" data-a="drawer-open" aria-label="פתיחת עץ התיקיות"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>עץ תיקיות</button>
+          <nav class="crumbs" id="crumbs" aria-label="מיקום"></nav>
+          <label class="search"><span class="sr">חיפוש</span>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="q" class="input" type="search" placeholder="חיפוש שם (כולל שמות ישנים)…" autocomplete="off" />
+          </label>
+          <div class="seg" role="group" aria-label="תצוגה">
+            <button data-a="view" data-v="list" aria-pressed="true" title="רשימה" aria-label="תצוגת רשימה"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/></svg></button>
+            <button data-a="view" data-v="grid" aria-pressed="false" title="רשת" aria-label="תצוגת רשת"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></button>
+          </div>
+        </div>
+        <div class="tb-actions">
+          <button class="btn btn-oak" data-a="newfolder"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6M9 13h6"/></svg>תיקייה חדשה</button>
+          <button class="btn btn-ghost" data-a="sync" id="syncBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>סנכרון עם הדרייב</button>
+          <button class="btn btn-ghost" data-a="dlinfo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>הורדת קובץ מידע</button>
+          <button class="btn btn-ghost" data-a="opendrive"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>פתח בדרייב</button>
+          <span class="hint">גררי קבצים אל תיקייה בעץ כדי להעביר · הכול מתעדכן גם באתר</span>
+        </div>
+      </section>
+
+      <div class="xp">
+        <aside class="card tree" id="tree" aria-label="עץ תיקיות"></aside>
+        <div class="scrim" id="scrim" data-a="drawer-close"></div>
+        <div class="main">
+          <section class="card info" id="info"></section>
+          <section class="card listcard" id="list"></section>
+          <div id="bulk"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<aside class="panel" id="panel" aria-label="פרטי פריט"></aside>
+<div class="pscrim" id="pscrim" data-a="panel-close"></div>
+<dialog id="dlg"></dialog>
+<div class="tip" id="tip"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="menuHost"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- אייקונים (lucide, כמו באתר) ---------- */
+const IC = {
+  folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  "folder-open": '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/>',
+  fileq: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9.5 12.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 19h.01"/>',
+  filecheck: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m9 15 2 2 4-4"/>',
+  star: '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  slides: '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
+  notes: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  chev: '<path d="m15 18-6-6 6-6"/>',
+  archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  move: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  pencil: '<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5Z"/><path d="m15 5 4 4"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+  restore: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  drive: '<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01M10 16h.01"/>',
+  status: '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+};
+const ico = (n, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ""}</svg>`;
+
+/* ---------- ניווט הניהול (admin-nav.tsx) ---------- */
+const NAV = [
+  ["לוח בקרה", '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>'],
+  ["עץ הקטגוריות", IC.folder],
+  ["חומרים", IC.file],
+  ["סייר קבצי דרייב", IC.drive, true],
+  ["משתמשות", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
+  ["בקשות שינוי", IC.pencil],
+  ["הצעות מכירה", '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.7 2.5 1.8-1 1.5-2.5 1.7-2.5.7-2.5 1.8S10.5 16 12 16s2.5-.5 2.5-1.5"/>'],
+  ["פורום", '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
+  ["שיחות מורות", IC.star],
+  ["מיילים", '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>'],
+  ["מחוברות כעת", '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4"/>'],
+  ["פעילות וגלישה", '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>'],
+  ["היסטוריית הורדות", IC.download],
+  ["סטטיסטיקות", '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/>'],
+  ["לוג פעולות", IC.notes],
+  ["סוכן קלוד", '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/>'],
+  ["כספים", '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>'],
+  ["מנויים", '<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>'],
+  ["הגדרות", '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'],
+];
+$("#anav").innerHTML = NAV.map(([l, p, on]) => `<li><a href="#" class="${on ? "on" : ""}" onclick="return false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>${l}${on ? '<span class="new">חדש</span>' : ""}</a></li>`).join("");
+
+/* ---------- נתוני דוגמה ---------- */
+const TODAY = new Date(2026, 9, 5, 16, 40);
+const t0 = Date.now();
+const now = () => new Date(TODAY.getTime() + (Date.now() - t0));
+const ago = (days, i = 0) => new Date(TODAY.getTime() - days * 864e5 - ((i * 53) % 400) * 6e4);
+const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const rnd = mulberry(20261005);
+const B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
+const gid = () => "1" + Array.from({ length: 32 }, () => B62[Math.floor(rnd() * 64)]).join("");
+const sod = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const fmtD = (d, full) => `${d.getDate()}.${d.getMonth() + 1}${full ? "." + d.getFullYear() : ""}`;
+const fmtT = d => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+const rel = d => { const n = Math.round((sod(TODAY) - sod(d)) / 864e5); if (n <= 0) return "היום"; if (n === 1) return "אתמול"; if (n < 30) return `לפני ${n} ימים`; const m = Math.floor(n / 30); return m === 1 ? "לפני חודש" : `לפני ${m} חודשים`; };
+const fmtS = d => `${d.getDate()}.${d.getMonth() + 1}.${String(d.getFullYear()).slice(2)}`;
+const nh = n => { const m = String(n).match(/^(.*?)(.[A-Za-z0-9]{2,5})$/); return m ? esc(m[1]) + '<span class="ext">' + esc(m[2]) + '</span>' : esc(n); };
+const fmtSize = kb => kb < 1024 ? `${kb} KB` : `${(kb / 1024).toFixed(1)} MB`;
+
+const KINDS = {
+  teacher: { label: "דף למורה", cls: "k-teacher", ic: "file" },
+  student: { label: "דף לתלמידה", cls: "k-student", ic: "file" },
+  quiz: { label: "בוחן", cls: "k-quiz", ic: "fileq" },
+  quizans: { label: "בוחן עם תשובות", cls: "k-quizans", ic: "filecheck" },
+  enrich: { label: "דף העשרה", cls: "k-enrich", ic: "star" },
+  summary: { label: "סיכום להכתבה", cls: "k-summary", ic: "notes" },
+  slides: { label: "מצגת", cls: "k-slides", ic: "slides" },
+  bagrut: { label: "בגרות", cls: "k-bagrut", ic: "file" },
+  other: { label: "לא מסווג", cls: "k-other", ic: "file" },
+};
+const EXPECTED = ["teacher", "student", "quiz", "quizans", "enrich", "summary"];
+const ST = { draft: "טיוטה", active: "פעיל", paused: "מושהה" };
+const STK = { D: "draft", A: "active", P: "paused" };
+
+/* עץ הקטגוריות — מראה של curriculum-tree.ts: מקצוע › מסלול › יחידה › פרק */
+const nodes = {};
+function mk(id, name, type, parent, o = {}) { nodes[id] = { id, name, type, parent, children: [], drive: gid(), ...o }; if (parent) nodes[parent].children.push(id); return nodes[id]; }
+mk("root", "חומרים לבגרות", "root", null);
+mk("s-torah", "תורה", "subject", "root");
+mk("t-dev", "חומש דברים – חיצוני", "track", "s-torah");
+mk("u-dev", "ספר דברים", "unit", "t-dev");
+mk("c-d1", "פרק א'", "chapter", "u-dev", { lbl: "דברים פרק א'" });
+mk("c-d2", "פרק ב'", "chapter", "u-dev", { lbl: "דברים פרק ב'" });
+mk("c-d3", "פרק ג'", "chapter", "u-dev", { lbl: "דברים פרק ג'" });
+mk("s-nevi", "נביא", "subject", "root");
+mk("t-n3", "נביא 3 יחידות", "track", "s-nevi");
+mk("u-yeh", "יחזקאל", "unit", "t-n3");
+mk("c-y5", "פרק ה'", "chapter", "u-yeh", { lbl: "יחזקאל פרק ה'" });
+mk("c-y8", "פרק ח'", "chapter", "u-yeh", { lbl: "יחזקאל פרק ח'" });
+mk("c-y18", "פרק י\"ח", "chapter", "u-yeh", { lbl: "יחזקאל פרק י\"ח" });
+mk("t-n5", "נביא 5 יחידות", "track", "s-nevi");
+mk("u-mel", "מלכים א", "unit", "t-n5");
+mk("c-m3", "פרק ג'", "chapter", "u-mel", { lbl: "מלכים א פרק ג'" });
+mk("c-m18", "פרק י\"ח", "chapter", "u-mel", { lbl: "מלכים א פרק י\"ח" });
+mk("s-kt", "כתובים", "subject", "root");
+mk("t-hal", "חלופות כתובים", "track", "s-kt");
+mk("u-neh", "עזרא-נחמיה", "unit", "t-hal");
+mk("c-neh6", "נחמיה ו'", "chapter", "u-neh", { lbl: "נחמיה ו'" });
+mk("c-neh7", "נחמיה ז'", "chapter", "u-neh", { lbl: "נחמיה ז'" });
+mk("t-teh", "תהלים הגבר", "track", "s-kt");
+mk("u-teh", "תהלים", "unit", "t-teh");
+mk("c-t51", "פרק נ\"א", "chapter", "u-teh", { lbl: "תהלים נ\"א" });
+mk("c-t130", "פרק ק\"ל", "chapter", "u-teh", { lbl: "תהלים ק\"ל" });
+mk("arch", "_ארכיון", "archive", "root");
+mk("arch-orph", "יתומים", "archive", "arch", { hint: "קבצים בדרייב שאין להם שורה באתר" });
+mk("arch-old", "גרסאות ישנות", "archive", "arch", { hint: "הוחלפו בגרסה חדשה" });
+mk("arch-unk", "לא ברור", "archive", "arch", { hint: "ממתינים להחלטה" });
+
+const TYPE_HE = { root: "שורש", subject: "מקצוע", track: "מסלול", unit: "יחידה", chapter: "פרק", archive: "ארכיון" };
+const isArch = id => { for (let n = nodes[id]; n; n = nodes[n.parent]) if (n.id === "arch") return true; return false; };
+const pathNodes = id => { const a = []; for (let n = nodes[id]; n && n.id !== "root"; n = nodes[n.parent]) a.unshift(n); return a; };
+const pathStr = id => pathNodes(id).map(n => n.name).join(" › ") || "חומרים לבגרות";
+const drivePath = id => "/חומרים לבגרות/" + pathNodes(id).map(n => n.name).join("/");
+const descendants = id => { const out = [id]; nodes[id].children.forEach(c => out.push(...descendants(c))); return out; };
+const files = [];
+let fseq = 100;
+
+const SPEC = {
+  "c-d1": "teacher:A:60 student:A:60 quiz:A:44 quizans:A:44 enrich:A:30 summary:A:30 slides:D:9",
+  "c-d2": "teacher:A:58 student:A:58 quiz:A:40 quizans:A:40 enrich:D:21",
+  "c-d3": "teacher:D:15 student:D:15 quiz:D:11",
+  "c-y5": "teacher:A:35 student:A:35 quiz:A:22 enrich:A:22 summary:D:3",
+  "c-y8": "teacher:A:33 student:A:33 quiz:A:20 quizans:A:20 enrich:A:18 summary:A:18",
+  "c-y18": "teacher:D:6 student:D:6",
+  "c-m3": "teacher:A:48 student:A:48 quiz:A:30 quizans:A:30 enrich:A:26 summary:A:26 bagrut:A:26",
+  "c-m18": "teacher:A:47 student:A:47 quiz:A:29 quizans:A:29 enrich:D:14 summary:D:14",
+  "c-neh6": "teacher:D:14 student:D:14 quizans:D:6 enrich:D:9 summary:D:9",
+  "c-neh7": "teacher:D:8 student:D:8",
+  "c-t51": "teacher:A:40 student:A:40 quiz:A:25 quizans:A:25 summary:D:12",
+  "c-t130": "teacher:A:38 student:A:38 quiz:A:24 quizans:A:24 enrich:A:16 summary:A:16",
+};
+/* שינויי שם: [שם קודם, לפני כמה ימים הוחלף] לפי סדר כרונולוגי */
+const RENAMES = {
+  "c-neh6:quizans": [[`נחמיה ו' – בוחן.docx`, 5, "משה"]],
+  "c-y5:summary": [[`יחזקאל ה – סיכום (ישן).docx`, 12, "משה"], [`יחזקאל פרק ה' – סיכום.docx`, 3, "סוכן קלוד"]],
+  "c-m3:enrich": [[`מלכים א ג – העשרה.docx`, 8, "משה"]],
+  "c-t51:quiz": [[`תהילים נא בוחן.docx`, 19, "משה"]],
+  "c-d2:enrich": [[`דברים ב – ידיעות מעניינות.docx`, 4, "סוכן קלוד"]],
+};
+let ix = 0;
+Object.entries(SPEC).forEach(([cid, spec]) => {
+  spec.split(" ").forEach(tok => {
+    const [kind, st, days] = tok.split(":"); const d = +days; ix++;
+    const ext = kind === "slides" ? "pptx" : (kind === "bagrut" || (kind === "enrich" && ix % 2)) ? "pdf" : "docx";
+    const f = {
+      id: "f" + (fseq++), kind, status: STK[st], parent: cid, ext, drive: gid(),
+      name: `${nodes[cid].lbl} – ${KINDS[kind].label}.${ext}`,
+      added: ago(d, ix), modified: ago(Math.floor(d / (2 + ix % 3)), ix + 3), size: 38 + Math.floor(rnd() * 900) + (kind === "slides" ? 2400 : 0),
+      who: ix % 4 === 0 ? "סוכן קלוד" : "משה", hist: [],
+    };
+    f.hist.push({ t: f.added, type: "add", who: f.who });
+    const chain = RENAMES[cid + ":" + kind];
+    if (chain) {
+      const names = chain.map(c => c[0]).concat(f.name);
+      chain.forEach((c, k) => f.hist.push({ t: ago(c[1], k + 9), type: "rename", from: names[k], to: names[k + 1], who: c[2] }));
+    }
+    files.push(f);
+  });
+});
+const find = id => files.find(f => f.id === id);
+/* העברה היסטורית אחת לדוגמה */
+{ const f = files.find(x => x.parent === "c-neh7" && x.kind === "student"); f.hist.push({ t: ago(2, 5), type: "move", from: pathStr("c-neh6"), to: pathStr("c-neh7"), who: "משה" }); }
+
+/* ארכיון */
+[
+  ["arch-old", `נחמיה ו' – בוחן (ישן).docx`, "quiz", { of: `נחמיה ו' – בוחן עם תשובות.docx`, from: "c-neh6", d: 5, mod: 40 }],
+  ["arch-old", `דברים ב' – מצגת v1.pptx`, "slides", { of: `דברים פרק ב' – מצגת.pptx`, from: "c-d2", d: 9, mod: 60, ext: "pptx" }],
+  ["arch-old", `יחזקאל ה – טיוטה.docx`, "teacher", { of: `יחזקאל פרק ה' – דף למורה.docx`, from: "c-y5", d: 12, mod: 35 }],
+  ["arch-orph", `Copy of שכפול יחזקאל.docx`, "other", { d: 3, mod: 3 }],
+  ["arch-orph", `שאלות בגרות תשפ"ג – ללא שיוך.pdf`, "bagrut", { d: 20, mod: 70, ext: "pdf" }],
+  ["arch-unk", `scan0023.pdf`, "other", { d: 7, mod: 7, ext: "pdf" }],
+  ["arch-unk", `תהלים – גרסה סופית (2).docx`, "other", { d: 4, mod: 4 }],
+].forEach((a, i) => {
+  const o = a[3];
+  files.push({
+    id: "f" + (fseq++), kind: a[2], status: "draft", parent: a[0], ext: o.ext || "docx", drive: gid(), name: a[1], size: 44 + Math.floor(rnd() * 400),
+    added: ago(o.mod, i), modified: ago(o.d, i + 2), who: "סנכרון", of: o.of || null, from: o.from || null, hist: [
+      { t: ago(o.mod, i), type: "add", who: "סנכרון" },
+      { t: ago(o.d, i + 2), type: "archive", reason: a[0] === "arch-orph" ? "יתום" : a[0] === "arch-old" ? "גרסה ישנה" : "לא ברור", from: o.from ? pathStr(o.from) : "הדרייב (ללא שיוך באתר)", who: "סנכרון" }],
+  });
+});
+
+/* ---------- מצב ---------- */
+const S = {
+  cur: "c-neh6", exp: new Set(["root", "s-torah", "s-nevi", "s-kt", "t-hal", "u-neh", "arch"]), sel: new Set(), active: null,
+  view: "list", q: "", recursive: false, rev: {}, upl: {}, ctx: null, drag: null, synced: false, infoBig: false, pick: null,
+};
+S.rev["c-neh6"] = 2; S.upl["c-neh6"] = { rev: 1, t: ago(3, 2) };
+["c-d1", "c-y8", "c-m3", "c-t130"].forEach(id => { S.rev[id] = 0; S.upl[id] = { rev: 0, t: ago(1, 4) }; });
+const touch = id => { for (let n = nodes[id]; n; n = nodes[n.parent]) S.rev[n.id] = (S.rev[n.id] || 0) + 1; };
+
+/* ---------- חישובים ---------- */
+const filesIn = (id, rec) => { const ids = rec ? new Set(descendants(id)) : new Set([id]); return files.filter(f => ids.has(f.parent)); };
+const count = id => filesIn(id, true).length;
+const missingKinds = cid => EXPECTED.filter(k => !files.some(f => f.parent === cid && f.kind === k));
+const missingCount = id => descendants(id).filter(c => nodes[c].type === "chapter").reduce((s, c) => s + missingKinds(c).length, 0);
+const oldNames = f => f.hist.filter(e => e.type === "rename").sort((a, b) => b.t - a.t).map(e => ({ name: e.from, t: e.t, who: e.who }));
+const reasonOf = f => f.parent === "arch-orph" ? { c: "r-orph", t: "יתום" } : f.parent === "arch-old" ? { c: "r-old", t: `גרסה ישנה של ${f.of || "—"}` } : { c: "r-unk", t: "לא ברור" };
+const archivedAt = f => { const e = [...f.hist].reverse().find(x => x.type === "archive"); return e ? e.t : f.modified; };
+const lastMod = id => { const l = filesIn(id, true); return l.length ? new Date(Math.max(...l.map(f => +f.modified))) : null; };
+const touchable = id => { const t = nodes[id].type; return t === "unit" || t === "chapter" || t === "archive"; };
+
+function evText(e) {
+  const b = s => `<bdi>${nh(s)}</bdi>`;
+  switch (e.type) {
+    case "add": return "נוסף לאתר ולדרייב";
+    case "rename": return `שונה מ-${b(e.from)} ל-${b(e.to)}`;
+    case "move": return `הועבר מ-${esc(e.from)} אל ${esc(e.to)}`;
+    case "archive": return `הועבר לארכיון (${esc(e.reason)}) מתוך ${esc(e.from)}`;
+    case "restore": return `שוחזר מהארכיון אל ${esc(e.to)}`;
+    case "status": return `סטטוס: ${esc(e.from)} ← ${esc(e.to)}`;
+    default: return esc(e.type);
+  }
+}
+const evTextPlain = e => evText(e).replace(/<[^>]+>/g, "").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+
+/* ---------- רינדור ---------- */
+function renderAll() { renderTree(); renderCrumbs(); renderInfo(); renderList(); renderBulk(); renderPanel(); renderHeaderChips(); }
+
+function renderHeaderChips() {
+  const all = files.filter(f => !isArch(f.parent)).length;
+  $("#totalChip").textContent = `${all} חומרים באתר · ${files.length - all} בארכיון`;
+  const m = missingCount("root");
+  $("#missChip").textContent = `${m} קבצים חסרים`;
+}
+
+function treeRow(id, depth) {
+  const n = nodes[id], kids = n.children, open = S.exp.has(id), cnt = count(id), miss = n.type === "archive" ? 0 : missingCount(id);
+  const icon = n.id === "arch" ? "📦" : n.type === "root" ? ico("drive") : ico(open && kids.length ? "folder-open" : "folder");
+  const sep = id === "arch" ? '<li class="tsep" role="separator"></li>' : "";
+  return `${sep}<li role="treeitem" aria-expanded="${kids.length ? open : "false"}"><div class="trow ${S.cur === id ? "on" : ""} ${id === "arch" ? "arch" : ""}" style="--d:${depth}" data-a="nav" data-id="${id}" data-drop="${id}" ${n.hint ? `title="${esc(n.hint)}"` : ""}>
+    <button class="tog ${open ? "open" : ""} ${kids.length ? "" : "none"}" data-a="tog" data-id="${id}" aria-label="פתיחה/סגירה">${ico("chev")}</button>
+    <span class="ticon">${icon}</span><span class="tname">${esc(n.name)}</span>
+    ${miss ? `<span class="miss" title="${miss} קבצים צפויים חסרים">חסר ${miss}</span>` : ""}<span class="cnt">${cnt}</span></div>
+    ${open && kids.length ? `<ul role="group">${kids.map(k => treeRow(k, depth + 1)).join("")}</ul>` : ""}</li>`;
+}
+function renderTree() {
+  $("#tree").innerHTML = `<div class="tree-h">${ico("folder")}עץ התיקיות<span class="tiny"><button data-a="exp-all">פתח הכל</button><button data-a="exp-none">סגור</button></span></div><ul role="tree">${treeRow("root", 0)}</ul>`;
+}
+
+function renderCrumbs() {
+  const p = [nodes.root, ...pathNodes(S.cur)];
+  $("#crumbs").innerHTML = p.map((n, i) => {
+    const last = i === p.length - 1;
+    return `${i ? `<span class="sep">${ico("chev")}</span>` : ""}<button class="${last ? "last" : ""}" ${last ? "" : `data-a="nav" data-id="${n.id}" data-drop="${n.id}"`}>${i === 0 ? ico("drive") : ""}${esc(i === 0 ? "דרייב" : n.name)}</button>`;
+  }).join("");
+}
+
+/* ---- קובץ המידע ---- */
+function infoModel(id) {
+  const n = nodes[id], L = [];
+  const arch = isArch(id);
+  const sub = new Set(descendants(id));
+  const inSub = files.filter(f => sub.has(f.parent));
+  const H = s => L.push({ t: "h", s }), P = s => L.push({ t: "ln", s }), OK = s => L.push({ t: "ok", s }), BAD = s => L.push({ t: "bad", s }), D = s => L.push({ t: "dim", s }), B = () => L.push({ t: "ln", s: "" });
+  D("──────────────────────────────────────");
+  D(` _מידע.txt · נוצר אוטומטית מנתוני האתר`);
+  D(` ${fmtD(now(), true)} ${fmtT(now())} · אין לערוך ידנית`);
+  D("──────────────────────────────────────"); B();
+  H("פרטי התיקייה");
+  P(`  שם:          ${n.id === "root" ? "חומרים לבגרות (שורש)" : n.name}`);
+  P(`  סוג:         ${TYPE_HE[n.type]}`);
+  P(`  נתיב באתר:   ${pathStr(id)}`);
+  P(`  נתיב בדרייב: ${drivePath(id)}`);
+  P(`  מזהה דרייב:  ${n.drive}`);
+  const act = inSub.filter(f => f.status === "active").length, dr = inSub.filter(f => f.status === "draft").length, pa = inSub.filter(f => f.status === "paused").length;
+  P(`  קבצים:       ${inSub.length}`);
+  if (!arch) P(`  סטטוסים:     פעיל ${act}, טיוטה ${dr}, מושהה ${pa}`);
+  if (n.children.length) P(`  תתי-תיקיות: ${n.children.length}`);
+  const lm = lastMod(id); P(`  עודכן:       ${lm ? fmtD(lm, true) + " " + fmtT(lm) : "—"}`);
+  B();
+
+  if (arch) {
+    H("סיבות העברה לארכיון");
+    const g = { "arch-orph": 0, "arch-old": 0, "arch-unk": 0 }; inSub.forEach(f => g[f.parent]++);
+    P(`  יתומים:         ${g["arch-orph"]}`); P(`  גרסאות ישנות:  ${g["arch-old"]}`); P(`  לא ברור:        ${g["arch-unk"]}`);
+    B();
+  } else {
+    H("חסר");
+    const chs = descendants(id).filter(c => nodes[c].type === "chapter");
+    if (!chs.length) P("  אין פרקים בתיקייה זו.");
+    else if (n.type === "chapter") {
+      EXPECTED.forEach(k => files.some(f => f.parent === id && f.kind === k) ? OK(`  ✔ ${KINDS[k].label}`) : BAD(`  ✖ ${KINDS[k].label}  — חסר`));
+      const extra = ["slides", "bagrut"].filter(k => files.some(f => f.parent === id && f.kind === k));
+      if (extra.length) D(`  + בנוסף קיים: ${extra.map(k => KINDS[k].label).join(", ")}`);
+    } else {
+      chs.forEach(c => { const m = missingKinds(c); m.length ? BAD(`  ✖ ${nodes[c].lbl}: חסר ${m.map(k => KINDS[k].label).join(", ")}`) : OK(`  ✔ ${nodes[c].lbl}: הכול קיים`); });
+    }
+    B();
+  }
+
+  H("נוסף לאחרונה");
+  const recent = [...inSub].filter(f => TODAY - f.added < 16 * 864e5).sort((a, b) => b.added - a.added).slice(0, 6);
+  if (!recent.length) P("  לא נוספו קבצים ב-14 הימים האחרונים.");
+  recent.forEach(f => P(`  ${fmtD(f.added)}  + ${f.name} — ${KINDS[f.kind].label}, ${ST[f.status]} — ${f.who}`));
+  B();
+
+  H("היסטוריית שמות והעברות");
+  const evs = []; inSub.forEach(f => f.hist.forEach(e => { if (e.type !== "add") evs.push({ ...e, f }); }));
+  evs.sort((a, b) => b.t - a.t);
+  if (!evs.length) P("  אין שינויים.");
+  evs.slice(0, 8).forEach(e => P(`  ${fmtD(e.t)}  ${evTextPlain(e)}${e.type === "rename" ? "" : `  [${e.f.name}]`}`));
+  B();
+
+  H("קבצים בארכיון");
+  const archFiles = arch ? inSub : files.filter(f => isArch(f.parent) && f.from && sub.has(f.from));
+  if (!archFiles.length) P("  אין.");
+  archFiles.forEach(f => P(`  • ${f.name} — ${reasonOf(f).t}${f.from && !arch ? ` (מקור: ${nodes[f.from].name})` : ""}`));
+  return { L, inSub, evs, archFiles, miss: arch ? 0 : missingCount(id) };
+}
+const infoPlain = m => m.L.map(l => l.s).join("\n");
+const infoHtml = m => m.L.map(l => {
+  const c = l.t === "ln" ? "" : ` class="${l.t}"`;
+  return `<span${c}>${esc(l.s)}</span>`;
+}).join("\n");
+
+function renderInfo() {
+  const id = S.cur, n = nodes[id], m = infoModel(id);
+  const up = S.upl[id], rv = S.rev[id] || 0;
+  let pill;
+  if (!up) pill = `<span class="upl none">${ico("warn")}טרם הועלה לדרייב</span>`;
+  else if (up.rev === rv) pill = `<span class="upl ok">${ico("check")}הקובץ בדרייב מעודכן · ${rel(up.t)} ${fmtT(up.t)}</span>`;
+  else pill = `<span class="upl stale">${ico("warn")}בדרייב: לא מעודכן · ${rv - up.rev} שינויים מאז ${rel(up.t)}</span>`;
+  const week = m.inSub.filter(f => TODAY - f.added < 7 * 864e5).length;
+  const renames = m.evs.filter(e => e.type === "rename").length;
+  $("#info").innerHTML = `
+    <div class="info-h">${ico("notes").replace("class=\"ic ", "class=\"ic ")}<h3>קובץ מידע של התיקייה</h3><span class="fname">_מידע.txt</span>${pill}</div>
+    <div class="info-body">
+      <div class="paper ${S.infoBig ? "big" : ""}"><div class="paper-scroll"><pre dir="rtl">${infoHtml(m)}</pre></div>
+        <div class="paper-more"><button data-a="info-expand">${S.infoBig ? "הקטן תצוגה ↑" : "הצג את כל הקובץ ↓"}</button></div></div>
+      <div class="info-side">
+        <div class="stats">
+          ${isArch(id) ? `<div class="stat"><b>${m.inSub.length}</b><span>פריטים בארכיון</span></div>` : `<div class="stat ${m.miss ? "bad" : "good"}"><b>${m.miss}</b><span>${m.miss ? "קבצים חסרים" : "הכול קיים"}</span></div>`}
+          <div class="stat"><b>${week}</b><span>נוספו השבוע</span></div>
+          <div class="stat"><b>${renames}</b><span>שינויי שם</span></div>
+          <div class="stat"><b>${isArch(id) ? m.inSub.filter(f => f.parent === "arch-old").length : m.archFiles.length}</b><span>${isArch(id) ? "גרסאות ישנות" : "בארכיון"}</span></div>
+        </div>
+        <div class="info-actions">
+          <button class="btn btn-ghost" data-a="info-refresh" id="bRefresh">${ico("refresh")}רענן מהאתר</button>
+          <button class="btn btn-primary" data-a="info-up" id="bUp">${ico("upload")}העלה לדרייב</button>
+          <button class="btn btn-ghost" data-a="dlinfo">${ico("download")}הורד .txt</button>
+        </div>
+        <p class="info-note">יישמר בדרייב כ-<code>${esc(drivePath(id))}/_מידע.txt</code> ויחליף את הקובץ הקיים. האתר מקור האמת — העריכה תמיד מהאתר.</p>
+      </div>
+    </div>`;
+}
+
+/* ---- רשימה ---- */
+function currentItems() {
+  const q = S.q.trim().toLowerCase();
+  if (q) {
+    const hit = f => f.name.toLowerCase().includes(q) || oldNames(f).some(o => o.name.toLowerCase().includes(q));
+    return { mode: "search", folders: Object.values(nodes).filter(n => n.id !== "root" && n.name.toLowerCase().includes(q)), files: files.filter(hit) };
+  }
+  const n = nodes[S.cur], rec = S.recursive || S.cur === "arch";
+  return { mode: isArch(S.cur) ? "arch" : "dir", folders: n.children.map(c => nodes[c]), files: filesIn(S.cur, rec).sort((a, b) => b.added - a.added), rec };
+}
+const fileIcon = f => `<span class="fi ${KINDS[f.kind].cls}">${ico(KINDS[f.kind].ic)}</span>`;
+const oldChip = f => { const o = oldNames(f); return o.length ? `<span class="old" tabindex="0" data-oldtip="${f.id}" data-a="hist" data-id="${f.id}">${ico("history")}<span>שם ישן: ${nh(o[0].name)}</span></span>` : ""; };
+
+function renderList() {
+  const it = currentItems(), el = $("#list");
+  const arch = it.mode === "arch";
+  const title = it.mode === "search" ? `תוצאות חיפוש: “${esc(S.q)}”` : arch ? `${nodes[S.cur].name} — פריטים בארכיון` : "תוכן התיקייה";
+  const head = `<div class="list-h"><h3>${title}</h3><span class="chip chip-blue">${it.folders.length} תיקיות · ${it.files.length} קבצים</span>
+    ${it.mode === "dir" && S.cur !== "arch" ? `<label class="toggle"><input type="checkbox" data-a="rec" ${S.recursive ? "checked" : ""}/>כולל תתי-תיקיות</label>` : ""}
+    ${arch ? `<span class="toggle" style="cursor:default">${ico("restore")}שחזור מחזיר את הקובץ לתיקיית המקור</span>` : ""}</div>`;
+  if (!it.folders.length && !it.files.length) { el.innerHTML = head + `<div class="empty">${it.mode === "search" ? "לא נמצאו תוצאות." : "התיקייה ריקה. גררי לכאן קבצים מהעץ או מתיקייה אחרת."}</div>`; return; }
+  if (S.view === "grid") { el.innerHTML = head + renderGrid(it); return; }
+
+  const ids = it.files.map(f => f.id), allSel = ids.length && ids.every(i => S.sel.has(i)), some = ids.some(i => S.sel.has(i));
+  const folderRows = it.folders.map(n => {
+    const miss = n.type === "archive" ? 0 : missingCount(n.id), lm = lastMod(n.id);
+    return `<tr data-drop="${n.id}" data-a="nav" data-id="${n.id}" style="cursor:pointer">
+      <td class="c-chk"></td><td class="c-ico"><span class="fi folder">${n.id === "arch" ? "📦" : ico("folder")}</span></td>
+      <td><div class="nm"><span class="t">${esc(n.name)}</span>${miss ? `<span class="miss">חסר ${miss}</span>` : ""}${it.mode === "search" ? `<span class="path">${esc(pathStr(n.parent || "root"))}</span>` : ""}</div></td>
+      ${arch ? `<td>${n.hint ? `<span class="muted" style="font-size:.78rem">${esc(n.hint)}</span>` : ""}</td>` : ""}
+      <td class="c-kind"><span class="chip chip-gray kind">${TYPE_HE[n.type]}</span></td>${arch ? "" : `<td class="c-st"></td>`}
+      <td class="c-size num">${count(n.id)} קבצים</td>${arch ? "" : `<td class="c-add"></td>`}<td class="c-mod num">${lm ? fmtD(lm) : ""}</td><td></td>${arch ? "<td></td>" : ""}</tr>`;
+  }).join("");
+  const fileRows = it.files.map(f => {
+    const k = KINDS[f.kind], r = isArch(f.parent) ? reasonOf(f) : null;
+    return `<tr draggable="true" data-file="${f.id}" class="${S.sel.has(f.id) ? "sel" : ""} ${S.active === f.id ? "focus" : ""}">
+      <td class="c-chk"><input class="chk" type="checkbox" data-chk="${f.id}" ${S.sel.has(f.id) ? "checked" : ""} aria-label="בחירת ${esc(f.name)}"/></td>
+      <td class="c-ico">${fileIcon(f)}</td>
+      <td><div class="nm"><a class="t" data-a="open" data-id="${f.id}">${nh(f.name)}</a>${oldChip(f)}${it.mode === "search" ? `<span class="path">${esc(pathStr(f.parent))}</span>` : ""}</div></td>
+      ${arch ? `<td>${r ? `<span class="reason ${r.c}">${esc(r.t)}</span>` : ""}</td>` : ""}
+      <td class="c-kind"><span class="chip kind ${k.cls}">${k.label}</span></td>
+      ${arch ? "" : `<td class="c-st"><span class="chip kind st-${f.status}">${ST[f.status]}</span></td>`}
+      <td class="c-size num"><span class="sz">${fmtSize(f.size)}</span></td>
+      ${arch ? "" : `<td class="c-add num" title="${rel(f.added)}">${fmtS(f.added)}<span class="sub">${f.who}</span></td>`}
+      <td class="c-mod num">${arch ? fmtS(archivedAt(f)) : fmtS(f.modified)}<span class="sub">${arch ? rel(archivedAt(f)) : rel(f.modified)}</span></td>
+      <td style="white-space:nowrap">${arch && f.from ? "" : ""}<button class="kebab" data-a="menu" data-id="${f.id}" aria-haspopup="menu" aria-label="פעולות">${ico("more")}</button></td>
+      ${arch ? `<td>${isArch(f.parent) ? `<button class="btn btn-ghost btn-sm" data-a="restore" data-id="${f.id}">${ico("restore")}שחזר למקום</button>` : ""}</td>` : ""}</tr>`;
+  }).join("");
+  const reasonTh = arch ? `<th>${it.mode === "arch" && S.cur !== "arch" ? "סיבת העברה" : "סיבת העברה / הערה"}</th>` : "";
+  el.innerHTML = head + `<div class="tbl-wrap"><table><thead><tr>
+    <th class="c-chk"><input class="chk" type="checkbox" id="selAll" data-a="selall" ${allSel ? "checked" : ""} aria-label="בחירת הכול"/></th><th class="c-ico"></th><th>שם באתר</th>${reasonTh}<th class="c-kind">סוג</th>${arch ? "" : `<th class="c-st">סטטוס</th>`}
+    <th class="c-size">גודל</th>${arch ? "" : `<th class="c-add">נוסף</th>`}<th class="c-mod">${arch ? "הועבר לארכיון" : "עודכן"}</th><th></th>${arch ? "<th></th>" : ""}</tr></thead>
+    <tbody>${folderRows}${fileRows}</tbody></table></div>`;
+  const sa = $("#selAll"); if (sa) sa.indeterminate = !allSel && some;
+}
+
+function renderGrid(it) {
+  const fo = it.folders.map(n => `<div class="gcard" data-drop="${n.id}" data-a="nav" data-id="${n.id}"><span class="fi folder">${n.id === "arch" ? "📦" : ico("folder")}</span><div class="gn">${esc(n.name)}</div>
+    <div class="gm">${count(n.id)} קבצים ${n.type !== "archive" && missingCount(n.id) ? `<span class="miss">חסר ${missingCount(n.id)}</span>` : ""}</div></div>`).join("");
+  const fi = it.files.map(f => {
+    const k = KINDS[f.kind], r = isArch(f.parent) ? reasonOf(f) : null;
+    return `<div class="gcard ${S.sel.has(f.id) ? "sel" : ""}" draggable="true" data-file="${f.id}" data-a="open" data-id="${f.id}">
+      <input class="chk" type="checkbox" data-chk="${f.id}" ${S.sel.has(f.id) ? "checked" : ""} aria-label="בחירה"/>
+      ${fileIcon(f)}<div class="gn">${nh(f.name)}</div>
+      <div class="gm"><span class="chip kind ${k.cls}">${k.label}</span>${r ? `<span class="reason ${r.c}">${esc(r.t)}</span>` : `<span class="chip kind st-${f.status}">${ST[f.status]}</span>`}</div>
+      <div class="gm">${oldChip(f)}<span class="sz">${fmtSize(f.size)}</span><button class="kebab" style="margin-inline-start:auto" data-a="menu" data-id="${f.id}" aria-label="פעולות">${ico("more")}</button></div></div>`;
+  }).join("");
+  return `<div class="gridv">${fo}${fi}</div>`;
+}
+
+function renderBulk() {
+  const n = S.sel.size;
+  $("#bulk").innerHTML = n ? `<div class="bulk" role="toolbar" aria-label="פעולות על הנבחרים"><b>${n} נבחרו</b>
+    <button class="btn" data-a="bulk-move">${ico("move")}העבר ל…</button>
+    <button class="btn" data-a="bulk-arch">${ico("archive")}העבר לארכיון</button>
+    <button class="btn" data-a="bulk-status" id="bulkSt">${ico("status")}שנה סטטוס</button>
+    <button class="btn x" data-a="bulk-clear">${ico("x")}ביטול בחירה</button></div>` : "";
+}
+
+/* ---- פאנל פרטים ---- */
+function renderPanel() {
+  const p = $("#panel"), f = S.active && find(S.active);
+  document.body.classList.toggle("panel-open", !!f);
+  if (!f) { p.classList.remove("open"); $("#pscrim").classList.remove("on"); return; }
+  const k = KINDS[f.kind], olds = oldNames(f), arch = isArch(f.parent);
+  const tl = [...f.hist].sort((a, b) => b.t - a.t);
+  p.innerHTML = `<div class="panel-h">${fileIcon(f)}<div><h4>${nh(f.name)}</h4><div class="chips" style="margin-top:.35rem"><span class="chip kind ${k.cls}">${k.label}</span>${arch ? `<span class="reason ${reasonOf(f).c}">${esc(reasonOf(f).t)}</span>` : `<span class="chip kind st-${f.status}">${ST[f.status]}</span>`}</div></div>
+      <button class="xbtn" data-a="panel-close" aria-label="סגירה">${ico("x")}</button></div>
+    <div class="panel-b">
+      <dl class="dl">
+        <dt>מיקום</dt><dd>${esc(pathStr(f.parent))}</dd>
+        <dt>מזהה דרייב</dt><dd><span class="idrow"><span class="mono">${esc(f.drive)}</span><button class="copy" data-a="copyid" data-id="${f.id}">העתק</button></span></dd>
+        <dt>קישור</dt><dd><a class="mono" style="color:var(--sea);text-decoration:underline" href="#" onclick="return false">drive.google.com/file/d/${esc(f.drive.slice(0, 10))}…</a></dd>
+        <dt>נוסף</dt><dd>${fmtD(f.added, true)} ${fmtT(f.added)} <span class="muted">(${rel(f.added)})</span></dd>
+        <dt>ע״י</dt><dd>${esc(f.who)}</dd>
+        <dt>עודכן</dt><dd>${fmtD(f.modified, true)} ${fmtT(f.modified)}</dd>
+        <dt>גודל</dt><dd>${fmtSize(f.size)} · ${f.ext.toUpperCase()}</dd>
+        ${olds.length ? `<dt>שמות קודמים</dt><dd>${olds.map(o => `<span class="old" style="max-width:none;cursor:default">${ico("history")}<span>${nh(o.name)}</span></span>`).join(" ")}</dd>` : ""}
+      </dl>
+      <div><div class="sec-t">${ico("history")}היסטוריית שמות והעברות</div>
+        <ol class="tl">${tl.map(e => `<li class="${e.type}"><span class="when">${fmtD(e.t)} · ${fmtT(e.t)} · ${esc(e.who)}</span>${evText(e)}</li>`).join("")}</ol></div>
+    </div>
+    <div class="panel-f">
+      <button class="btn btn-ghost" data-a="m-rename" data-id="${f.id}">${ico("pencil")}שנה שם</button>
+      <button class="btn btn-ghost" data-a="m-move" data-id="${f.id}">${ico("move")}העבר ל…</button>
+      <button class="btn btn-ghost" data-a="m-drive" data-id="${f.id}">${ico("ext")}פתח בדרייב</button>
+    </div>`;
+  p.classList.add("open"); $("#pscrim").classList.toggle("on", true);
+}
+
+/* ---------- פעולות ---------- */
+function toast(msg, undo) {
+  const t = document.createElement("div"); t.className = "toast"; t.innerHTML = `<span>${msg}</span>${undo ? `<button>בטלי</button>` : ""}`;
+  $("#toasts").appendChild(t);
+  if (undo) t.querySelector("button").onclick = () => { undo(); t.remove(); };
+  setTimeout(() => t.remove(), undo ? 6500 : 3800);
+}
+function moveFiles(ids, dest, opts = {}) {
+  const prev = ids.map(id => { const f = find(id); return { id, parent: f.parent, from: f.from, of: f.of, hlen: f.hist.length }; });
+  let moved = 0;
+  ids.forEach(id => {
+    const f = find(id); if (!f || f.parent === dest) return;
+    const old = f.parent, toArch = isArch(dest), fromArch = isArch(old);
+    if (toArch && !fromArch) {
+      f.from = old; const sib = files.find(x => x.parent === old && x.kind === f.kind && x.id !== f.id);
+      f.of = dest === "arch-old" ? (opts.of || (sib ? sib.name : null)) : null;
+      f.hist.push({ t: now(), type: "archive", reason: dest === "arch-orph" ? "יתום" : dest === "arch-old" ? "גרסה ישנה" : "לא ברור", from: pathStr(old), who: "משה" });
+    } else if (fromArch && !toArch) { f.hist.push({ t: now(), type: "restore", to: pathStr(dest), who: "משה" }); f.from = null; f.of = null; }
+    else f.hist.push({ t: now(), type: "move", from: pathStr(old), to: pathStr(dest), who: "משה" });
+    if (toArch && fromArch) { f.of = dest === "arch-old" ? (f.of || "—") : null; }
+    f.parent = dest; touch(old); touch(dest); moved++;
+  });
+  if (!moved) return 0;
+  S.sel.clear();
+  const undo = () => { prev.forEach(p => { const f = find(p.id); touch(f.parent); f.parent = p.parent; f.from = p.from; f.of = p.of; f.hist.length = p.hlen; touch(p.parent); }); renderAll(); };
+  toast(`${moved === 1 ? "הקובץ הועבר" : `${moved} קבצים הועברו`} אל <b>${esc(nodes[dest].name)}</b> · גם בדרייב וגם באתר`, undo);
+  renderAll(); return moved;
+}
+function restoreFile(id) {
+  const f = find(id); let dest = f.from;
+  if (!dest) { dest = "c-neh6"; }
+  const n = moveFiles([id], dest);
+  return n;
+}
+
+/* ---- תפריט ⋯ ---- */
+function closeMenu() { $("#menuHost").innerHTML = ""; document.querySelectorAll('[aria-expanded="true"].kebab').forEach(b => b.setAttribute("aria-expanded", "false")); }
+function showMenu(anchor, items) {
+  closeMenu();
+  const h = items.map(i => i === "-" ? "<hr/>" : `<button role="menuitem" class="${i.danger ? "danger" : ""}" data-m="${i.k}">${ico(i.ic)}${i.t}</button>`).join("");
+  const m = document.createElement("div"); m.className = "menu"; m.setAttribute("role", "menu"); m.innerHTML = h; $("#menuHost").appendChild(m);
+  const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  let left = Math.min(Math.max(8, r.left), innerWidth - mw - 8), top = r.bottom + 4; if (top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 4);
+  m.style.left = left + "px"; m.style.top = top + "px";
+  anchor.setAttribute("aria-expanded", "true");
+}
+function fileMenu(fid, anchor) {
+  const f = find(fid); S.ctx = [fid];
+  showMenu(anchor, [
+    { k: "rename", t: "שנה שם", ic: "pencil" }, { k: "move", t: "העבר ל…", ic: "move" }, { k: "history", t: "היסטוריה", ic: "history" }, { k: "drive", t: "פתח בדרייב", ic: "ext" }, "-",
+    isArch(f.parent) ? { k: "restore", t: "שחזר למקום", ic: "restore" } : { k: "archive", t: "העבר לארכיון", ic: "archive" },
+    { k: "delete", t: "מחק", ic: "trash", danger: true },
+  ]);
+}
+
+/* ---- דיאלוגים ---- */
+const dlg = $("#dlg");
+function openDlg(html) { dlg.innerHTML = `<div class="dlg-box">${html}</div>`; if (!dlg.open) dlg.showModal(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
+function closeDlg() { if (dlg.open) dlg.close(); }
+dlg.addEventListener("click", e => { if (e.target === dlg) closeDlg(); });
+const dlgHead = (t, icn) => `<div class="dlg-h">${icn ? ico(icn) : ""}<h3>${t}</h3><button class="xbtn" data-a="dlg-close" aria-label="סגירה">${ico("x")}</button></div>`;
+
+function pickRows(id, depth, sel, only) {
+  const n = nodes[id], ok = touchable(id) && (!only || only(id));
+  const kids = n.children.map(c => pickRows(c, depth + 1, sel, only)).join("");
+  if (id === "root") return kids;
+  const icon = n.id === "arch" ? "📦" : ico("folder");
+  return `<button class="prow ${sel === id ? "on" : ""}" style="--d:${depth}" data-a="pick" data-id="${id}" ${ok ? "" : "disabled"} ${ok ? "" : `title="אפשר להעביר רק ליחידה, לפרק או לארכיון"`}>${icon}<span>${esc(n.name)}</span><span class="cnt">${count(id)}</span><span class="rad"></span></button>${kids}`;
+}
+function openMove(ids) {
+  S.ctx = ids; S.pick = null;
+  const names = ids.length === 1 ? `‘${esc(find(ids[0]).name)}’` : `${ids.length} קבצים נבחרו`;
+  openDlg(`${dlgHead("העבר ל…", "move")}<p class="dlg-sub">${names}. בחרי תיקיית יעד — המבנה זהה לעץ הקטגוריות באתר, וההעברה תתבצע בשני המקומות.</p>
+    <div class="picker" id="picker">${pickRows("root", -1, null)}</div>
+    <div class="dlg-f"><span class="grow" id="pickLbl">לא נבחר יעד</span><button class="btn btn-ghost" data-a="dlg-close">ביטול</button><button class="btn btn-oak" id="pickGo" data-a="do-move" disabled>העבר</button></div>`);
+}
+function openRename(fid) {
+  const f = find(fid); S.ctx = [fid];
+  openDlg(`${dlgHead("שנה שם", "pencil")}
+    <label class="field">שם חדש<input class="input" id="rnIn" value="${esc(f.name)}" autocomplete="off" /></label>
+    <div class="diff"><div><i>עד עכשיו</i><s id="rnOld">${nh(f.name)}</s></div><div><i>יהיה</i><em id="rnNew">${nh(f.name)}</em></div></div>
+    <div class="notice">${ico("history")}<div><b>השם הישן יישמר.</b> הוא יוצג בטבלה כתגית “שם ישן” ויופיע בהיסטוריית הקובץ ובקובץ המידע של התיקייה — כך תמיד אפשר לדעת איך קראו לו בעבר ולחפש לפיו. הקובץ בדרייב נשאר עם אותו מזהה, אז קישורים קיימים לא נשברים.</div></div>
+    <div class="dlg-f"><button class="btn btn-ghost" data-a="dlg-close">ביטול</button><button class="btn btn-oak" data-a="do-rename">שמור שם</button></div>`);
+  const i = $("#rnIn"); i.focus(); i.select(); i.addEventListener("input", () => { $("#rnNew").innerHTML = nh(i.value); });
+}
+function openHistory(fid) {
+  const f = find(fid), tl = [...f.hist].sort((a, b) => b.t - a.t), olds = oldNames(f);
+  openDlg(`${dlgHead("היסטוריה", "history")}<p class="dlg-sub">${nh(f.name)} · ${esc(pathStr(f.parent))}</p>
+    ${olds.length ? `<div><div class="sec-t">שמות קודמים</div><div class="chips">${olds.map(o => `<span class="old" style="max-width:none;cursor:default">${ico("history")}<span>${nh(o.name)} <span class="muted">(עד ${fmtD(o.t)})</span></span></span>`).join("")}</div></div>` : ""}
+    <div><div class="sec-t">ציר זמן</div><ol class="tl">${tl.map(e => `<li class="${e.type}"><span class="when">${fmtD(e.t, true)} · ${fmtT(e.t)} · ${esc(e.who)}</span>${evText(e)}</li>`).join("")}</ol></div>
+    <div class="dlg-f"><span class="grow">מזהה דרייב: <span class="mono">${esc(f.drive.slice(0, 14))}…</span></span><button class="btn btn-oak" data-a="dlg-close">סגירה</button></div>`);
+}
+function openArchive(ids) {
+  S.ctx = ids;
+  const f = find(ids[0]);
+  openDlg(`${dlgHead("העבר לארכיון", "archive")}<p class="dlg-sub">${ids.length === 1 ? `‘${esc(f.name)}’` : `${ids.length} קבצים`} יעברו לתיקיית <b>_ארכיון</b> בדרייב ויוסרו מהאתר. אפשר לשחזר בכל עת.</p>
+    <label class="opt"><input type="radio" name="ar" value="arch-old" checked><span><b>גרסה ישנה</b><small>הוחלף בקובץ חדש — הקובץ החדש ייקשר אוטומטית</small></span></label>
+    <label class="opt"><input type="radio" name="ar" value="arch-orph"><span><b>יתום</b><small>אין לו שורה באתר / לא שייך לאף פרק</small></span></label>
+    <label class="opt"><input type="radio" name="ar" value="arch-unk"><span><b>לא ברור</b><small>אחליט בהמשך</small></span></label>
+    <div class="dlg-f"><button class="btn btn-ghost" data-a="dlg-close">ביטול</button><button class="btn btn-terra" data-a="do-arch">${ico("archive")}העבר לארכיון</button></div>`);
+}
+function openNewFolder() {
+  const n = nodes[S.cur], child = { root: "מקצוע", subject: "מסלול", track: "יחידה", unit: "פרק" }[n.type];
+  if (!child) { toast(n.type === "chapter" ? "בתוך פרק אי אפשר ליצור תיקייה — בחרי יחידה." : "בארכיון אי אפשר ליצור תיקיות חדשות."); return; }
+  openDlg(`${dlgHead("תיקייה חדשה", "folder")}<p class="dlg-sub">תיווצר ${child} חדש/ה תחת <b>${esc(n.id === "root" ? "הדרייב" : n.name)}</b> — גם בעץ הקטגוריות של האתר וגם בדרייב.</p>
+    <label class="field">שם ה${child}<input class="input" id="nfIn" placeholder="למשל: ${child === "פרק" ? "פרק ט'" : "…"}" autocomplete="off"/></label>
+    <div class="dlg-f"><button class="btn btn-ghost" data-a="dlg-close">ביטול</button><button class="btn btn-oak" data-a="do-newfolder">צור תיקייה</button></div>`);
+  $("#nfIn").focus();
+}
+function openDelete(ids) {
+  S.ctx = ids; const f = find(ids[0]);
+  openDlg(`${dlgHead("מחיקה", "trash")}<div class="notice">${ico("warn")}<div><b>${ids.length === 1 ? `למחוק את ‘${esc(f.name)}’?` : `למחוק ${ids.length} קבצים?`}</b> המחיקה סופית — הקובץ ייעלם מהאתר ומהדרייב, יחד עם ההיסטוריה שלו. אם יש ספק, עדיף להעביר לארכיון.</div></div>
+    <div class="dlg-f"><button class="btn btn-ghost" data-a="dlg-close">ביטול</button><button class="btn btn-ghost" data-a="to-arch">${ico("archive")}העבר לארכיון במקום</button><button class="btn btn-terra" data-a="do-delete">${ico("trash")}מחק סופית</button></div>`);
+}
+
+/* ---- הורדה / סנכרון ---- */
+function download(name, text) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + text], { type: "text/plain;charset=utf-8" })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+function doSync() {
+  const b = $("#syncBtn"); b.classList.add("spin"); b.disabled = true; toast("מסנכרן עם הדרייב…");
+  setTimeout(() => {
+    b.classList.remove("spin"); b.disabled = false;
+    if (!S.synced) {
+      S.synced = true;
+      files.push({ id: "f" + (fseq++), kind: "other", status: "draft", parent: "arch-orph", ext: "docx", drive: gid(), name: "יחזקאל ח' – סיכום סופי.docx", size: 112, added: now(), modified: now(), who: "סנכרון", of: null, from: null, hist: [{ t: now(), type: "add", who: "סנכרון" }, { t: now(), type: "archive", reason: "יתום", from: "הדרייב (ללא שיוך באתר)", who: "סנכרון" }] });
+      touch("arch-orph"); toast("הסנכרון הסתיים: נמצא קובץ אחד בדרייב שאין לו שורה באתר — הועבר ל<b>_ארכיון › יתומים</b>.");
+    } else toast("הסנכרון הסתיים: הדרייב והאתר תואמים.");
+    $("#syncNote").textContent = "סונכרן לאחרונה: הרגע"; renderAll();
+  }, 1300);
+}
+
+/* ---------- אירועים ---------- */
+function selectedIds() { return [...S.sel]; }
+function navTo(id) { S.cur = id; S.q = ""; $("#q").value = ""; S.sel.clear(); S.infoBig = false; closeDrawer();
+  for (let n = nodes[id]; n; n = nodes[n.parent]) S.exp.add(n.id); if (nodes[id].children.length) S.exp.add(id); renderAll(); }
+const openDrawer = () => { $("#tree").classList.add("open"); $("#scrim").classList.add("on"); };
+function closeDrawer() { $("#tree").classList.remove("open"); $("#scrim").classList.remove("on"); }
+
+document.addEventListener("click", e => {
+  const mi = e.target.closest("[data-m]");
+  if (mi) { const k = mi.dataset.m, ids = S.ctx || []; closeMenu();
+    if (k === "rename") openRename(ids[0]); else if (k === "move") openMove(ids); else if (k === "history") openHistory(ids[0]);
+    else if (k === "drive") toast("נפתח בדרייב בלשונית חדשה (דמו)"); else if (k === "archive") openArchive(ids); else if (k === "delete") openDelete(ids);
+    else if (k === "restore") restoreFile(ids[0]);
+    else if (k.startsWith("st-")) { const st = k.slice(3); ids.forEach(id => { const f = find(id); if (f.status !== st) { f.hist.push({ t: now(), type: "status", from: ST[f.status], to: ST[st], who: "משה" }); f.status = st; touch(f.parent); } }); toast(`הסטטוס עודכן ל-<b>${ST[st]}</b> עבור ${ids.length} קבצים`); S.sel.clear(); renderAll(); }
+    return; }
+  if (!e.target.closest(".menu") && !e.target.closest("[data-a=menu]") && !e.target.closest("#bulkSt")) closeMenu();
+  const t = e.target.closest("[data-a]"); if (!t) return;
+  const a = t.dataset.a, id = t.dataset.id;
+  if (a === "menu") { e.stopPropagation(); fileMenu(id, t); return; }
+  if (a === "nav") { if (e.target.closest("[data-a=tog]") || e.target.closest(".chk")) { if (!e.target.closest("[data-a=tog]")) return; } else { navTo(id); return; } }
+  if (a === "tog") { e.stopPropagation(); S.exp.has(id) ? S.exp.delete(id) : S.exp.add(id); renderTree(); return; }
+  switch (a) {
+    case "exp-all": Object.keys(nodes).forEach(k => nodes[k].children.length && S.exp.add(k)); renderTree(); break;
+    case "exp-none": S.exp.clear(); S.exp.add("root"); renderTree(); break;
+    case "view": S.view = t.dataset.v; document.querySelectorAll("[data-a=view]").forEach(b => b.setAttribute("aria-pressed", b === t)); renderList(); break;
+    case "rec": S.recursive = t.checked; renderList(); break;
+    case "open": if (e.target.closest(".chk")) break; if (e.target.closest("[data-a=menu]")) break; if (e.target.closest("[data-a=hist]")) break; S.active = id; renderList(); renderPanel(); break;
+    case "hist": e.stopPropagation(); openHistory(id); break;
+    case "panel-close": S.active = null; renderList(); renderPanel(); break;
+    case "drawer-open": openDrawer(); break;
+    case "drawer-close": closeDrawer(); break;
+    case "newfolder": openNewFolder(); break;
+    case "sync": doSync(); break;
+    case "dlinfo": download("_מידע.txt", infoPlain(infoModel(S.cur))); toast("הורד הקובץ <b>_מידע.txt</b> (" + esc(nodes[S.cur].name) + ")"); break;
+    case "opendrive": toast("נפתחת התיקייה בדרייב בלשונית חדשה (דמו): " + esc(drivePath(S.cur))); break;
+    case "m-rename": openRename(id); break;
+    case "m-move": openMove([id]); break;
+    case "m-drive": toast("נפתח בדרייב בלשונית חדשה (דמו)"); break;
+    case "copyid": navigator.clipboard && navigator.clipboard.writeText(find(id).drive).catch(() => {}); t.textContent = "הועתק ✓"; break;
+    case "restore": restoreFile(id); break;
+    case "info-expand": S.infoBig = !S.infoBig; renderInfo(); break;
+    case "info-refresh": { const b = $("#bRefresh"); b.classList.add("spin"); setTimeout(() => { renderInfo(); toast("הקובץ נוצר מחדש מנתוני האתר ברגע זה"); }, 700); break; }
+    case "info-up": { const b = $("#bUp"); b.disabled = true; b.innerHTML = ico("refresh", "spin") + "מעלה…"; b.classList.add("spin");
+      setTimeout(() => { S.upl[S.cur] = { rev: S.rev[S.cur] || 0, t: now() }; renderInfo(); toast(`הועלה לדרייב: <span dir="ltr" class="mono">${esc(drivePath(S.cur))}/_מידע.txt</span>`); }, 1000); break; }
+    case "bulk-move": openMove(selectedIds()); break;
+    case "bulk-arch": openArchive(selectedIds()); break;
+    case "bulk-clear": S.sel.clear(); renderList(); renderBulk(); break;
+    case "bulk-status": S.ctx = selectedIds(); showMenu(t, Object.entries(ST).map(([k, v]) => ({ k: "st-" + k, t: v, ic: "status" }))); break;
+    case "dlg-close": closeDlg(); break;
+    case "pick": S.pick = id; document.querySelectorAll(".prow").forEach(r => r.classList.toggle("on", r.dataset.id === id)); $("#pickLbl").innerHTML = "יעד: " + esc(pathStr(id)); $("#pickGo").disabled = false; break;
+    case "do-move": { if (!S.pick) break; const ids = S.ctx; closeDlg(); moveFiles(ids, S.pick); break; }
+    case "do-rename": { const f = find(S.ctx[0]), v = $("#rnIn").value.trim(); closeDlg(); if (!v || v === f.name) { toast("השם לא השתנה"); break; }
+      f.hist.push({ t: now(), type: "rename", from: f.name, to: v, who: "משה" }); f.name = v; f.modified = now(); touch(f.parent);
+      toast(`השם שונה. הישן נשמר כתגית <b>שם ישן</b>`); renderAll(); break; }
+    case "do-arch": { const dest = document.querySelector('input[name=ar]:checked').value, ids = S.ctx; closeDlg(); moveFiles(ids, dest); break; }
+    case "do-delete": { const ids = S.ctx; closeDlg(); ids.forEach(i => { const f = find(i); touch(f.parent); files.splice(files.indexOf(f), 1); S.sel.delete(i); if (S.active === i) S.active = null; }); toast(`נמחקו ${ids.length} קבצים`); renderAll(); break; }
+    case "to-arch": { const ids = S.ctx; openArchive(ids); break; }
+    case "do-newfolder": { const v = $("#nfIn").value.trim(); if (!v) { $("#nfIn").focus(); break; }
+      const par = nodes[S.cur], type = { root: "subject", subject: "track", track: "unit", unit: "chapter" }[par.type];
+      const nid = "n" + (fseq++); mk(nid, v, type, par.id, type === "chapter" ? { lbl: `${par.name} ${v}` } : {}); S.exp.add(par.id); closeDlg(); toast(`נוצרה התיקייה <b>${esc(v)}</b> בעץ וגם בדרייב`); renderAll(); break; }
+  }
+});
+document.addEventListener("change", e => {
+  const c = e.target.closest("[data-chk]");
+  if (c) { c.checked ? S.sel.add(c.dataset.chk) : S.sel.delete(c.dataset.chk); renderList(); renderBulk(); return; }
+  if (e.target.id === "selAll") { const it = currentItems(); it.files.forEach(f => e.target.checked ? S.sel.add(f.id) : S.sel.delete(f.id)); renderList(); renderBulk(); }
+});
+$("#q").addEventListener("input", e => { S.q = e.target.value; renderList(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeMenu(); closeDrawer(); } });
+window.addEventListener("scroll", closeMenu, { passive: true });
+
+/* ---- טולטיפ של השם הישן ---- */
+const tip = $("#tip");
+document.addEventListener("mouseover", e => {
+  const o = e.target.closest("[data-oldtip]"); if (!o) return;
+  const f = find(o.dataset.oldtip); if (!f) return;
+  tip.innerHTML = `<h5>היסטוריית שמות — לחיצה לפרטים</h5>` + oldNames(f).map(x => `<div><i>${fmtD(x.t)}</i><span>${nh(x.name)}</span></div>`).join("") + `<div><i>היום</i><span><b>${nh(f.name)}</b></span></div>`;
+  const r = o.getBoundingClientRect(); tip.classList.add("on");
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - tip.offsetWidth - 8)) + "px"; tip.style.top = (r.bottom + 6 + tip.offsetHeight > innerHeight ? r.top - tip.offsetHeight - 6 : r.bottom + 6) + "px";
+});
+document.addEventListener("mouseout", e => { if (e.target.closest("[data-oldtip]")) tip.classList.remove("on"); });
+
+/* ---- גרירה ושחרור (דמו) ---- */
+document.addEventListener("dragstart", e => {
+  const r = e.target.closest("[data-file]"); if (!r) return;
+  const id = r.dataset.file; const ids = S.sel.has(id) ? selectedIds() : [id]; S.drag = ids;
+  e.dataTransfer.setData("text/plain", ids.join(",")); e.dataTransfer.effectAllowed = "move";
+  const g = document.createElement("div"); g.className = "ghost-drag"; g.textContent = ids.length === 1 ? find(id).name : `${ids.length} קבצים`; document.body.appendChild(g);
+  e.dataTransfer.setDragImage(g, 10, 10); setTimeout(() => g.remove(), 0);
+  setTimeout(() => ids.forEach(i => document.querySelector(`[data-file="${i}"]`)?.classList.add("dragging")), 0);
+});
+document.addEventListener("dragend", () => { S.drag = null; document.querySelectorAll(".dragging,.dragover,.nodrop").forEach(x => x.classList.remove("dragging", "dragover", "nodrop")); });
+document.addEventListener("dragover", e => {
+  if (!S.drag) return; const t = e.target.closest("[data-drop]"); document.querySelectorAll(".dragover,.nodrop").forEach(x => x !== t && x.classList.remove("dragover", "nodrop"));
+  if (!t) return; const ok = touchable(t.dataset.drop); if (ok) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } t.classList.add(ok ? "dragover" : "nodrop");
+});
+document.addEventListener("drop", e => {
+  if (!S.drag) return; const t = e.target.closest("[data-drop]"); if (!t) return; e.preventDefault();
+  const dest = t.dataset.drop, ids = S.drag; S.drag = null; document.querySelectorAll(".dragover,.nodrop,.dragging").forEach(x => x.classList.remove("dragover", "nodrop", "dragging"));
+  if (!touchable(dest)) { toast("אפשר לשחרר רק על יחידה, פרק או על _ארכיון."); return; }
+  const n = moveFiles(ids, dest); if (!n) toast("הקבצים כבר נמצאים בתיקייה הזו");
+});
+
+renderAll();
+})();
+</script>
+</body>
+</html>

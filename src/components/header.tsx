@@ -61,10 +61,12 @@ function CartLink({ count, className, onClick, withLabel }: { count: number; cla
 }
 
 const NAV = [
+  { href: "/", label: "בית" },
   { href: "/subjects", label: "המקצועות" },
   { href: "/map", label: "מפת הבגרות" },
   { href: "/pricing", label: "מסלולים" },
   { href: "/coupons", label: "קופונים זמינים" },
+  { href: "/account/downloads", label: "ההורדות שלי" },
 ];
 
 /** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */
@@ -98,18 +100,15 @@ export function Header({ user }: { user: HeaderUser }) {
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1 ms-6" aria-label="ניווט ראשי">
+        <nav className="hidden lg:flex items-center gap-1 ms-6" aria-label="ניווט ראשי">
           {NAV.map((n) => {
-            const active = path === n.href || path.startsWith(n.href + "/");
+            const active = n.href === "/" ? path === "/" : path === n.href || path.startsWith(n.href + "/");
             return (
               <Link
                 key={n.href}
                 href={n.href}
-                className={`px-3 py-2 rounded-full text-[15px] font-semibold transition-colors transition-transform hover:-translate-y-0.5 ${
-                  active
-                    ? "bg-white/10 text-sun"
-                    : "text-white/90 hover:text-sun"
-                }`}
+                aria-current={active ? "page" : undefined}
+                className="nav-btn hover:-translate-y-0.5"
               >
                 {n.label}
               </Link>
@@ -118,7 +117,7 @@ export function Header({ user }: { user: HeaderUser }) {
           <SearchTriggerButton className="grid h-9 w-9 place-items-center rounded-full text-white/90 transition-colors transition-transform hover:-translate-y-0.5 hover:bg-white/10 hover:text-sun" />
         </nav>
 
-        <div className="ms-auto hidden md:flex items-center gap-2">
+        <div className="ms-auto hidden lg:flex items-center gap-2">
           {user ? (
             <>
               {user.role === "admin" && (
@@ -157,7 +156,7 @@ export function Header({ user }: { user: HeaderUser }) {
           )}
         </div>
 
-        <div className="ms-auto md:hidden flex items-center gap-1">
+        <div className="ms-auto lg:hidden flex items-center gap-1">
           {user && (
             <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-white/10 text-white/80" />
           )}
@@ -173,14 +172,14 @@ export function Header({ user }: { user: HeaderUser }) {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-sea/10 bg-plaster/95 animate-fade-up">
-          <nav className="flex flex-col p-4 gap-1" aria-label="ניווט נייד">
+        <div className="lg:hidden border-t border-sea/10 bg-plaster/95 animate-fade-up">
+          <nav className="flex flex-col p-4 gap-2" aria-label="ניווט נייד">
             {NAV.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-xl hover:bg-blue-soft font-semibold transition-transform hover:-translate-y-0.5"
+                className="nav-btn justify-center py-2.5"
               >
                 {n.label}
               </Link>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { LogIn, ShieldCheck, Download, Sparkles } from "lucide-react";
+import { LogIn, ShieldCheck, Download } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { getBool } from "@/lib/settings";
 import { googleConfigured } from "@/lib/google-oauth";
@@ -32,8 +32,8 @@ export default async function LoginPage({
       title="ברוכה השבה, מורה"
       subtitle="התחברי כדי להוריד חומרים ולנהל את המנוי שלך"
       aside={
-        <div className="space-y-4">
-          <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+        <div className="space-y-4" style={{ fontFamily: "var(--font-hand)" }}>
+          <h2 className="text-3xl sm:text-4xl font-bold leading-tight">
             כל השיעורים המוכנים,
             <br />
             <span className="gold-text">במקום אחד</span>
@@ -53,14 +53,6 @@ export default async function LoginPage({
               </span>
               <span>
                 <b>מספר אישי</b> מוטבע על כל קובץ – החומרים שלך נשארים שלך.
-              </span>
-            </li>
-            <li className="flex gap-3 items-start">
-              <span className="grid place-items-center h-9 w-9 rounded-xl bg-gold-soft text-[#8a6500] shrink-0">
-                <Sparkles className="h-4 w-4" />
-              </span>
-              <span>
-                <b>פרימיום</b> פותח פורום מורות, טיפים למסירה ורעיונות לשיעור.
               </span>
             </li>
           </ul>

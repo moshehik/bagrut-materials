@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { UserPlus, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { getBool } from "@/lib/settings";
 import { googleConfigured } from "@/lib/google-oauth";
-import { AuthShell } from "@/components/auth-shell";
 import { RegisterForm } from "@/components/auth-forms";
 
 export const metadata: Metadata = { title: "הצטרפות" };
@@ -29,28 +28,34 @@ export default async function RegisterPage({
   const googleEnabled = googleConfigured() && (await getBool("google_login_enabled"));
 
   return (
-    <AuthShell
-      logoHeader
-      icon={<UserPlus className="h-6 w-6" />}
-      title="הצטרפי ללו״ז העניין"
-      subtitle="ההרשמה חינמית ולוקחת פחות מדקה"
-      aside={
-        <div className="card p-6 sm:p-8 bg-gradient-to-br from-white to-blue-soft/60">
-          <h2 className="font-display text-2xl font-bold mb-4">מה מחכה לך בפנים?</h2>
-          <ul className="space-y-3">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
+      <div className="gate-title animate-fade-up flex flex-col items-center justify-center gap-y-4 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/logo-black.png" alt="לו״ז העניין" className="w-52 sm:w-64" />
+        <div>
+          <h1 className="text-4xl md:text-5xl">הצטרפי ללו״ז העניין</h1>
+          <p className="mt-2 max-w-md">ההרשמה חינמית ולוקחת פחות מדקה.</p>
+        </div>
+      </div>
+
+      <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-labelledby="perks-h">
+        <span className="gold-ring" aria-hidden="true" />
+        <div className="gate-card">
+          <h2 id="perks-h" className="mb-2 text-2xl">מה מחכה לך בפנים?</h2>
+          <ul className="space-y-1">
             {PERKS.map((p) => (
-              <li key={p} className="flex gap-3 items-start text-sm">
-                <span className="grid place-items-center h-6 w-6 rounded-full bg-blue text-white shrink-0 mt-0.5">
-                  <Check className="h-3.5 w-3.5" />
-                </span>
+              <li key={p} className="flex gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/nut-handle.png" alt="" aria-hidden className="mt-0.5 h-6 w-6 shrink-0 object-contain" />
                 <span>{p}</span>
               </li>
             ))}
           </ul>
         </div>
-      }
-    >
-      <RegisterForm next={safeNext} googleEnabled={googleEnabled} />
-    </AuthShell>
+        <div className="mt-8">
+          <RegisterForm next={safeNext} googleEnabled={googleEnabled} />
+        </div>
+      </section>
+    </div>
   );
 }

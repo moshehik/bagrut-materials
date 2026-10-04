@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderOpen, Package, ArrowRight, ShieldCheck } from "lucide-react";
+import { FolderOpen, Package, ArrowRight } from "lucide-react";
+import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import {
   resolvePath,
   getVisibleChildren,
@@ -247,12 +248,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             )}
           </div>
 
-          <p className="mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-soft/60 px-4 py-3 text-sm leading-relaxed text-blue-deep">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-            <span>
-              בכל הורדה מוטבעים בקובץ המספר האישי של המורידה והודעת זכויות יוצרים. כך אנחנו
-              שומרות על היוצרות — ועל המחירים הנמוכים.
-            </span>
+          <p className="relative mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-soft/60 px-4 py-3 text-sm leading-relaxed text-blue-deep">
+            <span className="gold-ring" aria-hidden="true" />
+            <FingerprintMark className="mt-0.5 h-7 w-7 shrink-0" />
+            <WatermarkText />
           </p>
 
           {showBundle && (

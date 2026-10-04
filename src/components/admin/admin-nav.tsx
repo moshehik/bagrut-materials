@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FolderTree,
   FileStack,
+  HardDrive,
   Users,
   HandCoins,
   MessagesSquare,
@@ -20,12 +21,14 @@ import {
   CreditCard,
   Settings,
   PencilLine,
+  Bot,
 } from "lucide-react";
 
 const ITEMS = [
   { href: "/admin", label: "לוח בקרה", icon: LayoutDashboard, exact: true },
   { href: "/admin/categories", label: "עץ הקטגוריות", icon: FolderTree },
   { href: "/admin/materials", label: "חומרים", icon: FileStack },
+  { href: "/admin/drive", label: "סייר דרייב", icon: HardDrive },
   { href: "/admin/users", label: "משתמשות", icon: Users },
   { href: "/admin/fixes", label: "בקשות שינוי", icon: PencilLine },
   { href: "/admin/offers", label: "הצעות מכירה", icon: HandCoins },
@@ -37,6 +40,7 @@ const ITEMS = [
   { href: "/admin/downloads", label: "היסטוריית הורדות", icon: Download },
   { href: "/admin/stats", label: "סטטיסטיקות", icon: BarChart3 },
   { href: "/admin/logs", label: "לוג פעולות", icon: ScrollText },
+  { href: "/admin/agent", label: "סוכן קלוד", icon: Bot },
   { href: "/admin/finance", label: "כספים", icon: Wallet },
   { href: "/admin/subscriptions", label: "מנויים", icon: CreditCard },
   { href: "/admin/settings", label: "הגדרות", icon: Settings },

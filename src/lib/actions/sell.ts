@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { sellOffers } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMailInBackground, templates } from "@/lib/mail";
+import { logAudit } from "@/lib/audit";
 
 export type SellState = { error?: string; ok?: boolean } | undefined;
 
@@ -26,7 +27,10 @@ const schema = z.object({
 /** יצירת הצעת מכירה – נשלחת למנהלת האתר לבדיקה */
 export async function createSellOffer(_prev: SellState, form: FormData): Promise<SellState> {
   const user = await getCurrentUser();
-  if (!user) return { error: "יש להתחבר כדי להציע חומרים" };
+  if (!user) {
+    await logAudit({ action: "sell_offer.denied", entityType: "sell_offer", details: { reason: "login_required" } });
+    return { error: "יש להתחבר כדי להציע חומרים" };
+  }
 
   const parsed = schema.safeParse({
     subject: form.get("subject"),
@@ -35,10 +39,20 @@ export async function createSellOffer(_prev: SellState, form: FormData): Promise
     askingPrice: form.get("askingPrice") ?? "",
     fileUrl: form.get("fileUrl") ?? "",
   });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) {
+    await logAudit({
+      actorId: user.id,
+      action: "sell_offer.denied",
+      entityType: "sell_offer",
+      details: { reason: "validation", message: parsed.error.issues[0].message },
+    });
+    return { error: parsed.error.issues[0].message };
+  }
   const d = parsed.data;
 
-  await db.insert(sellOffers).values({
+  const [created] = await db
+    .insert(sellOffers)
+    .values({
     userId: user.id,
     subject: d.subject,
     title: d.title,
@@ -47,6 +61,14 @@ export async function createSellOffer(_prev: SellState, form: FormData): Promise
     askingPrice: d.askingPrice !== undefined ? Math.round(d.askingPrice * 100) : null,
     fileUrl: d.fileUrl ?? null,
     status: "pending",
+  })
+    .returning({ id: sellOffers.id });
+  await logAudit({
+    actorId: user.id,
+    action: "sell_offer.create",
+    entityType: "sell_offer",
+    entityId: created?.id ?? null,
+    details: { subject: d.subject, title: d.title, hasFile: !!d.fileUrl },
   });
 
   const priceAgorot = d.askingPrice !== undefined ? Math.round(d.askingPrice * 100) : null;

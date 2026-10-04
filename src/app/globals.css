@@ -1802,30 +1802,30 @@ button.underline {
   opacity: 0;
   pointer-events: none;
 }
-.fix-dialog-dark .fix-gate-btn:hover,
-.fix-dialog-dark .fix-gate-btn:focus-visible {
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:hover,
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:focus-visible {
   background: linear-gradient(135deg, #e0aa22 0%, #b8860b 55%, #8f6508 100%);
   color: #000;
   transform: translateY(-2px) scale(1.04);
   box-shadow: 0 10px 24px rgba(143, 101, 8, 0.55), 0 0 0 2px rgba(255, 233, 160, 0.55);
 }
-.fix-dialog-dark .fix-gate-btn:hover::after,
-.fix-dialog-dark .fix-gate-btn:focus-visible::after {
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:hover::after,
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:focus-visible::after {
   opacity: 1;
   animation: gate-shine 1.5s ease-in-out infinite;
 }
-.fix-dialog-dark .fix-gate-btn:hover .fix-gate-arrow,
-.fix-dialog-dark .fix-gate-btn:focus-visible .fix-gate-arrow {
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:hover .fix-gate-arrow,
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:focus-visible .fix-gate-arrow {
   animation: gate-arrow 0.9s ease-in-out infinite;
 }
-.fix-dialog-dark .fix-gate-btn:hover .fix-gate-down,
-.fix-dialog-dark .fix-gate-btn:focus-visible .fix-gate-down {
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:hover .fix-gate-down,
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:focus-visible .fix-gate-down {
   animation-name: gate-down;
 }
-.fix-dialog-dark .fix-gate-btn.fix-disabled {
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn.fix-disabled {
   pointer-events: none;
 }
-.fix-dialog-dark .fix-gate-btn.fix-disabled:hover {
+:is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn.fix-disabled:hover {
   transform: none;
   box-shadow: none;
 }
@@ -1842,10 +1842,784 @@ button.underline {
   50% { transform: translateX(-5px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fix-dialog-dark .fix-gate-btn:hover::after,
-  .fix-dialog-dark .fix-gate-btn:hover .fix-gate-arrow {
+  :is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:hover::after,
+  :is(.fix-dialog-dark, .fix-gate-scope) .fix-gate-btn:hover .fix-gate-arrow {
     animation: none;
   }
+}
+/* מסגרת שחורה עם ברק זהב מסתובב — כמו בהודעה שלפני שינוי קובץ (אלמנט פנימי absolute בתוך מיכל relative) */
+.gold-ring {
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--fx-angle),
+    #0a0a0a 0deg,
+    #0a0a0a 292deg,
+    #b8860b 312deg,
+    #ffd45a 330deg,
+    #fffbe0 342deg,
+    #ffd45a 352deg,
+    #0a0a0a 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: fx-spin 11s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gold-ring {
+    animation: none;
+  }
+}
+/* לחצן בסגנון "הבנתי, להמשיך" מחוץ לחלונית: אותו גופן ידני, זהב עמוק, ברק וחץ מהנהן */
+.btn-gate {
+  position: relative;
+  overflow: hidden;
+  gap: 0.45rem;
+  color: #000;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.btn-gate::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.btn-gate:hover,
+.btn-gate:focus-visible {
+  background: linear-gradient(135deg, #e0aa22 0%, #b8860b 55%, #8f6508 100%);
+  color: #000;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 10px 24px rgba(143, 101, 8, 0.55), 0 0 0 2px rgba(255, 233, 160, 0.55);
+}
+.btn-gate:hover::after,
+.btn-gate:focus-visible::after {
+  opacity: 1;
+  animation: gate-shine 1.5s ease-in-out infinite;
+}
+.btn-gate:hover .fix-gate-arrow,
+.btn-gate:focus-visible .fix-gate-arrow {
+  animation: gate-arrow 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-gate:hover::after,
+  .btn-gate:hover .fix-gate-arrow {
+    animation: none;
+  }
+}
+/* לחצן "מסלולים ומחירים": בריחוף נצבע כחול עם אותיות לבנות, ואייקון נוצץ שזז */
+.btn-plans {
+  gap: 0.5rem;
+  transition: transform 0.2s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.btn-plans .plans-icon {
+  flex-shrink: 0;
+  animation: plans-twinkle 2.6s ease-in-out infinite;
+}
+.btn-plans:hover,
+.btn-plans:focus-visible {
+  background: var(--sea);
+  border-color: var(--sea);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(51, 69, 110, 0.4);
+}
+.btn-plans:hover .plans-icon,
+.btn-plans:focus-visible .plans-icon {
+  animation-duration: 0.9s;
+}
+@keyframes plans-twinkle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-14deg) scale(1.18); }
+  50% { transform: rotate(0deg) scale(0.92); }
+  75% { transform: rotate(14deg) scale(1.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-plans .plans-icon {
+    animation: none;
+  }
+}
+/* עמוד שלם בסגנון ההודעה "שימי לב!": חלונית כחולה כהה (עם .gold-ring בתוכה) וכרטיסי זהב בהיר במסגרת שחורה */
+.gate-panel {
+  position: relative;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: rgba(22, 36, 78, 0.9);
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  line-height: 1.55;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+.gate-panel :is(h1, h2, h3) {
+  font-family: var(--font-hand);
+  font-weight: 400;
+}
+.gate-panel .btn {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.2rem;
+  color: #000;
+}
+.gate-card {
+  position: relative;
+  padding: 1rem 1.1rem;
+  border-radius: 0.8rem;
+  background: #fbefc2;
+  border: 2.5px solid #0a0a0a;
+  color: #000;
+}
+.gate-card .gate-soft {
+  color: #3b3000;
+}
+/* פורום המורות: כל הודעה בריבוע בצבע לפי הסוג, במסגרת שחורה, וובראשו, באפור, שם הסוג (שאלה / הערה / טיפ / תשובה).
+   שאלה – זהב בהיר (כמו כרטיסי "שימי לב!"), הערה – סלמון (גוון של סימון האדום), טיפ – תכלת אפרפר מכובד (גוון קרוב ל-blue-soft של האתר).
+   תשובה – ריבוע בהיר במסגרת זהב מנצנצת (.forum-gold-ring) */
+.fk-question {
+  --fb: #fbefc2;
+}
+.fk-note {
+  --fb: #f7c6b9;
+}
+.fk-tip {
+  --fb: #c8d9e8;
+}
+.fk-answer {
+  --fb: #fbefc2;
+}
+.fk-all {
+  --fb: #fff;
+}
+.forum-box {
+  position: relative;
+  padding: 0.7rem 1rem;
+  border-radius: 0.8rem;
+  background: var(--fb);
+  border: 2.5px solid #0a0a0a;
+  color: #000;
+}
+.forum-box .gate-soft {
+  color: #3b3000;
+}
+/* ריבוע תשובה: רקע בהיר ומסגרת זהב עם ברק שמסתובב (במקום המסגרת השחורה) */
+.forum-box-answer {
+  background: rgba(255, 253, 243, 0.88);
+  border-color: transparent;
+}
+.forum-gold-ring {
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--fx-angle),
+    #c99a1c 0deg,
+    #e8b82e 110deg,
+    #b9852a 200deg,
+    #e8b82e 290deg,
+    #ffd45a 318deg,
+    #fffbe0 336deg,
+    #ffd45a 350deg,
+    #c99a1c 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: fx-spin 7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .forum-gold-ring {
+    animation: none;
+  }
+}
+/* שם הסוג בראש הריבוע (שאלה / הערה / טיפ / תשובה) – באפור */
+.forum-kind-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.2rem;
+  color: #6a6a6a;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+.forum-kind-tag .forum-kind-ico {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+/* בתוך התווית האיקון נח (האנימציה רק בלחצנים) */
+.forum-kind-tag .forum-kind-ico * {
+  animation: none !important;
+}
+/* לחצן בחירת סוג ההודעה לפני הכתיבה */
+.forum-kind-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 1.3rem;
+  border-radius: 0.8rem;
+  background: var(--fb);
+  border: 2.5px solid #0a0a0a;
+  color: #000;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.forum-kind-btn:hover {
+  transform: translateY(-2px);
+}
+/* ברק שעובר על הלחצן בריחוף */
+.forum-kind-btn {
+  position: relative;
+  overflow: hidden;
+}
+.forum-kind-btn::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  transform: skewX(-18deg);
+  pointer-events: none;
+}
+.forum-kind-btn:hover::after,
+.forum-kind-btn:focus-visible::after {
+  animation: fi-sweep 0.8s ease forwards;
+}
+@keyframes fi-sweep {
+  to {
+    inset-inline-start: 130%;
+  }
+}
+/* איקונים מונפשים בתוך לחצני הסוג: בועת שאלה מנשימה, עיפרון שכותב קו, נורה שמאירה */
+.forum-kind-ico {
+  width: 1.55rem;
+  height: 1.55rem;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.forum-kind-ico * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.forum-kind-ico .fi-bob {
+  animation: fi-bob 2.6s ease-in-out infinite;
+}
+.forum-kind-ico .fi-pulse {
+  animation: fi-pulse 2.6s ease-in-out infinite;
+}
+.forum-kind-ico .fi-draw {
+  stroke-dasharray: 10;
+  animation: fi-draw 2.6s ease-in-out infinite;
+}
+.forum-kind-ico .fi-pencil {
+  animation: fi-write 2.6s ease-in-out infinite;
+}
+.forum-kind-ico .fi-rays {
+  animation: fi-glow 2s ease-in-out infinite;
+}
+.forum-kind-btn:hover .forum-kind-ico {
+  animation: fi-wiggle 0.6s ease;
+}
+@keyframes fi-bob {
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+@keyframes fi-pulse {
+  45% {
+    transform: scale(1.18);
+  }
+}
+@keyframes fi-draw {
+  0% {
+    stroke-dashoffset: 10;
+  }
+  55%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes fi-write {
+  0%,
+  100% {
+    transform: translate(-1.5px, 1px) rotate(-3deg);
+  }
+  55% {
+    transform: translate(1px, -0.5px) rotate(2deg);
+  }
+}
+@keyframes fi-glow {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes fi-wiggle {
+  30% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+  70% {
+    transform: rotate(8deg) scale(1.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .forum-kind-ico *,
+  .forum-kind-btn:hover .forum-kind-ico,
+  .forum-kind-btn:hover::after {
+    animation: none !important;
+  }
+}
+.forum-kind-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+.forum-kind-btn[aria-pressed="true"] {
+  box-shadow: 0 0 0 3px #ffd45a, 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+/* מחיקה: אייקון פח בלבד, בלי רקע, במסגרת כחולה; בריחוף – מתמלא כחול והאייקון לבן */
+.forum-del {
+  display: inline-grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 2px solid var(--blue);
+  color: var(--blue);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.forum-del:hover,
+.forum-del:focus-visible {
+  background: var(--blue);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.forum-del:focus-visible {
+  outline: 3px solid #ffd45a;
+  outline-offset: 2px;
+}
+.gate-price {
+  font-size: 2.2rem;
+  line-height: 1.2;
+  -webkit-text-stroke: 0.3px currentColor;
+}
+/* המספר ואחריו (משמאלו) סימן ה-₪, עם רווח קבוע ביניהם */
+.gate-shekel-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2em;
+  direction: rtl;
+  margin-inline-end: 0.15em;
+}
+.gate-shekel {
+  font-family: var(--font-sans);
+  font-size: 0.6em;
+  font-weight: 700;
+  -webkit-text-stroke: 0;
+}
+/* מחיר מחוק: הקו מצויר כאלמנט (text-decoration לא עובר לתוך ה-inline-flex של המחיר) */
+.gate-old-price {
+  position: relative;
+  display: inline-block;
+  text-decoration: none;
+}
+.gate-old-price::after {
+  content: "";
+  position: absolute;
+  inset-inline: -0.1em;
+  top: 52%;
+  border-top: 0.09em solid currentColor;
+  transform: rotate(-6deg);
+}
+/* כרטיס מסלול: איקון בעיגול כחול-זהב, מחיר גדול, קו מקווקו ורשימה */
+.gate-plan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  padding: 1.3rem 1.2rem 1.1rem;
+  text-align: center;
+}
+.gate-plan-featured {
+  box-shadow: 0 0 0 3px #ffd45a, 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.gate-badge.gate-ribbon {
+  position: absolute;
+  top: -1.25rem;
+  inset-inline-start: 1.2rem;
+  padding: 0.15rem 1.1rem;
+  border: 2px solid #ffd45a;
+  font-size: 1.45rem;
+}
+.gate-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: #16244e;
+  border: 2.5px solid #0a0a0a;
+  color: #ffd45a;
+}
+.gate-price-lg {
+  font-size: 2.8rem;
+  line-height: 1.1;
+}
+.gate-divider {
+  width: 100%;
+  margin: 0.7rem 0;
+  border: 0;
+  border-top: 2px dashed rgba(0, 0, 0, 0.45);
+}
+/* פס קופון ההשקה בתחתית החלונית */
+.gate-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem 1.5rem;
+  padding: 0.8rem 1.2rem;
+  border: 2px dashed #ffd45a;
+  border-radius: 0.8rem;
+  color: #ffd45a;
+}
+.gate-strip-dark {
+  width: 100%;
+  border-color: #0a0a0a;
+  color: #000;
+  justify-content: center;
+  text-align: center;
+}
+/* בחירת מקצוע/פרימיום בעמוד הרכישה: כרטיס זהב עם ריבוע וי; הנבחר מקבל טבעת זהב */
+.gate-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gate-pick:hover {
+  transform: translateY(-2px);
+}
+.gate-pick:has(:focus-visible) {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+.gate-pick-on {
+  box-shadow: 0 0 0 3px #ffd45a, 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+.gate-pick-off {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.gate-pick-off:hover {
+  transform: none;
+}
+.gate-check {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #16244e;
+}
+.gate-pick-on .gate-check {
+  background: #16244e;
+  color: #ffd45a;
+}
+/* כפתור "דלג" בעמוד הרכישה (הטולטיפ – ה-data-tip הכללי של האתר) */
+.gate-panel .gate-skip {
+  background: transparent;
+  border: 2px solid #ffd45a;
+  color: #ffd45a;
+}
+.gate-panel .gate-skip:hover:not(:disabled) {
+  background: rgba(255, 212, 90, 0.12);
+}
+/* רשימת הערים הנגללת בהרשמה: כרטיס זהב בהיר במסגרת שחורה, פס גלילה דק בצד ימין (ה-dir=ltr של העוטף) */
+.city-combo {
+  position: relative;
+}
+.city-pop {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  overflow: hidden;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.9rem;
+  background: #fbefc2;
+  box-shadow: 0 14px 30px rgba(10, 20, 50, 0.45);
+  animation: city-pop-in 0.14s ease-out;
+}
+.city-pop ul {
+  max-height: 15rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #d9a441 transparent;
+}
+.city-pop ul::-webkit-scrollbar {
+  width: 10px;
+}
+.city-pop ul::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+.city-pop ul::-webkit-scrollbar-thumb {
+  background: #d9a441;
+  border-radius: 999px;
+  border: 2px solid #fbefc2;
+}
+.city-pop ul::-webkit-scrollbar-thumb:hover {
+  background: #b9852a;
+}
+.city-opt {
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.55rem;
+  color: #16244e;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+.city-opt b {
+  font-weight: 800;
+  color: #8a5a00;
+}
+.city-opt-on {
+  background: #16244e;
+  color: #ffd45a;
+}
+.city-opt-on b {
+  color: #fff;
+}
+.city-empty {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  color: #16244e;
+  text-align: center;
+}
+@keyframes city-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-pop {
+    animation: none;
+  }
+}
+/* שדות טופס בעיצוב "שער" (הרשמה): זהב בהיר במסגרת שחורה */
+.gate-input {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.8rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.7rem;
+  background: #fbefc2;
+  color: #000;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+}
+.gate-input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+.gate-input:focus-visible {
+  outline: 3px solid #ffd45a;
+  outline-offset: 2px;
+}
+.gate-google .text-muted {
+  color: rgba(255, 255, 255, 0.75);
+}
+/* כפתור "המשך עם Google" — מסגרת זהב */
+@property --google-shine {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+/* ברק זהב רך שמקיף את המסגרת לאט (14 שניות לסיבוב) — בכוונה איטי ועדין כדי לא לסנוור */
+.btn-google {
+  color: var(--ink);
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    conic-gradient(
+        from var(--google-shine),
+        var(--sun) 0%,
+        var(--sun) 70%,
+        #f3dc9c 88%,
+        #fff3c9 94%,
+        #f3dc9c 100%
+      )
+      border-box;
+  box-shadow: 0 4px 14px rgba(217, 164, 65, 0.3);
+  animation: google-shine 14s linear infinite;
+}
+.btn-google:hover {
+  background:
+    linear-gradient(var(--gold-soft), var(--gold-soft)) padding-box,
+    conic-gradient(
+        from var(--google-shine),
+        var(--sun) 0%,
+        var(--sun) 70%,
+        #f3dc9c 88%,
+        #fff3c9 94%,
+        #f3dc9c 100%
+      )
+      border-box;
+  box-shadow: 0 6px 18px rgba(217, 164, 65, 0.45);
+}
+@keyframes google-shine {
+  to {
+    --google-shine: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-google {
+    animation: none;
+  }
+}
+/* הבית המאויר של המקצוע, כמו בכרטיסי המקצועות באתר */
+.gate-pick-house {
+  flex-shrink: 0;
+  width: 2.2rem;
+  height: auto;
+}
+.gate-total {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+.gate-strip-alert {
+  border-style: solid;
+  border-color: #ff9b8a;
+  color: #ffd9d2;
+  justify-content: flex-start;
+}
+/* "ממלאת מקום?" – חלונית נפתחת: השאלה ולחצן "כן" בשורה אחת, והמסלולים נפתחים מתחת */
+.gate-sub > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem 1.5rem;
+  list-style: none;
+  cursor: pointer;
+}
+.gate-sub > summary::-webkit-details-marker {
+  display: none;
+}
+.gate-sub[open] > summary .btn {
+  display: none;
+}
+/* קופון: כרטיס זהב עם ספח תלוש – קו מקווקו ושני "ניקובים" בצבע החלונית הכחולה */
+.coupon {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 0;
+}
+.coupon-logo {
+  width: 9rem;
+  height: auto;
+  margin-inline-start: 1.2rem;
+}
+.coupon-main {
+  padding: 1.2rem 1.4rem;
+}
+.coupon-price {
+  font-size: 2.1rem;
+}
+.coupon-stub {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  padding: 1.2rem 1.6rem;
+  border-inline-start: 2.5px dashed #0a0a0a;
+}
+.coupon-stub::before,
+.coupon-stub::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: -0.75rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: #2d395f;
+  border: 2.5px solid #0a0a0a;
+}
+.coupon-stub::before {
+  top: -0.8rem;
+}
+.coupon-stub::after {
+  bottom: -0.8rem;
+}
+@media (max-width: 640px) {
+  .coupon {
+    grid-template-columns: 1fr;
+  }
+  .coupon-logo {
+    margin: 1rem auto 0;
+  }
+  .coupon-stub {
+    border-inline-start: 0;
+    border-top: 2.5px dashed #0a0a0a;
+  }
+  .coupon-stub::before,
+  .coupon-stub::after {
+    top: -0.75rem;
+    bottom: auto;
+  }
+  .coupon-stub::before {
+    inset-inline-start: -0.8rem;
+  }
+  .coupon-stub::after {
+    inset-inline-start: auto;
+    inset-inline-end: -0.8rem;
+  }
+}
+/* כותרת העמוד: בלי מסגרת ובלי רקע, באותו כתב */
+.gate-title {
+  color: #16244e;
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  line-height: 1.55;
+}
+.gate-title h1 {
+  font-family: var(--font-hand);
+  font-weight: 400;
+}
+.gate-badge {
+  display: inline-block;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: #16244e;
+  color: #ffd45a;
+  font-size: 1rem;
 }
 .fix-gate-logo {
   align-self: center;
@@ -2040,4 +2814,125 @@ button.underline {
 }
 .fix-dialog-head-centered .fix-close {
   justify-self: end;
+}
+
+/* לחצני הניווט הראשי — מסגרת זהב, פנים כחול; בריחוף/בדף הפעיל נצבעים בזהב יוקרתי */
+.nav-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 1.05rem;
+  border-radius: 999px;
+  border: 1.5px solid #d9a441;
+  background: var(--sea);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.22);
+  transition: color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.nav-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, #f8e3a3 0%, #e6bd5c 38%, #c48f2a 70%, #ecc766 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.nav-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  left: -60%;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+.nav-btn:hover,
+.nav-btn:focus-visible,
+.nav-btn[aria-current="page"] {
+  color: #2b1d02;
+  border-color: #f3d98f;
+  box-shadow: 0 0 0 1px rgba(243, 217, 143, 0.5), 0 6px 16px rgba(217, 164, 65, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.nav-btn:hover::before,
+.nav-btn:focus-visible::before,
+.nav-btn[aria-current="page"]::before {
+  opacity: 1;
+}
+.nav-btn:hover::after,
+.nav-btn:focus-visible::after {
+  left: 120%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-btn,
+  .nav-btn::before,
+  .nav-btn::after {
+    transition: none;
+  }
+}
+/* חלון כתיבת תשובה בפורום */
+.forum-dialog {
+  width: min(34rem, calc(100vw - 2rem));
+  margin: auto;
+  padding: 1.2rem;
+  border: 0;
+  border-radius: 1rem;
+  background: rgba(22, 36, 78, 0.7);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+.forum-dialog .forum-box-answer {
+  background: rgba(255, 253, 243, 0.88);
+}
+.forum-dialog .gate-input {
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+.forum-dialog::backdrop {
+  background: rgba(10, 16, 40, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+/* פורום: כל האייקונים בסגנון קווי דק */
+.forum-kind-btn svg,
+.forum-del svg,
+.forum-box svg {
+  stroke-width: 1.15;
+}
+.forum-kind-ico path[stroke-width="1.8"] {
+  stroke-width: 1.8;
+}
+.forum-thin-ico {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+}
+/* החלונית הכחולה של הפורום – שקופה יותר מהחלוניות הרגילות, עם טשטוש של מה שמאחוריה */
+.gate-panel.forum-panel {
+  background: rgba(22, 36, 78, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+/* גרסת זהב של הלחצן העגול – לשימוש על הרקע הכחול הכהה (לחצן הסינון) */
+.forum-del.forum-del-gold {
+  border-color: #ffd45a;
+  color: #ffd45a;
+}
+.forum-del.forum-del-gold:hover,
+.forum-del.forum-del-gold:focus-visible {
+  background: #ffd45a;
+  color: #16244e;
 }

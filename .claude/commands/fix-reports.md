@@ -51,6 +51,8 @@ claude-fix-reports.yml`), שמדלג על הפעלתכם בכלל בטיק cron 
   מטא-דאטה בלבד** (שם/id/גודל/קישור) — **לעולם לא תוכן**. ר' "זיהוי קובץ מהדרייב"
   למטה לכלל השימוש המדויק.
 
+- `npx tsx scripts/agent-log-event.ts <kind> "<תקציר>" [--details="..."] [--report=<id>]` — רושם אירוע ביומן המלא של הסוכן (`agent_events`, מוצג למשה ב-`/admin/agent`). **חובה** לתעד איתו כל צעד שאין לו כלי רושם משלו: `decision` (למה בחרתם בגישה), `investigate` (מה בדקתם ומה מצאתם), `fix` (מה שיניתם ובאילו קבצים), `commit`, `pr` (מספר/קישור), `error` (כל כשל). כל שאר הסקריפטים (`read-error-reports`, `error-report-reply`, `agent-loop-status`, `drive-search`, `get-preview-deployment-url`) רושמים את עצמם אוטומטית, ותמליל ההרצה המלא (כל הודעה וכל קריאת כלי) מיובא אוטומטית בסוף ההרצה ע"י ה-workflow — אבל רישום מפורש של *החלטות והנמקות* הוא באחריותכם. אל תכללו סודות בתקציר/בפרטים (מוסתרים אוטומטית, אך אל תסתמכו על זה).
+
 כל הסקריפטים דורשים `DATABASE_URL` (ב-`.env.local` מקומית, ב-GitHub Actions —
 secret באותו שם; כבר קיים כי הדיווחים עצמם ב-Postgre). `get-preview-deployment-url.ts`
 דורש גם `GITHUB_TOKEN` (אוטומטי ב-workflow). `drive-search.ts` דורש

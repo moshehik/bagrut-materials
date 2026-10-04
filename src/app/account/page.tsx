@@ -353,7 +353,9 @@ export default async function AccountPage({
                   const isPremiumOnly = p.plan === "single" && !p.materialId && p.premium;
                   const scope = isPremiumOnly
                     ? "פרימיום בלבד"
-                    : materialTitle ?? categoryTitle ?? (p.plan === "yearly" ? "כל המקצועות" : "—");
+                    : p.subjectsPending
+                      ? "ממתין לבחירת מקצועות"
+                      : materialTitle ?? categoryTitle ?? (p.plan === "yearly" ? "כל המקצועות" : "—");
                   const usage =
                     p.downloadsLimit === null
                       ? "ללא הגבלה"
@@ -393,6 +395,11 @@ export default async function AccountPage({
                       </td>
                       <td className="py-3 px-2 whitespace-nowrap">{formatPrice(p.amount)}</td>
                       <td className="py-3 px-2 whitespace-nowrap">
+                        {p.plan === "yearly" && (
+                          <Link href="/account/subjects" className="mb-1 block text-xs font-semibold text-blue-deep hover:underline">
+                            {p.subjectsPending ? "בחירת מקצועות" : "המקצועות שלי"}
+                          </Link>
+                        )}
                         <form action={requestCancelSubscriptionAction}>
                           <input type="hidden" name="purchaseId" value={p.id} />
                           <button

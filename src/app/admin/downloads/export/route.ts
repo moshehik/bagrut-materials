@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { parseDate, toCsv, csvResponse } from "@/lib/admin-analytics";
 import { MATERIAL_KINDS } from "@/lib/constants";
 import { shortUA } from "@/lib/ua";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,5 +92,15 @@ export async function GET(req: NextRequest) {
       shortUA(r.userAgent),
     ]),
   );
+  // רישום ייצוא נתוני הורדות (מידע אישי של משתמשות) ביומן הפעולות
+  await logAudit({
+    actorId: user.id,
+    action: "downloads.export",
+    entityType: "download",
+    details: {
+      rows: rows.length,
+      filters: { user: userQ || null, material: materialQ || null, from: q.get("from") || null, to: q.get("to") || null },
+    },
+  });
   return csvResponse(`downloads-${new Date().toISOString().slice(0, 10)}.csv`, csv);
 }

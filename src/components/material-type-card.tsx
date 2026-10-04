@@ -22,7 +22,12 @@ type Props = {
   fixesViewSrc?: string;
   /** רק לדוגמאות פיתוח: PDF נקי (בלי סימונים) בחלון העריכה */
   plainViewSrc?: string;
+  /** מנויה במסלול "ממלאת מקום יומית" (סל צפיות/הורדות) – רק לה מוצג הטולטיפ על ספירת הצפיות. המסלול עוד לא נבנה, לכן ברירת המחדל false */
+  isDailySubstitute?: boolean;
 };
+
+const DAILY_SUBSTITUTE_VIEW_TIP =
+  "אם תורידי את החומר – הצפייה לא תחושב בסל ההורדות. אם צפית ולא הורדת – הצפייה תחושב בסל ההורדות.";
 
 /** לאן מובילה לחיצה על האגוז האדום – הורדה למי שמורשית, אחרת הצעד החסר (התחברות / רכישת התיקייה) */
 function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bundleHref: string): string | null {
@@ -53,6 +58,7 @@ export function MaterialTypeCard({
   fixes = [],
   fixesViewSrc,
   plainViewSrc,
+  isDailySubstitute = false,
 }: Props) {
   const s = CARD_STYLES[type];
   const target = downloadTarget(m, entitlement, currentPath, bundleHref);
@@ -132,7 +138,7 @@ export function MaterialTypeCard({
             src={`/api/preview/${m.id}`}
             title={`${s.label} - ${folderTitle}`}
             className="mtc-download"
-            tip="לצפייה בקובץ באתר, בלי להוריד"
+            tip={isDailySubstitute ? DAILY_SUBSTITUTE_VIEW_TIP : undefined}
             label={`צפייה ב${s.label} באתר`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

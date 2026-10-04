@@ -5,18 +5,20 @@ import { db } from "@/db";
 import { pageViews, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getBool } from "@/lib/settings";
-import { requestMeta } from "@/lib/audit";
+import { requestMeta, logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SID_COOKIE = "bagrut_sid";
 const IGNORED_PREFIXES = ["/_next", "/api", "/admin"];
+// בוטים/סורקים/תצוגות מקדימות – לא נספרים כצפיות אמיתיות
+const BOT_UA = /bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit/i;
 
 function cleanPath(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw.startsWith("/")) return null;
   let p = raw;
-  // פרטיות: מסירים query, חוץ מ-/subjects (שם ה-query עשוי להיות חלק מהניווט)
+  // פרטיות: מסירים query, חוץ מ-/subjects (שם ה-query הוא חלק מהניווט). מונחי חיפוש לא נשמרים.
   if (!p.startsWith("/subjects")) {
     const q = p.indexOf("?");
     if (q >= 0) p = p.slice(0, q);
@@ -94,6 +96,8 @@ export async function POST(req: NextRequest) {
 
     if (ignored) return respond(null);
     if (!(await getBool("track_page_views"))) return respond(null);
+    // בוטים: לא רושמים צפייה (נוכחות של משתמשות אמיתיות כבר עודכנה למעלה)
+    if (userAgent && BOT_UA.test(userAgent)) return respond(null);
 
     const [row] = await db
       .insert(pageViews)
@@ -110,6 +114,10 @@ export async function POST(req: NextRequest) {
     return respond({ viewId: row?.id ?? null });
   } catch (e) {
     console.error("[track] failed", e);
+    await logAudit({
+      action: "track.failed",
+      details: { error: (e instanceof Error ? e.message : String(e)).slice(0, 300) },
+    });
     return new NextResponse(null, { status: 204 });
   }
 }

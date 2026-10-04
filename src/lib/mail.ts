@@ -96,23 +96,30 @@ async function transportAppsScript(input: SendMailInput): Promise<{ ok: boolean;
 /** שולח מייל ורושם בלוג. לעולם לא זורק – מחזיר תוצאה. */
 export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
   const r = await transportAppsScript(input);
-  const [log] = await db
-    .insert(emailLogs)
-    .values({
-      to: joinAddr(input.to),
-      cc: joinAddr(input.cc) || null,
-      subject: input.subject,
-      body: input.text,
-      fileName: input.attachment?.fileName ?? null,
-      kind: input.kind ?? "manual",
-      status: r.ok ? "success" : "error",
-      errorMessage: r.ok ? null : r.error ?? "Unknown error",
-      userId: input.userId ?? null,
-      sentById: input.sentById ?? null,
-    })
-    .returning({ id: emailLogs.id });
+  // כשל ברישום הלוג לא אמור להפיל את השליחה (ולא להסתיר את תוצאתה) – logId=0 אם הרישום נכשל
+  let logId = 0;
+  try {
+    const [log] = await db
+      .insert(emailLogs)
+      .values({
+        to: joinAddr(input.to),
+        cc: joinAddr(input.cc) || null,
+        subject: input.subject,
+        body: input.text,
+        fileName: input.attachment?.fileName ?? null,
+        kind: input.kind ?? "manual",
+        status: r.ok ? "success" : "error",
+        errorMessage: r.ok ? null : r.error ?? "Unknown error",
+        userId: input.userId ?? null,
+        sentById: input.sentById ?? null,
+      })
+      .returning({ id: emailLogs.id });
+    logId = log?.id ?? 0;
+  } catch (e) {
+    console.error("[mail] email_logs insert failed", e);
+  }
   if (!r.ok) console.error("[mail] failed:", r.error, "->", joinAddr(input.to));
-  return r.ok ? { ok: true, logId: log.id } : { ok: false, error: r.error ?? "", logId: log.id };
+  return r.ok ? { ok: true, logId } : { ok: false, error: r.error ?? "", logId };
 }
 
 /** שליחה "ברקע" – לא מעכבת את הפעולה של המשתמשת ולא מפילה אותה */
