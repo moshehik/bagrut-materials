@@ -239,7 +239,8 @@ async function seedAdmin() {
     }
     return { email, created: false };
   }
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "Admin1234!";
+  // אין סיסמת ברירת מחדל בקוד (ה-repo עשוי להיות ציבורי): בלי SEED_ADMIN_PASSWORD נוצרת סיסמה אקראית, והכניסה היא עם גוגל / "שכחתי סיסמה".
+  const password = process.env.SEED_ADMIN_PASSWORD ?? (await import("node:crypto")).randomBytes(24).toString("hex");
   const passwordHash = await bcrypt.hash(password, 10);
   await db.insert(users).values({
     email,
