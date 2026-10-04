@@ -24,7 +24,6 @@ export default function CardPreviewPage() {
       allowDownload: true,
       allowPreview: false,
       status: "active",
-      minTier: "none",
       downloads: 0,
     }) as unknown as Material;
 

@@ -10,10 +10,9 @@ import {
   type Category,
   type Material,
   type MaterialKind,
-  type Tier,
   type User,
 } from "@/db/schema";
-import { PREMIUM_KINDS, TIERS, tierAtLeast } from "./constants";
+import { PREMIUM_KINDS } from "./constants";
 import { getBool } from "./settings";
 
 /**
@@ -261,15 +260,6 @@ export function chainSuspended(chain: Pick<Category, "status">[]) {
   return chain.some((c) => c.status !== "active");
 }
 
-/** רמת הפרימיום המינימלית האפקטיבית (מקסימום של החומר וכל שרשרת הקטגוריות) */
-export function effectiveMinTier(material: Pick<Material, "minTier">, chain: Category[]): Tier {
-  let best: Tier = material.minTier;
-  for (const c of chain) {
-    if (TIERS[c.minTier].order > TIERS[best].order) best = c.minTier;
-  }
-  return best;
-}
-
 /** כל צאצאי הקטגוריה (כולל עצמה) - לחישוב זכאות מנוי למקצוע */
 export async function getDescendantIds(rootId: number): Promise<number[]> {
   const rows = await db.execute<{ id: number }>(sql`
@@ -299,12 +289,12 @@ export async function countMaterialsUnder(rootId: number, isAdmin = false): Prom
 export type Entitlement =
   | {
       ok: true;
-      via: "admin" | "single" | "bundle" | "subscription" | "free" | "tier";
+      via: "admin" | "single" | "bundle" | "subscription" | "free";
       purchaseId?: number;
     }
   | {
       ok: false;
-      reason: "login" | "premium" | "tier" | "purchase" | "quota" | "suspended";
+      reason: "login" | "premium" | "purchase" | "quota" | "suspended";
     };
 
 /** רכישות פעילות (סטטוס active ולא פגו) של משתמשת */
@@ -334,7 +324,6 @@ export async function checkEntitlement(
   const chain = await getCategoryChain(material.categoryId);
   if (chainSuspended(chain)) return { ok: false, reason: "suspended" };
   const chainIds = new Set(chain.map((c) => c.id));
-  const minTier = effectiveMinTier(material, chain);
 
   // חינם – לכל מחוברת (או גם לאורחות, לפי ההגדרות)
   if (material.access === "free") {
@@ -357,10 +346,6 @@ export async function checkEntitlement(
     (p) => p.plan === "bundle" && p.categoryId !== null && chainIds.has(p.categoryId),
   );
   if (isPremiumKind && !hasPremium && !ownsBundle) return { ok: false, reason: "premium" };
-  if (!tierAtLeast(user.tier, minTier)) return { ok: false, reason: "tier" };
-
-  // לפי רמה – עברה את בדיקת הרמה, זכאית
-  if (material.access === "tier") return { ok: true, via: "tier" };
 
   // רכישה בודדת של החומר עצמו
   const single = active.find((p) => p.plan === "single" && p.materialId === material.id);
@@ -420,6 +405,32 @@ export async function userHasPremium(user: User | null) {
         or(isNull(purchases.endsAt), gt(purchases.endsAt, now)),
       ),
     )
+    .limit(1);
+  return !!row;
+}
+
+/**
+ * גישה לפורום של יחידה: מנהלת, מנויה (פרימיום פעיל או מנוי שמכסה את היחידה),
+ * או מי שרכשה את תיקיית היחידה / קובץ בודד שנמצא בה. מושעה – אין גישה.
+ */
+export async function userCanUseUnitForum(user: User | null, categoryId: number) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (user.suspended) return false;
+  const active = await getActivePurchases(user.id);
+  if (active.length === 0) return false;
+  if (active.some((p) => p.premium)) return true;
+  const chainIds = new Set((await getCategoryChain(categoryId)).map((c) => c.id));
+  const covers = active.some(
+    (p) => p.plan !== "single" && !p.subjectsPending && (p.categoryId === null || chainIds.has(p.categoryId)),
+  );
+  if (covers) return true;
+  const singleIds = active.flatMap((p) => (p.plan === "single" && p.materialId !== null ? [p.materialId] : []));
+  if (singleIds.length === 0) return false;
+  const [row] = await db
+    .select({ id: materials.id })
+    .from(materials)
+    .where(and(inArray(materials.id, singleIds), eq(materials.categoryId, categoryId)))
     .limit(1);
   return !!row;
 }

@@ -36,7 +36,7 @@ export default async function AdminMailPage({
   const [logs, [{ total }], userRows, stats] = await Promise.all([
     db.select().from(emailLogs).where(where).orderBy(desc(emailLogs.sentAt)).limit(PAGE).offset((page - 1) * PAGE),
     db.select({ total: count() }).from(emailLogs).where(where),
-    db.select({ id: users.id, name: users.name, email: users.email, tier: users.tier }).from(users).orderBy(users.name),
+    db.select({ id: users.id, name: users.name, email: users.email }).from(users).orderBy(users.name),
     db
       .select({
         status: emailLogs.status,

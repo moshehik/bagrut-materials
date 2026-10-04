@@ -3,7 +3,7 @@ import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles, Eye, PauseCircle, 
 import type { Material } from "@/db/schema";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { Entitlement } from "@/lib/data";
-import { MATERIAL_KINDS, PREMIUM_KINDS, TIERS, formatPrice } from "@/lib/constants";
+import { MATERIAL_KINDS, PREMIUM_KINDS, formatPrice } from "@/lib/constants";
 
 type Props = {
   material: Material;
@@ -90,7 +90,6 @@ export function MaterialCard({
         ) : (
           <span className="chip bg-gold-soft text-[#7a5b00]">{formatPrice(m.price)}</span>
         )}
-        {m.access === "tier" && <span className="chip bg-blue-soft text-blue-deep">לפי רמה</span>}
         {m.access === "premium" && !isPremium && <span className="chip bg-pink-soft text-pink">פרימיום</span>}
         {!m.allowDownload && (
           <span className="chip bg-gray-100 text-gray-700">
@@ -98,15 +97,6 @@ export function MaterialCard({
           </span>
         )}
         {m.status !== "active" && <span className="chip bg-red-100 text-red-700">מושהה</span>}
-        {m.minTier !== "none" && (
-          <span
-            className="chip"
-            style={{ background: TIERS[m.minTier].color + "22", color: TIERS[m.minTier].color }}
-            title="רמת פרימיום מינימלית"
-          >
-            {TIERS[m.minTier].icon} {TIERS[m.minTier].label}+
-          </span>
-        )}
         {m.downloads > 0 && (
           <span className="text-muted ms-auto">{m.downloads.toLocaleString("he-IL")} הורדות</span>
         )}
@@ -159,9 +149,7 @@ export function Actions({
               ? "כלול במנוי שלך"
               : entitlement.via === "free"
                 ? "חינם"
-                : entitlement.via === "tier"
-                  ? "כלול ברמת הפרימיום שלך"
-                  : "";
+                : "";
     if (!m.allowDownload && entitlement.via !== "admin") {
       return (
         <>
@@ -235,17 +223,6 @@ export function Actions({
           </span>
           <Link href="/pricing" className="btn btn-ghost text-sm py-2">
             להרחבת המנוי
-          </Link>
-        </>
-      );
-    case "tier":
-      return (
-        <>
-          <span className="inline-flex items-center gap-1 text-sm text-oak-deep font-medium">
-            <Lock className="h-4 w-4" aria-hidden /> נדרשת רמת פרימיום גבוהה יותר
-          </span>
-          <Link href="/pricing" className="btn btn-ghost text-sm py-2">
-            לרמות הפרימיום
           </Link>
         </>
       );

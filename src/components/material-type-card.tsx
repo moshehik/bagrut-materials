@@ -39,7 +39,6 @@ function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bund
     case "purchase":
       return bundleHref;
     case "quota":
-    case "tier":
       return "/pricing";
     default:
       return null; // suspended

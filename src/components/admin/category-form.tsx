@@ -3,8 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { createCategory, updateCategory, type AdminActionState } from "@/lib/actions/admin";
 import { slugify } from "@/lib/admin-utils";
-import { TIERS } from "@/lib/constants";
-import type { Status, Tier } from "@/db/schema";
+import type { Status } from "@/db/schema";
 
 export type CategoryFormValues = {
   id?: number;
@@ -17,7 +16,6 @@ export type CategoryFormValues = {
   sort?: number;
   bundlePrice?: number | null; // agorot
   status?: Status;
-  minTier?: Tier;
 };
 
 export function CategoryForm({
@@ -143,16 +141,6 @@ export function CategoryForm({
           <option value="active">פעיל</option>
           <option value="suspended">מושהה (כל התיקייה מוסתרת)</option>
           <option value="draft">טיוטה</option>
-        </select>
-      </label>
-      <label className="text-sm">
-        <span className="block mb-1 font-medium">רמת פרימיום מינימלית לתיקייה</span>
-        <select name="minTier" defaultValue={initial?.minTier ?? "none"} className="input">
-          {Object.entries(TIERS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.icon} {v.label}
-            </option>
-          ))}
         </select>
       </label>
       <label className="text-sm sm:col-span-2">

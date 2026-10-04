@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { Pencil, Trash2, PauseCircle, PlayCircle } from "lucide-react";
 import type { Material } from "@/db/schema";
-import { MATERIAL_KINDS, TIERS, formatPrice } from "@/lib/constants";
+import { MATERIAL_KINDS, formatPrice } from "@/lib/constants";
 import { formatBytes } from "@/lib/admin-utils";
 import {
   deleteMaterial,
@@ -70,14 +70,6 @@ export function MaterialRow({ material: m }: { material: Material }) {
         <span className={`chip ${access.className}`}>{access.label}</span>
         {m.access !== "free" && <span className="chip bg-gold-soft text-gold">{formatPrice(m.price)}</span>}
         {m.premiumOnly && <span className="chip bg-pink-soft text-pink">פרימיום</span>}
-        {m.minTier !== "none" && (
-          <span
-            className="chip"
-            style={{ background: TIERS[m.minTier].color + "22", color: TIERS[m.minTier].color }}
-          >
-            {TIERS[m.minTier].icon} {TIERS[m.minTier].label}+
-          </span>
-        )}
         {!m.allowDownload && <span className="chip bg-gray-100 text-gray-700">צפייה בלבד</span>}
         {m.allowPreview && <span className="chip bg-blue-soft text-blue-deep">תצוגה מקדימה</span>}
         <span className="ms-auto flex items-center gap-1">
@@ -170,7 +162,6 @@ function EditForm({ material: m, onDone }: { material: Material; onDone: () => v
         <select name="access" defaultValue={m.access} className="input">
           <option value="free">חינם (לכל מחוברת)</option>
           <option value="paid">בתשלום (רכישה / מנוי)</option>
-          <option value="tier">לפי רמת פרימיום</option>
           <option value="premium">פרימיום בלבד</option>
         </select>
       </label>
@@ -180,16 +171,6 @@ function EditForm({ material: m, onDone }: { material: Material; onDone: () => v
           <option value="active">פעיל</option>
           <option value="suspended">מושהה</option>
           <option value="draft">טיוטה</option>
-        </select>
-      </label>
-      <label className="text-sm">
-        <span className="block mb-1 font-medium">רמת פרימיום מינימלית</span>
-        <select name="minTier" defaultValue={m.minTier} className="input">
-          {Object.entries(TIERS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.icon} {v.label}
-            </option>
-          ))}
         </select>
       </label>
       <label className="text-sm">

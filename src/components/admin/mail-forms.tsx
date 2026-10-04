@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from "react";
 import { Send, Users, Paperclip, Copy, Check } from "lucide-react";
-import { TIERS } from "@/lib/constants";
 import { sendManualMail, broadcastMail, type MailState } from "@/lib/actions/mail";
 
 function Status({ state }: { state: MailState }) {
@@ -62,21 +61,8 @@ export function BroadcastForm() {
             <option value="all">כל המשתמשות</option>
             <option value="subscribers">מנויות פעילות</option>
             <option value="premium">מנויות פרימיום</option>
-            <option value="tier">לפי רמת פרימיום</option>
           </select>
         </label>
-        {audience === "tier" && (
-          <label className="text-sm font-semibold">
-            רמה
-            <select name="tier" className="input mt-1 font-normal">
-              {Object.entries(TIERS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v.icon} {v.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
       <label className="block text-sm font-semibold">
         נושא
@@ -107,7 +93,7 @@ export function BroadcastForm() {
 }
 
 /** רשימת כתובות המייל של המשתמשות עם העתקה (כמו FullEmailListModal במודל) */
-export function EmailList({ rows }: { rows: { id: number; name: string; email: string; tier: string }[] }) {
+export function EmailList({ rows }: { rows: { id: number; name: string; email: string }[] }) {
   const [q, setQ] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const filtered = rows.filter(
@@ -133,7 +119,6 @@ export function EmailList({ rows }: { rows: { id: number; name: string; email: s
               <th className="py-2 px-3 font-medium">#</th>
               <th className="py-2 px-3 font-medium">שם</th>
               <th className="py-2 px-3 font-medium">מייל</th>
-              <th className="py-2 px-3 font-medium">רמה</th>
               <th className="py-2 px-3"></th>
             </tr>
           </thead>
@@ -143,7 +128,6 @@ export function EmailList({ rows }: { rows: { id: number; name: string; email: s
                 <td className="py-1.5 px-3 text-muted">{i + 1}</td>
                 <td className="py-1.5 px-3 font-semibold">{r.name}</td>
                 <td className="py-1.5 px-3" dir="ltr">{r.email}</td>
-                <td className="py-1.5 px-3">{TIERS[r.tier as keyof typeof TIERS]?.label ?? r.tier}</td>
                 <td className="py-1.5 px-3">
                   <button type="button" className="text-blue-deep hover:underline text-xs" onClick={() => copy(r.email, String(r.id))}>
                     {copied === String(r.id) ? "הועתק ✓" : "העתקה"}

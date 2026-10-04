@@ -4,7 +4,6 @@ import { Search } from "lucide-react";
 import { db } from "@/db";
 import { users, downloads } from "@/db/schema";
 import { UserRoleForm } from "@/components/admin/user-role-form";
-import { TIERS } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +35,6 @@ export default async function AdminUsersPage({
       email: users.email,
       personalCode: users.personalCode,
       role: users.role,
-      tier: users.tier,
       createdAt: users.createdAt,
       lastSeenAt: users.lastSeenAt,
       googleId: users.googleId,
@@ -158,21 +156,9 @@ export default async function AdminUsersPage({
                     )}
                   </td>
                   <td className="py-2 pe-3 min-w-[260px]">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className="chip"
-                        style={{
-                          background: TIERS[u.tier].color + "22",
-                          color: TIERS[u.tier].color,
-                        }}
-                      >
-                        {TIERS[u.tier].icon} {TIERS[u.tier].label}
-                      </span>
-                    </div>
                     <UserRoleForm
                       id={u.id}
                       role={u.role}
-                      tier={u.tier}
                       dailyDownloadLimit={u.dailyDownloadLimit}
                       notes={u.notes}
                       suspended={u.suspended}

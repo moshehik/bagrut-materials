@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, eq, gt, isNull, or, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { users, purchases, type Tier } from "@/db/schema";
+import { users, purchases } from "@/db/schema";
 import { requireAdmin, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates, type MailAttachment } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
@@ -81,30 +81,26 @@ export async function sendManualMail(_prev: MailState, form: FormData): Promise<
 }
 
 const broadcastSchema = z.object({
-  audience: z.enum(["all", "premium", "subscribers", "tier"]),
-  tier: z.string().optional(),
+  audience: z.enum(["all", "premium", "subscribers"]),
   subject: z.string().trim().min(1, "נא להזין נושא").max(300),
   body: z.string().trim().min(1, "נא להזין תוכן").max(20000),
 });
 
-/** דיוור לקבוצת משתמשות: כולן / פרימיום / מנויות פעילות / לפי רמה */
+/** דיוור לקבוצת משתמשות: כולן / פרימיום / מנויות פעילות */
 export async function broadcastMail(_prev: MailState, form: FormData): Promise<MailState> {
   const admin = await requireAdmin();
   const parsed = broadcastSchema.safeParse({
     audience: form.get("audience"),
-    tier: form.get("tier") ?? "",
     subject: form.get("subject"),
     body: form.get("body"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { audience, tier, subject, body } = parsed.data;
+  const { audience, subject, body } = parsed.data;
 
   let recipients: { id: number; email: string; name: string }[] = [];
   const base = db.select({ id: users.id, email: users.email, name: users.name }).from(users);
   if (audience === "all") {
     recipients = await base;
-  } else if (audience === "tier") {
-    recipients = await base.where(eq(users.tier, (tier || "none") as Tier));
   } else {
     const now = new Date();
     const cond =
@@ -123,7 +119,7 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
       actorId: admin.id,
       action: "mail.broadcast_denied",
       entityType: "email",
-      details: { audience, tier: tier || null, subject, reason: "no_recipients" },
+      details: { audience, subject, reason: "no_recipients" },
     });
     return { error: "לא נמצאו נמענות בקבוצה שנבחרה" };
   }
@@ -155,7 +151,6 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
     entityType: "email",
     details: {
       audience,
-      tier: audience === "tier" ? tier || "none" : null,
       subject,
       attachment: attachment?.fileName ?? null,
       recipients: recipients.length,

@@ -2,8 +2,6 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { Ban, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import type { Tier } from "@/db/schema";
-import { TIERS } from "@/lib/constants";
 import {
   updateUser,
   suspendUser,
@@ -14,7 +12,6 @@ import {
 export function UserRoleForm({
   id,
   role,
-  tier,
   dailyDownloadLimit = null,
   notes = null,
   suspended = false,
@@ -23,7 +20,6 @@ export function UserRoleForm({
 }: {
   id: number;
   role: "user" | "admin";
-  tier: Tier;
   dailyDownloadLimit?: number | null;
   notes?: string | null;
   suspended?: boolean;
@@ -42,13 +38,6 @@ export function UserRoleForm({
         <select name="role" defaultValue={role} className="input py-1 w-auto text-xs">
           <option value="user">משתמשת</option>
           <option value="admin">מנהלת</option>
-        </select>
-        <select name="tier" defaultValue={tier} className="input py-1 w-auto text-xs">
-          {Object.entries(TIERS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.icon} {v.label}
-            </option>
-          ))}
         </select>
         <button
           type="button"

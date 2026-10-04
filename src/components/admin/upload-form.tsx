@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudUpload, FileCheck2, X } from "lucide-react";
-import type { Access, MaterialKind, Status, Tier } from "@/db/schema";
-import { MATERIAL_KINDS, TIERS } from "@/lib/constants";
+import type { Access, MaterialKind, Status } from "@/db/schema";
+import { MATERIAL_KINDS } from "@/lib/constants";
 import {
   ALLOWED_UPLOAD_TYPES,
   MAX_UPLOAD_BYTES,
@@ -74,7 +74,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
   const [items, setItems] = useState<Item[]>([]);
   const [price, setPrice] = useState("15");
   const [premiumOnly, setPremiumOnly] = useState(false);
-  const [minTier, setMinTier] = useState<Tier>("none");
   const [access, setAccess] = useState<Access>("paid");
   const [status, setStatus] = useState<Status>("active");
   const [description, setDescription] = useState("");
@@ -133,7 +132,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
           size: it.file.size,
           price: price === "" ? undefined : Number(price),
           premiumOnly,
-          minTier,
           access,
           status,
         });
@@ -202,7 +200,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
           <select value={access} onChange={(e) => setAccess(e.target.value as Access)} className="input">
             <option value="free">חינם</option>
             <option value="paid">בתשלום</option>
-            <option value="tier">לפי רמה</option>
             <option value="premium">פרימיום בלבד</option>
           </select>
         </label>
@@ -225,20 +222,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
             onChange={(e) => setPrice(e.target.value)}
             className="input"
           />
-        </label>
-        <label className="text-sm">
-          <span className="block mb-1 font-medium">רמת פרימיום מינימלית</span>
-          <select
-            value={minTier}
-            onChange={(e) => setMinTier(e.target.value as Tier)}
-            className="input"
-          >
-            {Object.entries(TIERS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v.icon} {v.label}
-              </option>
-            ))}
-          </select>
         </label>
         <label className="text-sm flex items-end gap-2 pb-2">
           <input

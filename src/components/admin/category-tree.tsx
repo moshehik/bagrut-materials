@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ChevronDown, ChevronLeft, FolderOpen, Pencil, Plus, Trash2, PauseCircle, PlayCircle } from "lucide-react";
-import type { Status, Tier } from "@/db/schema";
+import type { Status } from "@/db/schema";
 import { deleteCategory, toggleCategoryStatus } from "@/lib/actions/admin";
-import { TIERS, formatPrice } from "@/lib/constants";
+import { formatPrice } from "@/lib/constants";
 import { CategoryForm } from "./category-form";
 
 export type TreeNode = {
@@ -20,7 +20,6 @@ export type TreeNode = {
   sort: number;
   bundlePrice: number | null;
   status: Status;
-  minTier: Tier;
   materialsCount: number;
   children: TreeNode[];
 };
@@ -100,15 +99,6 @@ function Node({ node, depth }: { node: TreeNode; depth: number }) {
         <span className={`font-semibold ${node.status !== "active" ? "line-through opacity-70" : ""}`}>{node.title}</span>
         {node.status === "suspended" && <span className="chip bg-red-100 text-red-700">מושהה</span>}
         {node.status === "draft" && <span className="chip bg-gray-100 text-gray-700">טיוטה</span>}
-        {node.minTier !== "none" && (
-          <span
-            className="chip"
-            style={{ background: TIERS[node.minTier].color + "22", color: TIERS[node.minTier].color }}
-            title="רמת פרימיום מינימלית לתיקייה"
-          >
-            {TIERS[node.minTier].icon} {TIERS[node.minTier].label}+
-          </span>
-        )}
         <span className="font-mono text-[11px] text-muted" dir="ltr">
           /{node.slug}
         </span>

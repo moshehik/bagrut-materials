@@ -49,7 +49,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           דלגי לתוכן הראשי
         </a>
         <Header
-          user={user ? { name: user.name, role: user.role, tier: user.tier } : null}
+          user={user ? { name: user.name, role: user.role } : null}
         />
         <main id="main" className="flex-1">
           <SiteNotices>{children}</SiteNotices>

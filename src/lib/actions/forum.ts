@@ -6,26 +6,27 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, forumPosts, forumReports, forumThreads, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
-import { userHasPremium, getCategoryChain, chainToHref } from "@/lib/data";
+import { userCanUseUnitForum, getCategoryChain, chainToHref } from "@/lib/data";
 import { adminEmail, sendMailInBackground, templates } from "@/lib/mail";
 import { FORUM_KINDS, forumAuthor, forumTitleFrom } from "@/lib/forum-utils";
 import { logAudit } from "@/lib/audit";
 
 export type ForumState = { error?: string; ok?: boolean } | undefined;
 
-async function requirePremiumUser(op: string) {
+/** כניסה + גישה ליחידה: מנויה, או מי ששילמה על קובץ/תיקייה ביחידה (categoryId ריק = רק בדיקת התחברות) */
+async function requirePremiumUser(op: string, categoryId?: number) {
   const user = await getCurrentUser();
   if (!user) {
     await logAudit({ action: "forum.denied", details: { reason: "not_logged_in", op } });
     return { error: "יש להתחבר כדי לכתוב בפורום" } as const;
   }
-  if (!(await userHasPremium(user))) {
+  if (user.suspended || (categoryId !== undefined && !(await userCanUseUnitForum(user, categoryId)))) {
     await logAudit({
       actorId: user.id,
       action: "forum.denied",
-      details: { reason: user.suspended ? "suspended" : "not_premium", op },
+      details: { reason: user.suspended ? "suspended" : "no_unit_access", op },
     });
-    return { error: "הפורום פתוח למנויות פרימיום בלבד" } as const;
+    return { error: "הפורום פתוח למנויות ולמי ששילמה על קובץ ביחידה הזו" } as const;
   }
   return { user } as const;
 }
@@ -46,7 +47,8 @@ const threadSchema = z.object({
 });
 
 export async function createThread(_prev: ForumState, form: FormData): Promise<ForumState> {
-  const auth = await requirePremiumUser("thread.create");
+  const catId = Number(form.get("categoryId"));
+  const auth = await requirePremiumUser("thread.create", Number.isInteger(catId) && catId > 0 ? catId : undefined);
   if ("error" in auth) return { error: auth.error };
 
   const parsed = threadSchema.safeParse({
@@ -141,6 +143,14 @@ export async function replyThread(_prev: ForumState, form: FormData): Promise<Fo
       details: { reason: "thread_not_found", op: "post.create", threadId: parsed.data.threadId },
     });
     return { error: "השאלה לא נמצאה" };
+  }
+  if (thread.categoryId && !(await userCanUseUnitForum(auth.user, thread.categoryId))) {
+    await logAudit({
+      actorId: auth.user.id,
+      action: "forum.denied",
+      details: { reason: "no_unit_access", op: "post.create", threadId: thread.id },
+    });
+    return { error: "הפורום פתוח למנויות ולמי ששילמה על קובץ ביחידה הזו" };
   }
   if (thread.kind !== "question") {
     return { error: "אפשר להשיב רק על שאלה" };

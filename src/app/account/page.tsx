@@ -24,7 +24,7 @@ import { categories, downloads, materials, purchases, transactions, userInterest
 import { getCurrentUser } from "@/lib/session";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { userHasPremium, getCategoryChain, chainToHref, getRootSubjects } from "@/lib/data";
-import { PLANS, TIERS, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
+import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
 import { EditNameForm, EditPhoneForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
 import { updateInterestsAction, requestCancelSubscriptionAction } from "@/lib/actions/profile";
 
@@ -110,7 +110,6 @@ export default async function AccountPage({
     recentWithHref.push({ ...r, href });
   }
 
-  const tier = TIERS[user.tier];
   const premiumEnds = activePurchases
     .filter((r) => r.p.premium && r.p.endsAt)
     .map((r) => r.p.endsAt as Date)
@@ -170,13 +169,6 @@ export default async function AccountPage({
           <h1 className="font-display text-3xl sm:text-4xl font-bold">שלום, {user.name}</h1>
         </div>
         <div className="ms-auto flex flex-wrap items-center gap-2">
-          <span
-            className="chip text-sm py-1.5 px-3"
-            style={{ background: tier.color + "22", color: tier.color }}
-            title="דרגת החברות שלך"
-          >
-            {tier.icon} דרגה: {tier.label}
-          </span>
           {hasPremium ? (
             <span className="chip text-sm py-1.5 px-3 bg-gold-soft text-[#8a6500]">
               <Sparkles className="h-3.5 w-3.5" /> פרימיום פעיל

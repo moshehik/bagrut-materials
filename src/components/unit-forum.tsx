@@ -3,7 +3,7 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import { MessageCircle, Lock, Sparkles, LogIn } from "lucide-react";
 import { db } from "@/db";
 import { forumPosts, forumThreads, users, type Category, type User } from "@/db/schema";
-import { userHasPremium } from "@/lib/data";
+import { userCanUseUnitForum } from "@/lib/data";
 import { ForumComposer } from "@/components/forum-forms";
 import { ForumFeed, type FeedEntry } from "@/components/forum-feed";
 import { forumWhen, isForumKind } from "@/lib/forum-utils";
@@ -23,7 +23,7 @@ export async function UnitForum({
   here: string;
   user: User | null;
 }) {
-  const premium = await userHasPremium(user);
+  const premium = await userCanUseUnitForum(user, category.id);
   const isAdmin = user?.role === "admin";
 
   const threads = await db
@@ -100,7 +100,7 @@ export async function UnitForum({
             <p className="flex-1">
               <b className="font-normal text-xl">רוצה לשאול או לשתף על השיעור הזה?</b>
               <span className="gate-soft block text-base leading-snug">
-                הפורום פתוח למנויות פרימיום מחוברות – כל שאלה, הערה וטיפ נשמרים כאן, צמוד ליחידה.
+                הפורום פתוח למנויות ולמי שרכשה קובץ ביחידה – כל שאלה, הערה וטיפ נשמרים כאן, צמוד ליחידה.
               </span>
             </p>
             <Link href={`/login?next=${encodeURIComponent(here)}`} className="btn btn-gold shrink-0">
@@ -114,13 +114,13 @@ export async function UnitForum({
           <div className="gate-card flex flex-col sm:flex-row sm:items-center gap-3">
             <Lock className="h-7 w-7 shrink-0" aria-hidden />
             <p className="flex-1">
-              <b className="font-normal text-xl">הפורום פתוח למנויות פרימיום.</b>
+              <b className="font-normal text-xl">הפורום פתוח למנויות ולמי שרכשה קובץ ביחידה הזו.</b>
               <span className="gate-soft block text-base leading-snug">
-                הצטרפי כדי לשאול, להשיב ולשתף טיפים עם מורות שכבר לימדו את היחידה.
+                רכשי קובץ מהיחידה או הצטרפי כמנויה כדי לשאול, להשיב ולשתף טיפים עם מורות שכבר לימדו את היחידה.
               </span>
             </p>
-            <Link href="/checkout?premium=1" className="btn btn-gold shrink-0">
-              <Sparkles className="h-4 w-4" /> הצטרפי לפרימיום
+            <Link href="/pricing" className="btn btn-gold shrink-0">
+              <Sparkles className="h-4 w-4" /> למסלולים
             </Link>
           </div>
         )}

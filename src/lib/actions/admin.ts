@@ -15,7 +15,6 @@ import {
   purchases,
   transactions,
   materialKindEnum,
-  tierEnum,
   roleEnum,
   accessEnum,
   statusEnum,
@@ -27,7 +26,7 @@ import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 import { driveSafe, ensureCategoryFolder, loadCategories, placeMaterial, syncCategoryFolderName, driveTrash, logDriveEvent, folderHasLiveFiles } from "@/lib/driveTree";
 import { PLANS } from "@/lib/constants";
-import { addDays, premiumTierForPlan, raiseTier } from "@/lib/purchase-helpers";
+import { addDays } from "@/lib/purchase-helpers";
 
 export type AdminActionState = { error?: string; ok?: boolean; id?: number } | undefined;
 
@@ -103,7 +102,6 @@ const categorySchema = z.object({
   sort: z.preprocess(emptyToUndef, z.coerce.number().int().optional()),
   bundlePrice: priceShekel, // בשקלים, יומר לאגורות
   status: z.enum(statusEnum.enumValues).default("active"),
-  minTier: z.enum(tierEnum.enumValues).default("none"),
 });
 
 export async function createCategory(
@@ -132,7 +130,6 @@ export async function createCategory(
         sort: d.sort ?? 0,
         bundlePrice: d.bundlePrice !== undefined ? Math.round(d.bundlePrice * 100) : null,
         status: d.status,
-        minTier: d.minTier,
       })
       .returning({ id: categories.id });
     await logAudit({
@@ -183,7 +180,6 @@ export async function updateCategory(
         title: categories.title,
         slug: categories.slug,
         status: categories.status,
-        minTier: categories.minTier,
         bundlePrice: categories.bundlePrice,
         sort: categories.sort,
         description: categories.description,
@@ -204,7 +200,6 @@ export async function updateCategory(
         sort: d.sort ?? 0,
         bundlePrice: newBundlePrice,
         status: d.status,
-        minTier: d.minTier,
       })
       .where(eq(categories.id, idParsed.data));
     await logAudit({
@@ -215,13 +210,11 @@ export async function updateCategory(
       details: {
         title: d.title,
         status: d.status,
-        minTier: d.minTier,
         before: old
           ? {
               title: old.title,
               slug: old.slug,
               status: old.status,
-              minTier: old.minTier,
               price: old.bundlePrice,
               sort: old.sort,
               description: clip(old.description, 200),
@@ -231,7 +224,6 @@ export async function updateCategory(
           title: d.title,
           slug,
           status: d.status,
-          minTier: d.minTier,
           price: newBundlePrice,
           sort: d.sort ?? 0,
           description: clip(d.description ?? null, 200),
@@ -377,7 +369,6 @@ const materialSchema = z.object({
   size: z.coerce.number().int().min(0).default(0),
   price: priceShekel, // בשקלים
   premiumOnly: boolField.default(false),
-  minTier: z.enum(tierEnum.enumValues).default("none"),
   sort: z.preprocess(emptyToUndef, z.coerce.number().int().optional()),
   access: z.enum(accessEnum.enumValues).default("paid"),
   status: z.enum(statusEnum.enumValues).default("active"),
@@ -408,7 +399,6 @@ export async function createMaterial(input: MaterialInput): Promise<AdminActionS
         size: d.size,
         price: d.price !== undefined ? Math.round(d.price * 100) : 1500,
         premiumOnly: d.premiumOnly,
-        minTier: d.minTier,
         sort: d.sort ?? 0,
         access: d.access,
         status: d.status,
@@ -466,7 +456,6 @@ const materialUpdateSchema = z.object({
   kind: z.enum(materialKindEnum.enumValues),
   price: priceShekel,
   premiumOnly: boolField.default(false),
-  minTier: z.enum(tierEnum.enumValues).default("none"),
   sort: z.preprocess(emptyToUndef, z.coerce.number().int().optional()),
   access: z.enum(accessEnum.enumValues).default("paid"),
   status: z.enum(statusEnum.enumValues).default("active"),
@@ -498,7 +487,6 @@ export async function updateMaterial(
         kind: d.kind,
         price: newPrice,
         premiumOnly: d.premiumOnly,
-        minTier: d.minTier,
         sort: d.sort ?? 0,
         access: d.access,
         status: d.status,
@@ -518,14 +506,12 @@ export async function updateMaterial(
         status: d.status,
         allowDownload: d.allowDownload,
         allowPreview: d.allowPreview,
-        minTier: d.minTier,
         before: old
           ? {
               title: old.title,
               kind: old.kind,
               price: old.price,
               premiumOnly: old.premiumOnly,
-              minTier: old.minTier,
               access: old.access,
               status: old.status,
               allowDownload: old.allowDownload,
@@ -540,7 +526,6 @@ export async function updateMaterial(
           kind: d.kind,
           price: newPrice,
           premiumOnly: d.premiumOnly,
-          minTier: d.minTier,
           access: d.access,
           status: d.status,
           allowDownload: d.allowDownload,
@@ -609,7 +594,6 @@ export async function deleteMaterial(id: number): Promise<AdminActionState> {
 const userSchema = z.object({
   id: z.coerce.number().int(),
   role: z.enum(roleEnum.enumValues),
-  tier: z.enum(tierEnum.enumValues),
   dailyDownloadLimit: optionalInt,
   notes: optionalLongStr,
 });
@@ -622,15 +606,14 @@ export async function updateUser(
   if (!me) return { error: "אין הרשאה" };
   const parsed = userSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { id, role, tier, dailyDownloadLimit, notes } = parsed.data;
+  const { id, role, dailyDownloadLimit, notes } = parsed.data;
   if (me.id === id && role !== "admin") {
     return { error: "לא ניתן להסיר הרשאת ניהול מעצמך" };
   }
-  // המצב הקודם – לפני/אחרי ביומן (שינוי הרשאה/רמה/מכסה הוא פעולה רגישה)
+  // המצב הקודם – לפני/אחרי ביומן (שינוי הרשאה/מכסה הוא פעולה רגישה)
   const [old] = await db
     .select({
       role: users.role,
-      tier: users.tier,
       dailyDownloadLimit: users.dailyDownloadLimit,
       notes: users.notes,
     })
@@ -643,7 +626,6 @@ export async function updateUser(
     .update(users)
     .set({
       role,
-      tier,
       dailyDownloadLimit: newLimit,
       notes: notes ?? null,
     })
@@ -655,17 +637,15 @@ export async function updateUser(
     entityId: id,
     details: {
       role,
-      tier,
       dailyDownloadLimit: newLimit,
       before: old
         ? {
             role: old.role,
-            tier: old.tier,
             limit: old.dailyDownloadLimit,
             notes: clip(old.notes, 200),
           }
         : null,
-      after: { role, tier, limit: newLimit, notes: clip(notes ?? null, 200) },
+      after: { role, limit: newLimit, notes: clip(notes ?? null, 200) },
     },
   });
   if (old && old.role !== role) {
@@ -1083,7 +1063,6 @@ export async function createManualPurchase(
       note: d.note ?? `מנוי ידני – ${def.label}`,
       createdById: me.id,
     });
-    if (d.premium) await raiseTier(u.id, u.tier, premiumTierForPlan(d.plan));
     await logAudit({
       actorId: me.id,
       action: "purchase.manual",

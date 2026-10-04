@@ -4,12 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X, LogIn, UserRound, ShieldCheck, ShoppingCart } from "lucide-react";
-import { TIERS } from "@/lib/constants";
-import type { Tier } from "@/db/schema";
 import { logoutAction } from "@/lib/actions/auth";
 import { SearchTriggerButton, SiteSearchOverlay } from "@/components/site-search";
 
-type HeaderUser = { name: string; role: "user" | "admin"; tier: Tier } | null;
+type HeaderUser = { name: string; role: "user" | "admin" } | null;
 
 const CART_CHANGED_EVENT = "cart:changed";
 
@@ -90,17 +88,12 @@ export function Header({ user }: { user: HeaderUser }) {
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-sea2/95 border-b border-white/10">
-      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 h-[74px] flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2 group" aria-label="דף הבית">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 xl:px-8 h-[74px] flex items-center gap-3">
+        <Link href="/" className="flex shrink-0 items-center gap-2 group" aria-label="דף הבית">
           <Logo variant="white" className="h-11 sm:h-12" />
-          <span className="hidden sm:block text-[11px] font-semibold text-white/70 tracking-wide border-s border-white/20 ps-3 leading-tight">
-            מתמקדים
-            <br />
-            בעיקר
-          </span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-1 ms-6" aria-label="ניווט ראשי">
+        <nav className="hidden xl:flex items-center gap-1 ms-4" aria-label="ניווט ראשי">
           {NAV.map((n) => {
             const active = n.href === "/" ? path === "/" : path === n.href || path.startsWith(n.href + "/");
             return (
@@ -108,7 +101,7 @@ export function Header({ user }: { user: HeaderUser }) {
                 key={n.href}
                 href={n.href}
                 aria-current={active ? "page" : undefined}
-                className="nav-btn hover:-translate-y-0.5"
+                className="nav-btn !px-3.5 2xl:!px-[1.05rem] hover:-translate-y-0.5"
               >
                 {n.label}
               </Link>
@@ -117,21 +110,13 @@ export function Header({ user }: { user: HeaderUser }) {
           <SearchTriggerButton className="grid h-9 w-9 place-items-center rounded-full text-white/90 transition-colors transition-transform hover:-translate-y-0.5 hover:bg-white/10 hover:text-sun" />
         </nav>
 
-        <div className="ms-auto hidden lg:flex items-center gap-2">
+        <div className="ms-auto hidden xl:flex shrink-0 items-center gap-2">
           {user ? (
             <>
               {user.role === "admin" && (
                 <Link href="/admin" className="btn btn-gold text-sm py-2">
                   <ShieldCheck className="h-4 w-4" /> ניהול
                 </Link>
-              )}
-              {user.tier !== "none" && (
-                <span
-                  className="chip"
-                  style={{ background: TIERS[user.tier].color + "22", color: TIERS[user.tier].color }}
-                >
-                  {TIERS[user.tier].icon} {TIERS[user.tier].label}
-                </span>
               )}
               <CartLink
                 count={cartCount}
@@ -156,7 +141,7 @@ export function Header({ user }: { user: HeaderUser }) {
           )}
         </div>
 
-        <div className="ms-auto lg:hidden flex items-center gap-1">
+        <div className="ms-auto xl:hidden flex items-center gap-1">
           {user && (
             <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-white/10 text-white/80" />
           )}
@@ -172,7 +157,7 @@ export function Header({ user }: { user: HeaderUser }) {
       </div>
 
       {open && (
-        <div className="lg:hidden border-t border-sea/10 bg-plaster/95 animate-fade-up">
+        <div className="xl:hidden border-t border-sea/10 bg-plaster/95 animate-fade-up">
           <nav className="flex flex-col p-4 gap-2" aria-label="ניווט נייד">
             {NAV.map((n) => (
               <Link

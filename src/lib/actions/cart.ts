@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { cartItems, categories, materials, purchases, transactions, users, type Plan, type Tier } from "@/db/schema";
-import { PLANS, TIERS, formatPrice } from "@/lib/constants";
+import { cartItems, categories, materials, purchases, transactions, users, type Plan } from "@/db/schema";
+import { PLANS, formatPrice } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
@@ -151,19 +151,6 @@ function addDays(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 }
 
-/** מדרג הפרימיום לפי המסלול (כמו ב-purchase.ts) */
-function premiumTierFor(plan: Plan): Tier {
-  if (plan === "yearly") return "gold";
-  if (plan === "custom_monthly") return "silver";
-  if (plan === "subject_monthly") return "copper";
-  return "iron";
-}
-
-async function raiseTier(userId: number, current: Tier, target: Tier) {
-  if (TIERS[target].order <= TIERS[current].order) return;
-  await db.update(users).set({ tier: target }).where(eq(users.id, userId));
-}
-
 /** רכישה (מדומה) של כל פריטי העגלה */
 export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): Promise<CheckoutCartState> {
   const user = await getCurrentUser();
@@ -181,7 +168,6 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
   const paymentRef = `MOCK-CART-${Date.now()}`;
   type Row = typeof purchases.$inferInsert;
   const rows: Row[] = [];
-  let tierTarget: Tier | null = null;
 
   for (const it of cart.items) {
     if (it.kind === "single") {
@@ -226,10 +212,6 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
         premium: it.premium,
         paymentRef,
       });
-      if (it.premium) {
-        const t = premiumTierFor(it.plan);
-        if (!tierTarget || TIERS[t].order > TIERS[tierTarget].order) tierTarget = t;
-      }
     }
   }
 
@@ -255,7 +237,6 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
       details: { purchaseId: inserted[0]?.id ?? null, error: e instanceof Error ? `${e.name}: ${e.message.slice(0, 160).replace(/\s+/g, " ")}` : "unknown" },
     });
   }
-  if (tierTarget) await raiseTier(user.id, user.tier, tierTarget);
 
   await db.delete(cartItems).where(eq(cartItems.userId, user.id));
 

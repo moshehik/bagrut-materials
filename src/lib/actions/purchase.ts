@@ -4,14 +4,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { eq, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, materials, purchases, transactions, type Tier } from "@/db/schema";
+import { categories, materials, purchases, transactions } from "@/db/schema";
 import { PLANS, YEARLY_INCLUDED_SUBJECTS, bundlePriceFor, formatPrice } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { chainToHref, getCategoryChain, getDescendantIds } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
-import { addDays, premiumTierFor, raiseTier } from "@/lib/purchase-helpers";
+import { addDays } from "@/lib/purchase-helpers";
 
 /*
  * TODO(payments): כרגע אין ספק סליקה מחובר. ה"תשלום" הוא מדומה (mock):
@@ -20,7 +20,7 @@ import { addDays, premiumTierFor, raiseTier } from "@/lib/purchase-helpers";
  *   1. במקום ההכנסה הישירה ל-purchases – ליצור "הזמנה ממתינה" ולהפנות לדף התשלום של הספק
  *      עם סכום, מזהה הזמנה ו-callback URL.
  *   2. להוסיף route handler (למשל /api/payments/callback) שמאמת את החתימה של הספק,
- *      ורק אז מכניס את שורות ה-purchases ומעדכן tier.
+ *      ורק אז מכניס את שורות ה-purchases.
  *   3. להחליף את paymentRef במזהה העסקה האמיתי.
  */
 
@@ -110,7 +110,6 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   const paymentRef = `MOCK-${Date.now()}`;
   type Row = typeof purchases.$inferInsert;
   const rows: Row[] = [];
-  let tierTarget: Tier | null = null;
   let bundleCategoryId: number | null = null;
 
   switch (input.kind) {
@@ -233,21 +232,16 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
           });
         });
       }
-      if (premium) tierTarget = premiumTierFor("plan", input.plan);
       break;
     }
     case "premium": {
       rows.push(premiumOnlyRow(user.id, paymentRef, prices.premiumAddon));
-      tierTarget = "iron";
       break;
     }
   }
 
-  if (premium && !tierTarget) tierTarget = premiumTierFor(input.kind);
-
   if (!rows.length) return denied("no_rows", "לא נוצרה הזמנה");
   const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
-  if (tierTarget) await raiseTier(user.id, user.tier, tierTarget);
 
   // רישום תנועה כספית (חיוב) – סכום כולל של ההזמנה
   const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);

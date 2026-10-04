@@ -1,17 +1,8 @@
-import type { MaterialKind, Tier, Plan, SichaSeminar } from "@/db/schema";
+import type { MaterialKind, Plan, SichaSeminar } from "@/db/schema";
 
 export const SITE_NAME = "לו״ז העניין";
 export const SITE_TAGLINE = "מתמקדים בעיקר – שיעורים מוכנים למורות במחוז החרדי";
 export const SITE_MOTTO = "מתמקדים בעיקר";
-
-export const TIERS: Record<Tier, { label: string; color: string; icon: string; order: number }> = {
-  none: { label: "ללא", color: "#9ca3af", icon: "○", order: 0 },
-  iron: { label: "ברזל", color: "#6b7280", icon: "🛡️", order: 1 },
-  copper: { label: "נחושת", color: "#b45309", icon: "🥉", order: 2 },
-  silver: { label: "כסף", color: "#94a3b8", icon: "🥈", order: 3 },
-  gold: { label: "זהב", color: "#d4a017", icon: "🥇", order: 4 },
-  diamond: { label: "יהלום", color: "#38bdf8", icon: "💎", order: 5 },
-};
 
 export const MATERIAL_KINDS: Record<MaterialKind, { label: string; icon: string; hint: string }> = {
   student_sheet: {
@@ -202,10 +193,6 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
 
 export function formatPrice(agorot: number) {
   return `₪${(agorot / 100).toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
-}
-
-export function tierAtLeast(a: Tier, b: Tier) {
-  return TIERS[a].order >= TIERS[b].order;
 }
 
 /** מחיר רכישה חד-פעמית של יחידה/פרק שלם (כל הקבצים שבו) – 15 ש"ח, באגורות */

@@ -3,7 +3,6 @@ import { and, countDistinct, desc, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { pageViews, users } from "@/db/schema";
 import { getNumber } from "@/lib/settings";
-import { TIERS } from "@/lib/constants";
 import { agoText, fmtDateTime, minutesAgo } from "@/lib/admin-analytics";
 import { StatTile, Th, Td, EmptyRow } from "@/components/admin/analytics-ui";
 import { AutoRefresh } from "@/components/admin/auto-refresh";
@@ -21,7 +20,6 @@ export default async function AdminOnlinePage() {
         name: users.name,
         email: users.email,
         role: users.role,
-        tier: users.tier,
         lastSeenAt: users.lastSeenAt,
         lastPath: users.lastPath,
         lastIp: users.lastIp,
@@ -86,11 +84,6 @@ export default async function AdminOnlinePage() {
                     <Link href={`/admin/users?q=${encodeURIComponent(u.email)}`} className="text-blue-deep hover:underline">
                       {u.email}
                     </Link>
-                  </Td>
-                  <Td>
-                    <span className="chip" style={{ background: TIERS[u.tier].color + "22", color: TIERS[u.tier].color }}>
-                      {TIERS[u.tier].icon} {TIERS[u.tier].label}
-                    </span>
                   </Td>
                   <Td className="max-w-[260px]">
                     {u.lastPath ? (
