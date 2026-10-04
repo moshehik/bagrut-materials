@@ -398,10 +398,10 @@ async function adopt(driveIds: string[], categoryId: number, actorId: number, vi
         .insert(materials)
         .values({
           categoryId,
-          title: stripExtension(f.name).slice(0, 200),
-          kind: detectKind(f.name),
+          title: stripExtension(cleanName(f.name)).slice(0, 200),
+          kind: detectKind(cleanName(f.name)),
           fileUrl: `drive://${fid}`,
-          fileName: f.name.slice(0, 255),
+          fileName: cleanName(f.name).slice(0, 255),
           mime: f.mimeType,
           size: f.size ?? 0,
           status: "draft",
@@ -479,41 +479,100 @@ export async function refreshInfoAction(categoryId: number | null, upload: boole
   }
 }
 
+/** מסיר תווי כיווניות מוסתרים ורווחים מיותרים משם קובץ שמגיע מ-Windows/Drive for desktop. */
+function cleanName(n: string) {
+  return n.replace(/[‎‏‪-‮⁦-⁩]/g, "").replace(/s+/g, " ").trim();
+}
+
+/** שם להשוואה: בלי סיומת, בלי תוספת "(נערך ...)" ובלי "(1)" שדרייב לדסקטופ מוסיף להעתקים. */
+function cmpName(n: string) {
+  return cleanName(n)
+    .replace(/.[^.]+$/, "")
+    .replace(/s*(נערך d{2}.d{2}.d{4})s*$/, "")
+    .replace(/s*(d+)s*$/, "")
+    .replace(/s*-s*עותק(?:s*(d+))?s*$/, "")
+    .replace(/s+/g, " ")
+    .trim();
+}
+
 /**
  * סנכרון מהדרייב, בקבוצות (כל קריאה מטפלת עד 40 תיקיות; ממשיכים עם nextCursor):
  *  - קובץ מקושר שנמצא בתיקייה של קטגוריה אחרת מזו שב-DB (נגרר ידנית בדרייב) ← ה-DB מתעדכן לפי הדרייב
- *  - קובץ לא מקושר בתיקייה ← מצורף כחומר טיוטה
+ *  - קובץ חדש בתיקייה שהוא *החלפה* של חומר קיים (מחקו את הישן והדביקו חדש באותו שם — ה-fileId השתנה) ← מחברים
+ *    את החומר הקיים לקובץ החדש (נשמרים סטטוס/הורדות/תיקונים), לא יוצרים חומר כפול
+ *  - קובץ לא מקושר אחר בתיקייה ← מצורף כחומר טיוטה
+ *  - גודל קובץ שהוחלף בדרייב (גרסה חדשה) ← מתעדכן ב-DB
  */
-export async function syncFromDriveAction(cursor = 0, onlyCategoryId?: number): Promise<{ ok: boolean; nextCursor: number | null; adopted: number; moved: number; errors: string[]; scanned: number }> {
+export async function syncFromDriveAction(
+  cursor = 0,
+  onlyCategoryId?: number,
+): Promise<{ ok: boolean; nextCursor: number | null; adopted: number; moved: number; relinked: number; resized: number; errors: string[]; scanned: number }> {
   const me = await requireAdmin();
   const { all } = await loadCategories();
   let targets = all.filter((c) => c.driveFolderId).sort((a, b) => a.id - b.id);
   if (onlyCategoryId) targets = targets.filter((c) => c.id === onlyCategoryId);
   const batch = targets.slice(cursor, cursor + 40);
-  const mats = await db.select({ id: materials.id, categoryId: materials.categoryId, fileUrl: materials.fileUrl }).from(materials);
+  const mats = await db
+    .select({ id: materials.id, categoryId: materials.categoryId, fileUrl: materials.fileUrl, fileName: materials.fileName, size: materials.size, orig: materials.driveOriginalName })
+    .from(materials);
   const byFile = new Map(mats.map((m) => [driveIdFromUrl(m.fileUrl) ?? "", m]));
   let adopted = 0;
   let moved = 0;
+  let relinked = 0;
+  let resized = 0;
   const errors: string[] = [];
   await mapPool(batch, 5, async (c) => {
     const items = await driveListFolder(c.driveFolderId!);
+    const present = new Set(items.map((i) => i.id));
+    // חומרים של הקטגוריה שהקובץ שלהם כבר לא בתיקייה — מועמדים להחלפה אם הקובץ נמחק/באשפה (לא סתם הועבר)
+    const st: { orphaned: typeof mats | null } = { orphaned: null };
+    const orphanedMats = async () => {
+      if (st.orphaned) return st.orphaned;
+      const cand = mats.filter((m) => m.categoryId === c.id && !present.has(driveIdFromUrl(m.fileUrl) ?? ""));
+      const gone: typeof mats = [];
+      for (const m of cand) if (!(await driveGet(driveIdFromUrl(m.fileUrl)!))) gone.push(m);
+      return (st.orphaned = gone);
+    };
     for (const i of items) {
       if (i.mimeType === FOLDER_MIME || i.appProperties.siteInfo === "1") continue;
       const m = byFile.get(i.id);
       if (!m) {
+        // החלפה? חומר של הקטגוריה עם אותו שם שהקובץ שלו נמחק
+        const n = cmpName(i.name);
+        const matches = (await orphanedMats()).filter((x) => cmpName(x.fileName) === n || (x.orig && cmpName(x.orig) === n));
+        if (matches.length === 1) {
+          const t = matches[0];
+          await db.update(materials).set({ fileUrl: `drive://${i.id}`, size: i.size ?? t.size, mime: i.mimeType }).where(eq(materials.id, t.id));
+          st.orphaned = (st.orphaned ?? []).filter((x) => x.id !== t.id);
+          byFile.set(i.id, { ...t, fileUrl: `drive://${i.id}` });
+          try {
+            await placeMaterial(t.id, { actorId: me.id });
+          } catch (e) {
+            errors.push(`${i.name}: חובר לחומר #${t.id} אך ההצבה נכשלה (${e instanceof Error ? e.message : e})`);
+          }
+          await logDriveEvent({ kind: "file.replace", materialId: t.id, categoryId: c.id, driveId: i.id, oldValue: t.fileUrl, newValue: `drive://${i.id}`, details: { via: "drive-sync", name: i.name }, actorId: me.id });
+          await logAudit({ actorId: me.id, action: "material.relink", entityType: "material", entityId: t.id, details: { via: "drive-sync", newFileId: i.id, name: i.name } });
+          relinked++;
+          continue;
+        }
         const r = await adopt([i.id], c.id, me.id, "drive-sync");
         if (r[0].error) errors.push(`${i.name}: ${r[0].error}`);
         else adopted++;
       } else if (m.categoryId !== c.id) {
         await db.update(materials).set({ categoryId: c.id }).where(eq(materials.id, m.id));
-        await logDriveEvent({ kind: "file.move", materialId: m.id, categoryId: c.id, driveId: i.id, details: { via: "drive-sync", fromCategory: m.categoryId } , actorId: me.id });
+        await logDriveEvent({ kind: "file.move", materialId: m.id, categoryId: c.id, driveId: i.id, details: { via: "drive-sync", fromCategory: m.categoryId }, actorId: me.id });
         await logAudit({ actorId: me.id, action: "material.move", entityType: "material", entityId: m.id, details: { via: "drive-sync", from: m.categoryId, to: c.id } });
         moved++;
+      } else if (i.size && i.size !== m.size) {
+        // גרסה חדשה של אותו קובץ (למשל שמירה מתוך Drive for desktop) — מעדכנים את הגודל המוצג
+        await db.update(materials).set({ size: i.size }).where(eq(materials.id, m.id));
+        await logDriveEvent({ kind: "file.resize", materialId: m.id, categoryId: c.id, driveId: i.id, oldValue: String(m.size), newValue: String(i.size), details: { via: "drive-sync" }, actorId: me.id });
+        resized++;
       }
     }
   });
   done();
   const next = cursor + 40 < targets.length ? cursor + 40 : null;
-  return { ok: errors.length === 0, nextCursor: next, adopted, moved, errors: errors.slice(0, 20), scanned: batch.length };
+  return { ok: errors.length === 0, nextCursor: next, adopted, moved, relinked, resized, errors: errors.slice(0, 20), scanned: batch.length };
 }
 

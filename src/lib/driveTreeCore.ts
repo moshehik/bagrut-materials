@@ -104,7 +104,7 @@ export function sanitizeDriveName(name: string): string {
   return (
     String(name)
       .replace(/[\\/]+/g, "־")
-      .replace(/[\u0000-\u001f]/g, "")
+      .replace(/[\u0000-\u001f‎‏‪-‮⁦-⁩]/g, "") // תווי בקרה ו-RTL/LTR מוסתרים (Windows מוסיף אותם לשמות בעברית)
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 200) || "ללא שם"
