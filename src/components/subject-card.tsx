@@ -56,8 +56,11 @@ export function SubjectCard({
     >
       <div className={s.arch} style={{ "--accent": accent } as CSSProperties}>
         {house ? (
-          <div className={s.houseWrap}>
-            <img className={s.house} src={house} alt={title} width={356} height={266} />
+          <div className={s.houseStack}>
+            <div className={s.houseWrap}>
+              <img className={s.house} src={house} alt="" width={356} height={266} />
+            </div>
+            <span className={s.houseLabel}>{title}</span>
           </div>
         ) : nutKey ? (
           <Image className={s.nut} src={nutForLevel(nutKey, nutDepth)} alt="" aria-hidden />

@@ -230,14 +230,17 @@ export default async function HomePage() {
                   }
                 >
                   {SUBJECT_HOUSES[c.slug] ? (
-                    <div className={s.houseWrap}>
-                      <img
-                        className={s.house}
-                        src={SUBJECT_HOUSES[c.slug]}
-                        alt={c.title}
-                        width={356}
-                        height={266}
-                      />
+                    <div className={s.houseStack}>
+                      <div className={s.houseWrap}>
+                        <img
+                          className={s.house}
+                          src={SUBJECT_HOUSES[c.slug]}
+                          alt=""
+                          width={356}
+                          height={266}
+                        />
+                      </div>
+                      <span className={s.houseLabel}>{c.title}</span>
                     </div>
                   ) : (
                     <Image className={s.nut} src={nutForLevel(c.slug, 0)} alt="" aria-hidden />

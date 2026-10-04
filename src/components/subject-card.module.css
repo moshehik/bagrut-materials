@@ -18,7 +18,7 @@
 }
 
 .arch {
-  height: 118px;
+  height: 152px;
   margin: 10px 10px 0;
   border-radius: 70px 70px 12px 12px;
   background: transparent;
@@ -37,12 +37,32 @@
   border-color: color-mix(in srgb, var(--accent, var(--blue)) 70%, var(--blue));
 }
 .big .arch {
-  height: 138px;
+  height: 174px;
 }
 
+/* בית + שם המקצוע מתחתיו (השם כבר לא בתוך התמונה) */
+.houseStack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+.houseLabel {
+  font-family: var(--font-hand);
+  font-size: 18px;
+  line-height: 1.15;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+}
+.big .houseLabel {
+  font-size: 20px;
+}
 .houseWrap {
   position: relative;
-  width: 56%;
+  width: min(56%, 150px);
   aspect-ratio: 356 / 266;
 }
 .house {
