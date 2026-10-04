@@ -17,6 +17,14 @@
    - Corrections/instructions from the teacher are tracked two ways: full history+reasoning in `חומרים מוכנים מחדש/הוראות לבניית כל החומרים החדשים/כל ההוראות לבניית החומרים.md`, and a lean structured status ledger (which files already incorporate which correction #) in `יומן תיקונים מבני (סטטוס קבצים).md` in that same folder — update both when a new correction comes in, but only the ledger needs re-reading for a "which files still need this fix" sweep.
    - **Fill-in-the-blank lines: always use literal underscore characters (`____`), never spaces-with-underline-formatting (`<w:u/>` on a run of `" "` chars).** Confirmed bug (2026-09-14, "פרק כ" materials): a run of only spaces with underline formatting silently loses its underline when it lands at a line-wrap boundary in the exported PDF (the renderer trims trailing whitespace there) — the blank line just vanishes, mid-sentence, with no visual trace. Underscore characters are real glyphs and don't get trimmed, so they always render regardless of where the line wraps.
 
+## Site mail — Google Apps Script (details: [docs/mail-script.md](docs/mail-script.md))
+
+All mail goes `sendMail()` ([mail.ts](src/lib/mail.ts)) → POST to `MAIL_SCRIPT_URL` (.env, .env.local, Vercel ×3 envs; Vercel needs a Redeploy after a change). Since 2026-10-05 it points at its **own** Apps Script project in the new "לו״ז העניין" Gmail (deployment ending `…QnvA5w`), a copy of the shared "מערכת מייל פתוח" script that also serves gemach-app.
+- The sender **address** = the account that runs the deployment (Execute as: Me); the sender **name** comes from `senderName` (= `MAIL_FROM_NAME` or `SITE_NAME`). Without `senderName` the shared script falls back to 'גמ"ח שמלות'.
+- Update a deployment (New version) only from the new account — an update from another account moves "Me" to it. Don't edit the shared "מערכת מייל פתוח" project without the owner's explicit OK.
+- The Drive bridge (`DRIVE_BRIDGE_URL`, ending `…JTfa`) is a completely different script — don't touch it when changing mail.
+- Repo is public: never commit a full `/exec` URL (anyone holding it can send mail from the account).
+
 ## Netfree — all file transfer must go through our own domain
 
 Many students/teachers browse through Netfree (a content-filtering proxy common in the Charedi sector) which only lets the browser talk to the site's own domain — a direct request to a third-party host (`drive.google.com`, etc.) is blocked outright. This is a hard constraint on the whole file-transfer design, not an edge case:
