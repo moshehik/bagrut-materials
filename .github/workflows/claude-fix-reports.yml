@@ -103,6 +103,7 @@ jobs:
           echo "enabled=$ENABLED" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude Code (fix-reports)
+        id: claude
         if: steps.check.outputs.enabled == 'true'
         uses: anthropics/claude-code-action@v1
         with:
@@ -130,3 +131,13 @@ jobs:
           # scripts/get-preview-deployment-url.ts בלבד - הטוקן האוטומטי של ה-workflow,
           # לא secret נפרד; מוגבל ל-deployments:read למעלה.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # יומן מלא: מייבא את תמליל ההרצה (כל הודעה, כל קריאת כלי וכל תוצאה) לטבלת agent_events
+      # (מוצג ב-/admin/agent) גם אם קלוד נכשל. בכוונה אין העלאת artifact גולמי: הריפו ציבורי, והקובץ
+      # הגולמי לא עבר הסתרת סודות/פרטי מדווחים (הם יכולים לכלול טלפונים ושמות מתוך הדיווחים).
+      # סודות מוסתרים לפני הכתיבה ל-DB (redactSecrets ב-src/lib/agentEvents.ts).
+      - name: Ingest full Claude transcript into agent log
+        if: always() && steps.check.outputs.enabled == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx tsx scripts/agent-log-ingest.ts "${{ steps.claude.outputs.execution_file }}" --outcome="${{ steps.claude.outcome }}" || true

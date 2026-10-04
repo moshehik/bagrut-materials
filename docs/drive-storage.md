@@ -146,3 +146,13 @@ npx tsx scripts/import-local-material.ts \
 נבדקה ישירות מול הגשר האמיתי (לא mock) בכל השלבים הקריטיים; הבדיקה
 שנשארה פתוחה היא רק "החיווט של route.ts עצמו" (auth/parsing) — מאומת
 בקומפילציה (`tsc`) אבל לא ב-request HTTP אמיתי.
+
+## עץ תיקיות הדרייב (10.2026)
+הארכיון מאורגן כעץ תיקיות שמשקף את טבלת `categories` (תיקייה לכל קטגוריה, `categories.drive_folder_id`),
+וכל חומר יושב בתיקיית הקטגוריה שלו בשם `materials.file_name`. השם הישן נשמר ב-`materials.drive_original_name`
+וב-`description` של הקובץ בדרייב. העברה/שינוי שם לא משנים `fileId`, ולכן `drive://<fileId>` נשאר תקף.
+- ליבה: `src/lib/driveTreeCore.ts` (עטיפה לאתר: `driveTree.ts`), קובץ מידע: `src/lib/driveFolderInfo.ts` (`_מידע.txt` בכל תיקייה: מה חסר, מה נוסף ומתי, היסטוריית שמות)
+- היסטוריה: טבלת `drive_events`. סייר בניהול: `/admin/drive` (פעולות ב-`src/lib/actions/driveExplorer.ts`)
+- ארגון/תיקון המוני: `npx tsx scripts/drive-organize.ts` (dry-run כברירת מחדל; `--apply`, `--category=<id>` לפיילוט; אידמפוטנטי; שומר גיבוי)
+- `_ארכיון`: יתומים / גרסאות ישנות / לא ברור — לא נמחק דבר, אפשר לשחזר מהסייר
+- הזזת קטגוריה מהסייר משנה `parentId`; `scripts/seed.ts` עושה upsert לפי (הורה, slug) — לעדכן גם `curriculum-tree.ts`
