@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderOpen, Package, ArrowRight, Crown, ShieldCheck } from "lucide-react";
+import { FolderOpen, Package, ArrowRight, ShieldCheck } from "lucide-react";
 import {
   resolvePath,
   getVisibleChildren,
@@ -14,11 +14,17 @@ import {
   type Entitlement,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
-import { MATERIAL_KINDS, PREMIUM_KINDS, formatPrice } from "@/lib/constants";
-import type { Material, MaterialKind } from "@/db/schema";
+import { UNIT_BUNDLE_PRICE, formatPrice } from "@/lib/constants";
+import type { Material } from "@/db/schema";
+import { CARD_ROWS, classifyMaterial, type CardType } from "@/lib/material-card-types";
+import { MaterialTypeCard } from "@/components/material-type-card";
+import { ForumCard } from "@/components/forum-card";
+import { FolderBundleBanner } from "@/components/folder-bundle-banner";
+import { AutoFolderDownload } from "@/components/auto-folder-download";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
+import { getPublishedFixes } from "@/lib/fixes";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 import { SichotModule } from "@/components/sichot/sichot-module";
@@ -27,17 +33,10 @@ import { nutForLevel } from "@/lib/nut-images";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ path: string[] }> };
-
-const KIND_ORDER: MaterialKind[] = [
-  "student_sheet",
-  "teacher_sheet",
-  "presentation",
-  "past_exam",
-  "tips",
-  "ideas",
-  "other",
-];
+type Props = {
+  params: Promise<{ path: string[] }>;
+  searchParams: Promise<{ dlall?: string }>;
+};
 
 function decode(path: string[]) {
   return path.map((p) => {
@@ -59,8 +58,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { path } = await params;
+  const { dlall } = await searchParams;
   const chain = await resolvePath(decode(path)).catch(() => null);
   if (!chain || chain.length === 0) notFound();
 
@@ -105,12 +105,31 @@ export default async function CategoryPage({ params }: Props) {
     ? await getUserDownloadCounts(user.id, mats.map((m) => m.id))
     : new Map<number, number>();
 
-  const groups = KIND_ORDER.map((kind) => ({
-    kind,
-    items: mats
-      .map((m, i) => ({ m, ent: entitlements[i] }))
-      .filter((x) => x.m.kind === kind),
-  })).filter((g) => g.items.length > 0);
+  const fixesByMaterial = await getPublishedFixes(mats.map((m) => m.id));
+
+  // כל חומר מסווג לסוג כרטיסייה לפי שמו; מה ששייך לאותה שורה בעיצוב מוצג יחד
+  type Item = { m: Material; ent: Entitlement };
+  const byType = new Map<CardType, Item[]>();
+  const generic: Item[] = [];
+  mats.forEach((m, i) => {
+    const t = classifyMaterial(m);
+    const item = { m, ent: entitlements[i] };
+    if (!t) generic.push(item);
+    else byType.set(t, [...(byType.get(t) ?? []), item]);
+  });
+  const cardRows = CARD_ROWS.flatMap((types) => {
+    const n = Math.max(0, ...types.map((t) => byType.get(t)?.length ?? 0));
+    return Array.from({ length: n }, (_, i) =>
+      types.map((t) => ({ type: t, item: byType.get(t)?.[i] ?? null })),
+    );
+  });
+
+  // יחידה (תיקייה בלי תתי-תיקיות) עם חומרים בתשלום: רכישה חד-פעמית של כל הקבצים
+  const isUnit = children.length === 0 && category.contentModule !== "sichot";
+  const hasPaid = mats.some((m) => m.access !== "free");
+  const ownsAll = mats.length > 0 && entitlements.every((e) => e.ok);
+  const showBundle = isUnit && hasPaid && mats.length > 0;
+  const bundlePrice = category.bundlePrice || UNIT_BUNDLE_PRICE;
 
   const accent = category.color || root.color || "var(--blue)";
   const parentHref = chain.length > 1 ? chainToHref(chain.slice(0, -1)) : "/subjects";
@@ -212,7 +231,7 @@ export default async function CategoryPage({ params }: Props) {
       )}
 
       {/* חומרים */}
-      {groups.length > 0 && (
+      {mats.length > 0 && (
         <section className="mt-12" aria-labelledby="materials-h">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="materials-h" className="font-display text-2xl font-bold">
@@ -236,44 +255,61 @@ export default async function CategoryPage({ params }: Props) {
             </span>
           </p>
 
-          <div className="mt-6 space-y-10">
-            {groups.map((g) => {
-              const meta = MATERIAL_KINDS[g.kind];
-              const premium = PREMIUM_KINDS.includes(g.kind);
-              return (
-                <Reveal key={g.kind}>
-                  <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-soft text-xl" aria-hidden>
-                      {meta.icon}
-                    </span>
-                    <div>
-                      <h3 className="text-lg font-bold flex items-center gap-2">
-                        {meta.label}
-                        {premium && (
-                          <span className="chip btn-gold text-[11px]">
-                            <Crown className="h-3 w-3" aria-hidden /> פרימיום
-                          </span>
-                        )}
-                      </h3>
-                      {meta.hint && <p className="text-sm text-muted">{meta.hint}</p>}
-                    </div>
-                  </div>
-                  <AnimatedGrid className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {g.items.map(({ m, ent }: { m: Material; ent: Entitlement }) => (
-                      <MaterialCard
-                        key={m.id}
-                        material={m}
-                        entitlement={ent}
-                        loggedIn={!!user}
+          {showBundle && (
+            <div className="mt-6">
+              <FolderBundleBanner categoryId={category.id} price={bundlePrice} owned={ownsAll} />
+            </div>
+          )}
+          {showBundle && ownsAll && dlall === "1" && <AutoFolderDownload href={`/api/download-folder/${category.id}`} />}
+
+          {cardRows.length > 0 && (
+            <div className="mtc-grid mt-8">
+              {cardRows.flatMap((row, ri) =>
+                // כל שורה תופסת שתי עמודות בדיוק, כך ששורה של כרטיס בודד לא "נבלעת" בשורה הבאה
+                [...row, ...(row.length < 2 ? [{ type: "pad" as const, item: null }] : [])].map(({ type, item }) =>
+                  item ? (
+                    <Reveal key={item.m.id}>
+                      <MaterialTypeCard
+                        material={item.m}
+                        entitlement={item.ent}
+                        type={type}
+                        bundleHref={`/checkout?bundle=${category.id}`}
+                        folderTitle={category.title}
                         currentPath={here}
-                        myDownloadCount={downloadCounts.get(m.id) ?? 0}
+                        myDownloadCount={downloadCounts.get(item.m.id) ?? 0}
+                        fixes={fixesByMaterial.get(item.m.id)?.map((f) => ({
+                          number: f.number,
+                          originalText: f.originalText,
+                          correctedText: f.correctedText,
+                        }))}
                       />
-                    ))}
-                  </AnimatedGrid>
-                </Reveal>
-              );
-            })}
-          </div>
+                    </Reveal>
+                  ) : (
+                    <div key={`empty-${ri}-${type}`} aria-hidden className="hidden md:block" />
+                  ),
+                ),
+              )}
+              {isUnit && <ForumCard folderTitle={category.title} />}
+            </div>
+          )}
+
+          {generic.length > 0 && (
+            <div className="mt-10">
+              <h3 className="mb-4 text-lg font-bold">חומרים נוספים</h3>
+              <AnimatedGrid className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {generic.map(({ m, ent }) => (
+                  <MaterialCard
+                    key={m.id}
+                    material={m}
+                    entitlement={ent}
+                    loggedIn={!!user}
+                    currentPath={here}
+                    myDownloadCount={downloadCounts.get(m.id) ?? 0}
+                  />
+                ))}
+              </AnimatedGrid>
+            </div>
+          )}
         </section>
       )}
 

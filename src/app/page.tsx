@@ -13,6 +13,7 @@ import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconStudentPage, IconTeacherPage, IconPresentation, IconPastExams } from "@/components/kind-icons";
 import { nutForLevel } from "@/lib/nut-images";
+import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
 import { FaqSection } from "@/components/faq-section";
 import s from "./home.module.css";
 
@@ -42,6 +43,9 @@ async function safePrices() {
 
 const num = (n: number) => n.toLocaleString("he-IL");
 
+/** סדר הכרטיסיות בתוך תיקיית שיעור (אותו סדר כמו CARD_ROWS) */
+const LESSON_ITEMS: CardType[] = CARD_ROWS.flat();
+
 export default async function HomePage() {
   const user = await getCurrentUser().catch(() => null);
   const isAdmin = user?.role === "admin";
@@ -58,7 +62,13 @@ export default async function HomePage() {
       <div className={s.hero}>
         <div className={s.heroBg} aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={428} height={443} />
+          <span className={s.heroPen}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/hero-pen.png" alt="" className={s.heroPenImg} width={255} height={339} />
+          </span>
+          <span className={s.heroGoatRun}>
+            <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={428} height={443} />
+          </span>
         </div>
         <div className={s.wrap}>
           <div className={s.heroGrid}>
@@ -66,7 +76,7 @@ export default async function HomePage() {
               <HeroTitle />
               <TypewriterLead
                 className={s.lead}
-                text="לראשונה! אתר חדשני ומקצועי שמאגד את כל חומרי הבגרות ללמידה בכיתה, שכפול למורה ולתלמידה, חומר העשרה מגוון ומרתק, בוחן מסכם עם תשובון למורה ודף עם מיומנויות למידה המותאמות ליחידת החומר! תוספים מרעננים ומרגשים למנויות פרימיום. כן. הגיע הזמן להוציא את העז מהלו״ז, שתוכלי להתמקד בלוז העניין ולתת מעבר."
+                text={'בלו"ז העניין תקבלי את המעטפת המושלמת לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור! בואי להיות חלק ממשהו גדול, להוציא את העז מהלו"ז, ולתת לתלמידות שלך מעבר.'}
               />
               <div className={s.acts}>
                 <Link href="/subjects" className="btn btn-terra text-base">
@@ -108,6 +118,87 @@ export default async function HomePage() {
             </div>
           )}
         </div>
+
+        {/* ================= LESSON CONTENTS (לו"ז השיעור) ================= */}
+        <Reveal>
+          <h2 className="sec-h" style={{ marginBottom: 40 }}>
+            מה לו״ז השיעור שלנו?
+          </h2>
+        </Reveal>
+        <AnimatedGrid className={s.lessonItems}>
+          {LESSON_ITEMS.map((t, i) => {
+            const st = CARD_STYLES[t];
+            const soon = t === "presentation";
+            // הכיתוב והוי באותו צבע — צבע התיקייה (לכל סוג צבע ייחודי ב-CARD_STYLES)
+            const chk = st.chk ?? st.strip;
+            return (
+              <div
+                key={t}
+                className={s.lessonItem}
+                style={{ "--chk": chk } as CSSProperties}
+              >
+                <div className={s.lessonArtBox}>
+                  {!soon && <span className={s.lessonCheck} aria-hidden />}
+                  <Image
+                    src={`/images/lesson-icons-v2/${st.art}.png`}
+                    alt=""
+                    width={120}
+                    height={120}
+                    className={s.lessonArt}
+                    aria-hidden
+                  />
+                  {soon && <span className={s.lessonSoon}>בקרוב!</span>}
+                </div>
+                <b>{st.label}</b>
+              </div>
+            );
+          })}
+        </AnimatedGrid>
+        <p className={s.lessonNote}>המפרט מתעדכן לפי סוג השיעור</p>
+        <div className={s.lessonNuts} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/nuts/many-05.webp" alt="" width={282} height={141} />
+        </div>
+
+        {/* ================= STEPS ================= */}
+        <Reveal>
+          <h2 className="sec-h">איך זה עובד</h2>
+          <p className="sec-sub" style={{ marginBottom: 46 }}>
+            שלושה צעדים — והשיעור של מחר מוכן.
+          </p>
+        </Reveal>
+        <AnimatedGrid className={s.steps}>
+          <div className={s.step}>
+            <div className={s.n}>
+              <span>1</span>
+            </div>
+            <h4>
+              <img src="/images/marker-1.png" alt="" className={s.stepMarker} />
+              <mark className={s.highlight}>בוחרים מקצוע</mark>
+            </h4>
+            <p>תורה, נביא, כתובים, לשון, ספרות, אנגלית, יהדות, מתמטיקה, דינים, היסטוריה ועוד.</p>
+          </div>
+          <div className={s.step}>
+            <div className={s.n}>
+              <span>2</span>
+            </div>
+            <h4>
+              <img src="/images/marker-2.png" alt="" className={s.stepMarker} />
+              <mark className={s.highlight}>יורדים עד לפרק</mark>
+            </h4>
+            <p>יחידות ← פנימי/חיצוני ← נושא ← פרשה/פרק. כל תיקייה עם סמל שאלון ותיאור קצר.</p>
+          </div>
+          <div className={s.step}>
+            <div className={s.n}>
+              <span>3</span>
+            </div>
+            <h4>
+              <img src="/images/marker-3.png" alt="" className={s.stepMarker} />
+              <mark className={s.highlight}>מורידים ומלמדים</mark>
+            </h4>
+            <p>הקובץ מוטבע במספר האישי שלך ונשמר באזור האישי. מדפיסים — ונכנסים לכיתה.</p>
+          </div>
+        </AnimatedGrid>
 
         {/* ================= SUBJECTS ================= */}
         <Reveal>
@@ -264,46 +355,6 @@ export default async function HomePage() {
                 <span className={s.av}>ש</span>שרה, מורה להיסטוריה
               </div>
             </div>
-          </div>
-        </AnimatedGrid>
-
-        {/* ================= STEPS ================= */}
-        <Reveal>
-          <h2 className="sec-h">איך זה עובד</h2>
-          <p className="sec-sub" style={{ marginBottom: 46 }}>
-            שלושה צעדים — והשיעור של מחר מוכן.
-          </p>
-        </Reveal>
-        <AnimatedGrid className={s.steps}>
-          <div className={s.step}>
-            <div className={s.n}>
-              <span>1</span>
-            </div>
-            <h4>
-              <img src="/images/marker-1.png" alt="" className={s.stepMarker} />
-              <mark className={s.highlight}>בוחרים מקצוע</mark>
-            </h4>
-            <p>תורה, נביא, כתובים, לשון, ספרות, אנגלית, יהדות, מתמטיקה, דינים, היסטוריה ועוד.</p>
-          </div>
-          <div className={s.step}>
-            <div className={s.n}>
-              <span>2</span>
-            </div>
-            <h4>
-              <img src="/images/marker-2.png" alt="" className={s.stepMarker} />
-              <mark className={s.highlight}>יורדים עד לפרק</mark>
-            </h4>
-            <p>יחידות ← פנימי/חיצוני ← נושא ← פרשה/פרק. כל תיקייה עם סמל שאלון ותיאור קצר.</p>
-          </div>
-          <div className={s.step}>
-            <div className={s.n}>
-              <span>3</span>
-            </div>
-            <h4>
-              <img src="/images/marker-3.png" alt="" className={s.stepMarker} />
-              <mark className={s.highlight}>מורידים ומלמדים</mark>
-            </h4>
-            <p>הקובץ מוטבע במספר האישי שלך ונשמר באזור האישי. מדפיסים — ונכנסים לכיתה.</p>
           </div>
         </AnimatedGrid>
 

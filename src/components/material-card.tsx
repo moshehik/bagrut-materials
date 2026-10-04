@@ -137,7 +137,7 @@ export function MaterialCard({
   );
 }
 
-function Actions({
+export function Actions({
   m,
   entitlement,
   currentPath,

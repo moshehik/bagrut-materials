@@ -162,6 +162,38 @@ export const materials = pgTable(
   (t) => [index("materials_category_idx").on(t.categoryId)],
 );
 
+/**
+ * בקשת שינוי בקובץ שמורה ביקשה (requestText + ציטוט אופציונלי), ואחרי שהמנהלת מפרסמת אותה כתיקון:
+ * fixNumber רץ לכל חומר (1,2,3…) – מוצג באתר בלבד, לא בקובץ שיורד. originalText = הטקסט כפי שהוא בקובץ
+ * (מסומן בורוד בהורדה), correctedText = התיקון (מסומן בתכלת). הקובץ המקורי לא משתנה אף פעם –
+ * התיקונים מוחלים על ה-docx בזמן ההורדה (ר' src/lib/docx-fixes.ts). שינוי שהמורה לא סימנה בוי – לא מוחל.
+ */
+export const materialFixes = pgTable(
+  "material_fixes",
+  {
+    id: serial("id").primaryKey(),
+    materialId: integer("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    /** המבקשת (null אם נמחקה, או תיקון שהמנהלת הוסיפה בעצמה) */
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    requestText: text("request_text").notNull(),
+    quoteText: text("quote_text"),
+    /** pending = ממתינה למנהלת, published = תיקון מפורסם, rejected = נדחתה */
+    status: varchar("status", { length: 12 }).notNull().default("pending"),
+    fixNumber: integer("fix_number"),
+    originalText: text("original_text"),
+    correctedText: text("corrected_text"),
+    adminNote: text("admin_note"),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("material_fixes_material_idx").on(t.materialId),
+    uniqueIndex("material_fixes_number_idx").on(t.materialId, t.fixNumber),
+  ],
+);
+
 /** מאגר שיחות מורות (שיחה / חברה / כישורי חיים) — שיחה/פעילות שמורה מעלה, לא "חומר" רגיל של המנהלת */
 export const sichot = pgTable(
   "sichot",
@@ -608,6 +640,7 @@ export type Setting = typeof settings.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type UserInterest = typeof userInterests.$inferSelect;
+export type MaterialFix = typeof materialFixes.$inferSelect;
 export type Sicha = typeof sichot.$inferSelect;
 export type SichaRating = typeof sichaRatings.$inferSelect;
 export type SichaUsage = typeof sichaUsages.$inferSelect;

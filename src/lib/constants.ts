@@ -179,3 +179,16 @@ export function formatPrice(agorot: number) {
 export function tierAtLeast(a: Tier, b: Tier) {
   return TIERS[a].order >= TIERS[b].order;
 }
+
+/** מחיר רכישה חד-פעמית של יחידה/פרק שלם (כל הקבצים שבו) – 15 ש"ח, באגורות */
+export const UNIT_BUNDLE_PRICE = 1500;
+
+/**
+ * מחיר קובץ מורחב לתיקייה: מחיר שהוגדר ידנית, אחרת 15 ש"ח ליחידה (תיקייה ללא תתי-תיקיות),
+ * ואחרת (תיקייה עם תתי-פרקים) 70% מסכום מחירי החומרים בה.
+ */
+export function bundlePriceFor(opts: { bundlePrice: number | null; isLeaf: boolean; materialsTotal: number }) {
+  if (opts.bundlePrice) return opts.bundlePrice;
+  if (opts.isLeaf) return UNIT_BUNDLE_PRICE;
+  return Math.round(opts.materialsTotal * 0.7);
+}

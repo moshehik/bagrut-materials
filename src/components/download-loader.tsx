@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // כל קישורי ההורדה באתר (חומרים + מאגר שיחות)
-const DOWNLOAD_LINK = /^\/api\/(sichot\/)?download\/\d+/;
+const DOWNLOAD_LINK = /^\/api\/(sichot\/download|download|download-folder)\/\d+/;
 const POLL_MS = 300;
 // רשת ביטחון: המרת Word ל-PDF מוגבלת ל-60 שניות בשרת
 const GIVE_UP_MS = 75_000;

@@ -760,3 +760,506 @@ body {
     opacity: 0;
   }
 }
+
+/* ===== כרטיסיית חומר בתוך תיקייה (MaterialTypeCard) ===== */
+.mtc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 22rem));
+  gap: 4.25rem 4rem;
+  justify-content: start;
+}
+@media (max-width: 720px) {
+  .mtc-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3.25rem;
+  }
+}
+.mtc {
+  --mtc-head: #42595a;
+  filter: drop-shadow(0 2px 5px rgba(46, 42, 32, 0.12));
+}
+.mtc-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 4.2rem;
+  padding: 0.4rem 0.8rem 0.4rem 1rem;
+  background: var(--mtc-head);
+  border-radius: 0.9rem 0.9rem 0 0;
+  border-bottom: 0.35rem solid var(--mtc-strip);
+}
+.mtc-art {
+  order: -1; /* תחילת השורה = הצד הימני ב-RTL */
+  height: 3.2rem;
+  width: auto;
+  max-width: 4.6rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.mtc-art-wide {
+  height: 3.6rem;
+  max-width: 7.6rem;
+}
+.mtc-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem 0.4rem;
+  margin: 0;
+  line-height: 1.2;
+}
+/* שם הסוג: הכתב המדויק מהעיצוב (לבן עם מרקם גיר), כתמונה */
+.mtc-label {
+  width: calc(var(--w) * 0.035rem);
+  max-width: 100%;
+  height: auto;
+}
+/* שם הפרק / היחידה: גופן גברת לוין */
+.mtc-chapter {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.1rem;
+  color: #fff;
+}
+.mtc-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-height: 4.2rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--mtc-body);
+  border-radius: 0 0 0.9rem 0.9rem;
+  font-family: var(--font-hand);
+  color: #1b1b1b;
+}
+.mtc-print {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+.mtc-print-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+}
+.mtc-print-light {
+  color: #fff;
+}
+.mtc-download {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 1rem;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+.mtc-download:hover,
+.mtc-download:focus-visible {
+  transform: scale(1.07) rotate(-2deg);
+}
+.mtc-nut {
+  width: 2rem;
+  height: auto;
+}
+.mtc-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* ריבוע האגוזים-כפתורים בתחתית הכרטיסייה (עריכת שינויים / צפייה בשינויים / הורדת הקובץ המתוקן) */
+.mtc-body:not(.mtc-forum-body) {
+  border-radius: 0;
+}
+.mtc-lower {
+  background: var(--mtc-body);
+  border-radius: 0 0 0.9rem 0.9rem;
+  padding: 0 0.7rem 0.7rem;
+  font-family: var(--font-hand);
+  color: #1b1b1b;
+}
+.mtc-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.8rem;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 0.7rem;
+}
+.mtc-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+  padding: 0.15rem 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.mtc-row:hover,
+.mtc-row:focus-visible {
+  transform: scale(1.04);
+}
+.mtc-rownut {
+  width: 1.9rem;
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(60, 40, 10, 0.35));
+}
+
+/* טולטיפ מודרני בכתב גברת לוין – על כל אלמנט עם data-tip */
+[data-tip] {
+  position: relative;
+}
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: calc(100% + 0.55rem);
+  z-index: 40;
+  width: max-content;
+  max-width: min(15.5rem, 78vw);
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.8rem;
+  background: #2f3b57;
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: start;
+  box-shadow: 0 10px 26px rgba(25, 30, 50, 0.35);
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+[data-tip]::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 1.2rem;
+  bottom: calc(100% + 0.15rem);
+  z-index: 40;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: #2f3b57;
+  transform: translateY(6px) rotate(45deg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+[data-tip]:hover::after,
+[data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: none;
+}
+[data-tip]:hover::before,
+[data-tip]:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0) rotate(45deg);
+}
+
+/* חלונות בקשת שינוי / בחירת שינויים */
+.fix-dialog {
+  font-family: var(--font-sans);
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 3rem);
+  padding: 0;
+  border: 0;
+  border-radius: 1rem;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  margin: auto;
+}
+.fix-dialog::backdrop {
+  background: rgba(30, 25, 15, 0.5);
+}
+.fix-dialog-box {
+  padding: 1.1rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 3rem);
+}
+.fix-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.fix-dialog-head h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.fix-close {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.fix-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.fix-dialog-sub {
+  margin: 0.2rem 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.fix-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.fix-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.fix-optional {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.fix-error {
+  color: #b42318;
+  font-size: 0.85rem;
+}
+.fix-done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+  line-height: 1.6;
+}
+.fix-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.fix-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.7rem;
+  cursor: pointer;
+}
+.fix-row:has(input:checked) {
+  border-color: #5aa8c8;
+  background: #f1fafd;
+}
+.fix-row input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+  accent-color: #3b8fb4;
+}
+.fix-num {
+  display: grid;
+  place-items: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: #3f6aa0;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.fix-texts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.5rem;
+  line-height: 1.7;
+  font-size: 0.92rem;
+}
+.fix-pink {
+  background: #ffc2dc;
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+.fix-blue {
+  background: #bfe9f7;
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+.fix-arrow {
+  color: var(--muted);
+}
+.fix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: space-between;
+}
+.fix-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ההודעה הצפה "שימי לב!" */
+.fix-notice {
+  padding: 0.8rem 1rem;
+  border-radius: 0.8rem;
+  background: #fff6d6;
+  border: 1px solid #e8cf6a;
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #3b3000;
+}
+.fix-notice b {
+  font-size: 1rem;
+  font-weight: 800;
+}
+.fix-notice ol {
+  margin: 0.3rem 0 0;
+  padding-inline-start: 1.2rem;
+  list-style: decimal;
+}
+.fix-notice li + li {
+  margin-top: 0.3rem;
+}
+.fix-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+/* צפייה בשינויים: רשימה + הקובץ המסומן */
+.fix-dialog-wide {
+  width: min(70rem, calc(100vw - 2rem));
+}
+.fix-viewer {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .fix-viewer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.fix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+}
+.fix-frame {
+  width: 100%;
+  height: min(70vh, 46rem);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.7rem;
+  background: #f4f4f4;
+}
+
+.mtc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* אגוז בראש הכרטיסיות: רכישה חד-פעמית של כל הקבצים בתיקייה */
+.mtc-bundle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #1b1b1b;
+  font-family: var(--font-hand);
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+.mtc-bundle:hover,
+.mtc-bundle:focus-visible {
+  transform: scale(1.04) rotate(-1.5deg);
+}
+.mtc-bundle-nut {
+  width: 4.2rem;
+  height: auto;
+  filter: drop-shadow(0 3px 5px rgba(46, 42, 32, 0.25));
+}
+.mtc-bundle-text {
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.mtc-bundle-price {
+  font-size: 1.5rem;
+  padding-inline-start: 0.6rem;
+  border-inline-start: 2px solid rgba(0, 0, 0, 0.25);
+}
+@media (max-width: 480px) {
+  .mtc-bundle-text {
+    font-size: 1.3rem;
+  }
+  .mtc-bundle-nut {
+    width: 3.4rem;
+  }
+}
+.mtc-bundle-shekel {
+  font-family: var(--font-heebo), sans-serif;
+  font-weight: 700;
+  margin-inline-start: 0.2rem;
+  font-size: 1.2rem;
+}
+
+/* כרטיסיית הפורום: הגוף כולו קישור לפורום (תמונת אגוזים + קריאה להשתתף) */
+.mtc-forum-body {
+  text-decoration: none;
+  color: #1b1b1b;
+  transition: filter 0.2s ease;
+}
+.mtc-forum-body:hover,
+.mtc-forum-body:focus-visible {
+  filter: brightness(1.04);
+}
+.mtc-forum-text {
+  flex: 1;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+.mtc-forum-nuts {
+  width: 4.2rem;
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 3px rgba(46, 42, 32, 0.25));
+  transition: transform 0.2s ease;
+}
+.mtc-forum-body:hover .mtc-forum-nuts {
+  transform: scale(1.08) rotate(-3deg);
+}

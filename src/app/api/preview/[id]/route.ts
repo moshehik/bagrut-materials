@@ -8,6 +8,8 @@ import { stampPdf, stampPreview, firstPageOnly } from "@/lib/watermark";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdf } from "@/lib/driveBridge";
 import { logAudit } from "@/lib/audit";
+import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
+import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +18,8 @@ export const maxDuration = 60;
 /**
  * תצוגה מקדימה בדפדפן (inline, לא הורדה):
  * - חומר עם allowPreview=true: עמוד ראשון בלבד, לכל מבקרת (גם לא מחוברת), ללא זיהוי אישי.
- * - חומר עם allowDownload=false שהמשתמשת זכאית אליו: המסמך המלא, מוטבע במספר האישי
- *   (בדיוק כמו הורדה) - "צפייה בלבד" אומר לא ניתן להוריד, לא שלא ניתן לראות.
+ * - משתמשת עם גישה לחומר (גם כשמותר להוריד): המסמך המלא, מוטבע במספר האישי (בדיוק כמו הורדה).
+ *   "צפייה בלבד" (allowDownload=false) אומר לא ניתן להוריד, לא שלא ניתן לראות.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -36,7 +38,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 
   const ent = await checkEntitlement(user, material);
-  const fullView = isAdmin || (ent.ok && material.allowDownload === false);
+  // מורה עם גישה לקובץ רואה אותו במלואו באתר (גם אם מותר להוריד) – הכפתור "לצפייה בקובץ" בכרטיסייה
+  const fullView = isAdmin || (ent.ok && !!user);
 
   if (!fullView && !material.allowPreview) {
     return NextResponse.json({ error: "אין תצוגה מקדימה לחומר זה" }, { status: 403 });
@@ -54,7 +57,27 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!file) {
     return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
-  const raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
+  let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
+
+  // ?fixes=all | ?fixes=1,3 – הצפייה בשינויים: מה שהתבקש לתקן בורוד והתיקון בתכלת.
+  // הסימון קיים רק בצפייה באתר; ההורדה (api/download) מחליפה את הטקסט בנראות רגילה.
+  const wantFixes = fullView ? parseFixesParam(req.nextUrl.searchParams.get("fixes")) : null;
+  if (wantFixes && isDocxName(material.fileName)) {
+    try {
+      const published = (await getPublishedFixes([material.id])).get(material.id) ?? [];
+      const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
+      if (chosen.length > 0) {
+        const r = await applyDocxFixes(
+          raw,
+          chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText })),
+          "marked",
+        );
+        if (r.applied.length > 0) raw = new Uint8Array(r.bytes);
+      }
+    } catch (e) {
+      console.error("preview: applying marked fixes failed, showing original", e);
+    }
+  }
 
   let pdfBytes: Uint8Array;
   try {

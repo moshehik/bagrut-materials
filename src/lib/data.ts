@@ -352,7 +352,11 @@ export async function checkEntitlement(
 
   const active = await getActivePurchases(user.id);
   const hasPremium = active.some((p) => p.premium);
-  if (isPremiumKind && !hasPremium) return { ok: false, reason: "premium" };
+  // רכישת תיקייה כוללת את כל הקבצים שבה, גם סוגים שבדרך כלל דורשים פרימיום
+  const ownsBundle = active.some(
+    (p) => p.plan === "bundle" && p.categoryId !== null && chainIds.has(p.categoryId),
+  );
+  if (isPremiumKind && !hasPremium && !ownsBundle) return { ok: false, reason: "premium" };
   if (!tierAtLeast(user.tier, minTier)) return { ok: false, reason: "tier" };
 
   // לפי רמה – עברה את בדיקת הרמה, זכאית

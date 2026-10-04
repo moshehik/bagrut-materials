@@ -5,11 +5,11 @@ import { z } from "zod";
 import { eq, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, materials, purchases, transactions, type Tier } from "@/db/schema";
-import { PLANS, formatPrice } from "@/lib/constants";
+import { PLANS, bundlePriceFor, formatPrice } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
-import { getDescendantIds } from "@/lib/data";
+import { chainToHref, getCategoryChain, getDescendantIds } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
 import { addDays, premiumTierFor, raiseTier } from "@/lib/purchase-helpers";
 
@@ -93,6 +93,7 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   type Row = typeof purchases.$inferInsert;
   const rows: Row[] = [];
   let tierTarget: Tier | null = null;
+  let bundleCategoryId: number | null = null;
 
   switch (input.kind) {
     case "single": {
@@ -118,14 +119,16 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       const [c] = await db.select().from(categories).where(eq(categories.id, input.categoryId)).limit(1);
       if (!c) return { error: "התיקייה לא נמצאה" };
       if (c.status !== "active") return { error: "התיקייה מושהית זמנית ואינה זמינה לרכישה" };
-      let amount = c.bundlePrice ?? 0;
-      if (!c.bundlePrice) {
-        const ids = await getDescendantIds(c.id);
-        const ms = ids.length
-          ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
-          : [];
-        amount = Math.round(ms.reduce((s, x) => s + x.price, 0) * 0.7);
-      }
+      const ids = await getDescendantIds(c.id);
+      const ms = ids.length
+        ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
+        : [];
+      const amount = bundlePriceFor({
+        bundlePrice: c.bundlePrice,
+        isLeaf: ids.length <= 1,
+        materialsTotal: ms.reduce((s, x) => s + x.price, 0),
+      });
+      bundleCategoryId = c.id;
       if (amount <= 0) return { error: "אין חומרים לרכישה בתיקייה זו" };
       rows.push({
         userId: user.id,
@@ -244,5 +247,10 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   const t = templates.purchase(user.name, description, formatPrice(total), rows[0]?.endsAt ?? null);
   sendMailInBackground({ to: user.email, ...t, kind: "purchase", userId: user.id });
 
+  // רכישת תיקייה: חוזרים אליה ומורידים את כל הקבצים אוטומטית
+  if (bundleCategoryId) {
+    const chain = await getCategoryChain(bundleCategoryId);
+    redirect(`${chainToHref(chain)}?dlall=1`);
+  }
   redirect("/account?purchased=1");
 }

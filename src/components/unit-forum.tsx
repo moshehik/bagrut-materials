@@ -57,7 +57,7 @@ export async function UnitForum({
     .limit(50);
 
   return (
-    <section className="mt-12" aria-labelledby="unit-forum-h">
+    <section id="unit-forum" className="mt-12 scroll-mt-24" aria-labelledby="unit-forum-h">
       <div className="flex flex-wrap items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-pink-soft text-pink" aria-hidden>
           <MessagesSquare className="h-5 w-5" />

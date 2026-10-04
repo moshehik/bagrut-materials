@@ -3,118 +3,161 @@
 import { motion, useReducedMotion } from "motion/react";
 import s from "@/app/home.module.css";
 
-const EASE = [0.16, 1, 0.3, 1] as const;
-const STEP = 0.32;
-const START = 0.2;
-/* "העז" ו"מהלו״ז" מגיעות אחרי שאר המשפט, שוקטות רגע, ואז קופצות-ונפרדות זו מזו */
-const SPLIT_DELAY = START + 4 * STEP + 0.55;
+/* האטה חדה: פותחת במהירות ונעצרת בכבדות, כמו משקל שנוחת */
+const SLAM = [0.16, 1, 0.3, 1] as const;
 
-function Word({
+/* ציר הזמן (בשניות) */
+const T_STAMP = 0.25; // "הגיע הזמן!" נחתת מגדול
+const T_SMALL = 1.45; // "להוציא את" נכנסת בתנופה מהצד
+const T_GOAT = 2.55; // שקט קצר, ואז "העז" נחתת בכבדות
+const T_LUZ = 3.15; // "מהלו״ז." נכנסת וצמודה אליה
+const T_PART = 3.85; // הבזק זהב בתפר, והמילים נפרדות בכוח
+const T_SWOOSH = 4.45; // שני הקווים נמשכים מתחת במהירות
+
+const GOLD = "217,164,65";
+
+/** מילה שנחתת: גדולה ומטושטשת, מתכווצת במהירות לגודלה ונחתכת חד */
+function Slam({
   children,
-  index,
-  className,
-  driftX = 0,
-  hop = false,
-  delayOverride,
+  delay,
+  from = 2.3,
+  duration = 0.8,
+  glow = false,
+  glowDelay = 0,
 }: {
   children: string;
-  index: number;
-  className?: string;
-  driftX?: number;
-  hop?: boolean;
-  delayOverride?: number;
+  delay: number;
+  from?: number;
+  duration?: number;
+  glow?: boolean;
+  glowDelay?: number;
 }) {
   const reduce = useReducedMotion();
-  const delay = delayOverride ?? START + index * STEP;
-  const spin = index % 2 === 0 ? -10 : 10;
-
-  if (reduce) {
-    return (
-      <motion.span className={className} style={{ display: "inline-block" }} initial={false} animate={{ opacity: 1, x: 0, y: 0 }}>
-        {children}
-      </motion.span>
-    );
-  }
-
+  if (reduce) return <span style={{ display: "inline-block" }}>{children}</span>;
   return (
     <motion.span
-      className={className}
-      style={{ display: "inline-block", cursor: "default" }}
-      whileHover={{
-        y: -10,
-        rotate: spin < 0 ? 8 : -8,
-        scale: 1.1,
-        transition: { type: "spring", stiffness: 320, damping: 10 },
-      }}
-      initial={
-        hop
-          ? { opacity: 0, x: 0, y: 30, rotate: -6, scale: 0.5, filter: "blur(4px)" }
-          : { opacity: 0, x: 0, y: 48, rotate: spin, scale: 0.65, filter: "blur(5px)" }
-      }
-      animate={
-        hop
+      style={{ display: "inline-block", transformOrigin: "50% 70%" }}
+      initial={{ opacity: 0, scale: from, filter: "blur(16px)" }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        filter: "blur(0px)",
+        ...(glow
           ? {
-              opacity: 1,
-              x: [0, driftX * 0.7, 0],
-              y: [30, -34, 0],
-              rotate: [-6, driftX > 0 ? 16 : -16, 0],
-              scale: [0.5, 1.22, 1],
-              filter: "blur(0px)",
+              textShadow: [
+                `0 0 0px rgba(${GOLD},0)`,
+                `0 0 34px rgba(${GOLD},0.95)`,
+                `0 0 0px rgba(${GOLD},0)`,
+              ],
             }
-          : {
-              opacity: 1,
-              x: 0,
-              y: [48, -10, 0],
-              rotate: [spin, spin * -0.3, 0],
-              scale: [0.65, 1.08, 1],
-              filter: "blur(0px)",
-            }
-      }
-      transition={
-        hop
-          ? { duration: 1.3, ease: EASE, delay, times: [0, 0.55, 1] }
-          : { duration: 1.05, ease: EASE, delay, times: [0, 0.7, 1] }
-      }
+          : {}),
+      }}
+      transition={{
+        opacity: { duration: duration * 0.5, ease: "easeOut", delay },
+        scale: { duration, ease: SLAM, delay },
+        filter: { duration, ease: SLAM, delay },
+        textShadow: { duration: 1.1, ease: "easeOut", delay: glowDelay, times: [0, 0.25, 1] },
+      }}
     >
       {children}
     </motion.span>
   );
 }
 
-const SWOOSH_DELAY = SPLIT_DELAY + 0.5;
+/** מילה שנכנסת בתנופה מהצד מאחורי טשטוש תנועה */
+function Swipe({ children, delay, fromX = 70 }: { children: string; delay: number; fromX?: number }) {
+  const reduce = useReducedMotion();
+  if (reduce) return <span style={{ display: "inline-block" }}>{children}</span>;
+  return (
+    <motion.span
+      style={{ display: "inline-block" }}
+      initial={{ opacity: 0, x: fromX, filter: "blur(10px)" }}
+      animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+      transition={{
+        opacity: { duration: 0.35, ease: "easeOut", delay },
+        x: { duration: 0.95, ease: SLAM, delay },
+        filter: { duration: 0.95, ease: SLAM, delay },
+      }}
+    >
+      {children}
+    </motion.span>
+  );
+}
 
-/** כותרת הירו: המילים "נכתבות" פנימה אחת-אחת, ואז "העז" ו"מהלו״ז" קופצות ונפרדות. */
+/** כותרת הירו: נחיתות כבדות, שקט, הבזק זהב ופרידה חדה בין "העז" ל"מהלו״ז". */
 export function HeroTitle() {
   const reduce = useReducedMotion();
 
   return (
     <h1 className={s.h1}>
-      <span className={s.stamp}>
-        <Word index={0}>הגיע</Word> <Word index={1}>הזמן!</Word>
-      </span>
+      <motion.span
+        className={s.stamp}
+        initial={reduce ? false : { letterSpacing: "0.3em" }}
+        animate={{ letterSpacing: "0em" }}
+        transition={{ duration: 1.4, ease: SLAM, delay: T_STAMP }}
+      >
+        <Slam delay={T_STAMP} from={2.6}>
+          הגיע
+        </Slam>{" "}
+        <Slam delay={T_STAMP + 0.24} from={2.6}>
+          הזמן!
+        </Slam>
+      </motion.span>
       <span className={s.small}>
-        <Word index={2}>להוציא</Word> <Word index={3}>את</Word>
+        <Swipe delay={T_SMALL}>להוציא</Swipe> <Swipe delay={T_SMALL + 0.18}>את</Swipe>
       </span>
       <span>
-        <Word index={4} driftX={64} hop delayOverride={SPLIT_DELAY}>
+        <Slam delay={T_GOAT} from={3.4} duration={0.95} glow glowDelay={T_PART}>
           העז
-        </Word>{" "}
-        <Word index={5} driftX={-56} hop delayOverride={SPLIT_DELAY + 0.2}>
+        </Slam>
+        <motion.span
+          aria-hidden
+          style={{ display: "inline-block", position: "relative" }}
+          initial={reduce ? false : { width: "0.03em" }}
+          animate={{ width: "0.34em" }}
+          transition={{ duration: 0.85, ease: SLAM, delay: T_PART }}
+        >
+          {/* הבזק זהב אנכי בתפר, נע עם הרווח הנפתח */}
+          {!reduce && (
+            <motion.span
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "-8%",
+                height: "116%",
+                width: 3,
+                marginLeft: -1.5,
+                borderRadius: 2,
+                background: `linear-gradient(to bottom, rgba(${GOLD},0), rgb(${GOLD}) 25%, #f6e3a8 50%, rgb(${GOLD}) 75%, rgba(${GOLD},0))`,
+                boxShadow: `0 0 18px 4px rgba(${GOLD},0.75)`,
+                transformOrigin: "50% 50%",
+              }}
+              initial={{ opacity: 0, scaleY: 0 }}
+              animate={{ opacity: [0, 1, 1, 0], scaleY: [0, 1, 1, 0.6] }}
+              transition={{ duration: 0.95, delay: T_PART - 0.06, times: [0, 0.12, 0.45, 1], ease: "easeOut" }}
+            />
+          )}
+        </motion.span>
+        <Slam delay={T_LUZ} from={1.9} duration={0.7}>
           מהלו״ז.
-        </Word>
+        </Slam>
       </span>
-      <motion.span
-        className={s.swoosh}
-        aria-hidden
-        initial={reduce ? false : { opacity: 0, scaleX: 0.6 }}
-        animate={{ opacity: 1, scaleX: 1 }}
-        transition={{ duration: 0.7, ease: EASE, delay: reduce ? 0 : SWOOSH_DELAY }}
-      >
+      <span className={s.swoosh} aria-hidden>
         <svg viewBox="0 0 280 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 8c46 12 92 12 138 0s92-12 138 0" />
-          <path d="M2 17c46 11 92 11 138 0s92-11 138 0" />
+          <motion.path
+            d="M2 8c46 12 92 12 138 0s92-12 138 0"
+            initial={reduce ? false : { pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.9, ease: SLAM, delay: T_SWOOSH }}
+          />
+          <motion.path
+            d="M2 17c46 11 92 11 138 0s92-11 138 0"
+            initial={reduce ? false : { pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.9, ease: SLAM, delay: T_SWOOSH + 0.12 }}
+          />
         </svg>
-      </motion.span>
+      </span>
     </h1>
   );
 }

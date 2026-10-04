@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
-const START_DELAY = 3500; // ms — מתחיל אחרי שהכותרת מסיימת "להיכתב"
+const START_DELAY = 5000; // ms — מתחיל כשהכותרת כמעט סיימה להיכנס (הקווים התחתונים עדיין נמשכים)
 const CHAR_MS = 34; // ms לאות — קצב כתיבה טבעי
 
 /** פסקת הפתיחה מוקלדת אות-אות, כאילו מישהי כותבת אותה עכשיו. */
@@ -43,7 +43,9 @@ export function TypewriterLead({ text, className }: { text: string; className?: 
   return (
     <p className={className} aria-label={text}>
       <span aria-hidden="true">
-        <span data-gold-reveal="true">{text.slice(0, count)}</span>
+        <span data-gold-reveal="true" data-done={done ? "true" : undefined}>
+          {text.slice(0, count)}
+        </span>
         {started && !done && <span data-cursor="true" />}
       </span>
     </p>

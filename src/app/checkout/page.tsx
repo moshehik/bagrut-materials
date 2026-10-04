@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getCategoryChain, chainToHref, getDescendantIds, getRootSubjects } from "@/lib/data";
-import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, formatPrice } from "@/lib/constants";
+import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, bundlePriceFor, formatPrice } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { CheckoutForm, type CheckoutFormProps, type CheckoutSubject } from "@/components/checkout-form";
 
@@ -104,7 +104,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     const ms = ids.length
       ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
       : [];
-    const price = c.bundlePrice ?? Math.round(ms.reduce((s, x) => s + x.price, 0) * 0.7);
+    const price = bundlePriceFor({ bundlePrice: c.bundlePrice, isLeaf: ids.length <= 1, materialsTotal: ms.reduce((s, x) => s + x.price, 0) });
     heading = "קובץ מורחב – תיקייה שלמה";
     summary = (
       <div className="flex gap-4">
@@ -116,7 +116,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <h2 className="font-bold text-lg leading-snug mt-1">{c.title}</h2>
           <p className="text-sm text-muted">
             {ms.length} חומרים בתיקייה ובכל תתי-הפרקים שלה
-            {!c.bundlePrice && ms.length > 0 && " · 30% הנחה לעומת רכישה בודדת"}
+            {!c.bundlePrice && ids.length > 1 && ms.length > 0 && " · 30% הנחה לעומת רכישה בודדת"}
           </p>
           <Link href={chainToHref(chain)} className="hover-move-x text-xs text-blue-deep hover:underline">
             חזרה לתיקייה

@@ -19,6 +19,7 @@ import {
   Wallet,
   CreditCard,
   Settings,
+  PencilLine,
 } from "lucide-react";
 
 const ITEMS = [
@@ -26,6 +27,7 @@ const ITEMS = [
   { href: "/admin/categories", label: "עץ הקטגוריות", icon: FolderTree },
   { href: "/admin/materials", label: "חומרים", icon: FileStack },
   { href: "/admin/users", label: "משתמשות", icon: Users },
+  { href: "/admin/fixes", label: "בקשות שינוי", icon: PencilLine },
   { href: "/admin/offers", label: "הצעות מכירה", icon: HandCoins },
   { href: "/admin/forum", label: "פורום", icon: MessagesSquare },
   { href: "/admin/sichot", label: "שיחות מורות", icon: Sparkles },

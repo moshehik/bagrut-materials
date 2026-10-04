@@ -10,6 +10,8 @@ import { getNumber } from "@/lib/settings";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
 import { markDownloadReady } from "@/lib/download-ready";
+import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
+import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -131,7 +133,30 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (isOffice && isDriveConfigured()) {
     // Word/PowerPoint: תמיד ממירים ל-PDF "לפי דרישה" בכל הורדה (המקור ב-Blob/דרייב
     // לא נוגע בו כלל) ומטביעים את המספר האישי, בדיוק כמו קובץ PDF רגיל.
-    const raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
+    let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
+    // ?fixes=all | ?fixes=1,3 – התיקונים שהמורה סימנה בוי: הטקסט המקורי מוחלף בתיקון בנראות רגילה
+    // (בלי צבע ובלי מספרים – הסימון הצבעוני קיים רק בצפייה באתר). תיקון שלא סומן לא נוגע בקובץ.
+    let fixesApplied = false;
+    const wantFixes = parseFixesParam(req.nextUrl.searchParams.get("fixes"));
+    if (wantFixes && isDocxName(material.fileName)) {
+      try {
+        const published = (await getPublishedFixes([material.id])).get(material.id) ?? [];
+        const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
+        if (chosen.length > 0) {
+          const r = await applyDocxFixes(
+            raw,
+            chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText })),
+          );
+          if (r.applied.length > 0) {
+            raw = new Uint8Array(r.bytes);
+            fixesApplied = true;
+          }
+        }
+      } catch (e) {
+        console.error("applying fixes failed, serving original", e);
+      }
+    }
+    const baseName = fixesApplied ? withSuffix(material.fileName, "מתוקן") : material.fileName;
     let out: Uint8Array;
     try {
       const pdfBytes = await convertOfficeToPdf({
@@ -155,7 +180,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
         "Content-Length": String(out.byteLength),
         "Content-Disposition": contentDisposition(
-          converted ? withSuffix(asPdfName(material.fileName), u.personalCode) : withSuffix(material.fileName, u.personalCode),
+          converted ? withSuffix(asPdfName(baseName), u.personalCode) : withSuffix(baseName, u.personalCode),
         ),
         "Cache-Control": "private, no-store",
       },

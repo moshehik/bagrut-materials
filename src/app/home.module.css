@@ -23,33 +23,146 @@
   position: absolute;
   inset: 1.4%;
   z-index: 0;
-  background: url("/images/hero-intro.webp") center / cover no-repeat;
+  /* הרקע בלי העט — העט עצמו הוא שכבה נפרדת (heroPen) שמתנועעת כאילו היא כותבת */
+  background: url("/images/hero-intro-nopen.webp") center / cover no-repeat;
   border-radius: 22px;
 }
-/* העז הדוהרת — אותה עז מהתמונה המקורית, ממוקמת באותו מקום ליד העט, עם ניתור-דהירה בלולאה */
-.heroGoat {
+/* מיקום העט בתוך תמונת הפתיח (1528×587): x=1275, y=220, רוחב 255. נקודת הציר בקצה הימני של התמונה, כדי שהקצה החתוך לא יזוז */
+.heroPen {
   position: absolute;
-  left: 66.5%;
+  left: 83.443%;
+  top: 37.479%;
+  width: 16.688%;
+  aspect-ratio: 255 / 339;
+  transform-origin: 98% 22%;
+  animation: penWrite 7s ease-in-out infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+.heroPenImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 98% 22%;
+  animation: penScribble 0.42s ease-in-out infinite alternate;
+}
+/* תנועת כתיבה איטית: העט נע לאורך שורה, מתרומם קלות וחוזר */
+@keyframes penWrite {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  12% {
+    transform: rotate(-2.4deg);
+  }
+  30% {
+    transform: rotate(2.2deg);
+  }
+  38% {
+    transform: rotate(-0.6deg);
+  }
+  55% {
+    transform: rotate(3.2deg);
+  }
+  68% {
+    transform: rotate(-1.6deg);
+  }
+  85% {
+    transform: rotate(1.2deg);
+  }
+}
+/* רעד כתיבה זעיר ומהיר של קצה הפן */
+@keyframes penScribble {
+  from {
+    transform: rotate(-0.55deg) translateY(0.5px);
+  }
+  to {
+    transform: rotate(0.55deg) translateY(-0.5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroPen,
+  .heroPenImg {
+    animation: none;
+  }
+}
+/* העז הדוהרת — אותה עז מהתמונה המקורית, ממוקמת באותו מקום ליד העט, עם ניתור-דהירה בלולאה */
+/* העז עומדת במקום שבו העט נגמר (קצה הפן), ומשם יוצאת לדהור שמאלה לאורך הרצפה; בסוף הריצה נעלמת וחוזרת לעמוד ליד העט */
+@property --goat-amp {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.heroGoatRun {
+  position: absolute;
+  left: 78.5%;
   bottom: 2.4%;
-  width: 12.5%;
+  width: 7%;
+  /* עיכוב שלילי: במחזור הראשון העז כבר דוהרת כשהאותיות של הכותרת מתחילות להופיע; בסיבובים הבאים היא שוב עומדת רגע ליד העט */
+  animation: goatRun 18s linear -2.6s infinite;
+  will-change: translate, opacity;
+}
+.heroGoat {
+  display: block;
+  width: 100%;
   aspect-ratio: 428 / 443;
   height: auto;
   transform-origin: 50% 100%;
+  opacity: 0.6; /* שקיפות 40% */
   animation: goatGallop 0.9s ease-in-out infinite;
   will-change: transform;
+}
+/* --goat-amp: 0 = עומדת במקום, 1 = דוהרת (גובה הניתור והנטייה מוכפלים בו) */
+@keyframes goatRun {
+  0%,
+  14% {
+    translate: 0 0;
+    --goat-amp: 0;
+    opacity: 1;
+  }
+  16% {
+    translate: 0 0;
+    --goat-amp: 1;
+    opacity: 1;
+  }
+  78% {
+    translate: -760% 0;
+    --goat-amp: 1;
+    opacity: 1;
+  }
+  82% {
+    translate: -815% 0;
+    --goat-amp: 1;
+    opacity: 0;
+  }
+  82.1% {
+    translate: 0 0;
+    --goat-amp: 0;
+    opacity: 0;
+  }
+  96% {
+    translate: 0 0;
+    --goat-amp: 0;
+    opacity: 0;
+  }
+  100% {
+    translate: 0 0;
+    --goat-amp: 0;
+    opacity: 1;
+  }
 }
 @keyframes goatGallop {
   0% {
     transform: translateY(0) rotate(0deg);
   }
   18% {
-    transform: translateY(-16%) rotate(-5deg);
+    transform: translateY(calc(-16% * var(--goat-amp))) rotate(calc(-5deg * var(--goat-amp)));
   }
   36% {
-    transform: translateY(-20%) rotate(-2deg);
+    transform: translateY(calc(-20% * var(--goat-amp))) rotate(calc(-2deg * var(--goat-amp)));
   }
   55% {
-    transform: translateY(-4%) rotate(4deg);
+    transform: translateY(calc(-4% * var(--goat-amp))) rotate(calc(4deg * var(--goat-amp)));
   }
   70% {
     transform: translateY(0) rotate(0deg);
@@ -59,6 +172,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .heroGoatRun,
   .heroGoat {
     animation: none;
   }
@@ -135,6 +249,31 @@
   border-radius: 4px;
   padding: 0.05em 0.2em;
   box-shadow: 0 1px 6px rgba(165, 116, 31, 0.35);
+  transition: color 0.8s ease, box-shadow 0.8s ease;
+}
+/* אחרי שהזהב נצבע: בלי רקע זהב — אותיות רגילות בצבע זהב */
+.lead [data-gold-reveal][data-done] {
+  color: transparent;
+  background-image: linear-gradient(100deg, #b8841f 0%, #b8841f 40%, #f6e3a8 50%, #b8841f 60%, #b8841f 100%);
+  background-size: 300% 100%;
+  background-position: 0% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* הזהב עובר על האותיות בתחילת כל דקה, ובשאר הזמן הן נשארות זהב רגיל */
+  animation: goldShimmerMinute 60s linear infinite;
+  box-shadow: none;
+  padding: 0;
+}
+@keyframes goldShimmerMinute {
+  0% {
+    background-position: 0% 0;
+  }
+  20% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
 }
 @keyframes goldSweep {
   from {
@@ -148,6 +287,10 @@
   .lead [data-gold-reveal] {
     animation: none;
     background-position: 0 0;
+  }
+  .lead [data-gold-reveal][data-done] {
+    color: #b8841f;
+    background-image: none;
   }
 }
 .lead [data-cursor] {
@@ -247,6 +390,133 @@
 .stat span {
   font-size: 15px;
   opacity: 0.75;
+}
+
+/* ---------- LESSON CONTENTS (מה לו"ז השיעור) ---------- */
+.lessonItems {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 34px 16px;
+}
+.lessonItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+.lessonItem b {
+  position: relative;
+  z-index: 3; /* מעל התמונה והוי */
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--chk, var(--ink));
+}
+.lessonArtBox {
+  position: relative;
+  width: 130px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+}
+.lessonArt {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+/* וי מצויר במכחול — צבע הכרטיסייה, מלפני הדמות ויוצא ממנה מעלה-ימינה; מסכה כדי לצבוע את ציור הוי */
+.lessonCheck {
+  position: absolute;
+  z-index: 2;
+  left: 70%;
+  top: -8%;
+  width: 112px;
+  aspect-ratio: 457 / 431;
+  background: var(--chk);
+  -webkit-mask: url("/images/check-brush.png") center / contain no-repeat;
+  mask: url("/images/check-brush.png") center / contain no-repeat;
+  pointer-events: none;
+}
+/* הובר: הדמות מקפצת קלות והוי מתגדל */
+.lessonArt {
+  transition: transform 0.35s var(--ease-snap);
+}
+.lessonCheck {
+  transform-origin: 20% 80%;
+  transition: transform 0.35s var(--ease-snap);
+}
+.lessonItem:hover .lessonArt {
+  transform: translate(-6px, -6px) rotate(-5deg) scale(1.06);
+}
+.lessonItem:hover .lessonCheck {
+  transform: scale(1.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lessonArt,
+  .lessonCheck {
+    transition: none;
+  }
+}
+.lessonSoon {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%) rotate(-6deg);
+  background: var(--sun);
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(31, 45, 51, 0.18);
+}
+.lessonNote {
+  margin: 34px 0 0;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.65;
+}
+.lessonNuts {
+  display: flex;
+  justify-content: center;
+  margin: 50px 0 90px;
+}
+.lessonNuts img {
+  width: min(70%, 240px);
+  height: auto;
+  transform-origin: 50% 100%;
+  animation: lessonNutsBounce 1.6s cubic-bezier(0.28, 0.84, 0.42, 1) infinite;
+}
+@keyframes lessonNutsBounce {
+  0% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  12% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-34px) scale(0.97, 1.04) rotate(2deg);
+  }
+  88% {
+    transform: translateY(0) scale(1, 1);
+  }
+  100% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lessonNuts img {
+    animation: none;
+  }
 }
 
 /* ---------- SUBJECTS ---------- */
@@ -601,7 +871,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  mix-blend-mode: multiply;
 }
 .kindsHeadTitle {
   position: absolute;
@@ -631,7 +900,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  mix-blend-mode: multiply;
 }
 .kindsNoteText {
   position: absolute;
@@ -876,6 +1144,13 @@
   .stats,
   .kinds {
     grid-template-columns: 1fr 1fr;
+  }
+  .lessonItems {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .lessonCheck {
+    left: 60%;
+    width: 90px;
   }
   /* מובייל: אין מספיק גובה בתוך יחס-הרוחב הקבוע של התמונה לטקסט שמעליה — התמונה הופכת לבאנר עליון, והטקסט יורד מתחת עם רקע לבן */
   .hero {
