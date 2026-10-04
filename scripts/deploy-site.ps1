@@ -5,12 +5,10 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\deploy-site.ps1            # deploy current HEAD as-is
 #   -SkipPush  deploy without pushing to GitHub      -SkipTsc  skip the typecheck gate
 #
-# Why this exists: since ~2026-09-22 a `git push` NO LONGER deploys (Vercel marks every push "Blocked":
-# the GitHub login is linked to a second Vercel user; Hobby + PRIVATE repo = only the owner may be the commit
-# author. gemach-app deploys on push because its repo is public). .github/workflows/deploy-vercel.yml
-# auto-deploys on push once a VERCEL_TOKEN secret is added to the GitHub repo.
-# So the live site is updated ONLY by this script (Vercel CLI as the owner). Push is still done, for
-# the two-computer git sync. Full background: README.md "Deploy" + CLAUDE.md "Deploying the live site".
+# Why this exists: fallback/fast path. The repo is PUBLIC since 2026-10-04 (like gemach-app), so a plain `git push` deploys
+# by itself; use this script when you want an immediate deploy from this computer or if a push shows "Blocked" again
+# (before the repo was public, Hobby + private repo blocked every push). Push is still done here, for the
+# two-computer git sync. Full background: README.md "Deploy" + CLAUDE.md "Deploying the live site".
 #
 # What it does: typecheck gate -> (commit source paths if -Message) -> push -> deploy a CLEAN `git archive HEAD`
 # export (so untracked scratch files are never uploaded) with --archive=tgz (a plain upload fails on this

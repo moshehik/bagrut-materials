@@ -33,21 +33,14 @@ npm run dev
 
 הפרויקט: Vercel `bagrut-materials` (כתובת: https://bagrut-materials.vercel.app), קוד ב-GitHub `moshehik/bagrut-materials`.
 
-> **⚠️ `git push` לא מעלה את האתר** (מ-2026-09-22). Vercel חוסם כל פריסה שמגיעה מ-GitHub ("Blocked") כי חשבון ה-GitHub מקושר למשתמש Vercel שני, ובתוכנית Hobby רק הבעלים רשאי לפרוס. האתר מתעדכן **רק** בפקודה הבאה, שמריצה את Vercel CLI בתור הבעלים.
+**מ-2026-10-04 ה-repo ציבורי (כמו `gemach-app`), ולכן `git push origin main` מעלה את האתר אוטומטית.** (עד אז ה-repo היה פרטי, וב-Vercel Hobby repo פרטי מפרס רק commit של בעל הצוות, אז כל push נחסם.) כי ה-repo ציבורי: **לעולם לא לשים סודות בקוד** (`.env*` מוחרגים).
 
-הפקודה המהירה (מתיקיית הפרויקט, PowerShell) — או פשוט `/deploy` ב-Claude Code:
+אימות אחרי push: `npx vercel ls bagrut-materials --scope team_ktg14QXUIxVh6dPLI5awK0Vw` — השורה העליונה צריכה להיות Ready, לא Blocked.
+
+אם פעם push שוב נחסם, או כשרוצים להעלות מיד מהמחשב — הפקודה המהירה (או `/deploy` ב-Claude Code):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\deploy-site.ps1 -Message "מה השתנה"
+powershell -ExecutionPolicy Bypass -File scriptsdeploy-site.ps1 -Message "מה השתנה"
 ```
 
-היא בודקת טיפוסים, עושה commit+push לנתיבי הקוד בלבד, מייצאת עותק נקי של `HEAD`, מעלה אותו ל-Vercel (`--archive=tgz`) ומאמתת שהאתר ענה 200. פירוט והמלכודות: `.claude/commands/deploy.md` ו-`CLAUDE.md` (סעיף "Deploying the live site").
-
-**למה זה חסום אצלנו ולא אצל הגמח** (אותו GitHub ואותו Vercel): ה-repo של הגמח ציבורי וה-repo שלנו פרטי; ב-Hobby ההגבלה "רק הבעלים כותב commit" חלה רק על repo פרטי.
-
-**התיקון הקבוע — לבחור אחד (החלטה שלך, בלי קוד):**
-1. ב-vercel.com לנתק את GitHub ממשתמש `m0527682759-1046` ולחבר לחשבון הבעלים `moshehik`.
-2. ליצור טוקן ב-vercel.com (כבעלים) ולשמור ב-GitHub כ-secret בשם `VERCEL_TOKEN` — `.github/workflows/deploy-vercel.yml` כבר בריפו ויפרוס אוטומטית כל push ל-main.
-3. להפוך את ה-repo לציבורי (כמו הגמח) — רק אחרי בדיקת היסטוריה לסודות.
-
-טבלאות/עמודות חדשות ב-`schema.ts` צריך ליצור ב-DB **לפני** הפריסה (`db:push` שבור במחשב הזה — ר' `scripts/create-fix-tables.ts` כדוגמה).
+טבלאות/עמודות חדשות ב-`schema.ts` צריך ליצור ב-DB **לפני** ה-push (`db:push` שבור במחשב הזה — ר' `scripts/create-fix-tables.ts`), כי push מעלה מיד.
