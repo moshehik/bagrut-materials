@@ -220,7 +220,7 @@ async function collectDescendants(rootId: number): Promise<number[]> {
   return ids;
 }
 
-async function deleteBlobSafe(url: string) {
+async function deleteStoredFile(url: string) {
   const { isDriveUrl, driveIdFromUrl, driveDelete } = await import("@/lib/driveBridge");
   if (isDriveUrl(url)) {
     const fileId = driveIdFromUrl(url);
@@ -232,14 +232,7 @@ async function deleteBlobSafe(url: string) {
     }
     return;
   }
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
-  if (!/^https?:\/\//.test(url) || url.includes("example.com")) return;
-  try {
-    const { del } = await import("@vercel/blob");
-    await del(url);
-  } catch {
-    // מתעלמים – הקובץ אולי כבר לא קיים
-  }
+  // כל מה שאינו drive:// (שורות Blob ישנות/seed) - אין מה למחוק, האחסון היחיד הוא הדרייב
 }
 
 export async function deleteCategory(id: number): Promise<AdminActionState> {
@@ -247,12 +240,12 @@ export async function deleteCategory(id: number): Promise<AdminActionState> {
   if (!me) return { error: "אין הרשאה" };
   if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
   const ids = await collectDescendants(id);
-  // מחיקת קבצי blob של חומרים תחת העץ
+  // מחיקת קבצי הדרייב של חומרים תחת העץ
   const mats = await db
     .select({ fileUrl: materials.fileUrl })
     .from(materials)
     .where(inArray(materials.categoryId, ids));
-  await Promise.all(mats.map((m) => deleteBlobSafe(m.fileUrl)));
+  await Promise.all(mats.map((m) => deleteStoredFile(m.fileUrl)));
   // materials נמחקים ב-cascade; מוחקים את הקטגוריות מהעלים אל השורש
   for (const cid of [...ids].reverse()) {
     await db.delete(categories).where(eq(categories.id, cid));
@@ -428,7 +421,7 @@ export async function deleteMaterial(id: number): Promise<AdminActionState> {
   if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
   const [m] = await db.select().from(materials).where(eq(materials.id, id)).limit(1);
   if (!m) return { error: "החומר לא נמצא" };
-  await deleteBlobSafe(m.fileUrl);
+  await deleteStoredFile(m.fileUrl);
   await db.delete(materials).where(eq(materials.id, id));
   await logAudit({
     actorId: me.id,

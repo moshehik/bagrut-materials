@@ -4,7 +4,7 @@
  *   --status=ARCHIVED : לסמן רק כשהתיקון אומת בפועל. בלי זה הדיווח נשאר OPEN.
  *   --question        : חובה כשהתגובה היא שאלה פתוחה שממתינה לתשובת המדווח/ת.
  *   --preview-url=... : מוסיף קישור Preview Deployment זמני לתגובה (רק בסוף סבב, ר' fix-reports.md).
- * דורש BLOB_READ_WRITE_TOKEN. ר' .claude/commands/fix-reports.md.
+ * דורש DATABASE_URL. ר' .claude/commands/fix-reports.md.
  */
 import "dotenv/config";
 import dotenv from "dotenv";

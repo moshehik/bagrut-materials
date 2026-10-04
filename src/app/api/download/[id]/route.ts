@@ -131,7 +131,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   let response: Response;
 
   if (isOffice && isDriveConfigured()) {
-    // Word/PowerPoint: תמיד ממירים ל-PDF "לפי דרישה" בכל הורדה (המקור ב-Blob/דרייב
+    // Word/PowerPoint: תמיד ממירים ל-PDF "לפי דרישה" בכל הורדה (המקור בדרייב
     // לא נוגע בו כלל) ומטביעים את המספר האישי, בדיוק כמו קובץ PDF רגיל.
     let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
     // ?fixes=all | ?fixes=1,3 – התיקונים שהמורה סימנה בוי: הטקסט המקורי מוחלף בתיקון בנראות רגילה

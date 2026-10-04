@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/session";
-import { isSafeId } from "@/lib/blob-server";
+import { isSafeId } from "@/lib/upload-id";
 import { driveChunkAppend } from "@/lib/driveBridge";
 
 // חתיכות (עד 4MB) של קובץ שמועלה מהדפדפן. ה-PUT הישיר ל-vercel.com נחסם ע"י
 // מסנני אינטרנט מקומיים (נטפרי וכד') שמאפשרים לדפדפן לדבר רק עם הדומיין שלנו,
 // ומגבלת גוף-הבקשה של פונקציות Vercel היא 4.5MB. /finish מאחד את החתיכות בשרת.
-// 09.2026: Vercel Blob מושעה (מכסה) - חתיכות מאוחסנות זמנית בדרייב עצמו
-// (archive_append, ר' driveBridgeCore.ts) במקום ב-Blob.
+// חתיכות מאוחסנות זמנית בדרייב עצמו (Vercel Blob בוטל לחלוטין)
+// (archive_append, ר' driveBridgeCore.ts).
 export const runtime = "nodejs";
 
 const MAX_CHUNK = 4 * 1024 * 1024;

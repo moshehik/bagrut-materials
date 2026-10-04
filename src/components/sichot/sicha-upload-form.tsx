@@ -8,7 +8,7 @@ import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES, formatBytes, stripExtension } f
 import { SICHA_SEMINARS } from "@/lib/constants";
 import { createSichaBatch, type CreateSichaItem } from "@/lib/actions/sichot";
 
-// אותה טכניקת העלאה בחתיכות כמו src/components/admin/upload-form.tsx (Blob מושעה,
+// אותה טכניקת העלאה בחתיכות כמו src/components/admin/upload-form.tsx (Blob בוטל,
 // עוברים דרך /api/sichot/upload/chunk+finish → דרייב), פתוחה לכל מורה, וכן תומכת
 // בהעלאת כמה קבצים בבת אחת (מכפיל את קצב ההתחייבות — ר' src/lib/actions/sichot.ts).
 const CHUNK_BYTES = 4 * 1024 * 1024;

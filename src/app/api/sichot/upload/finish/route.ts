@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
-import { isSafeId } from "@/lib/blob-server";
+import { isSafeId } from "@/lib/upload-id";
 import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/admin-utils";
 import { driveChunkFinish, driveUrlFor } from "@/lib/driveBridge";
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { isDriveUrl, driveIdFromUrl, driveDownload } from "@/lib/driveBridge";
 
-/** מביא את בתי הקובץ מהמקום שבו הוא מאוחסן בפועל (דרייב / Vercel Blob פרטי / URL רגיל) */
+/** מביא את בתי הקובץ מהדרייב (drive://<fileId>). אין יותר Vercel Blob - בוטל לחלוטין. */
 export async function fetchFile(
   url: string,
 ): Promise<{ stream: ReadableStream<Uint8Array>; contentType: string | null } | null> {
@@ -17,18 +17,10 @@ export async function fetchFile(
       return null;
     }
   }
-  // קבצים ב-Vercel Blob פרטי; אם אין טוקן / נכשל – נופלים ל-fetch רגיל
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const { get } = await import("@vercel/blob");
-      const res = await get(url, { access: "private" });
-      if (res && res.stream) {
-        return { stream: res.stream, contentType: res.blob.contentType ?? null };
-      }
-    } catch {
-      /* fallback below */
-    }
-  }
+  // שורות ישנות שהצביעו ל-Vercel Blob: החנות בוטלה, אין מה להביא - מחזירים "לא נמצא"
+  // (מעלים את הקובץ מחדש דרך טופס ההעלאה, שהולך לדרייב).
+  if (url.includes(".vercel-storage.com")) return null;
+  // כתובת http(s) רגילה (למשל תוכן חיצוני) - fetch רגיל
   try {
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok || !r.body) return null;

@@ -1,0 +1,58 @@
+# פריסה אוטומטית לאתר החי בכל push ל-main — עוקף את החסימה של האינטגרציה של Vercel עם GitHub.
+#
+# למה צריך את זה: ה-repo הזה פרטי, ובתוכנית Hobby של Vercel רק בעל הצוות יכול להיות כותב
+# ה-commit ב-repo פרטי; חשבון ה-GitHub מקושר למשתמש Vercel שני, ולכן כל פריסה שמגיעה
+# מ-GitHub מסומנת "Blocked" (TEAM_ACCESS_REQUIRED). (הגמח, gemach-app, עובר כי ה-repo שלו ציבורי.)
+# כאן הפריסה נעשית דרך ה-Vercel CLI עם טוקן של הבעלים, מעותק בלי תיקיית .git (כדי ש-Vercel לא
+# יראה כותב-commit ולא יחסום) — בדיוק כמו scripts/deploy-site.ps1 במחשב.
+#
+# דורש (מוסיף משה עצמו, פעם אחת, לא בקוד):
+#   1. ב-vercel.com, מחובר כחשבון הבעלים `moshehik`: Settings -> Tokens -> Create (Scope: moshehiks-projects).
+#   2. ב-GitHub: Settings -> Secrets and variables -> Actions -> New repository secret בשם VERCEL_TOKEN.
+# בלי ה-secret: ה-workflow רק מדפיס הודעה ומדלג (לא נכשל, לא מפריע).
+name: Deploy to Vercel (production)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_ktg14QXUIxVh6dPLI5awK0Vw
+      VERCEL_PROJECT_ID: prj_gERfWQxrZy6sqQbFn1dqOnp1AtEK
+    steps:
+      - name: Check VERCEL_TOKEN secret
+        id: tok
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VERCEL_TOKEN secret is not set - skipping deploy (see header of .github/workflows/deploy-vercel.yml)"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.tok.outputs.present == 'true'
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        if: steps.tok.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Deploy to production (without git metadata)
+        if: steps.tok.outputs.present == 'true'
+        run: |
+          rm -rf .git
+          npx --yes vercel@latest deploy --prod --yes --archive=tgz --token "$VERCEL_TOKEN"

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/session";
-import { isSafeId } from "@/lib/blob-server";
+import { isSafeId } from "@/lib/upload-id";
 import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/admin-utils";
 import { driveChunkFinish, driveUrlFor } from "@/lib/driveBridge";
 
 // מאחד את החתיכות (שנצברו ב-/chunk דרך archive_append) לקובץ אחד בדרייב.
-// 09.2026: Vercel Blob מושעה (מכסה) - כל ההעלאות עוברות דרך הדרייב.
+// כל ההעלאות עוברות דרך הדרייב (Vercel Blob בוטל לחלוטין).
 export const runtime = "nodejs";
 export const maxDuration = 300;
 

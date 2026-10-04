@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
-import { isSafeId } from "@/lib/blob-server";
+import { isSafeId } from "@/lib/upload-id";
 import { driveChunkAppend } from "@/lib/driveBridge";
 
 // מראה מדויקת ל-src/app/api/admin/upload/chunk/route.ts, אך פתוחה לכל מורה מחוברת

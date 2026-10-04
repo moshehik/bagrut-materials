@@ -1,7 +1,7 @@
 /**
  * מוצא (או יוצר, בפעם הראשונה) את שרשור "יומן הסוכן האוטומטי" הקבוע, ומדפיס את ה-id שלו.
  * הרצה: npx tsx scripts/agent-log-report.ts
- * דורש BLOB_READ_WRITE_TOKEN. ר' .claude/commands/fix-reports.md.
+ * דורש DATABASE_URL. ר' .claude/commands/fix-reports.md.
  */
 import "dotenv/config";
 import dotenv from "dotenv";

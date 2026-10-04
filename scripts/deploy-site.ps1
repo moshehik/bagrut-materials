@@ -6,7 +6,9 @@
 #   -SkipPush  deploy without pushing to GitHub      -SkipTsc  skip the typecheck gate
 #
 # Why this exists: since ~2026-09-22 a `git push` NO LONGER deploys (Vercel marks every push "Blocked":
-# the GitHub login is linked to a second Vercel user, Hobby plan = only the owner may deploy).
+# the GitHub login is linked to a second Vercel user; Hobby + PRIVATE repo = only the owner may be the commit
+# author. gemach-app deploys on push because its repo is public). .github/workflows/deploy-vercel.yml
+# auto-deploys on push once a VERCEL_TOKEN secret is added to the GitHub repo.
 # So the live site is updated ONLY by this script (Vercel CLI as the owner). Push is still done, for
 # the two-computer git sync. Full background: README.md "Deploy" + CLAUDE.md "Deploying the live site".
 #

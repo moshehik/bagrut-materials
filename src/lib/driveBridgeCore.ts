@@ -2,8 +2,8 @@
  * גשר Google Drive דרך אותו פרויקט Apps Script שמריץ את print-center
  * (apps-script-send/ArchiveBridge.js, פרוסה ב-/exec אחד, מוגנת ב-ADMIN_SECRET
  * משותף). אין פרויקט GAS חדש, אין URL חדש, אין סוד חדש — לפי אותו עיקרון
- * שכבר קיים שם. אחסון "קר" (טיוטות/עבודה בתהליך) בלבד: חומרים פעילים (active)
- * ממשיכים לעבור דרך Vercel Blob הרגיל, מהיר ומחובר ל-CDN.
+ * שכבר קיים שם. זה האחסון היחיד של האתר: כל החומרים (טיוטה ופעילים) יושבים כאן
+ * כ-drive://<fileId>. Vercel Blob בוטל לחלוטין ואין בו שימוש.
  *
  * root folder נפרד (DRIVE_ROOT_FOLDER, ברירת מחדל "bagrut-materials-archive")
  * כדי לא לערבב עם print-center-archive באותו חשבון דרייב.
@@ -338,9 +338,9 @@ export async function driveDelete(fileId: string) {
 }
 
 // --- העלאה בחתיכות דרך ה-GAS bridge עצמו (archive_init/append/finish) ---
-// משמש כתחליף ל-Blob כאחסון-ביניים בין קריאות /chunk נפרדות (כל קריאה היא
+// אחסון-ביניים בין קריאות /chunk נפרדות (כל קריאה היא
 // invocation סרברלס נפרד וחסר זיכרון-משותף) - לא היה בשימוש שוטף אצל
-// print-center ("נתיב חירום ישן"), פה הוא הנתיב הרגיל כי אין Blob זמין.
+// print-center ("נתיב חירום ישן"), פה הוא הנתיב הרגיל והיחיד.
 export async function driveChunkAppend(uploadId: string, index: number, bytes: Uint8Array) {
   await callBridge("archive_append", { uploadId, index, base64: b64encode(bytes) });
 }
@@ -355,7 +355,7 @@ export async function driveChunkFinish(uploadId: string, name: string, mimeType:
 // (לא LibreOffice, לא שירות חיצוני בתשלום, ואין צורך בהתקנת גופנים — Drive
 // ממיר לפורמט Google Docs/Slides עם מנוע הגופנים הפנימי שלו ומייצא PDF).
 // הקובץ המומר הוא עותק זמני בלבד: נוצר, מיוצא ל-PDF, ונמחק תמיד ב-finally.
-// קובץ ה-Word/PowerPoint המקורי באחסון (Blob/Drive) לא נוגע בו כלל.
+// קובץ ה-Word/PowerPoint המקורי באחסון (Drive) לא נוגע בו כלל.
 const OFFICE_TO_GOOGLE_MIME: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     "application/vnd.google-apps.document",

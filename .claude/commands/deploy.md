@@ -15,7 +15,7 @@ argument-hint: "[הודעת commit קצרה] — אפשר להשאיר ריק א
    powershell -ExecutionPolicy Bypass -File scripts\deploy-site.ps1 -Message "<הודעת commit>"
    ```
    בלי `-Message` — מעלה את ה-HEAD כמו שהוא.
-3. הסקריפט עושה: בדיקת main + לא-מאחור-מ-origin → `git add` רק לנתיבים מורשים (src, public, scripts, docs, קבצי תצורה — **לא** `git add -A`) → typecheck על `src/`+`scripts/` → push → ייצוא נקי של `git archive HEAD` → `vercel deploy --prod --archive=tgz` → `vercel ls` + בדיקת HTTP 200.
+3. הסקריפט עושה: בדיקת main + לא-מאחור-מ-origin → `git add` רק לנתיבים מורשים (src, public, scripts, docs, קבצי תצורה — **לא** `git add -A`) → typecheck על `src/`+`scripts/` → push → ייצוא נקי של HEAD (`git checkout-index`) → `vercel deploy --prod --archive=tgz` → `vercel ls` + בדיקת HTTP 200.
 4. דווח למשתמשת בעברית: מה עלה (HEAD + כתובת הפריסה), שהאימות עבר, ושצריך Ctrl+F5.
 
 ## מלכודות ידועות
@@ -23,5 +23,6 @@ argument-hint: "[הודעת commit קצרה] — אפשר להשאיר ריק א
 - **טבלאות/עמודות חדשות ב-`src/db/schema.ts`**: `drizzle-kit push` שבור כאן. צריך ליצור אותן ב-DB **לפני** הפריסה (ר' `scripts/create-fix-tables.ts` כדוגמה, SQL גולמי) — אחרת האתר החי יישבר.
 - **העלאה ישירה בלי `--archive=tgz` נכשלת** ("fetch failed", סינון TLS). הסקריפט כבר משתמש ב-tgz.
 - **פריסת "Blocked" אחרי ה-push** — צפויה ולא מזיקה.
-- **התיקון הקבוע** (בידי המשתמשת): ב-vercel.com לנתק את GitHub ממשתמש `m0527682759-1046` ולחבר לחשבון הבעלים `moshehik`. אחרי זה `git push` לבד יעלה, והסקריפט הזה כבר לא יהיה הכרחי.
+- **למה זה חסום**: ה-repo פרטי ו-Hobby מאפשר רק לבעלים להיות כותב ה-commit (בגמח ה-repo ציבורי, לכן שם עובר).
+- **התיקון הקבוע** (בידי המשתמשת, אחד מהשלושה): חיבור GitHub לחשבון הבעלים; או secret `VERCEL_TOKEN` ב-GitHub (ה-workflow `deploy-vercel.yml` כבר קיים ורדום); או repo ציבורי. אחרי אחד מהם `git push` לבד יעלה, והסקריפט הזה כבר לא הכרחי.
 - חומרי לימוד (docx/PDF) **לא** עולים דרך הפקודה הזו — הם יושבים בדרייב/DB (ר' `CLAUDE.md`, סעיף "The local file here is NOT what the live site serves").

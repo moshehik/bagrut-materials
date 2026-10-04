@@ -1,6 +1,6 @@
 # חומרים לבגרות
 
-מאגר שיעורים מוכנים למורות במחוז החרדי – Next.js 16 + Neon Postgres (Drizzle) + אחסון קבצים ב-Google Drive (ר' `docs/drive-storage.md`; Vercel Blob הושעה ואינו בשימוש).
+מאגר שיעורים מוכנים למורות במחוז החרדי – Next.js 16 + Neon Postgres (Drizzle) + אחסון קבצים ב-Google Drive (ר' `docs/drive-storage.md`; Vercel Blob בוטל לחלוטין — אין בו שימוש).
 
 ## הרצה מקומית
 
@@ -43,6 +43,11 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy-site.ps1 -Message "מה 
 
 היא בודקת טיפוסים, עושה commit+push לנתיבי הקוד בלבד, מייצאת עותק נקי של `HEAD`, מעלה אותו ל-Vercel (`--archive=tgz`) ומאמתת שהאתר ענה 200. פירוט והמלכודות: `.claude/commands/deploy.md` ו-`CLAUDE.md` (סעיף "Deploying the live site").
 
-**התיקון הקבוע** (לא בקוד — בחשבונות): ב-vercel.com לנתק את GitHub ממשתמש `m0527682759-1046` ולחבר אותו לחשבון הבעלים `moshehik`. אחרי זה `git push` לבד יעלה אוטומטית.
+**למה זה חסום אצלנו ולא אצל הגמח** (אותו GitHub ואותו Vercel): ה-repo של הגמח ציבורי וה-repo שלנו פרטי; ב-Hobby ההגבלה "רק הבעלים כותב commit" חלה רק על repo פרטי.
+
+**התיקון הקבוע — לבחור אחד (החלטה שלך, בלי קוד):**
+1. ב-vercel.com לנתק את GitHub ממשתמש `m0527682759-1046` ולחבר לחשבון הבעלים `moshehik`.
+2. ליצור טוקן ב-vercel.com (כבעלים) ולשמור ב-GitHub כ-secret בשם `VERCEL_TOKEN` — `.github/workflows/deploy-vercel.yml` כבר בריפו ויפרוס אוטומטית כל push ל-main.
+3. להפוך את ה-repo לציבורי (כמו הגמח) — רק אחרי בדיקת היסטוריה לסודות.
 
 טבלאות/עמודות חדשות ב-`schema.ts` צריך ליצור ב-DB **לפני** הפריסה (`db:push` שבור במחשב הזה — ר' `scripts/create-fix-tables.ts` כדוגמה).
