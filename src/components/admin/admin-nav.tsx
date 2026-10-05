@@ -22,10 +22,12 @@ import {
   Settings,
   PencilLine,
   Bot,
+  Inbox,
 } from "lucide-react";
 
 const ITEMS = [
   { href: "/admin", label: "לוח בקרה", icon: LayoutDashboard, exact: true },
+  { href: "/admin/inbox", label: "הודעות למנהלת", icon: Inbox },
   { href: "/admin/categories", label: "עץ הקטגוריות", icon: FolderTree },
   { href: "/admin/materials", label: "חומרים", icon: FileStack },
   { href: "/admin/drive", label: "סייר דרייב", icon: HardDrive },

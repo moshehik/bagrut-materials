@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { MessageCircle, Lock, Sparkles, LogIn } from "lucide-react";
 import { db } from "@/db";
-import { forumPosts, forumThreads, users, type Category, type User } from "@/db/schema";
+import { forumPosts, forumReports, forumThreads, users, type Category, type User } from "@/db/schema";
 import { userCanUseUnitForum } from "@/lib/data";
 import { ForumComposer } from "@/components/forum-forms";
 import { ForumFeed, type FeedEntry } from "@/components/forum-feed";
@@ -62,7 +62,18 @@ export async function UnitForum({
         .orderBy(asc(forumPosts.createdAt))
     : [];
 
+  // דיווחים פתוחים של המשתמשת הנוכחית – כדי שה-V יישאר גם אחרי רענון
+  const myReports = user
+    ? await db
+        .select({ threadId: forumReports.threadId, postId: forumReports.postId })
+        .from(forumReports)
+        .where(and(eq(forumReports.reporterId, user.id), eq(forumReports.status, "open")))
+    : [];
+  const reportedThreads = new Set(myReports.map((r) => r.threadId));
+  const reportedPosts = new Set(myReports.map((r) => r.postId));
+
   const entries: FeedEntry[] = threads.map((t) => ({
+    reported: reportedThreads.has(t.id),
     id: t.id,
     kind: isForumKind(t.kind) ? t.kind : "question",
     body: t.body,
@@ -71,7 +82,7 @@ export async function UnitForum({
     author: t.author,
     answers: posts
       .filter((p) => p.threadId === t.id)
-      .map((p) => ({ id: p.id, body: p.body, when: forumWhen(p.createdAt), userId: p.userId, author: p.author })),
+      .map((p) => ({ reported: reportedPosts.has(p.id), id: p.id, body: p.body, when: forumWhen(p.createdAt), userId: p.userId, author: p.author })),
   }));
 
   return (

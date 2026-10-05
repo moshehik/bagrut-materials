@@ -11,7 +11,7 @@ import { adminEmail, sendMailInBackground, templates } from "@/lib/mail";
 import { FORUM_KINDS, forumAuthor, forumTitleFrom } from "@/lib/forum-utils";
 import { logAudit } from "@/lib/audit";
 
-export type ForumState = { error?: string; ok?: boolean } | undefined;
+export type ForumState = { error?: string; ok?: boolean; reported?: boolean } | undefined;
 
 /** כניסה + גישה ליחידה: מנויה, או מי ששילמה על קובץ/תיקייה ביחידה (categoryId ריק = רק בדיקת התחברות) */
 async function requirePremiumUser(op: string, categoryId?: number) {
@@ -258,10 +258,39 @@ export async function reportContent(_prev: ForumState, form: FormData): Promise<
   if (!target) return { error: "התוכן כבר לא קיים" };
   if (target.userId === auth.user.id) return { error: "אי אפשר לדווח על הודעה שכתבת בעצמך" };
 
+  const sameTarget = and(
+    eq(forumReports.reporterId, auth.user.id),
+    threadId ? eq(forumReports.threadId, threadId) : eq(forumReports.postId, postId!),
+  );
+
+  // ביטול דיווח: מוחקים רק דיווח שעדיין ממתין לטיפול (אחרי שהמנהלת טיפלה – אין מה לבטל)
+  if (form.get("cancel") === "1") {
+    const removed = await db
+      .delete(forumReports)
+      .where(and(sameTarget, eq(forumReports.status, "open")))
+      .returning({ id: forumReports.id });
+    if (removed.length > 0) {
+      await logAudit({
+        actorId: auth.user.id,
+        action: "forum.report_cancel",
+        entityType: threadId ? "forum_thread" : "forum_post",
+        entityId: threadId ?? postId,
+      });
+    }
+    return { ok: true, reported: false };
+  }
+
+  // לא מכפילים: אם כבר יש דיווח פתוח שלה על אותו תוכן – לא מוסיפים עוד אחד
+  const [existing] = await db
+    .select({ id: forumReports.id })
+    .from(forumReports)
+    .where(and(sameTarget, eq(forumReports.status, "open")))
+    .limit(1);
+  if (existing) return { ok: true, reported: true };
+
   const inserted = await db
     .insert(forumReports)
     .values({ reporterId: auth.user.id, threadId, postId })
-    .onConflictDoNothing()
     .returning({ id: forumReports.id });
 
   if (inserted.length > 0) {
@@ -281,5 +310,5 @@ export async function reportContent(_prev: ForumState, form: FormData): Promise<
       });
     }
   }
-  return { ok: true };
+  return { ok: true, reported: true };
 }

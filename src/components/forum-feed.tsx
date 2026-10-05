@@ -16,6 +16,8 @@ export type FeedAnswer = {
   when: string;
   userId: number;
   author: string;
+  /** המשתמשת הנוכחית כבר דיווחה על התשובה (דיווח פתוח) */
+  reported?: boolean;
 };
 export type FeedEntry = {
   id: number;
@@ -27,6 +29,8 @@ export type FeedEntry = {
   /** המספר האישי של הכותבת (users.personalCode) */
   author: string;
   answers: FeedAnswer[];
+  /** המשתמשת הנוכחית כבר דיווחה על ההודעה (דיווח פתוח) */
+  reported?: boolean;
 };
 
 /** שורת "מי כתבה ומתי" בתוך ריבוע */
@@ -157,7 +161,7 @@ export function ForumFeed({
                     <AnswerButton threadId={t.id} demo={demo} />
                   )}
                   {!mine && !isAdmin && (
-                    <ReportButton target={{ threadId: t.id }} demo={demo} />
+                    <ReportButton target={{ threadId: t.id }} demo={demo} initiallyReported={t.reported} />
                   )}
                   {(mine || isAdmin) && (
                     <DeleteButton
@@ -201,6 +205,7 @@ export function ForumFeed({
                               <ReportButton
                                 target={{ postId: a.id }}
                                 demo={demo}
+                                initiallyReported={a.reported}
                               />
                             )}
                             {(mineAnswer || isAdmin) && (

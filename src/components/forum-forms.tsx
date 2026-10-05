@@ -222,17 +222,23 @@ export function DeleteButton({
   );
 }
 
-/** דיווח על תוכן לא הולם – אייקון אזהרה בלבד, עם טולטיפ. ההודעה מגיעה למנהלת (ר' /admin/forum) */
+/**
+ * דיווח על תוכן לא הולם – אייקון אזהרה בלבד, עם טולטיפ. ההודעה מגיעה למנהלת (ר' /admin/forum).
+ * אחרי הדיווח האייקון הופך ל-V; לחיצה נוספת על ה-V מבטלת את הדיווח (חוזר לאזהרה).
+ * `initiallyReported` = כבר יש דיווח פתוח שלה על התוכן הזה (נשמר גם אחרי רענון).
+ */
 export function ReportButton({
   target,
   demo = false,
+  initiallyReported = false,
 }: {
   target: { threadId: number } | { postId: number };
   demo?: boolean;
+  initiallyReported?: boolean;
 }) {
   const [state, action, pending] = useActionState(reportContent, undefined);
-  const [demoSent, setDemoSent] = useState(false);
-  const sent = demoSent || state?.ok;
+  const [demoReported, setDemoReported] = useState(false);
+  const reported = demo ? demoReported : state?.ok ? !!state.reported : initiallyReported;
 
   return (
     <form
@@ -240,7 +246,7 @@ export function ReportButton({
       onSubmit={(e) => {
         if (!demo) return;
         e.preventDefault();
-        setDemoSent(true);
+        setDemoReported(!demoReported);
       }}
     >
       {"threadId" in target ? (
@@ -248,16 +254,19 @@ export function ReportButton({
       ) : (
         <input type="hidden" name="postId" value={target.postId} />
       )}
+      {reported && <input type="hidden" name="cancel" value="1" />}
       <button
         type="submit"
         className="forum-del"
-        disabled={pending || sent}
-        aria-label="דיווח על תוכן לא הולם"
+        disabled={pending}
+        aria-label={reported ? "ביטול הדיווח" : "דיווח על תוכן לא הולם"}
         data-tip={
-          sent ? "תודה, הדיווח נשלח למנהלת" : (state?.error ?? "לדיווח על תוכן לא הולם")
+          reported
+            ? "הדיווח נשלח למנהלת. לביטול הדיווח לחצי על הוי"
+            : (state?.error ?? "לדיווח על תוכן לא הולם")
         }
       >
-        <ThinIcon name={sent ? "check" : "warn"} />
+        <ThinIcon name={reported ? "check" : "warn"} />
       </button>
     </form>
   );

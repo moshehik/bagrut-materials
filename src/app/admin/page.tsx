@@ -1,8 +1,18 @@
 import Link from "next/link";
 import { and, count, desc, eq, gte, inArray, sum } from "drizzle-orm";
-import { Radio, Download, Activity, Wallet, BarChart3, ScrollText } from "lucide-react";
+import { Radio, Download, Activity, Wallet, BarChart3, ScrollText, Inbox } from "lucide-react";
 import { db } from "@/db";
-import { users, categories, materials, downloads, purchases, pageViews, transactions } from "@/db/schema";
+import {
+  users,
+  categories,
+  materials,
+  downloads,
+  purchases,
+  pageViews,
+  transactions,
+  forumReports,
+  materialFixes,
+} from "@/db/schema";
 import { formatPrice } from "@/lib/constants";
 import { getNumber } from "@/lib/settings";
 import { daysAgo, minutesAgo, startOfToday } from "@/lib/admin-analytics";
@@ -40,7 +50,14 @@ export default async function AdminDashboard() {
       .catch(() => 0),
   ]);
 
+  // הודעות פתוחות למנהלת: דיווחים על תוכן לא הולם + בקשות תיקון
+  const [openReports, pendingFixes] = await Promise.all([
+    safeCount(db.select({ n: count() }).from(forumReports).where(eq(forumReports.status, "open"))),
+    safeCount(db.select({ n: count() }).from(materialFixes).where(eq(materialFixes.status, "pending"))),
+  ]);
+
   const quick = [
+    { label: "הודעות למנהלת", value: openReports + pendingFixes, href: "/admin/inbox", icon: Inbox, tone: "bg-red-50 text-red-700" },
     { label: "מחוברות עכשיו", value: onlineNow, href: "/admin/online", icon: Radio, tone: "bg-emerald-50 text-emerald-700" },
     { label: "הורדות היום", value: dlToday, href: "/admin/downloads", icon: Download, tone: "bg-gold-soft text-gold" },
     { label: "צפיות היום", value: viewsToday, href: "/admin/activity", icon: Activity, tone: "bg-pink-soft text-pink" },
