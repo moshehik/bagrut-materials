@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { authTokens, users } from "@/db/schema";
 import { logAudit } from "@/lib/audit";
+import { hashAuthToken } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest) {
       .from(authTokens)
       .where(
         and(
-          eq(authTokens.token, token),
+          // טוקנים חדשים נשמרים כ-SHA-256; הגולמי נשאר לטוקנים שהונפקו לפני המעבר (24 שעות)
+          or(eq(authTokens.token, hashAuthToken(token)), eq(authTokens.token, token)),
           eq(authTokens.purpose, "verify"),
           isNull(authTokens.usedAt),
           gt(authTokens.expiresAt, new Date()),

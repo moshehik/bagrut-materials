@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
 import { genPersonalCode, safeNextPath } from "@/lib/auth-utils";
 import { personName, phoneSchema } from "@/lib/profile-validation";
+import { TOO_MANY_MESSAGE, clientIp, limitKey, tooMany } from "@/lib/rate-limit";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -38,6 +39,11 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     return { error: parsed.error.issues[0].message };
   }
   const { firstName, lastName, email, phone, password, marketing } = parsed.data;
+  // הגבלת קצב: 5 הרשמות לשעה מאותו IP (בוטים שיוצרים חשבונות בכמות)
+  if (await tooMany(limitKey("register", "ip", await clientIp()), 5, 3600)) {
+    await logAudit({ action: "register.failed", entityType: "user", details: { reason: "rate_limited" } });
+    return { error: TOO_MANY_MESSAGE };
+  }
   const name = `${firstName} ${lastName}`;
 
   const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
@@ -107,6 +113,14 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
     return { error: parsed.error.issues[0].message };
   }
   const { email, password, next } = parsed.data;
+  // הגבלת קצב: 8 ניסיונות ל-15 דקות לכל כתובת מייל, 30 לכל IP (ניחוש סיסמאות)
+  if (
+    (await tooMany(limitKey("login", "email", email), 8, 900)) ||
+    (await tooMany(limitKey("login", "ip", await clientIp()), 30, 900))
+  ) {
+    await logAudit({ action: "login.failed", entityType: "user", details: { email, reason: "rate_limited" } });
+    return { error: TOO_MANY_MESSAGE };
+  }
 
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   const passwordOk = u ? await bcrypt.compare(password, u.passwordHash) : false;

@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import JSZip from "jszip";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -8,7 +8,8 @@ import { checkEntitlement, getDescendantIds, getCategoryChain, chainToHref, getU
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
-import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
+import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
+import { contentDisposition } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
 import {
   dailyRemaining,
@@ -28,11 +29,6 @@ export const maxDuration = 300;
 const CONCURRENCY = 4;
 /** תקרה קשיחה לקבצים בזיפ אחד – ההמרה ל-PDF לוקחת 10-20 שניות לקובץ, ו-maxDuration הוא 300 שניות */
 const FOLDER_MAX_FILES = 40;
-
-function contentDisposition(fileName: string) {
-  const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
 
 /** שם רשומה בזיפ: בלי תווי נתיב (/ \) ובלי ".." – שלא ייכתב מחוץ לתיקיית החילוץ */
 function safeEntryName(fileName: string) {
@@ -78,7 +74,7 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
 
   if (isOffice && isDriveConfigured()) {
     try {
-      const pdf = await convertOfficeToPdf({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName });
+      const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(m.fileUrl), defer: after });
       return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo) };
     } catch (e) {
       return fallback("office->pdf", e);

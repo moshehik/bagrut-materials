@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { contentDisposition } from "@/lib/http-utils";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sichot, sichaTeacherStatus } from "@/db/schema";
@@ -14,11 +15,6 @@ import { logAudit } from "@/lib/audit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-function contentDisposition(fileName: string) {
-  const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;

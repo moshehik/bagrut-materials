@@ -22,7 +22,7 @@ dotenv.config({ path: ".env.local" });
 
 import { db } from "../src/db";
 import { materials } from "../src/db/schema";
-import { driveIdFromUrl, getRootFolderId } from "../src/lib/driveBridgeCore";
+import { driveIdFromUrl, getRootFolderId, PDF_CACHE_FOLDER_NAME } from "../src/lib/driveBridgeCore";
 import {
   FOLDER_MIME,
   ARCHIVE_FOLDER_NAME,
@@ -89,6 +89,8 @@ async function main() {
   const classify = (f: DriveItem): { kind: ArchiveKind; reason: string } | null => {
     if (f.mimeType === FOLDER_MIME) {
       if (catFolders.has(f.id) || f.name === ARCHIVE_FOLDER_NAME) return null;
+      // מטמון ה-PDF המומר (convertOfficeToPdfCached) – תיקיית מערכת, לא "לא ברור"
+      if (f.name === PDF_CACHE_FOLDER_NAME || f.appProperties.pdfCache === "1") return null;
       return { kind: "unclear", reason: "תיקייה שלא שייכת לעץ האתר" };
     }
     if (linked.has(f.id)) return null;

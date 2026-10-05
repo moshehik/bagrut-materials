@@ -36,7 +36,7 @@ export async function requestPasswordReset(_: PasswordState, form: FormData): Pr
     const token = randomToken(24);
     await db.insert(authTokens).values({
       userId: u.id,
-      token,
+      token: hashAuthToken(token),
       purpose: "reset",
       expiresAt: new Date(Date.now() + RESET_TTL_MS),
     });
@@ -115,7 +115,7 @@ export async function sendVerificationEmail(): Promise<PasswordState> {
   const token = randomToken(24);
   await db.insert(authTokens).values({
     userId: user.id,
-    token,
+    token: hashAuthToken(token),
     purpose: "verify",
     expiresAt: new Date(Date.now() + VERIFY_TTL_MS),
   });

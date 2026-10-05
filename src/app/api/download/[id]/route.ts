@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { downloads, materials } from "@/db/schema";
@@ -7,7 +7,8 @@ import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
-import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
+import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
+import { contentDisposition } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
@@ -18,12 +19,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // המרת Word/PowerPoint ל-PDF דרך Drive לוקחת כ-10-20 שניות; מעל ברירת המחדל של Vercel
 export const maxDuration = 60;
-
-/** בונה כותרת Content-Disposition עם שם קובץ בעברית (RFC 5987) */
-function contentDisposition(fileName: string) {
-  const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
 
 function withSuffix(fileName: string, suffix: string) {
   const dot = fileName.lastIndexOf(".");
@@ -214,8 +209,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       const baseName = fixesApplied ? withSuffix(material.fileName, "מתוקן") : material.fileName;
       let out: Uint8Array;
       try {
-        const pdfBytes = await convertOfficeToPdf({
+        const pdfBytes = await convertOfficeToPdfCached({
           bytes: raw,
+          // מטמון PDF מומר בדרייב (מפתח: קובץ + md5 של התוכן) – חוסך 10-20 שניות המרה
+          fileId: driveIdFromUrl(material.fileUrl),
+          defer: after,
           // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
           mimeType: officeMimeFor(material.mime, material.fileName),
           name: material.fileName,

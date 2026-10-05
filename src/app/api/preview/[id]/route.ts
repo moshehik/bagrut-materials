@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { materials } from "@/db/schema";
@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampPreview, firstPageOnly } from "@/lib/watermark";
 import { fetchFile } from "@/lib/file-source";
-import { isOfficeMime, convertOfficeToPdf } from "@/lib/driveBridge";
+import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl } from "@/lib/driveBridge";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
@@ -142,8 +142,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   let pdfBytes: Uint8Array;
   try {
     pdfBytes = isOffice
-      ? await convertOfficeToPdf({
+      ? await convertOfficeToPdfCached({
           bytes: raw,
+          // מטמון PDF מומר בדרייב (מפתח: קובץ + md5 של התוכן) – חוסך 10-20 שניות המרה
+          fileId: driveIdFromUrl(material.fileUrl),
+          defer: after,
           // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
           mimeType: officeMimeFor(material.mime, material.fileName),
           name: material.fileName,
