@@ -117,7 +117,7 @@ async function uploadNew(folderId: string, name: string, bytes: Buffer): Promise
 }
 
 async function replaceContent(fileId: string, bytes: Buffer) {
-  const r = await driveApi(`${UPLOAD}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,size,md5Checksum`, { method: "PATCH", headers: { "Content-Type": DOCX }, body: bytes }, 3);
+  const r = await driveApi(`${UPLOAD}/${encodeURIComponent(fileId)}?uploadType=media&fields=id,size,md5Checksum`, { method: "PATCH", headers: { "Content-Type": DOCX }, body: new Uint8Array(bytes) }, 3);
   if (!r.ok) throw new Error(`replace ${r.status} ${(await r.text()).slice(0, 150)}`);
   return (await r.json()) as { id: string; size?: string; md5Checksum?: string };
 }
