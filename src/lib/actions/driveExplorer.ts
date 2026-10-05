@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { categories, materials, driveEvents } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
-import { detectKind, slugify, stripExtension } from "@/lib/admin-utils";
+import { slugify } from "@/lib/admin-utils";
 import { driveIdFromUrl } from "@/lib/driveBridgeCore";
 import {
   ARCHIVE_SUB,
@@ -64,10 +64,8 @@ export type TreeNode = {
   status: string;
 };
 
-/** כל עץ הקטגוריות (קל) לסרגל הצד של הסייר. */
-export async function getExplorerTree(): Promise<TreeNode[]> {
-  await requireAdmin();
-  const snap = await loadInfoSnapshot({ events: 0 });
+/** בונה את עץ הסייר מתמונת-מצב שכבר נטענה (משותף ל-getExplorerTree ול-getFolderView — בלי לטעון את ה-DB פעמיים). */
+function buildTree(snap: Awaited<ReturnType<typeof loadInfoSnapshot>>): TreeNode[] {
   const total = new Map<number, number>();
   const missing = new Map<number, number>();
   const calc = (id: number): { files: number; miss: number } => {
@@ -98,6 +96,12 @@ export async function getExplorerTree(): Promise<TreeNode[]> {
     sort: c.sort,
     status: c.status,
   }));
+}
+
+/** כל עץ הקטגוריות (קל) לסרגל הצד של הסייר. */
+export async function getExplorerTree(): Promise<TreeNode[]> {
+  await requireAdmin();
+  return buildTree(await loadInfoSnapshot({ events: 0 }));
 }
 
 export type ExplorerFile = {
@@ -137,7 +141,7 @@ export async function getFolderView(categoryId: number | null): Promise<FolderVi
   const cat = categoryId ? snap.byId.get(categoryId) : null;
   if (categoryId && !cat) throw new Error("הקטגוריה לא נמצאה");
 
-  const tree = await getExplorerTree();
+  const tree = buildTree(snap);
   const folders = tree.filter((n) => n.parentId === categoryId).sort((a, b) => (snap.byId.get(a.id)!.sort - snap.byId.get(b.id)!.sort) || a.id - b.id);
 
   let live = new Map<string, Awaited<ReturnType<typeof driveListFolder>>[number]>();
@@ -212,8 +216,11 @@ export async function getArchiveView(): Promise<ArchiveItem[]> {
   await requireAdmin();
   const archive = await ensureArchiveFolders();
   const out: ArchiveItem[] = [];
-  for (const k of Object.keys(ARCHIVE_SUB) as ArchiveKind[]) {
-    for (const i of await driveListFolder(archive.sub[k])) {
+  const kinds = Object.keys(ARCHIVE_SUB) as ArchiveKind[];
+  // שלוש תתי-התיקיות נקראות במקביל (לא ברצף)
+  const listings = await Promise.all(kinds.map((k) => driveListFolder(archive.sub[k])));
+  kinds.forEach((k, idx) => {
+    for (const i of listings[idx]) {
       if (i.appProperties.siteInfo === "1") continue;
       out.push({
         id: i.id,
@@ -227,7 +234,7 @@ export async function getArchiveView(): Promise<ArchiveItem[]> {
         webViewLink: i.webViewLink,
       });
     }
-  }
+  });
   return out.sort((a, b) => a.name.localeCompare(b.name, "he"));
 }
 
@@ -253,12 +260,20 @@ export async function moveMaterialsAction(ids: number[], targetCategoryId: numbe
   if (!ids.length) return { ok: false, error: "לא נבחרו קבצים" };
   const [target] = await db.select().from(categories).where(eq(categories.id, targetCategoryId));
   if (!target) return { ok: false, error: "תיקיית היעד לא נמצאה" };
-  const rows = await db.select({ id: materials.id, categoryId: materials.categoryId }).from(materials).where(inArray(materials.id, ids));
+  const rows = await db.select({ id: materials.id, categoryId: materials.categoryId, fileUrl: materials.fileUrl }).from(materials).where(inArray(materials.id, ids));
   await db.update(materials).set({ categoryId: targetCategoryId }).where(inArray(materials.id, ids));
-  const { byId, all } = await loadCategories();
+  const { byId } = await loadCategories();
   const ctx = { byId, names: new Map<number, string>(), verified: new Set<number>(), actorId: me.id };
-  void all;
-  const { errors } = await mapPool(rows, 4, (r) => placeMaterial(r.id, { actorId: me.id, ctx }));
+  // תיקיית היעד נקראת פעם אחת לכל ההעברה (לא לכל קובץ): שמות הקבצים שכבר שם, חוץ מהקבצים שמועברים עכשיו
+  let takenNames: Set<string> | undefined;
+  try {
+    const targetFolder = await ensureCategoryFolder(targetCategoryId, ctx);
+    const movingIds = new Set(rows.map((r) => driveIdFromUrl(r.fileUrl)).filter(Boolean) as string[]);
+    takenNames = new Set((await driveListFolder(targetFolder)).filter((f) => !movingIds.has(f.id)).map((f) => f.name));
+  } catch (e) {
+    console.warn("[drive-explorer] רשימת תיקיית היעד נכשלה, נופלים לרשימה לכל קובץ:", e instanceof Error ? e.message : e);
+  }
+  const { errors } = await mapPool(rows, 4, (r) => placeMaterial(r.id, { actorId: me.id, ctx, takenNames }));
   await logAudit({ actorId: me.id, action: "material.move", entityType: "category", entityId: targetCategoryId, details: { ids, from: [...new Set(rows.map((r) => r.categoryId))], to: targetCategoryId, driveErrors: errors.length } });
   done();
   return { ok: true, moved: rows.length - errors.length, failed: errors.map((e) => ({ id: e.item.id, error: e.error })) };

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   categories,
@@ -680,7 +680,8 @@ export async function suspendUser(
   if (me.id === id) return { error: "לא ניתן להשהות את עצמך" };
   await db
     .update(users)
-    .set({ suspended: true, suspendReason: reason ?? null })
+    // session_version+1 – ההשהיה מנתקת מיד כל סשן פתוח (getCurrentUser בודק גם suspended)
+    .set({ suspended: true, suspendReason: reason ?? null, sessionVersion: sql`${users.sessionVersion} + 1` })
     .where(eq(users.id, id));
   await logAudit({
     actorId: me.id,

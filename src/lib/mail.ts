@@ -34,6 +34,12 @@ export type SendMailResult = { ok: true; logId: number } | { ok: false; error: s
 
 const joinAddr = (a?: string | string[]) => (Array.isArray(a) ? a.filter(Boolean).join(",") : a ?? "");
 
+/**
+ * לפני הרישום ב-email_logs: מסתיר את ערך ה-token בקישורים (איפוס סיסמה / אימות / שינוי מייל),
+ * כדי ש-/admin/mail לא יציג קישורים חיים שאפשר להשתמש בהם. המייל עצמו נשלח עם הקישור המלא.
+ */
+const redactTokens = (s: string) => s.replace(/([?&]token=)[^&\s"'<>]+/g, "$1***");
+
 export function siteUrl() {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ??
@@ -105,7 +111,7 @@ export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
         to: joinAddr(input.to),
         cc: joinAddr(input.cc) || null,
         subject: input.subject,
-        body: input.text,
+        body: redactTokens(input.text),
         fileName: input.attachment?.fileName ?? null,
         kind: input.kind ?? "manual",
         status: r.ok ? "success" : "error",

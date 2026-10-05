@@ -2,13 +2,14 @@
 
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { authTokens, users } from "@/db/schema";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, hashAuthToken } from "@/lib/session";
 import { sendMail, sendMailInBackground, siteUrl, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { randomToken } from "@/lib/auth-utils";
+import { TOO_MANY_MESSAGE, clientIp, limitKey, tooMany } from "@/lib/rate-limit";
 
 export type PasswordState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -20,6 +21,15 @@ export async function requestPasswordReset(_: PasswordState, form: FormData): Pr
   const parsed = z.string().trim().toLowerCase().email("כתובת מייל לא תקינה").safeParse(form.get("email"));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const email = parsed.data;
+
+  // הגבלת קצב: 3 לשעה לכל כתובת-יעד (שלא יציפו למישהי את התיבה) + 10 לשעה לכל IP
+  if (
+    (await tooMany(limitKey("pw-reset", "email", email), 3, 3600)) ||
+    (await tooMany(limitKey("pw-reset", "ip", await clientIp()), 10, 3600))
+  ) {
+    await logAudit({ action: "password.reset_request", entityType: "user", details: { rateLimited: true } });
+    return { error: TOO_MANY_MESSAGE };
+  }
 
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (u && !u.suspended) {
@@ -70,7 +80,8 @@ export async function resetPassword(_: PasswordState, form: FormData): Promise<P
     .from(authTokens)
     .where(
       and(
-        eq(authTokens.token, token),
+        // טוקנים חדשים נשמרים כ-SHA-256; הערך הגולמי נבדק גם הוא רק לטוקנים שהונפקו לפני המעבר (תוקף שעה)
+        or(eq(authTokens.token, hashAuthToken(token)), eq(authTokens.token, token)),
         eq(authTokens.purpose, "reset"),
         isNull(authTokens.usedAt),
         gt(authTokens.expiresAt, new Date()),
@@ -83,7 +94,11 @@ export async function resetPassword(_: PasswordState, form: FormData): Promise<P
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await db.update(users).set({ passwordHash }).where(eq(users.id, t.userId));
+  // session_version+1 – איפוס סיסמה מנתק כל סשן קיים (גם של מי שהשתלט על החשבון)
+  await db
+    .update(users)
+    .set({ passwordHash, sessionVersion: sql`${users.sessionVersion} + 1` })
+    .where(eq(users.id, t.userId));
   await db.update(authTokens).set({ usedAt: new Date() }).where(eq(authTokens.id, t.id));
   await logAudit({ actorId: t.userId, action: "password.reset", entityType: "user", entityId: t.userId });
   return { ok: true, message: "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה." };
@@ -94,6 +109,8 @@ export async function sendVerificationEmail(): Promise<PasswordState> {
   const user = await getCurrentUser();
   if (!user) return { error: "יש להתחבר" };
   if (user.emailVerified) return { ok: true, message: "כתובת המייל כבר מאומתת." };
+  // הגבלת קצב: 3 מיילי אימות לשעה למשתמשת
+  if (await tooMany(limitKey("verify-email", "user", user.id), 3, 3600)) return { error: TOO_MANY_MESSAGE };
 
   const token = randomToken(24);
   await db.insert(authTokens).values({

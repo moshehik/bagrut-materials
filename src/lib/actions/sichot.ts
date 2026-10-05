@@ -16,6 +16,7 @@ import {
 import { requireUser } from "@/lib/session";
 import { verifyUpload } from "@/lib/upload-id";
 import { logAudit } from "@/lib/audit";
+import { TOO_MANY_MESSAGE, limitKey, tooMany } from "@/lib/rate-limit";
 import {
   SICHA_REGULAR_CADENCE_WEEKS,
   SICHA_HIGH_RATED_CADENCE_WEEKS,
@@ -158,6 +159,8 @@ const rateSchema = z.object({
 export async function rateSicha(_prev: SichaActionState, form: FormData): Promise<SichaActionState> {
   const user = await requireUser().catch(() => null);
   if (!user) return { error: "יש להתחבר כדי לדרג" };
+  // הגבלת קצב: 30 דירוגים לשעה למורה
+  if (await tooMany(limitKey("sicha-rate", "user", user.id), 30, 3600)) return { error: TOO_MANY_MESSAGE };
   const parsed = rateSchema.safeParse({
     sichaId: form.get("sichaId"),
     stars: form.get("stars"),
@@ -226,6 +229,8 @@ const ideaSchema = z.object({
 export async function addIdea(_prev: SichaActionState, form: FormData): Promise<SichaActionState> {
   const user = await requireUser().catch(() => null);
   if (!user) return { error: "יש להתחבר כדי להוסיף רעיון" };
+  // הגבלת קצב: 30 רעיונות לשעה למורה
+  if (await tooMany(limitKey("sicha-idea", "user", user.id), 30, 3600)) return { error: TOO_MANY_MESSAGE };
   const parsed = ideaSchema.safeParse({
     sichaId: form.get("sichaId"),
     body: form.get("body"),

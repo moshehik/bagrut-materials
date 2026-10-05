@@ -78,7 +78,11 @@ export default async function AccountDetailsPage() {
             <hr className="gate-divider !border-[#ffd45a]/40" />
             <EditPhoneForm currentPhone={user.phone} />
             <hr className="gate-divider !border-[#ffd45a]/40" />
-            <ChangeEmailForm currentEmail={user.email} pendingEmail={user.pendingEmail} />
+            <ChangeEmailForm
+              currentEmail={user.email}
+              pendingEmail={user.pendingEmail}
+              passwordRequired={!user.googleId}
+            />
             <hr className="gate-divider !border-[#ffd45a]/40" />
             <ChangePasswordForm />
           </div>

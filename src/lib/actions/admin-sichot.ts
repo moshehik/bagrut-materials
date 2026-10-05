@@ -7,8 +7,6 @@ import { sichot, type Status } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 
-export type AdminSichaState = { error?: string; ok?: boolean } | undefined;
-
 /** כלי טיפול בדיעבד למנהלת — פרסום שיחות עצמו פתוח וללא אישור מראש */
 export async function setSichaStatus(id: number, status: Status) {
   const me = await requireAdmin().catch(() => null);

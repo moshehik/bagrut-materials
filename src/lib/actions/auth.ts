@@ -47,10 +47,6 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
 
   let personalCode = genPersonalCode();
   for (let i = 0; i < 5; i++) {
@@ -74,11 +70,13 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
       phone,
       passwordHash,
       personalCode,
-      role: adminEmails.includes(email) ? "admin" : "user",
+      // הרשמה בסיסמה לעולם אינה מעניקה ניהול – הכתובת לא אומתה, וכל אחד יכול להקליד כתובת
+      // מ-ADMIN_EMAILS. ניהול דרך ADMIN_EMAILS ניתן רק בקולבק של גוגל (עם email_verified)
+      role: "user",
     })
-    .returning({ id: users.id });
+    .returning({ id: users.id, sessionVersion: users.sessionVersion });
 
-  await createSession(u.id);
+  await createSession(u.id, u.sessionVersion);
   await logAudit({ actorId: u.id, action: "register", entityType: "user", entityId: u.id });
   sendMailInBackground({
     to: email,
@@ -95,6 +93,13 @@ const loginSchema = z.object({
   next: z.string().optional(),
 });
 
+/**
+ * hash "דמה" להשוואה כשהמייל לא קיים – כדי שזמן התגובה לא יסגיר אם הכתובת רשומה
+ * (bcrypt.compare לוקח ~100ms; בלעדיו מייל לא-קיים חוזר מיד). מחושב פעם אחת לכל instance.
+ */
+let dummyHash: Promise<string> | null = null;
+const getDummyHash = () => (dummyHash ??= bcrypt.hash("dummy-password-for-timing", 10));
+
 export async function loginAction(_: ActionState, form: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) {
@@ -104,7 +109,9 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
   const { email, password, next } = parsed.data;
 
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  if (!u || !(await bcrypt.compare(password, u.passwordHash))) {
+  const passwordOk = u ? await bcrypt.compare(password, u.passwordHash) : false;
+  if (!u) await bcrypt.compare(password, await getDummyHash()); // השוואת דמה – ר' למעלה
+  if (!u || !passwordOk) {
     await logAudit({
       actorId: u?.id ?? null,
       action: "login.failed",
@@ -124,7 +131,7 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
     });
     return { error: "החשבון מושהה. פני למנהלת האתר." };
   }
-  await createSession(u.id);
+  await createSession(u.id, u.sessionVersion);
   await logAudit({ actorId: u.id, action: "login", entityType: "user", entityId: u.id });
   redirect(safeNextPath(next));
 }

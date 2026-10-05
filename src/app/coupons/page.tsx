@@ -19,6 +19,20 @@ import { ClaimCouponForm } from "@/components/claim-coupon-form";
 export const metadata: Metadata = { title: "קופונים זמינים" };
 export const dynamic = "force-dynamic";
 
+/** במקום לחצן מימוש: ההטבה מוחלת לבד, ורואים אותה בעת התשלום */
+function AutoStub() {
+  return (
+    <div className="coupon-stub coupon-stub-auto">
+      <span className="coupon-auto-spark" aria-hidden>✦</span>
+      <span className="coupon-auto-spark" aria-hidden>✦</span>
+      <span>
+        <span className="coupon-auto">מעודכן אוטומטית</span>
+        <span className="coupon-auto-sub">תראי את ההטבה בעת התשלום</span>
+      </span>
+    </div>
+  );
+}
+
 export default async function CouponsPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   const sp = await searchParams;
   const prices = await getPlanPrices();
@@ -112,11 +126,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
             </p>
             <p className="mt-2 text-xl">בואי ותהני ממחיר היכרות שלא יחזור!</p>
           </div>
-          <div className="coupon-stub">
-            <Link href="/checkout?plan=yearly" className="btn btn-gold btn-gate py-2">
-              למימוש <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
-            </Link>
-          </div>
+          <AutoStub />
         </div>
 
         {/* קופון ההשקה לממלאות מקום */}
@@ -137,11 +147,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
               סה״כ <GateShekel agorot={prices.substituteLaunchMonthly * SUBSTITUTE_MONTHS} />.
             </p>
           </div>
-          <div className="coupon-stub">
-            <Link href="/pricing" className="btn btn-gold btn-gate py-2">
-              למסלול <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
-            </Link>
-          </div>
+          <AutoStub />
         </div>
 
         <div className="coupon gate-card mt-10">
@@ -160,11 +166,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
               עבור {prices.substituteDailyDownloads} צפיות או הורדות, לשימוש מתי שצריך – בלי הגבלת זמן.
             </p>
           </div>
-          <div className="coupon-stub">
-            <Link href="/pricing" className="btn btn-gold btn-gate py-2">
-              למסלול <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
-            </Link>
-          </div>
+          <AutoStub />
         </div>
       </section>
     </div>

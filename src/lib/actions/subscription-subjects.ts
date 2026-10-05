@@ -72,7 +72,15 @@ export async function chooseYearlySubjectsAction(
   }
 
   const [first, ...rest] = uniq;
-  await db.update(purchases).set({ categoryId: first, subjectsPending: false }).where(eq(purchases.id, p.id));
+  // המעבר ממתין → נבחר הוא UPDATE מותנה (אטומי): שתי שליחות במקביל לא ייצרו 6 שורות במקום 3
+  const claimed = await db
+    .update(purchases)
+    .set({ categoryId: first, subjectsPending: false })
+    .where(and(eq(purchases.id, p.id), eq(purchases.subjectsPending, true), eq(purchases.status, "active")))
+    .returning({ id: purchases.id });
+  if (!claimed.length) {
+    return denied("already_chosen", "המקצועות למנוי הזה כבר נבחרו", { purchaseId: p.id });
+  }
   if (rest.length) {
     await db.insert(purchases).values(
       rest.map((categoryId) => ({

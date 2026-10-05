@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { authTokens, purchases, users, userInterests } from "@/db/schema";
-import { requireUser } from "@/lib/session";
+import { createSession, hashAuthToken, requireUser } from "@/lib/session";
 import { sendMail, sendMailInBackground, adminEmail, siteUrl, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { randomToken, safeNextPath } from "@/lib/auth-utils";
@@ -113,12 +113,22 @@ export async function changePasswordAction(_: ProfileState, form: FormData): Pro
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-  await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+  // session_version+1 מנתק כל סשן אחר (מכשיר/דפדפן אחר); הסשן הנוכחי מונפק מחדש עם הגרסה החדשה
+  const [updated] = await db
+    .update(users)
+    .set({ passwordHash, sessionVersion: sql`${users.sessionVersion} + 1` })
+    .where(eq(users.id, user.id))
+    .returning({ sessionVersion: users.sessionVersion });
+  await createSession(user.id, updated.sessionVersion);
   await logAudit({ actorId: user.id, action: "profile.change_password", entityType: "user", entityId: user.id });
   return { ok: true, message: "הסיסמה עודכנה בהצלחה." };
 }
 
-const emailSchema = z.object({ email: z.string().trim().toLowerCase().email("כתובת מייל לא תקינה") });
+const emailSchema = z.object({
+  email: z.string().trim().toLowerCase().email("כתובת מייל לא תקינה"),
+  /** הסיסמה הנוכחית – חובה בחשבון עם סיסמה (לא בחשבון שנרשם דרך גוגל) */
+  current: z.string().optional(),
+});
 
 /** בקשת שינוי כתובת מייל – שולחת קישור אימות לכתובת החדשה, לא משנה מיד */
 export async function requestEmailChangeAction(_: ProfileState, form: FormData): Promise<ProfileState> {
@@ -127,16 +137,39 @@ export async function requestEmailChangeAction(_: ProfileState, form: FormData):
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const email = parsed.data.email;
 
+  // שינוי מייל = השתלטות על החשבון; סשן גנוב לא מספיק – נדרשת הסיסמה הנוכחית.
+  // חשבון שנרשם דרך גוגל מחזיק hash אקראי שאין למשתמשת, ולכן פטור
+  if (!user.googleId) {
+    const current = parsed.data.current ?? "";
+    if (!current || !(await bcrypt.compare(current, user.passwordHash))) {
+      await logAudit({
+        actorId: user.id,
+        action: "profile.email_change_failed",
+        entityType: "user",
+        entityId: user.id,
+        details: { reason: "wrong_current_password" },
+      });
+      return { error: "הסיסמה הנוכחית שגויה" };
+    }
+  }
+
   if (email === user.email) return { error: "זו כבר כתובת המייל שלך" };
   const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
   if (exists) return { error: "כתובת המייל כבר בשימוש על ידי חשבון אחר" };
 
   await db.update(users).set({ pendingEmail: email }).where(eq(users.id, user.id));
+  // בקשה חדשה מבטלת קישורים קודמים שטרם נוצלו – רק הכתובת האחרונה שהתבקשה ניתנת לאישור
+  await db
+    .update(authTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(authTokens.userId, user.id), eq(authTokens.purpose, "change_email"), isNull(authTokens.usedAt)));
   const token = randomToken(24);
   await db.insert(authTokens).values({
     userId: user.id,
-    token,
+    token: hashAuthToken(token),
     purpose: "change_email",
+    // הטוקן כבול לכתובת שהתבקשה – האישור מחיל אותה ולא את pending_email שאולי שונה בינתיים
+    targetEmail: email,
     expiresAt: new Date(Date.now() + EMAIL_CHANGE_TTL_MS),
   });
   const url = `${siteUrl()}/api/auth/confirm-email-change?token=${token}`;

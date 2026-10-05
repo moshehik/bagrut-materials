@@ -70,7 +70,7 @@ export default async function MapPage() {
         </span>
         <span className="flex items-center gap-1.5">
           <Scissors className="h-4 w-4 shrink-0 text-[#a33]" aria-hidden />
-          נושא <b className="text-ink">מסומן בקו חוצה</b> — לא נדרש בתשפ"ז לפי מיקוד משרד החינוך
+          נושא <b className="text-ink">מסומן בקו חוצה</b> — לא נדרש בתשפ״ז לפי מיקוד משרד החינוך
         </span>
         <span className="flex items-center gap-1.5">
           <Scissors className="h-4 w-4 shrink-0 text-[#a33]" aria-hidden />

@@ -3,6 +3,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { authTokens, users } from "@/db/schema";
 import { logAudit } from "@/lib/audit";
+import { hashAuthToken } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,8 @@ export async function GET(req: NextRequest) {
       .from(authTokens)
       .where(
         and(
-          eq(authTokens.token, token),
+          // הטוקן נשמר כ-SHA-256 בלבד; טוקנים ישנים (גולמיים, בלי target_email) אינם מתקבלים – מבקשים קישור חדש
+          eq(authTokens.token, hashAuthToken(token)),
           eq(authTokens.purpose, "change_email"),
           isNull(authTokens.usedAt),
           gt(authTokens.expiresAt, new Date()),
@@ -37,18 +39,20 @@ export async function GET(req: NextRequest) {
       )
       .limit(1);
     if (!t) return failed("invalid_or_expired");
+    // הכתובת שמוחלת היא זו שהטוקן הונפק עבורה – לא pending_email, שמי שמחזיק סשן יכול לשנות אחרי שהקישור נשלח
+    const newEmail = t.targetEmail;
+    if (!newEmail) return failed("no_target_email", t.userId);
 
     const [u] = await db.select().from(users).where(eq(users.id, t.userId)).limit(1);
-    if (!u || !u.pendingEmail) return failed("no_pending_email", t.userId);
+    if (!u) return failed("no_user", t.userId);
 
-    const [dup] = await db.select({ id: users.id }).from(users).where(eq(users.email, u.pendingEmail));
+    const [dup] = await db.select({ id: users.id }).from(users).where(eq(users.email, newEmail));
     if (dup && dup.id !== u.id) return failed("email_taken", u.id);
 
     const oldEmail = u.email; // לפני הדריסה – לצורך היומן
-    const newEmail = u.pendingEmail;
     await db
       .update(users)
-      .set({ email: u.pendingEmail, pendingEmail: null, emailVerified: true })
+      .set({ email: newEmail, pendingEmail: null, emailVerified: true })
       .where(eq(users.id, u.id));
     await db.update(authTokens).set({ usedAt: new Date() }).where(eq(authTokens.id, t.id));
     await logAudit({

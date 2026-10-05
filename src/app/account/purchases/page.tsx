@@ -8,6 +8,8 @@ import { categories, materials, purchases } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { PLANS, formatPrice } from "@/lib/constants";
 import { requestCancelSubscriptionAction } from "@/lib/actions/profile";
+import { getOrderCancelInfo, orderKey } from "@/lib/purchase-cancel";
+import { CancelOrderButton } from "@/components/cancel-order-button";
 import { AccountArrow, AccountTitle, Notice, Panel, PlanNut, fmtDate } from "@/components/account-ui";
 
 export const metadata: Metadata = { title: "רכישות ומנויים" };
@@ -16,9 +18,9 @@ export const dynamic = "force-dynamic";
 export default async function AccountPurchasesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cancelreq?: string }>;
+  searchParams: Promise<{ cancelreq?: string; cancel?: string }>;
 }) {
-  const { cancelreq } = await searchParams;
+  const { cancelreq, cancel } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account/purchases");
 
@@ -32,15 +34,31 @@ export default async function AccountPurchasesPage({
     .from(purchases)
     .leftJoin(materials, eq(purchases.materialId, materials.id))
     .leftJoin(categories, eq(purchases.categoryId, categories.id))
-    .where(and(eq(purchases.userId, user.id), or(isNull(purchases.endsAt), gt(purchases.endsAt, now))))
+    .where(
+      and(
+        eq(purchases.userId, user.id),
+        eq(purchases.status, "active"),
+        or(isNull(purchases.endsAt), gt(purchases.endsAt, now)),
+      ),
+    )
     .orderBy(desc(purchases.createdAt));
+  const orders = await getOrderCancelInfo(user.id);
 
   return (
     <div className="acc-glass mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <AccountTitle title="רכישות ומנויים" subtitle="המנויים והרכישות הפעילים שלך." back />
 
       {cancelreq === "1" && (
-        <Notice icon={CheckCircle2}>בקשת ביטול המנוי נשלחה למנהלת האתר – נחזור אלייך בהקדם.</Notice>
+        <Notice icon={CheckCircle2}>הפנייה בעניין הביטול נשלחה למנהלת האתר – נחזור אלייך בהקדם.</Notice>
+      )}
+      {cancel === "done" && (
+        <Notice icon={CheckCircle2}>ההזמנה בוטלה והסכום יוחזר אלייך במלואו. אישור נשלח למייל.</Notice>
+      )}
+      {cancel === "denied" && (
+        <Notice icon={XCircle} alert>לא ניתן לבטל הזמנה שהורדו ממנה קבצים. אפשר לפנות אלינו ונבדוק.</Notice>
+      )}
+      {cancel === "gone" && (
+        <Notice icon={XCircle} alert>ההזמנה כבר בוטלה או שאינה קיימת.</Notice>
       )}
 
       <Panel
@@ -76,6 +94,7 @@ export default async function AccountPurchasesPage({
                 p.downloadsLimit && p.downloadsLimit > 0
                   ? Math.min(100, Math.round((p.downloadsUsed / p.downloadsLimit) * 100))
                   : null;
+              const order = orders.get(orderKey(p));
               return (
                 <li key={p.id} className="gate-card flex items-start gap-4">
                   <PlanNut plan={p.plan} />
@@ -109,16 +128,29 @@ export default async function AccountPurchasesPage({
                         {p.subjectsPending ? "בחירת מקצועות" : "המקצועות שלי"}
                       </Link>
                     )}
-                    <form action={requestCancelSubscriptionAction} className="ms-auto">
-                      <input type="hidden" name="purchaseId" value={p.id} />
-                      <button
-                        type="submit"
-                        className="gate-soft flex items-center gap-1 text-base underline-offset-4 transition-transform hover:-translate-y-0.5 hover:underline"
-                        title="בקשת ביטול המנוי – תטופל על ידי מנהלת האתר"
-                      >
-                        <XCircle className="h-4 w-4" aria-hidden /> בקשת ביטול
-                      </button>
-                    </form>
+                    {order?.eligible ? (
+                      <div className="ms-auto">
+                        {order.rowIds[0] === p.id ? (
+                          <CancelOrderButton purchaseId={p.id} refundText={formatPrice(order.total)} />
+                        ) : (
+                          <span className="gate-soft text-base">חלק מהזמנה אחת – הביטול בשורה הראשונה</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="ms-auto flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span className="gate-soft text-base">אחרי הורדה כבר לא ניתן לבטל ולקבל זיכוי</span>
+                        <form action={requestCancelSubscriptionAction}>
+                          <input type="hidden" name="purchaseId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="gate-soft flex items-center gap-1 text-base underline-offset-4 transition-transform hover:-translate-y-0.5 hover:underline"
+                            title="פנייה למנהלת האתר בעניין ביטול – תטופל ידנית"
+                          >
+                            <XCircle className="h-4 w-4" aria-hidden /> פנייה בעניין ביטול
+                          </button>
+                        </form>
+                      </div>
+                    )}
                   </div>
                   </div>
                 </li>

@@ -18,7 +18,7 @@ export function CouponForm({ subjects }: { subjects: Subject[] }) {
           <span className="font-semibold">כתובת מייל של המקבלת</span>
           <input name="email" type="email" dir="ltr" className="input w-full" placeholder="name@example.com" />
           <span className="text-xs text-muted block">
-            כשהיא נכנסת עם המייל הזה – הקופון מופיע לה ב"קופונים זמינים". בלי מייל: כל מי שמחזיקה בקוד.
+            כשהיא נכנסת עם המייל הזה – הקופון מופיע לה ב&quot;קופונים זמינים&quot;. בלי מייל: כל מי שמחזיקה בקוד.
           </span>
         </label>
         <label className="text-sm space-y-1">

@@ -8,7 +8,9 @@ import {
   Crown,
   FileDown,
   Gift,
+  Phone,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import {
   PLANS,
@@ -37,6 +39,9 @@ export default async function PricingPage() {
       aria-hidden
     />
   );
+  // מחיר היכרות/השקה מוחל אוטומטית – אין צורך בקוד קופון
+  const yearlyLaunchMonthly = Math.round(prices.plans.yearly / 12);
+
   // במקום סימן וי – תמונת אגוז
   const check = (
     // eslint-disable-next-line @next/next/no-img-element
@@ -116,7 +121,7 @@ export default async function PricingPage() {
             <div className="gate-price gate-price-lg mt-2">
               <GateShekel agorot={prices.defaultSingle} />
             </div>
-            <p>ליחידה</p>
+            <p>ליחידה – שיעור אחד</p>
             <hr className="gate-divider" />
             <ul className="mb-4 space-y-1 text-start">
               <li className="flex gap-2">{check} תשלום חד-פעמי</li>
@@ -143,11 +148,14 @@ export default async function PricingPage() {
             <h3 className="mt-2 text-2xl">{PLANS.yearly.label}</h3>
             <p className="gate-soft">{PLANS.yearly.description}</p>
             <div className="gate-price gate-price-lg mt-2">
-              <GateShekel agorot={prices.yearlyListMonthly} />
+              <GateShekel agorot={yearlyLaunchMonthly} />{" "}
+              <s className="gate-old-price text-2xl">
+                <GateShekel agorot={prices.yearlyListMonthly} />
+              </s>
             </div>
             <p>לחודש × 12 חודשים</p>
             <p className="gate-soft text-base">
-              סה״כ <GateShekel agorot={prices.yearlyListMonthly * 12} /> לשנה
+              סה״כ <GateShekel agorot={prices.plans.yearly} /> לשנה, חיוב חד-פעמי
             </p>
             <hr className="gate-divider" />
             <ul className="mb-4 space-y-1 text-start">
@@ -166,26 +174,18 @@ export default async function PricingPage() {
               href="/checkout?plan=yearly"
               className="btn btn-gold btn-gate mt-auto py-2"
             >
-              בחירת מסלול {arrow}
+              לבחירת המקצועות {arrow}
             </Link>
             {decor("yearly")}
           </div>
         </AnimatedGrid>
 
-        {/* קישור לקופון ההשקה (עמוד "קופונים זמינים") */}
+        {/* מחיר ההשקה כבר מוחל – אין קוד קופון */}
         <div className="gate-strip mt-10">
           <p className="text-xl">
-            <Gift className="inline h-5 w-5" aria-hidden /> לרגל השקת האתר –
-            מנוי שנתי במחיר היכרות:{" "}
-            <GateShekel agorot={Math.round(prices.plans.yearly / 12)} /> לחודש
-            במקום{" "}
-            <s className="gate-old-price">
-              <GateShekel agorot={prices.yearlyListMonthly} />
-            </s>
+            <Gift className="inline h-5 w-5" aria-hidden /> לרגל השקת האתר – מחיר ההיכרות כבר
+            מעודכן במחירים שלמעלה, בלי קוד ובלי קופון. הוא יורד אוטומטית בעת ההזמנה.
           </p>
-          <Link href="/coupons" className="btn btn-gold btn-gate py-2">
-            לקופון {arrow}
-          </Link>
         </div>
       </section>
 
@@ -213,13 +213,16 @@ export default async function PricingPage() {
               </h3>
               <p className="gate-soft">מנוי ל-{SUBSTITUTE_MONTHS} חודשים</p>
               <div className="gate-price gate-price-lg mt-2">
-                <GateShekel agorot={prices.substituteMonthly} />
+                <GateShekel agorot={prices.substituteLaunchMonthly} />{" "}
+                <s className="gate-old-price text-2xl">
+                  <GateShekel agorot={prices.substituteMonthly} />
+                </s>
               </div>
               <p>לחודש × {SUBSTITUTE_MONTHS} חודשים</p>
               <p className="gate-soft text-base">
                 סה״כ{" "}
                 <GateShekel
-                  agorot={prices.substituteMonthly * SUBSTITUTE_MONTHS}
+                  agorot={prices.substituteLaunchMonthly * SUBSTITUTE_MONTHS}
                 />
               </p>
               <hr className="gate-divider" />
@@ -237,12 +240,11 @@ export default async function PricingPage() {
               </ul>
               <div className="gate-strip gate-strip-dark mt-auto">
                 <p>
-                  <Gift className="inline h-5 w-5" aria-hidden /> לרגל השקת
-                  האתר: <GateShekel agorot={prices.substituteLaunchMonthly} />{" "}
-                  לחודש × {SUBSTITUTE_MONTHS} חודשים
+                  <Gift className="inline h-5 w-5" aria-hidden /> מחיר השקה –
+                  כבר מעודכן, בלי קופון
                 </p>
-                <Link href="/coupons" className="btn btn-gold btn-gate py-2">
-                  לקופון {arrow}
+                <Link href="/contact" className="btn btn-gold btn-gate py-2">
+                  לבחירת המקצועות {arrow}
                 </Link>
               </div>
               {decor("substitute")}
@@ -261,20 +263,30 @@ export default async function PricingPage() {
               <h3 className="mt-2 text-2xl">ממלאת מקום יומית</h3>
               <p className="gate-soft">סל הורדות</p>
               <div className="gate-price gate-price-lg mt-2">
-                <GateShekel agorot={prices.substituteDaily} />
+                <GateShekel agorot={prices.substituteDailyLaunch} />{" "}
+                <s className="gate-old-price text-2xl">
+                  <GateShekel agorot={prices.substituteDaily} />
+                </s>
               </div>
               <p>עבור {prices.substituteDailyDownloads} צפיות או הורדות</p>
+              <p className="gate-soft text-base">
+                כ-
+                <GateShekel
+                  agorot={Math.round(prices.substituteDailyLaunch / prices.substituteDailyDownloads)}
+                />{" "}
+                לצפייה או הורדה
+              </p>
               <p className="gate-soft text-base">
                 לשימוש מתי שצריך, בלי הגבלת זמן
               </p>
               <hr className="gate-divider" />
               <div className="gate-strip gate-strip-dark mt-auto">
                 <p>
-                  <Gift className="inline h-5 w-5" aria-hidden /> עכשיו במבצע:{" "}
-                  <GateShekel agorot={prices.substituteDailyLaunch} />
+                  <Gift className="inline h-5 w-5" aria-hidden /> מחיר מבצע –
+                  כבר מעודכן, בלי קופון
                 </p>
-                <Link href="/coupons" className="btn btn-gold btn-gate py-2">
-                  לקופון {arrow}
+                <Link href="/contact" className="btn btn-gold btn-gate py-2">
+                  לרכישה {arrow}
                 </Link>
               </div>
               {decor("daily")}
@@ -282,6 +294,46 @@ export default async function PricingPage() {
           </div>
         </details>
       </div>
+
+      {/* ביטול והתחייבות */}
+      <section className="gate-panel mx-auto mt-8 max-w-2xl" aria-labelledby="cancel-h">
+        <span className="gold-ring" aria-hidden="true" />
+        <h2 id="cancel-h" className="text-center text-3xl">
+          <ShieldCheck className="inline h-7 w-7" aria-hidden /> ביטול והתחייבות
+        </h2>
+        <ul className="mt-5 space-y-3 text-start text-xl">
+          <li className="flex gap-2">
+            {check}
+            <span>
+              <b>אין התחייבות:</b> משלמים פעם אחת על התקופה שבחרת. אין חיוב חוזר ואין חידוש
+              אוטומטי – בתום התקופה המנוי פשוט נגמר.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            {check}
+            <span>
+              <b>ביטול עם החזר מלא:</b> כל עוד לא הורדת קבצים מההזמנה, אפשר לבטל אותה בלחיצה
+              אחת באזור האישי (רכישות ומנויים) ולקבל את כל הסכום בחזרה.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            {check}
+            <span>
+              <b>אחרי הורדה:</b> מדובר בתוכן דיגיטלי שכבר נמסר, ולכן אי אפשר לבטל ולקבל החזר.
+              בתקלה טכנית שמנעה שימוש – פני אלינו ונטפל.
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      {/* לדבר עם מישהי */}
+      <section className="gate-panel mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <span className="gold-ring" aria-hidden="true" />
+        <p className="text-2xl">רוצה לדבר עם מישהי?</p>
+        <a href="tel:0556799588" className="btn btn-gold btn-gate py-2" dir="ltr">
+          <Phone className="h-4 w-4" aria-hidden /> 055-679-9588
+        </a>
+      </section>
     </div>
   );
 }

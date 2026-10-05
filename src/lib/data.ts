@@ -184,7 +184,8 @@ export type SearchResult =
 export async function searchCatalog(query: string, isAdmin = false): Promise<SearchResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const like = `%${q}%`;
+  // % ו-_ הם תווי-כלליות ב-LIKE – מבריחים אותם כדי שמונח כמו "_" לא יתאים להכול (ולא יהפוך לסריקה יקרה)
+  const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
 
   const [catRows, matRows] = await Promise.all([
     db

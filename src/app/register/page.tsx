@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Check } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { getBool } from "@/lib/settings";
 import { googleConfigured } from "@/lib/google-oauth";

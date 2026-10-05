@@ -5,12 +5,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { cartItems, categories, materials, purchases, transactions, users, type Plan } from "@/db/schema";
-import { PLANS, formatPrice } from "@/lib/constants";
+import { cartItems, categories, materials, purchases, transactions } from "@/db/schema";
+import { formatPrice } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
+import { getPlanPrices } from "@/lib/pricing";
+import { addDays, planAmountFor } from "@/lib/purchase-helpers";
 import { cartCount, getCart } from "@/lib/cart";
 
 /*
@@ -22,6 +24,16 @@ import { cartCount, getCart } from "@/lib/cart";
  */
 
 const idNum = z.coerce.number().int().positive();
+
+/** מקצוע ראשי (שורש) פעיל – למנוי חודשי למקצוע */
+async function activeRootSubject(id: number) {
+  const [c] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.id, id), isNull(categories.parentId), eq(categories.status, "active")))
+    .limit(1);
+  return c ?? null;
+}
 
 const addSchema = z
   .object({
@@ -47,32 +59,43 @@ export async function addToCart(input: AddToCartInput): Promise<CartActionResult
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "פריט לא תקין" };
   const d = parsed.data;
 
-  // סוג הפריט: חומר בודד / תיקייה (bundle) / מסלול (plan; מנוי מקצוע דורש categoryId)
+  // סוג הפריט: חומר בודד / תיקייה (bundle) / מסלול (plan; מנוי מקצוע דורש מקצוע ראשי)
   let values: typeof cartItems.$inferInsert;
   if (d.plan) {
-    if (d.plan === "subject_monthly" && !d.categoryId) return { ok: false, error: "יש לבחור מקצוע" };
+    if (d.plan === "custom_monthly") {
+      // לפריט עגלה יש מקצוע אחד בלבד, ומנוי לפי מערכת דורש בחירת עד 3 מקצועות – נרכש מדף המסלולים
+      return { ok: false, error: "מנוי לפי מערכת נרכש ישירות מדף המסלולים (בחירת המקצועות נעשית שם)" };
+    }
+    if (d.plan === "subject_monthly") {
+      if (!d.categoryId) return { ok: false, error: "יש לבחור מקצוע" };
+      const c = await activeRootSubject(d.categoryId);
+      if (!c) return { ok: false, error: "יש לבחור מקצוע ראשי" };
+    }
     values = {
       userId: user.id,
       plan: d.plan,
+      // שנתי: בלי מקצועות בעגלה – נרשם בקופה כ"ממתין לבחירה" (subjectsPending), כמו "דלג" ב-/checkout
       categoryId: d.plan === "subject_monthly" ? d.categoryId! : null,
       materialId: null,
       premium: !!d.premium,
     };
   } else if (d.materialId) {
     const [m] = await db
-      .select({ id: materials.id })
+      .select({ id: materials.id, status: materials.status })
       .from(materials)
       .where(eq(materials.id, d.materialId))
       .limit(1);
     if (!m) return { ok: false, error: "החומר לא נמצא" };
+    if (m.status !== "active") return { ok: false, error: "החומר מושהה זמנית ואינו זמין לרכישה" };
     values = { userId: user.id, plan: "single", materialId: m.id, categoryId: null, premium: false };
   } else {
     const [c] = await db
-      .select({ id: categories.id })
+      .select({ id: categories.id, status: categories.status })
       .from(categories)
       .where(eq(categories.id, d.categoryId!))
       .limit(1);
     if (!c) return { ok: false, error: "התיקייה לא נמצאה" };
+    if (c.status !== "active") return { ok: false, error: "התיקייה מושהית זמנית ואינה זמינה לרכישה" };
     values = { userId: user.id, plan: "bundle", categoryId: c.id, materialId: null, premium: false };
   }
 
@@ -147,11 +170,7 @@ export async function setCartItemPremium(id: number, premium: boolean): Promise<
 
 export type CheckoutCartState = { error?: string } | undefined;
 
-function addDays(days: number) {
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-}
-
-/** רכישה (מדומה) של כל פריטי העגלה */
+/** רכישה (מדומה) של כל פריטי העגלה – אותם מחירים ואותן בדיקות כמו purchaseAction */
 export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): Promise<CheckoutCartState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/cart");
@@ -161,16 +180,32 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
     return { error };
   };
   if (user.suspended) return denied("user_suspended", "החשבון מושהה. פני למנהלת האתר.");
+  // כמו שאר ממשק העגלה: כשהעגלה כבויה בהגדרות אין גם קופה
+  if (!(await getBool("cart_enabled"))) {
+    return denied("cart_disabled", "העגלה אינה פעילה כרגע. אפשר לרכוש כל פריט בנפרד מדף החומר.");
+  }
 
   const cart = await getCart(user.id);
   if (!cart.items.length) return denied("empty_cart", "העגלה ריקה");
 
+  const prices = await getPlanPrices();
   const paymentRef = `MOCK-CART-${Date.now()}`;
   type Row = typeof purchases.$inferInsert;
   const rows: Row[] = [];
 
   for (const it of cart.items) {
     if (it.kind === "single") {
+      // נבדק גם בהוספה – אבל החומר יכול היה להיות מושהה מאז
+      const [m] = await db
+        .select({ id: materials.id, status: materials.status })
+        .from(materials)
+        .where(eq(materials.id, it.materialId!))
+        .limit(1);
+      if (!m || m.status !== "active") {
+        return denied("material_inactive", `החומר "${it.title}" מושהה זמנית ואינו זמין לרכישה – הסירי אותו מהעגלה`, {
+          materialId: it.materialId,
+        });
+      }
       rows.push({
         userId: user.id,
         plan: "single",
@@ -183,6 +218,16 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
         paymentRef,
       });
     } else if (it.kind === "bundle") {
+      const [c] = await db
+        .select({ id: categories.id, status: categories.status })
+        .from(categories)
+        .where(eq(categories.id, it.categoryId!))
+        .limit(1);
+      if (!c || c.status !== "active") {
+        return denied("folder_inactive", `התיקייה "${it.title}" מושהית זמנית ואינה זמינה לרכישה – הסירי אותה מהעגלה`, {
+          categoryId: it.categoryId,
+        });
+      }
       if (it.price <= 0) {
         return denied("empty_folder", `אין חומרים לרכישה בתיקייה "${it.title}"`, { categoryId: it.categoryId });
       }
@@ -196,19 +241,38 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
         premium: false,
         paymentRef,
       });
-    } else {
-      const def = PLANS[it.plan];
-      const days = def.days ?? 30;
-      if (it.plan === "subject_monthly" && !it.categoryId) {
-        return denied("subject_required", "מנוי למקצוע דורש בחירת מקצוע", { plan: it.plan });
-      }
+    } else if (it.plan === "custom_monthly") {
+      // פריט ישן בעגלה: אין לו רשימת מקצועות, ו-categoryId ריק = גישה לכל המקצועות – לא דרך העגלה
+      return denied("custom_monthly_in_cart", "מנוי לפי מערכת לא ניתן לרכישה דרך העגלה – הסירי אותו ורכשי מדף המסלולים", {
+        cartItemId: it.id,
+      });
+    } else if (it.plan === "subject_monthly") {
+      if (!it.categoryId) return denied("subject_required", "מנוי למקצוע דורש בחירת מקצוע", { plan: it.plan });
+      const c = await activeRootSubject(it.categoryId);
+      if (!c) return denied("not_root_subject", "יש לבחור מקצוע ראשי", { categoryId: it.categoryId, plan: it.plan });
+      const amount = planAmountFor("subject_monthly", it.premium, prices);
       rows.push({
         userId: user.id,
-        plan: it.plan,
-        categoryId: it.plan === "yearly" ? null : it.categoryId,
-        amount: it.price,
-        downloadsLimit: def.downloadsLimit ?? null,
-        endsAt: addDays(days),
+        plan: "subject_monthly",
+        categoryId: c.id,
+        amount: amount.total,
+        downloadsLimit: amount.downloadsLimit,
+        endsAt: addDays(amount.days),
+        premium: it.premium,
+        paymentRef,
+      });
+    } else {
+      // שנתי: בלי מקצועות בעגלה – שורה אחת "ממתינה" (אין גישה עד הבחירה ב-/account/subjects),
+      // בדיוק כמו "דלג" ב-purchaseAction. categoryId ריק בלי subjectsPending = גישה לכל המקצועות!
+      const amount = planAmountFor("yearly", it.premium, prices);
+      rows.push({
+        userId: user.id,
+        plan: "yearly",
+        categoryId: null,
+        subjectsPending: true,
+        amount: amount.total,
+        downloadsLimit: amount.downloadsLimit,
+        endsAt: addDays(amount.days),
         premium: it.premium,
         paymentRef,
       });

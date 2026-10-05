@@ -11,7 +11,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, materials, driveEvents } from "@/db/schema";
-import { getAccessToken, getRootFolderId, resetAccessToken, driveIdFromUrl } from "@/lib/driveBridgeCore";
+import { getRootFolderId, driveIdFromUrl, driveFetchAuthed } from "@/lib/driveBridgeCore";
 
 const API = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
@@ -30,37 +30,12 @@ export const INFO_FILE_NAME = "_מידע.txt";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** קריאה ל-Drive REST עם ניסיונות חוזרים (429/403-rate/5xx) ורענון טוקן ב-401. */
+/**
+ * קריאה ל-Drive REST עם ניסיונות חוזרים (429/403-rate/5xx) ורענון טוקן ב-401.
+ * עטיפה דקה סביב העזר המשותף driveBridgeCore.driveFetchAuthed (אותה לוגיקת אימות/ניסיונות לכל הקוד).
+ */
 export async function driveApi(url: string, init: RequestInit = {}, tries = 7): Promise<Response> {
-  let lastErr: unknown;
-  for (let attempt = 1; attempt <= tries; attempt++) {
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(90_000),
-        ...init,
-        headers: { Authorization: `Bearer ${token}`, ...(init.headers as Record<string, string> | undefined) },
-      });
-      if (res.status === 401) {
-        resetAccessToken();
-        lastErr = new Error("401");
-        continue;
-      }
-      if (res.status === 429 || res.status >= 500 || res.status === 403) {
-        const body = await res.clone().text();
-        if (res.status !== 403 || /userRateLimitExceeded|rateLimitExceeded|Rate Limit Exceeded/i.test(body)) {
-          lastErr = new Error(`${res.status} ${body.slice(0, 120)}`);
-          await sleep(Math.min(15000, 400 * 2 ** attempt) + Math.random() * 300);
-          continue;
-        }
-      }
-      return res;
-    } catch (e) {
-      lastErr = e;
-      await sleep(400 * attempt);
-    }
-  }
-  throw new Error(`קריאת Drive נכשלה: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`);
+  return driveFetchAuthed(url, init, { tries, timeoutMs: 90_000 });
 }
 
 async function json<T>(res: Response, what: string): Promise<T> {
@@ -488,13 +463,21 @@ export function buildFileDescription(opts: { originalName: string; materialId?: 
     .join("\n");
 }
 
+export type PlaceCtx = NonNullable<Parameters<typeof ensureCategoryFolder>[1]>;
+
 /**
  * מציב חומר במקומו בדרייב: מעביר לתיקיית הקטגוריה שלו ומשנה את שם הקובץ לשם החומר באתר
  * (materials.fileName; בהתנגשות שם בתיקייה — עם " (#id)"). השם הישן נשמר בתגית. אידמפוטנטי.
+ *
+ * עלות בלי אופציות: loadCategories + driveGet לכל תיקיית-אב (אימות) + driveGet לקובץ + רשימת התיקייה + PATCH.
+ * כשמציבים כמה חומרים — להעביר `ctx` משותף (העץ מאומת פעם אחת) ואחת מהשתיים:
+ *  - `takenNames`: שמות הקבצים *האחרים* בתיקיית היעד (הקורא מוציא את הקבצים שהוא מציב); הסט מתעדכן בכל הצבה.
+ *  - `listing`: תמונת-מצב של ילדי התיקייה (driveListFolder) — הקובץ עצמו מוצא ממנה אוטומטית.
+ * שתיהן חוסכות את רשימת-התיקייה לכל קובץ.
  */
 export async function placeMaterial(
   materialId: number,
-  opts: { actorId?: number | null; ctx?: Parameters<typeof ensureCategoryFolder>[1]; takenNames?: Set<string> } = {},
+  opts: { actorId?: number | null; ctx?: PlaceCtx; takenNames?: Set<string>; listing?: DriveItem[] } = {},
 ): Promise<{ moved: boolean; renamed: boolean; folderId: string; name: string } | null> {
   const [m] = await db.select().from(materials).where(eq(materials.id, materialId));
   if (!m) return null;
@@ -509,13 +492,14 @@ async function placeInFolder(
   m: typeof materials.$inferSelect,
   fileId: string,
   folderId: string,
-  opts: { actorId?: number | null; takenNames?: Set<string> },
+  opts: { actorId?: number | null; takenNames?: Set<string>; listing?: DriveItem[] },
 ): Promise<{ moved: boolean; renamed: boolean; folderId: string; name: string }> {
   const current = await driveGet(fileId);
   if (!current) throw new Error(`הקובץ ${fileId} של חומר #${m.id} לא נמצא בדרייב`);
 
   let desired = sanitizeDriveName(m.fileName);
-  const taken = opts.takenNames ?? new Set((await driveListFolder(folderId)).filter((f) => f.id !== fileId).map((f) => f.name));
+  const taken =
+    opts.takenNames ?? new Set((opts.listing ?? (await driveListFolder(folderId))).filter((f) => f.id !== fileId).map((f) => f.name));
   if (taken.has(desired)) desired = sanitizeDriveName(withIdSuffix(m.fileName, m.id));
   taken.add(desired);
 

@@ -6,11 +6,15 @@ import { pageViews, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getBool } from "@/lib/settings";
 import { requestMeta, logAudit } from "@/lib/audit";
+import { limitKey, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SID_COOKIE = "bagrut_sid";
+/** הגבלת קצב: 60 בקשות לדקה לכל IP (הדפדפן שולח כ-2 לכל דף) */
+const RATE_LIMIT_PER_MIN = 60;
+const MAX_UA_LEN = 300;
 const IGNORED_PREFIXES = ["/_next", "/api", "/admin"];
 // בוטים/סורקים/תצוגות מקדימות – לא נספרים כצפיות אמיתיות
 const BOT_UA = /bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit/i;
@@ -30,6 +34,20 @@ function cleanPath(raw: unknown): string | null {
 
 export async function POST(req: NextRequest) {
   try {
+    // רק מהאתר עצמו: דפדפן מודרני שולח sec-fetch-site; ערך של אתר זר = בקשה cross-site, לא שלנו
+    const fetchSite = req.headers.get("sec-fetch-site");
+    if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+      return new NextResponse(null, { status: 403 });
+    }
+
+    const { ip, userAgent: rawUa } = await requestMeta();
+    const userAgent = rawUa ? rawUa.slice(0, MAX_UA_LEN) : null;
+
+    const rl = await rateLimit({ key: limitKey("track", "ip", ip ?? "unknown"), limit: RATE_LIMIT_PER_MIN, windowSec: 60 });
+    if (!rl.ok) {
+      return new NextResponse(null, { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } });
+    }
+
     let body: Record<string, unknown> = {};
     try {
       body = (await req.json()) as Record<string, unknown>;
@@ -38,7 +56,6 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await getCurrentUser();
-    const { ip, userAgent } = await requestMeta();
 
     // מזהה סשן אנונימי
     const jar = await cookies();

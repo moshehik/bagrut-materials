@@ -4,7 +4,7 @@ import { getFreeTrialState } from "@/lib/free-trial";
 import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
-import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
+import { SUBJECT_HOUSES } from "@/lib/constants";
 import type { Category } from "@/db/schema";
 import type { CSSProperties } from "react";
 import Image from "next/image";
@@ -22,6 +22,8 @@ import { MapDraw } from "@/components/map-draw";
 import { FaqSection } from "@/components/faq-section";
 import { HomePopup, type HomePopupData } from "@/components/home-popup";
 import { getSettings } from "@/lib/settings";
+import { getMySubjects } from "@/lib/home-personal";
+import { NextLessonButton } from "@/components/next-lesson-button";
 import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +82,11 @@ export default async function HomePage({
   const trialCta =
     cfg.free_trial_enabled === "true" && (!user || trialState === "available" || trialState === "unverified");
 
+  // מורה מחוברת: ברכה אישית + קיצורי דרך למקצועות שלה ולשיעור הבא בתור
+  const greetName = user ? user.firstName?.trim() || user.name.trim().split(/\s+/)[0] || undefined : undefined;
+  const mySubjects = user ? await getMySubjects(user).catch(() => []) : [];
+  const personal = mySubjects.length > 0;
+
   const body = (
     <>
       {/* ================= HERO ================= */}
@@ -90,18 +97,20 @@ export default async function HomePage({
         <div className={s.wrap}>
           <div className={s.heroGrid}>
             <div className={s.heroIn}>
-              <HeroTitle />
+              <HeroTitle name={greetName} />
               <TypewriterLead
                 className={s.lead}
                 text={'כאן תקבלי את המעטפת המושלמת לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור!'}
               />
               <div className={s.acts}>
-                <Link href="/subjects" className="btn btn-gold btn-gate">
+                <Link href={personal ? "/subjects?mine=1" : "/subjects"} className="btn btn-gold btn-gate">
                   <BookOpen className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                  למאגר המקצועות
+                  {personal ? "למקצועות שלך" : "למאגר המקצועות"}
                   <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
                 </Link>
-                {trialCta ? (
+                {personal ? (
+                  <NextLessonButton options={mySubjects} />
+                ) : trialCta ? (
                   <Link href={user ? "/subjects" : "/register"} className="btn btn-ghost btn-plans text-base">
                     <Gift className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
                     נסי שיעור אחד בחינם
@@ -154,7 +163,7 @@ export default async function HomePage({
           </h2>
         </Reveal>
         <AnimatedGrid className={s.lessonItems}>
-          {LESSON_ITEMS.map((t, i) => {
+          {LESSON_ITEMS.map((t) => {
             const st = CARD_STYLES[t];
             const soon = t === "presentation";
             // הכיתוב והוי באותו צבע — צבע התיקייה (לכל סוג צבע ייחודי ב-CARD_STYLES)

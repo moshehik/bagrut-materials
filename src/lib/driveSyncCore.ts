@@ -14,12 +14,42 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { materials } from "@/db/schema";
-import { driveIdFromUrl } from "@/lib/driveBridgeCore";
+import { driveIdFromUrl, getRootFolderId } from "@/lib/driveBridgeCore";
 import { detectKind, stripExtension } from "@/lib/admin-utils";
-import { FOLDER_MIME, driveGet, driveListFolder, loadCategories, logDriveEvent, mapPool, placeMaterial } from "@/lib/driveTreeCore";
+import {
+  FOLDER_MIME,
+  type CatRow,
+  type DriveItem,
+  type PlaceCtx,
+  driveGet,
+  driveListFolder,
+  loadCategories,
+  logDriveEvent,
+  mapPool,
+  placeMaterial,
+} from "@/lib/driveTreeCore";
 
 export type SyncAudit = (a: { action: string; entityType?: string; entityId?: number | null; details?: unknown }) => Promise<void>;
-export type SyncCtx = { actorId: number | null; via: string; audit: SyncAudit; dryRun?: boolean };
+
+/** השורות מטבלת materials שהסנכרון צריך (לא כל העמודות). */
+export type SyncMat = { id: number; categoryId: number; fileUrl: string; fileName: string; size: number; orig: string | null };
+/** תמונת-מצב של ה-DB לסנכרון: קטגוריות + חומרים. נטענת פעם אחת ואפשר להעביר אותה בין קבוצות. */
+export type SyncSnapshot = { all: CatRow[]; mats: SyncMat[] };
+
+export type SyncCtx = {
+  actorId: number | null;
+  via: string;
+  audit: SyncAudit;
+  dryRun?: boolean;
+  /**
+   * הקשר הצבה משותף (ensureCategoryFolder/placeMaterial): העץ מאומת מול הדרייב פעם אחת במקום לכל קובץ.
+   * נבנה אוטומטית כשחסר; לולאה שקוראת לכמה קבוצות (scripts/drive-sync.ts) יכולה לבנות אותו פעם אחת עם
+   * buildPlaceCtx() ולהעביר הלאה.
+   */
+  place?: PlaceCtx;
+  /** תמונת-מצב DB מוכנה (loadSyncSnapshot) — חוסכת select על כל טבלת materials בכל קבוצה. */
+  snapshot?: SyncSnapshot;
+};
 
 /** מסיר תווי כיווניות מוסתרים ורווחים מיותרים משם קובץ שמגיע מ-Windows/Drive for desktop. */
 export function cleanName(n: string) {
@@ -37,16 +67,38 @@ export function cmpName(n: string) {
     .trim();
 }
 
-/** מצרף קבצי דרייב לא מקושרים כחומרי טיוטה בקטגוריה (או מציב מחדש חומר קיים שכבר מצביע על הקובץ). */
-export async function adoptFiles(driveIds: string[], categoryId: number, ctx: SyncCtx) {
+/** טוען קטגוריות + חומרים (העמודות שהסנכרון צריך) בשתי שאילתות מקבילות. */
+export async function loadSyncSnapshot(): Promise<SyncSnapshot> {
+  const [{ all }, mats] = await Promise.all([
+    loadCategories(),
+    db
+      .select({ id: materials.id, categoryId: materials.categoryId, fileUrl: materials.fileUrl, fileName: materials.fileName, size: materials.size, orig: materials.driveOriginalName })
+      .from(materials),
+  ]);
+  return { all, mats };
+}
+
+/** בונה הקשר הצבה משותף מתוך רשימת הקטגוריות (או טוען אותן אם לא סופקו). */
+export async function buildPlaceCtx(actorId: number | null, all?: CatRow[]): Promise<PlaceCtx> {
+  const cats = all ?? (await loadCategories()).all;
+  return { byId: new Map(cats.map((c) => [c.id, c])), names: new Map<number, string>(), verified: new Set<number>(), rootId: await getRootFolderId(), actorId };
+}
+
+/**
+ * מצרף קבצי דרייב לא מקושרים כחומרי טיוטה בקטגוריה (או מציב מחדש חומר קיים שכבר מצביע על הקובץ).
+ * `listing` (אופציונלי): ילדי תיקיית הקטגוריה כפי שכבר נקראו — חוסך רשימת-תיקייה לכל קובץ (ר' placeMaterial).
+ */
+export async function adoptFiles(driveIds: string[], categoryId: number, ctx: SyncCtx, opts: { listing?: DriveItem[] } = {}) {
   const out: { id: string; materialId?: number; error?: string }[] = [];
+  let place = ctx.place;
   for (const fid of driveIds) {
     try {
       const f = await driveGet(fid);
       if (!f) throw new Error("הקובץ לא נמצא בדרייב");
       const [existing] = await db.select({ id: materials.id }).from(materials).where(eq(materials.fileUrl, `drive://${fid}`));
+      if (!ctx.dryRun) place ??= await buildPlaceCtx(ctx.actorId);
       if (existing) {
-        if (!ctx.dryRun) await placeMaterial(existing.id, { actorId: ctx.actorId });
+        if (!ctx.dryRun) await placeMaterial(existing.id, { actorId: ctx.actorId, ctx: place, listing: opts.listing });
         out.push({ id: fid, materialId: existing.id });
         continue;
       }
@@ -68,7 +120,7 @@ export async function adoptFiles(driveIds: string[], categoryId: number, ctx: Sy
           driveOriginalName: f.name,
         })
         .returning({ id: materials.id });
-      await placeMaterial(row.id, { actorId: ctx.actorId });
+      await placeMaterial(row.id, { actorId: ctx.actorId, ctx: place, listing: opts.listing });
       await logDriveEvent({ kind: "file.add", materialId: row.id, categoryId, driveId: fid, newValue: f.name, details: { via: ctx.via }, actorId: ctx.actorId });
       await ctx.audit({ action: "material.create", entityType: "material", entityId: row.id, details: { via: ctx.via, categoryId, fileName: f.name } });
       out.push({ id: fid, materialId: row.id });
@@ -93,14 +145,14 @@ export type SyncBatchResult = {
 
 /** סורק עד 40 תיקיות (מ-cursor). ממשיכים עם nextCursor עד null. */
 export async function syncBatch(cursor: number, onlyCategoryId: number | undefined, ctx: SyncCtx): Promise<SyncBatchResult> {
-  const { all } = await loadCategories();
+  const { all, mats } = ctx.snapshot ?? (await loadSyncSnapshot());
   let targets = all.filter((c) => c.driveFolderId).sort((a, b) => a.id - b.id);
   if (onlyCategoryId) targets = targets.filter((c) => c.id === onlyCategoryId);
   const batch = targets.slice(cursor, cursor + 40);
-  const mats = await db
-    .select({ id: materials.id, categoryId: materials.categoryId, fileUrl: materials.fileUrl, fileName: materials.fileName, size: materials.size, orig: materials.driveOriginalName })
-    .from(materials);
   const byFile = new Map(mats.map((m) => [driveIdFromUrl(m.fileUrl) ?? "", m]));
+  // הקשר הצבה אחד לכל הקבוצה (ולא loadCategories + אימות עץ לכל קובץ), מועבר גם ל-adoptFiles
+  const place = ctx.place ?? (ctx.dryRun ? undefined : await buildPlaceCtx(ctx.actorId, all));
+  const inner: SyncCtx = { ...ctx, place, snapshot: { all, mats } };
   let adopted = 0;
   let moved = 0;
   let relinked = 0;
@@ -111,16 +163,17 @@ export async function syncBatch(cursor: number, onlyCategoryId: number | undefin
     if (notes.length < 200) notes.push(s);
   };
 
-  await mapPool(batch, 5, async (c) => {
+  const { errors: folderErrors } = await mapPool(batch, 5, async (c) => {
     const items = await driveListFolder(c.driveFolderId!);
     const present = new Set(items.map((i) => i.id));
-    const st: { orphaned: typeof mats | null } = { orphaned: null };
+    const st: { orphaned: SyncMat[] | null } = { orphaned: null };
+    // חומרי הקטגוריה שהקובץ שלהם כבר לא בתיקייה — ובדיקה מקבילית (לא ברצף) שהוא באמת נעלם מהדרייב
     const orphanedMats = async () => {
       if (st.orphaned) return st.orphaned;
       const cand = mats.filter((m) => m.categoryId === c.id && !present.has(driveIdFromUrl(m.fileUrl) ?? ""));
-      const gone: typeof mats = [];
-      for (const m of cand) if (!(await driveGet(driveIdFromUrl(m.fileUrl)!))) gone.push(m);
-      return (st.orphaned = gone);
+      const { results, errors: getErrors } = await mapPool(cand, 5, async (m) => ((await driveGet(driveIdFromUrl(m.fileUrl)!)) ? null : m));
+      for (const e of getErrors) errors.push(`[${c.title}] בדיקת חומר #${e.item.id} נכשלה: ${e.error}`);
+      return (st.orphaned = results.filter((m): m is SyncMat => !!m));
     };
     for (const i of items) {
       if (i.mimeType === FOLDER_MIME || i.appProperties.siteInfo === "1") continue;
@@ -136,7 +189,7 @@ export async function syncBatch(cursor: number, onlyCategoryId: number | undefin
             st.orphaned = (st.orphaned ?? []).filter((x) => x.id !== t.id);
             byFile.set(i.id, { ...t, fileUrl: `drive://${i.id}` });
             try {
-              await placeMaterial(t.id, { actorId: ctx.actorId });
+              await placeMaterial(t.id, { actorId: ctx.actorId, ctx: place, listing: items });
             } catch (e) {
               errors.push(`${i.name}: חובר לחומר #${t.id} אך ההצבה נכשלה (${e instanceof Error ? e.message : e})`);
             }
@@ -147,7 +200,7 @@ export async function syncBatch(cursor: number, onlyCategoryId: number | undefin
           continue;
         }
         note(`קובץ חדש: "${cleanName(i.name)}" ← טיוטה ב-[${c.title}]`);
-        const r = await adoptFiles([i.id], c.id, ctx);
+        const r = await adoptFiles([i.id], c.id, inner, { listing: items });
         if (r[0].error) errors.push(`${i.name}: ${r[0].error}`);
         else adopted++;
       } else if (m.categoryId !== c.id) {
@@ -168,6 +221,8 @@ export async function syncBatch(cursor: number, onlyCategoryId: number | undefin
       }
     }
   });
+  // תיקייה שזרקה (רשימה נכשלה וכד') — קודם נבלעה בשקט והסנכרון דווח כתקין; עכשיו מדווחת
+  for (const e of folderErrors) errors.push(`[${e.item.title}] הסריקה נכשלה: ${e.error}`);
   const next = cursor + 40 < targets.length ? cursor + 40 : null;
   return { ok: errors.length === 0, nextCursor: next, adopted, moved, relinked, resized, errors: errors.slice(0, 20), scanned: batch.length, notes };
 }

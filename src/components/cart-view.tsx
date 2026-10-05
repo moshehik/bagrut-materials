@@ -183,7 +183,7 @@ export function CartView({ cart }: { cart: Cart }) {
             <dd>{cart.count}</dd>
           </div>
           <div className="flex justify-between font-bold text-lg pt-3 border-t border-blue/10">
-            <dt>סה"כ לתשלום</dt>
+            <dt>סה״כ לתשלום</dt>
             <dd className="font-display">{formatPrice(cart.total)}</dd>
           </div>
         </dl>

@@ -81,6 +81,9 @@ export const users = pgTable(
     /** חשבון מושהה – לא יכול להתחבר/להוריד */
     suspended: boolean("suspended").notNull().default(false),
     suspendReason: text("suspend_reason"),
+    /** גרסת סשן – נכנסת ל-JWT (sv); העלאה שלה מנתקת את כל הסשנים הקיימים
+     * (שינוי/איפוס סיסמה, השהיה). ר' getCurrentUser ב-session.ts */
+    sessionVersion: integer("session_version").notNull().default(1),
     /** נוכחות */
     lastSeenAt: timestamp("last_seen_at"),
     lastIp: varchar("last_ip", { length: 64 }),
@@ -574,8 +577,11 @@ export const authTokens = pgTable(
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** SHA-256 (hex) של הטוקן הגולמי – לא הטוקן עצמו (ר' hashAuthToken ב-session.ts) */
     token: varchar("token", { length: 128 }).notNull(),
     purpose: varchar("purpose", { length: 20 }).notNull(),
+    /** change_email: הכתובת החדשה שהטוקן הונפק עבורה – האישור מחיל אותה, לא את pending_email */
+    targetEmail: varchar("target_email", { length: 255 }),
     expiresAt: timestamp("expires_at").notNull(),
     usedAt: timestamp("used_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -664,6 +670,18 @@ export const agentEvents = pgTable(
     index("agent_events_kind_idx").on(t.kind),
   ],
 );
+
+/**
+ * מוני הגבלת-קצב (rate limiting) – שורה לכל מפתח (למשל "pw-reset:ip:1.2.3.4"): כמה ניסיונות בחלון הנוכחי
+ * ומתי החלון נגמר. Vercel הוא serverless, לכן מונה בזיכרון לא עוזר – המונה חי ב-DB. נכתב רק ע"י
+ * src/lib/rate-limit.ts (upsert אטומי אחד). שורות שפג תוקפן נמחקות מדי פעם משם. נוצר ב-SQL גולמי
+ * (scripts/create-rate-limits-table.ts) — db:push שבור כאן.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: varchar("key", { length: 160 }).primaryKey(),
+  count: integer("count").notNull().default(0),
+  resetAt: timestamp("reset_at").notNull(),
+});
 
 /**
  * היסטוריית הדרייב: הוספה/שינוי שם/העברה/העברה לארכיון של קבצים ותיקיות. נכתב ע"י src/lib/driveTreeCore.ts

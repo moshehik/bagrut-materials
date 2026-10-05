@@ -657,7 +657,7 @@ export function DriveExplorer() {
           <button type="button" className="btn btn-ghost" disabled={!isCat || !view || !infoText} onClick={infoDownload} title={isCat ? undefined : "קובץ מידע קיים רק לתיקיות האתר"}>
             <Download className="ic" aria-hidden />הורדת קובץ מידע
           </button>
-          <button type="button" className="btn btn-ghost" disabled={!driveFolderUrl} onClick={() => openDrive(driveFolderUrl)} title={driveFolderUrl ? undefined : "לתיקייה הזו אין (עדיין) תיקיית דרייב מקושרת"}>
+          <button type="button" className="btn btn-ghost" disabled={!driveFolderUrl} onClick={() => openDrive(driveFolderUrl)} title={driveFolderUrl ? "קישור ישיר לדרייב (למנהלת בלבד) — לא ייפתח מאחורי נטפרי / סינון אינטרנט" : "לתיקייה הזו אין (עדיין) תיקיית דרייב מקושרת"}>
             <ExternalLink className="ic" aria-hidden />פתח בדרייב
           </button>
           <span className="hint">גררי קבצים או תיקיות אל תיקייה בעץ כדי להעביר · הכול מתעדכן באתר ובדרייב</span>

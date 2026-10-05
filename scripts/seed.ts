@@ -247,7 +247,6 @@ async function seedAdmin() {
     passwordHash,
     name: "מנהל האתר",
     role: "admin",
-    tier: "diamond",
     personalCode: "ADMN-0001",
   });
   return { email, created: true, password };

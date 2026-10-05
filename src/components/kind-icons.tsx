@@ -66,25 +66,3 @@ export function IconFree(props: SVGProps<SVGSVGElement>) {
     </Base>
   );
 }
-
-/** כמות ההורדות — חץ אל מגש (לא בשימוש בדף הבית כרגע) */
-export function IconDownloads(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Base {...props}>
-      <path pathLength={1} d="M24 6v24" />
-      <path pathLength={1} d="M14 21l10 10 10-10" />
-      <path pathLength={1} d="M8 33v8h32v-8" />
-    </Base>
-  );
-}
-
-/** כמות הכניסות — עין (לא בשימוש בדף הבית כרגע) */
-export function IconVisits(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Base {...props}>
-      <path pathLength={1} d="M4 24c5-9 12-14 20-14s15 5 20 14c-5 9-12 14-20 14S9 33 4 24z" />
-      <path pathLength={1} d="M24 17a7 7 0 1 0 0.01 0z" />
-      <path pathLength={1} d="M24 21.5a2.5 2.5 0 1 0 0.01 0z" />
-    </Base>
-  );
-}

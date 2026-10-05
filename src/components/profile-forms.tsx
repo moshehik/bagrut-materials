@@ -142,7 +142,16 @@ export function ChangePasswordForm() {
   );
 }
 
-export function ChangeEmailForm({ currentEmail, pendingEmail }: { currentEmail: string; pendingEmail?: string | null }) {
+export function ChangeEmailForm({
+  currentEmail,
+  pendingEmail,
+  passwordRequired = true,
+}: {
+  currentEmail: string;
+  pendingEmail?: string | null;
+  /** false בחשבון שנרשם דרך גוגל (אין לו סיסמה שהמשתמשת מכירה) – השרת פוטר אותו מהסיסמה */
+  passwordRequired?: boolean;
+}) {
   const [state, action, pending] = useActionState(requestEmailChangeAction, undefined);
   return (
     <form action={action} className="space-y-3">
@@ -164,9 +173,24 @@ export function ChangeEmailForm({ currentEmail, pendingEmail }: { currentEmail: 
           aria-label="כתובת מייל"
           className="gate-input min-w-[200px] flex-1 text-left"
         />
+        {passwordRequired && (
+          <input
+            name="current"
+            type="password"
+            autoComplete="current-password"
+            placeholder="סיסמה נוכחית"
+            aria-label="סיסמה נוכחית"
+            required
+            dir="ltr"
+            className="gate-input min-w-[160px] text-left"
+          />
+        )}
         <SubmitBtn pending={pending}>שלחי קישור אימות</SubmitBtn>
       </div>
-      <p className="text-base opacity-80">השינוי ייכנס לתוקף רק לאחר אימות הכתובת החדשה במייל.</p>
+      <p className="text-base opacity-80">
+        השינוי ייכנס לתוקף רק לאחר אימות הכתובת החדשה במייל.
+        {passwordRequired && " לאבטחת החשבון נדרשת גם הסיסמה הנוכחית."}
+      </p>
     </form>
   );
 }

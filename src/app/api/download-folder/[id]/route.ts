@@ -1,16 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import JSZip from "jszip";
-import { and, asc, count, eq, gte, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, downloads, materials, purchases, type Material } from "@/db/schema";
+import { categories, downloads, materials, type Material } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
-import { checkEntitlement, getDescendantIds, getCategoryChain, chainToHref } from "@/lib/data";
+import { checkEntitlement, getDescendantIds, getCategoryChain, chainToHref, getUserDownloadCounts } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
-import { getNumber } from "@/lib/settings";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
 import { markDownloadReady } from "@/lib/download-ready";
+import {
+  dailyRemaining,
+  reserveDownloads,
+  subscriptionRemaining,
+  type EntitlementOk,
+  type Reservation,
+  type ReserveResult,
+} from "@/lib/download-quota";
+import { officeMimeFor } from "@/lib/office-mime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,10 +26,18 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const CONCURRENCY = 4;
+/** תקרה קשיחה לקבצים בזיפ אחד – ההמרה ל-PDF לוקחת 10-20 שניות לקובץ, ו-maxDuration הוא 300 שניות */
+const FOLDER_MAX_FILES = 40;
 
 function contentDisposition(fileName: string) {
   const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+/** שם רשומה בזיפ: בלי תווי נתיב (/ \) ובלי ".." – שלא ייכתב מחוץ לתיקיית החילוץ */
+function safeEntryName(fileName: string) {
+  const cleaned = fileName.replace(/[\\/]/g, "_").replace(/\.{2,}/g, "_").trim();
+  return cleaned || "file";
 }
 
 function stem(fileName: string) {
@@ -35,8 +51,11 @@ function ext(fileName: string) {
 
 type Who = { personalCode: string; name: string; email: string; phone: string | null };
 
-/** מכינה קובץ אחד לזיפ: אותה לוגיקה כמו /api/download/[id] – המרת Office ל-PDF + הטבעת מספר אישי */
-async function prepare(m: Material, u: Who): Promise<{ name: string; bytes: Uint8Array } | null> {
+/**
+ * מכינה קובץ אחד לזיפ: אותה לוגיקה כמו /api/download/[id] – המרת Office ל-PDF + הטבעת מספר אישי.
+ * null = נכשל. למשתמשת רגילה כשל בהמרה/הטבעה = כשל (לא שולחים מקור בלי סימן מים); למנהלת – המקור.
+ */
+async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: string; bytes: Uint8Array } | null> {
   const file = await fetchFile(m.fileUrl);
   if (!file) return null;
   const stampInfo = { personalCode: u.personalCode, userName: u.name, email: u.email, phone: u.phone };
@@ -49,31 +68,37 @@ async function prepare(m: Material, u: Who): Promise<{ name: string; bytes: Uint
   const isImage = /^image\/(png|jpe?g)$/.test(file.contentType ?? m.mime ?? "");
   const raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
   const tag = u.personalCode;
+  const safe = safeEntryName(m.fileName);
+  const original = { name: `${stem(safe)}-${tag}${ext(safe)}`, bytes: raw };
+  // מנהלת בלבד מקבלת את המקור כשההמרה/ההטבעה נכשלו
+  const fallback = (stage: string, e: unknown) => {
+    console.error(`folder zip: ${stage} failed`, m.id, e);
+    return isAdmin ? original : null;
+  };
 
   if (isOffice && isDriveConfigured()) {
     try {
-      const pdf = await convertOfficeToPdf({ bytes: raw, mimeType: m.mime, name: m.fileName });
-      return { name: `${stem(m.fileName)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo) };
+      const pdf = await convertOfficeToPdf({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName });
+      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo) };
     } catch (e) {
-      console.error("folder zip: office->pdf failed, using original", e);
-      return { name: `${stem(m.fileName)}-${tag}${ext(m.fileName)}`, bytes: raw };
+      return fallback("office->pdf", e);
     }
   }
   if (isPdf) {
     try {
-      return { name: `${stem(m.fileName)}-${tag}.pdf`, bytes: await stampPdf(raw, stampInfo) };
-    } catch {
-      return { name: `${stem(m.fileName)}-${tag}${ext(m.fileName)}`, bytes: raw };
+      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(raw, stampInfo) };
+    } catch (e) {
+      return fallback("pdf stamp", e);
     }
   }
   if (isImage) {
     try {
-      return { name: `${stem(m.fileName)}-${tag}${ext(m.fileName)}`, bytes: await stampImage(raw, { personalCode: tag }) };
-    } catch {
-      return { name: `${stem(m.fileName)}-${tag}${ext(m.fileName)}`, bytes: raw };
+      return { name: original.name, bytes: await stampImage(raw, { personalCode: tag }) };
+    } catch (e) {
+      return fallback("image stamp", e);
     }
   }
-  return { name: `${stem(m.fileName)}-${tag}${ext(m.fileName)}`, bytes: raw };
+  return original;
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -127,102 +152,185 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const candidates = all.filter((m) => (m.status === "active" || isAdmin) && (m.allowDownload || isAdmin));
 
   const ents = await Promise.all(candidates.map((m) => checkEntitlement(user, m)));
-  const owned = candidates.filter((_, i) => ents[i].ok);
+  const entOf = new Map<number, EntitlementOk>();
+  candidates.forEach((m, i) => {
+    const e = ents[i];
+    if (e.ok) entOf.set(m.id, e);
+  });
+  const owned = candidates.filter((m) => entOf.has(m.id));
   if (owned.length === 0) {
     // אין הרשאה לאף קובץ – מפנים לרכישת התיקייה
     await deny("no_entitlement", { candidates: candidates.length });
     return NextResponse.redirect(new URL(`/checkout?bundle=${categoryId}`, origin));
   }
 
+  // כמה קבצים מותר בזיפ הזה: תקרה קשיחה, ולמשתמשת רגילה גם המכסה היומית שנותרה,
+  // המגבלה לחומר (max_downloads_per_user) ומכסת המנוי. אם התיקייה גדולה מזה – שגיאה ברורה
+  // ולא זיפ חלקי בשקט (אי אפשר לצרף הודעה לזיפ, והמשתמשת לא תדע מה חסר).
+  let allowed: Material[] = owned.slice(0, FOLDER_MAX_FILES);
+  const limitsHit: string[] = [];
+  if (owned.length > FOLDER_MAX_FILES) limitsHit.push(`עד ${FOLDER_MAX_FILES} קבצים בהורדת תיקייה אחת`);
   if (!isAdmin) {
     try {
-      const globalLimit = await getNumber("daily_download_limit");
-      const dailyLimit = user.dailyDownloadLimit ?? globalLimit;
-      if (dailyLimit > 0) {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const [row] = await db
-          .select({ n: count() })
-          .from(downloads)
-          .where(and(eq(downloads.userId, user.id), gte(downloads.createdAt, startOfDay)));
-        if (Number(row?.n ?? 0) + owned.length > dailyLimit) {
-          await deny("daily_limit", { dailyLimit, files: owned.length });
-          return NextResponse.redirect(new URL("/account?limit=1", origin));
+      // מגבלה לחומר – קבצים שכבר הורדו עד התקרה שלהם נופלים
+      const counts = await getUserDownloadCounts(user.id, allowed.map((m) => m.id));
+      const beforeMax = allowed.length;
+      allowed = allowed.filter((m) => {
+        const max = m.maxDownloadsPerUser;
+        return max === null || max <= 0 || (counts.get(m.id) ?? 0) < max;
+      });
+      if (allowed.length < beforeMax) limitsHit.push("קבצים שכבר הורדו את מספר הפעמים המותר");
+
+      // מכסת מנוי – לכל מנוי בנפרד
+      const subRemaining = new Map<number, number | null>();
+      const kept: Material[] = [];
+      let subCut = false;
+      for (const m of allowed) {
+        const e = entOf.get(m.id)!;
+        if (e.via === "subscription" && e.purchaseId) {
+          if (!subRemaining.has(e.purchaseId)) subRemaining.set(e.purchaseId, await subscriptionRemaining(e.purchaseId));
+          const left = subRemaining.get(e.purchaseId)!;
+          if (left !== null) {
+            if (left <= 0) {
+              subCut = true;
+              continue;
+            }
+            subRemaining.set(e.purchaseId, left - 1);
+          }
         }
+        kept.push(m);
+      }
+      if (subCut) limitsHit.push("מכסת ההורדות שנותרה במנוי");
+      allowed = kept;
+
+      // מכסה יומית
+      const daily = await dailyRemaining(user);
+      if (daily !== null && allowed.length > daily) {
+        limitsHit.push(`המכסה היומית (נותרו ${daily})`);
+        allowed = allowed.slice(0, daily);
       }
     } catch (e) {
       console.error("folder download limit check failed", e);
+      await deny("limit_check_failed");
+      return NextResponse.json({ error: "לא ניתן לבדוק את מכסת ההורדות כרגע, נסי שוב בעוד רגע" }, { status: 503 });
     }
   }
+  if (allowed.length < owned.length) {
+    await deny("folder_capped", { owned: owned.length, allowed: allowed.length, limitsHit });
+    const why = limitsHit.length ? ` (${limitsHit.join("; ")})` : "";
+    const error =
+      allowed.length === 0
+        ? `לא ניתן להוריד כעת אף קובץ מהתיקייה${why}.`
+        : `בתיקייה ${owned.length} קבצים להורדה, אך כרגע מותר להוריד רק ${allowed.length} מהם${why}. אפשר להוריד תת-תיקיות קטנות יותר או קבצים בודדים.`;
+    return NextResponse.json({ error, owned: owned.length, allowed: allowed.length }, { status: 403 });
+  }
+
+  // הזמנת המכסה לכל הקבצים לפני ההכנה (אטומי; קבצים שייכשלו בהכנה ישוחררו)
+  let reservation: Reservation | null = null;
+  if (!isAdmin) {
+    let r: ReserveResult;
+    try {
+      const meta = await requestMeta();
+      r = await reserveDownloads({
+        user,
+        items: allowed.map((m) => ({ material: m, ent: entOf.get(m.id)! })),
+        kind: "download",
+        meta,
+      });
+    } catch (e) {
+      console.error("folder download quota reserve failed", e);
+      await deny("limit_check_failed");
+      return NextResponse.json({ error: "לא ניתן לבדוק את מכסת ההורדות כרגע, נסי שוב בעוד רגע" }, { status: 503 });
+    }
+    if (!r.ok) {
+      await deny(r.denied.reason, r.denied);
+      const error =
+        r.denied.reason === "quota"
+          ? "מכסת ההורדות במנוי נוצלה"
+          : r.denied.reason === "material_limit"
+            ? "אחד הקבצים כבר הורד את מספר הפעמים המותר"
+            : "המכסה היומית להורדות נוצלה";
+      return NextResponse.json({ error }, { status: 403 });
+    }
+    reservation = r.reservation;
+  }
+  const release = async (materialIds?: number[]) => {
+    if (!reservation) return;
+    try {
+      await reservation.release(materialIds);
+    } catch (e) {
+      console.error("folder download quota release failed", e);
+    }
+  };
 
   const who: Who = { personalCode: user.personalCode, name: user.name, email: user.email, phone: user.phone };
   type Ready = { name: string; bytes: Uint8Array; m: Material; via: string };
-  const results: (Ready | null)[] = new Array(owned.length).fill(null);
+  const results: (Ready | null)[] = new Array(allowed.length).fill(null);
   let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, owned.length) }, async () => {
-      while (next < owned.length) {
-        const i = next++;
-        try {
-          const out = await prepare(owned[i], who);
-          const ent = ents[candidates.indexOf(owned[i])];
-          if (out) results[i] = { ...out, m: owned[i], via: ent.ok ? ent.via : "single" };
-        } catch (e) {
-          console.error("folder zip: file failed", owned[i].id, e);
+  try {
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, allowed.length) }, async () => {
+        while (next < allowed.length) {
+          const i = next++;
+          try {
+            const out = await prepare(allowed[i], who, isAdmin);
+            if (out) results[i] = { ...out, m: allowed[i], via: entOf.get(allowed[i].id)!.via };
+          } catch (e) {
+            console.error("folder zip: file failed", allowed[i].id, e);
+          }
         }
-      }
-    }),
-  );
+      }),
+    );
+  } catch (e) {
+    await release();
+    throw e;
+  }
 
   const ready = results.filter((r): r is Ready => !!r);
-  // קבצים שנכשלו בהכנה (לא התקבלו מהדרייב וכד') ושדולגו (אין הרשאה / לא פעילים)
-  const failedIds = owned.filter((_, i) => !results[i]).map((m) => m.id);
+  // קבצים שנכשלו בהכנה (לא התקבלו מהדרייב / המרה נכשלה) ושדולגו (אין הרשאה / לא פעילים)
+  const failedIds = allowed.filter((_, i) => !results[i]).map((m) => m.id);
   const skippedIds = all.filter((m) => !owned.includes(m)).map((m) => m.id);
+  if (failedIds.length) await release(failedIds);
   if (ready.length === 0) {
     await deny("all_failed", { failedIds });
     return NextResponse.json({ error: "הקבצים אינם זמינים כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
 
-  const zip = new JSZip();
-  const used = new Set<string>();
-  for (const r of ready) {
-    let name = r.name;
-    if (used.has(name)) name = `${r.m.id}-${name}`;
-    used.add(name);
-    zip.file(name, r.bytes);
-  }
-  const body = await zip.generateAsync({ type: "uint8array", compression: "STORE" });
-
+  let body: Uint8Array;
   try {
-    const { ip, userAgent } = await requestMeta();
-    await db.insert(downloads).values(
-      ready.map((r) => ({
-        userId: user.id,
-        materialId: r.m.id,
-        watermark: user.personalCode,
-        ip,
-        userAgent,
-        via: r.via as "admin" | "single" | "bundle" | "subscription" | "free" | "tier",
-      })),
-    );
+    const zip = new JSZip();
+    const used = new Set<string>();
+    for (const r of ready) {
+      let name = r.name;
+      if (used.has(name)) name = `${r.m.id}-${name}`;
+      used.add(name);
+      zip.file(name, r.bytes);
+    }
+    body = await zip.generateAsync({ type: "uint8array", compression: "STORE" });
+  } catch (e) {
+    await release();
+    throw e;
+  }
+
+  // תיעוד (שורות downloads ומכסת המנוי כבר נרשמו בהזמנה; למנהלת – נרשמות כאן)
+  try {
+    if (isAdmin) {
+      const { ip, userAgent } = await requestMeta();
+      await db.insert(downloads).values(
+        ready.map((r) => ({
+          userId: user.id,
+          materialId: r.m.id,
+          watermark: user.personalCode,
+          ip,
+          userAgent,
+          via: r.via,
+        })),
+      );
+    }
     await db
       .update(materials)
       .set({ downloads: sql`${materials.downloads} + 1` })
       .where(inArray(materials.id, ready.map((r) => r.m.id)));
-    // מנוי עם מכסת הורדות: כל קובץ בזיפ נספר, כמו בהורדה בודדת
-    const subUse = new Map<number, number>();
-    ready.forEach((r) => {
-      const ent = ents[candidates.indexOf(r.m)];
-      if (ent.ok && ent.via === "subscription" && ent.purchaseId) {
-        subUse.set(ent.purchaseId, (subUse.get(ent.purchaseId) ?? 0) + 1);
-      }
-    });
-    for (const [pid, n] of subUse) {
-      await db
-        .update(purchases)
-        .set({ downloadsUsed: sql`${purchases.downloadsUsed} + ${n}` })
-        .where(eq(purchases.id, pid));
-    }
     await logAudit({
       actorId: user.id,
       action: "download",
@@ -238,7 +346,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     headers: {
       "Content-Type": "application/zip",
       "Content-Length": String(body.byteLength),
-      "Content-Disposition": contentDisposition(`${cat.title}.zip`),
+      "Content-Disposition": contentDisposition(`${safeEntryName(cat.title)}.zip`),
       "Cache-Control": "private, no-store",
     },
   });

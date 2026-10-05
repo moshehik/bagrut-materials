@@ -10,6 +10,7 @@ import { userCanUseUnitForum, getCategoryChain, chainToHref } from "@/lib/data";
 import { adminEmail, sendMailInBackground, templates } from "@/lib/mail";
 import { FORUM_KINDS, forumAuthor, forumTitleFrom } from "@/lib/forum-utils";
 import { logAudit } from "@/lib/audit";
+import { TOO_MANY_MESSAGE, limitKey, tooMany } from "@/lib/rate-limit";
 
 export type ForumState = { error?: string; ok?: boolean; reported?: boolean } | undefined;
 
@@ -50,6 +51,8 @@ export async function createThread(_prev: ForumState, form: FormData): Promise<F
   const catId = Number(form.get("categoryId"));
   const auth = await requirePremiumUser("thread.create", Number.isInteger(catId) && catId > 0 ? catId : undefined);
   if ("error" in auth) return { error: auth.error };
+  // הגבלת קצב: 10 הודעות חדשות לשעה למשתמשת
+  if (await tooMany(limitKey("forum-thread", "user", auth.user.id), 10, 3600)) return { error: TOO_MANY_MESSAGE };
 
   const parsed = threadSchema.safeParse({
     kind: form.get("kind"),
@@ -111,6 +114,8 @@ const replySchema = z.object({
 export async function replyThread(_prev: ForumState, form: FormData): Promise<ForumState> {
   const auth = await requirePremiumUser("post.create");
   if ("error" in auth) return { error: auth.error };
+  // הגבלת קצב: 30 תשובות לשעה למשתמשת
+  if (await tooMany(limitKey("forum-reply", "user", auth.user.id), 30, 3600)) return { error: TOO_MANY_MESSAGE };
 
   const parsed = replySchema.safeParse({ threadId: form.get("threadId"), body: form.get("body") });
   if (!parsed.success) {
@@ -238,6 +243,8 @@ export async function deleteReply(form: FormData): Promise<void> {
 export async function reportContent(_prev: ForumState, form: FormData): Promise<ForumState> {
   const auth = await requirePremiumUser("report.create");
   if ("error" in auth) return { error: auth.error };
+  // הגבלת קצב: 10 דיווחים/ביטולים לשעה למשתמשת
+  if (await tooMany(limitKey("forum-report", "user", auth.user.id), 10, 3600)) return { error: TOO_MANY_MESSAGE };
 
   const threadId = Number(form.get("threadId")) || null;
   const postId = Number(form.get("postId")) || null;

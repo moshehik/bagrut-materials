@@ -21,7 +21,8 @@ Vercel Blob (החנות שהאתר השתמש בה בעבר) הושעתה — ח
 
 ### קבצים
 - `src/lib/driveBridgeCore.ts` — המימוש (בלי `"server-only"`, כדי שסקריפטים
-  עצמאיים כמו `scripts/migrate-drafts-to-drive.ts` יוכלו לייבא ישירות מחוץ ל-Next).
+  עצמאיים כמו `scripts/import-local-material.ts` ו-`scripts/sync-local-materials-to-drive.ts`
+  יוכלו לייבא ישירות מחוץ ל-Next).
 - `src/lib/driveBridge.ts` — נקודת הכניסה לקוד האתר (`import "server-only"` +
   `export * from "./driveBridgeCore"`). **קוד האתר תמיד מייבא מכאן, לא מ-Core.**
 - `src/lib/file-source.ts` — `fetchFile(url)`: מזהה `drive://<fileId>` ומוריד

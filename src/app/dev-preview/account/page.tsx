@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Check, Download, Heart, ShoppingBag, UserRound, Fingerprint, XCircle, CheckCircle2, Settings2, ChevronDown } from "lucide-react";
+import { Check, Heart, ShoppingBag, UserRound, Fingerprint, XCircle, CheckCircle2, Settings2, ChevronDown } from "lucide-react";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { EditNameForm, EditPhoneForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
 import { AccountMenu, AccountTitle, Notice, Panel, PlanNut, TypeFilter } from "@/components/account-ui";
@@ -10,7 +10,6 @@ import type { CalGroup } from "@/lib/download-groups";
 import type { CalPurchase } from "@/lib/purchase-calendar";
 import { HebrewDateField } from "@/components/hebrew-date-field";
 import { formatHebrewDate, hebrewMonths, hebrewToday } from "@/lib/hebrew-date";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 

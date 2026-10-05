@@ -6,19 +6,32 @@
 
 ```bash
 npm install
-npm run db:push      # יצירת הטבלאות ב-Neon
+# יצירת הטבלאות ב-Neon: `db:push` (drizzle-kit push) שבור בסביבה הזו — יוצרים טבלאות/עמודות חדשות
+# בסקריפט SQL גולמי, לדוגמה `npx tsx scripts/create-fix-tables.ts` (ר' גם docs/drive-storage.md).
 npm run db:seed      # עץ הקטגוריות + משתמש מנהל
 npm run dev
 ```
 
-משתני סביבה (`.env.local`):
+משתני סביבה (`.env.local`; ב-Vercel צריך Redeploy אחרי שינוי):
 
-| משתנה | תיאור |
-| --- | --- |
-| `DATABASE_URL` | חיבור ל-Neon |
-| `SESSION_SECRET` | סוד לחתימת עוגיית ההתחברות |
-| `ADMIN_EMAILS` | מיילים (מופרדים בפסיק) שיקבלו הרשאת מנהל בהרשמה |
-| `DRIVE_BRIDGE_URL` / `DRIVE_BRIDGE_SECRET` / `DRIVE_ROOT_FOLDER` | גשר Google Drive לאחסון הקבצים (ר' `docs/drive-storage.md`) |
+| משתנה | חובה? | תיאור |
+| --- | --- | --- |
+| `DATABASE_URL` | חובה | חיבור ל-Neon |
+| `SESSION_SECRET` | חובה | סוד לחתימת עוגיית ההתחברות — 32 תווים לפחות; בפרודקשן השרת זורק שגיאה בלעדיו (מקומית יש ברירת מחדל לפיתוח) |
+| `ADMIN_EMAILS` | חובה | מיילים (מופרדים בפסיק) שמקבלים הרשאת מנהל; הראשון הוא גם נמען מיילי המערכת |
+| `DRIVE_BRIDGE_URL` / `DRIVE_BRIDGE_SECRET` | חובה | גשר Google Drive (Apps Script) לאחסון הקבצים — בלעדיו אין הורדות/העלאות (ר' `docs/drive-storage.md`) |
+| `DRIVE_ROOT_FOLDER` | רשות | שם תיקיית הארכיון בדרייב (ברירת מחדל `bagrut-materials-archive`) |
+| `ORACLE_CONVERT_URL` / `ORACLE_CONVERT_API_KEY` | חובה לתצוגה מקדימה | שירות ההמרה docx→PDF לתצוגה באתר; בלעדיו התצוגה המקדימה נכשלת (ההורדה עצמה עובדת) |
+| `MAIL_SCRIPT_URL` | חובה למיילים | כתובת `/exec` של Apps Script המייל (ר' `docs/mail-script.md`); בלעדיו לא נשלח שום מייל (איפוס סיסמה, אימות, התראות). **לא לשים בקוד — ה-repo ציבורי** |
+| `MAIL_FROM_NAME` | רשות | שם השולח במיילים (ברירת מחדל: שם האתר) |
+| `NEXT_PUBLIC_SITE_URL` | רשות (מומלץ) | כתובת האתר המלאה לקישורים במיילים ול-OAuth; ב-Vercel נופל ל-`VERCEL_PROJECT_PRODUCTION_URL`, מקומית ל-localhost |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | רשות | כניסה עם Google (OAuth); בלעדיהם לחצן "כניסה עם Google" מוסתר |
+| `GH_DISPATCH_TOKEN` | רשות | GitHub PAT לשליחת `repository_dispatch` שמריץ את סוכן התיקונים מיד כשנוצר דיווח חדש (ר' `src/lib/agentDispatch.ts`); בלעדיו ה-cron כל 5 דק' עדיין מכסה הכל |
+| `GH_DISPATCH_REPO` | רשות | ה-repo להפעלה (ברירת מחדל `moshehik/bagrut-materials`) |
+| `SEED_ADMIN_PASSWORD` | רשות (סקריפט) | סיסמת המנהל ב-`db:seed`; בלעדיה נוצרת סיסמה אקראית (כניסה עם Google / "שכחתי סיסמה") |
+| `SEED_PRUNE=1` / `SEED_DEMO=1` | רשות (סקריפט) | ב-`db:seed`: מחיקת קטגוריות שאינן בעץ / זריעת נתוני דוגמה |
+
+(`GITHUB_TOKEN`, `GITHUB_RUN_ID`, `GITHUB_REPOSITORY`, `AGENT_RUN_ID`, `VERCEL_PROJECT_PRODUCTION_URL` מגיעים אוטומטית מ-GitHub Actions / Vercel — לא מגדירים ידנית.)
 
 ## מבנה
 

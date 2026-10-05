@@ -36,7 +36,7 @@ export default async function AdminCouponsPage() {
         <span className="chip bg-blue-soft text-blue-deep">{rows.length}</span>
       </div>
       <p className="text-sm text-muted">
-        הקופונים כאן גלויים רק לך. קופון לכתובת מייל מופיע אוטומטית ב"קופונים זמינים" של מי שנכנסת עם המייל הזה;
+        הקופונים כאן גלויים רק לך. קופון לכתובת מייל מופיע אוטומטית ב&quot;קופונים זמינים&quot; של מי שנכנסת עם המייל הזה;
         אפשר גם לשלוח לה את הקישור או את הקוד. כל קופון חד-פעמי.
       </p>
 

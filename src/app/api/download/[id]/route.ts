@@ -1,17 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, count, eq, gte, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { downloads, materials, purchases } from "@/db/schema";
+import { downloads, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
-import { getNumber } from "@/lib/settings";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdf, isDriveConfigured } from "@/lib/driveBridge";
 import { markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
+import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
+import { officeMimeFor } from "@/lib/office-mime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -104,40 +105,44 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     );
   }
 
-  // מגבלות הורדה (לא חלות על מנהלת)
+  // מגבלות הורדה + הזמנת מכסה (לא חלות על מנהלת): שורת downloads ומכסת המנוי נתפסות
+  // אטומית לפני השליחה, ומשוחררות אם השליחה נכשלה לפני שהקובץ יצא. כשל בבדיקה = חסימה, לא אישור.
+  let reservation: Reservation | null = null;
   if (!isAdmin) {
+    let r: ReserveResult;
     try {
-      const globalLimit = await getNumber("daily_download_limit");
-      const dailyLimit = u.dailyDownloadLimit ?? globalLimit;
-      if (dailyLimit > 0) {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const [row] = await db
-          .select({ n: count() })
-          .from(downloads)
-          .where(and(eq(downloads.userId, u.id), gte(downloads.createdAt, startOfDay)));
-        if (Number(row?.n ?? 0) >= dailyLimit) {
-          await deny("daily_limit", { dailyLimit });
-          return NextResponse.redirect(new URL("/account?limit=1", origin));
-        }
-      }
-      if (material.maxDownloadsPerUser !== null && material.maxDownloadsPerUser > 0) {
-        const [row] = await db
-          .select({ n: count() })
-          .from(downloads)
-          .where(and(eq(downloads.userId, u.id), eq(downloads.materialId, material.id)));
-        if (Number(row?.n ?? 0) >= material.maxDownloadsPerUser) {
-          await deny("material_limit", { maxDownloadsPerUser: material.maxDownloadsPerUser });
-          return NextResponse.redirect(new URL("/account?limit=1&material=" + material.id, origin));
-        }
-      }
+      const meta = await requestMeta();
+      r = await reserveDownloads({ user: u, items: [{ material, ent }], kind: "download", meta });
     } catch (e) {
       console.error("download limit check failed", e);
+      await deny("limit_check_failed");
+      return NextResponse.json({ error: "לא ניתן לבדוק את מכסת ההורדות כרגע, נסי שוב בעוד רגע" }, { status: 503 });
     }
+    if (!r.ok) {
+      await deny(r.denied.reason, r.denied);
+      switch (r.denied.reason) {
+        case "material_limit":
+          return NextResponse.redirect(new URL("/account?limit=1&material=" + material.id, origin));
+        case "quota":
+          return NextResponse.redirect(new URL("/pricing?reason=quota", origin));
+        default:
+          return NextResponse.redirect(new URL("/account?limit=1", origin));
+      }
+    }
+    reservation = r.reservation;
   }
+  const release = async () => {
+    if (!reservation) return;
+    try {
+      await reservation.release();
+    } catch (e) {
+      console.error("download quota release failed", e);
+    }
+  };
 
   const file = await fetchFile(material.fileUrl);
   if (!file) {
+    await release();
     // רק מזהה הקובץ בדרייב (לא סודות)
     await logAudit({
       actorId: u.id,
@@ -157,151 +162,160 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       (file.contentType ?? "").startsWith("application/pdf"));
   const isImage = /^image\/(png|jpe?g)$/.test(file.contentType ?? material.mime ?? "");
 
-  let response: Response;
+  // כשל בהמרה/הטבעה: למשתמשת רגילה חוסמים (אין לשלוח מקור בלי סימן מים); למנהלת – המקור, עם תיעוד
+  const degraded = async (stage: string) => {
+    await logAudit({
+      actorId: u.id,
+      action: "download.degraded",
+      entityType: "material",
+      entityId: material.id,
+      details: { stage, admin: isAdmin },
+    });
+    if (isAdmin) return null;
+    await release();
+    return NextResponse.json({ error: "ההורדה נכשלה, נסי שוב בעוד רגע" }, { status: 502 });
+  };
 
-  if (isOffice && isDriveConfigured()) {
-    // Word/PowerPoint: תמיד ממירים ל-PDF "לפי דרישה" בכל הורדה (המקור בדרייב
-    // לא נוגע בו כלל) ומטביעים את המספר האישי, בדיוק כמו קובץ PDF רגיל.
-    let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
-    // ?fixes=all | ?fixes=1,3 – התיקונים שהמורה סימנה בוי: הטקסט המקורי מוחלף בתיקון בנראות רגילה
-    // (בלי צבע ובלי מספרים – הסימון הצבעוני קיים רק בצפייה באתר). תיקון שלא סומן לא נוגע בקובץ.
-    let fixesApplied = false;
-    const wantFixes = parseFixesParam(req.nextUrl.searchParams.get("fixes"));
-    if (wantFixes && isDocxName(material.fileName)) {
-      try {
-        const published = (await getPublishedFixes([material.id])).get(material.id) ?? [];
-        const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
-        if (chosen.length > 0) {
-          const r = await applyDocxFixes(
-            raw,
-            chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText })),
-          );
-          if (r.applied.length > 0) {
-            raw = new Uint8Array(r.bytes);
-            fixesApplied = true;
+  let response: Response;
+  try {
+    if (isOffice && isDriveConfigured()) {
+      // Word/PowerPoint: תמיד ממירים ל-PDF "לפי דרישה" בכל הורדה (המקור בדרייב
+      // לא נוגע בו כלל) ומטביעים את המספר האישי, בדיוק כמו קובץ PDF רגיל.
+      let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
+      // ?fixes=all | ?fixes=1,3 – התיקונים שהמורה סימנה בוי: הטקסט המקורי מוחלף בתיקון בנראות רגילה
+      // (בלי צבע ובלי מספרים – הסימון הצבעוני קיים רק בצפייה באתר). תיקון שלא סומן לא נוגע בקובץ.
+      let fixesApplied = false;
+      const wantFixes = parseFixesParam(req.nextUrl.searchParams.get("fixes"));
+      if (wantFixes && isDocxName(material.fileName)) {
+        try {
+          const published = (await getPublishedFixes([material.id])).get(material.id) ?? [];
+          const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
+          if (chosen.length > 0) {
+            const r = await applyDocxFixes(
+              raw,
+              chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText })),
+            );
+            if (r.applied.length > 0) {
+              raw = new Uint8Array(r.bytes);
+              fixesApplied = true;
+            }
           }
+        } catch (e) {
+          console.error("applying fixes failed, serving original", e);
+          await logAudit({
+            actorId: u.id,
+            action: "download.degraded",
+            entityType: "material",
+            entityId: material.id,
+            details: { stage: "apply_fixes" },
+          });
         }
-      } catch (e) {
-        console.error("applying fixes failed, serving original", e);
-        await logAudit({
-          actorId: u.id,
-          action: "download.degraded",
-          entityType: "material",
-          entityId: material.id,
-          details: { stage: "apply_fixes" },
-        });
       }
+      const baseName = fixesApplied ? withSuffix(material.fileName, "מתוקן") : material.fileName;
+      let out: Uint8Array;
+      try {
+        const pdfBytes = await convertOfficeToPdf({
+          bytes: raw,
+          // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
+          mimeType: officeMimeFor(material.mime, material.fileName),
+          name: material.fileName,
+        });
+        out = await stampPdf(pdfBytes, {
+          personalCode: u.personalCode,
+          userName: u.name,
+          email: u.email,
+          phone: u.phone,
+        });
+      } catch (e) {
+        console.error("office->pdf conversion failed", e);
+        const blocked = await degraded("office_to_pdf_or_stamp");
+        if (blocked) return blocked;
+        out = raw; // מנהלת בלבד
+      }
+      const converted = out !== raw;
+      response = new Response(new Uint8Array(out), {
+        headers: {
+          "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
+          "Content-Length": String(out.byteLength),
+          "Content-Disposition": contentDisposition(
+            converted ? withSuffix(asPdfName(baseName), u.personalCode) : withSuffix(baseName, u.personalCode),
+          ),
+          "Cache-Control": "private, no-store",
+        },
+      });
+    } else if (isPdf) {
+      const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+      let out: Uint8Array;
+      try {
+        out = await stampPdf(bytes, {
+          personalCode: u.personalCode,
+          userName: u.name,
+          email: u.email,
+          phone: u.phone,
+        });
+      } catch (e) {
+        // ההטבעה נכשלה (PDF פגום/מוצפן): משתמשת רגילה – חסימה; מנהלת – המקור
+        console.error("pdf stamp failed", e);
+        const blocked = await degraded("pdf_stamp");
+        if (blocked) return blocked;
+        out = bytes;
+      }
+      response = new Response(new Uint8Array(out), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Length": String(out.byteLength),
+          "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
+          "Cache-Control": "private, no-store",
+        },
+      });
+    } else if (isImage) {
+      const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+      let out: Uint8Array;
+      try {
+        out = await stampImage(bytes, { personalCode: u.personalCode });
+      } catch (e) {
+        // ההטבעה נכשלה (תמונה פגומה/פורמט לא נתמך): משתמשת רגילה – חסימה; מנהלת – המקור
+        console.error("image stamp failed", e);
+        const blocked = await degraded("image_stamp");
+        if (blocked) return blocked;
+        out = bytes;
+      }
+      response = new Response(new Uint8Array(out), {
+        headers: {
+          "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
+          "Content-Length": String(out.byteLength),
+          "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
+          "Cache-Control": "private, no-store",
+        },
+      });
+    } else {
+      response = new Response(file.stream, {
+        headers: {
+          "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
+          "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
+          "Cache-Control": "private, no-store",
+        },
+      });
     }
-    const baseName = fixesApplied ? withSuffix(material.fileName, "מתוקן") : material.fileName;
-    let out: Uint8Array;
-    try {
-      const pdfBytes = await convertOfficeToPdf({
-        bytes: raw,
-        mimeType: material.mime,
-        name: material.fileName,
-      });
-      out = await stampPdf(pdfBytes, {
-        personalCode: u.personalCode,
-        userName: u.name,
-        email: u.email,
-        phone: u.phone,
-      });
-    } catch (e) {
-      console.error("office->pdf conversion failed, serving original file", e);
-      await logAudit({
-        actorId: u.id,
-        action: "download.degraded",
-        entityType: "material",
-        entityId: material.id,
-        details: { stage: "office_to_pdf_or_stamp" },
-      });
-      out = raw;
-    }
-    const converted = out !== raw;
-    response = new Response(new Uint8Array(out), {
-      headers: {
-        "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
-        "Content-Length": String(out.byteLength),
-        "Content-Disposition": contentDisposition(
-          converted ? withSuffix(asPdfName(baseName), u.personalCode) : withSuffix(baseName, u.personalCode),
-        ),
-        "Cache-Control": "private, no-store",
-      },
-    });
-  } else if (isPdf) {
-    const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
-    let out: Uint8Array;
-    try {
-      out = await stampPdf(bytes, {
-        personalCode: u.personalCode,
-        userName: u.name,
-        email: u.email,
-        phone: u.phone,
-      });
-    } catch {
-      // אם ההטבעה נכשלה (PDF פגום/מוצפן) – מחזירים את המקור
-      await logAudit({
-        actorId: u.id,
-        action: "download.degraded",
-        entityType: "material",
-        entityId: material.id,
-        details: { stage: "pdf_stamp" },
-      });
-      out = bytes;
-    }
-    response = new Response(new Uint8Array(out), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Length": String(out.byteLength),
-        "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
-        "Cache-Control": "private, no-store",
-      },
-    });
-  } else if (isImage) {
-    const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
-    let out: Uint8Array;
-    try {
-      out = await stampImage(bytes, { personalCode: u.personalCode });
-    } catch {
-      // אם ההטבעה נכשלה (תמונה פגומה/פורמט לא נתמך) – מחזירים את המקור
-      await logAudit({
-        actorId: u.id,
-        action: "download.degraded",
-        entityType: "material",
-        entityId: material.id,
-        details: { stage: "image_stamp" },
-      });
-      out = bytes;
-    }
-    response = new Response(new Uint8Array(out), {
-      headers: {
-        "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
-        "Content-Length": String(out.byteLength),
-        "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
-        "Cache-Control": "private, no-store",
-      },
-    });
-  } else {
-    response = new Response(file.stream, {
-      headers: {
-        "Content-Type": file.contentType ?? material.mime ?? "application/octet-stream",
-        "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
-        "Cache-Control": "private, no-store",
-      },
-    });
+  } catch (e) {
+    // כשל לא צפוי לפני שהקובץ יצא – משחררים את ההזמנה ומעבירים הלאה
+    await release();
+    throw e;
   }
 
-  // תיעוד ההורדה
+  // תיעוד ההורדה (שורת downloads ומכסת המנוי כבר נרשמו בהזמנה; למנהלת – נרשמת כאן)
   try {
-    const { ip, userAgent } = await requestMeta();
-    await db.insert(downloads).values({
-      userId: u.id,
-      materialId: material.id,
-      watermark: u.personalCode,
-      ip,
-      userAgent,
-      via: ent.via,
-    });
+    if (isAdmin) {
+      const { ip, userAgent } = await requestMeta();
+      await db.insert(downloads).values({
+        userId: u.id,
+        materialId: material.id,
+        watermark: u.personalCode,
+        ip,
+        userAgent,
+        via: ent.via,
+      });
+    }
     await logAudit({
       actorId: u.id,
       action: "download",
@@ -313,12 +327,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       .update(materials)
       .set({ downloads: sql`${materials.downloads} + 1` })
       .where(eq(materials.id, material.id));
-    if (ent.via === "subscription" && ent.purchaseId) {
-      await db
-        .update(purchases)
-        .set({ downloadsUsed: sql`${purchases.downloadsUsed} + 1` })
-        .where(eq(purchases.id, ent.purchaseId));
-    }
   } catch (e) {
     console.error("download log failed", e);
   }

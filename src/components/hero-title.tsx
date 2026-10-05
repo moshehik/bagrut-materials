@@ -8,6 +8,8 @@ import s from "@/app/home.module.css";
 const SLAM = [0.16, 1, 0.3, 1] as const;
 
 /* ציר הזמן (בשניות) */
+const T_HELLO = 0.2; // "שלום רחל," (רק למחוברת) נחתת ראשונה
+const HELLO_SHIFT = 0.7; // כשיש ברכה אישית כל השאר מוזז אחריה
 const T_STAMP = 0.25; // "ברוכה הבאה" נחתת מגדול
 const T_NAME = 1.2; // "ללו״ז העניין," נחתת בכבדות
 const T_SMALL = 2.1; // "הבית לחומרי הבגרות!" נכנסת בתנופה מהצד
@@ -84,8 +86,13 @@ function Swipe({ children, delay, fromX = 70 }: { children: string; delay: numbe
 }
 
 /** כותרת הירו: ברכת פתיחה, שם האתר והסלוגן. נחיתות כבדות ואז תנופה מהצד. */
-export function HeroTitle() {
+export function HeroTitle({ name }: { name?: string }) {
   const reduce = useReducedMotion();
+  const shift = name ? HELLO_SHIFT : 0;
+  const tStamp = T_STAMP + shift;
+  const tName = T_NAME + shift;
+  const tSmall = T_SMALL + shift;
+  const tSwoosh = T_SWOOSH + shift;
   const pathRef = useRef<SVGPathElement>(null);
   const progress = useMotionValue(0);
 
@@ -100,33 +107,40 @@ export function HeroTitle() {
 
   useEffect(() => {
     if (reduce) return;
-    const controls = animate(progress, 1, { duration: 1.4, delay: T_SWOOSH, ease: [0.45, 0.05, 0.3, 1] });
+    const controls = animate(progress, 1, { duration: 1.4, delay: tSwoosh, ease: [0.45, 0.05, 0.3, 1] });
     return () => controls.stop();
-  }, [reduce, progress]);
+  }, [reduce, progress, tSwoosh]);
 
   return (
     <h1 className={s.h1}>
+      {name && (
+        <span className={s.hello}>
+          <Slam delay={T_HELLO} from={2.2}>
+            {`שלום ${name},`}
+          </Slam>
+        </span>
+      )}
       <motion.span
         className={s.stamp}
         initial={reduce ? false : { letterSpacing: "0.3em" }}
         animate={{ letterSpacing: "0em" }}
-        transition={{ duration: 1.4, ease: SLAM, delay: T_STAMP }}
+        transition={{ duration: 1.4, ease: SLAM, delay: tStamp }}
       >
-        <Slam delay={T_STAMP} from={2.6}>
+        <Slam delay={tStamp} from={2.6}>
           ברוכה
         </Slam>{" "}
-        <Slam delay={T_STAMP + 0.24} from={2.6}>
+        <Slam delay={tStamp + 0.24} from={2.6}>
           הבאה
         </Slam>
       </motion.span>
       <span>
-        <Slam delay={T_NAME} from={3.4} duration={0.95} glow glowDelay={T_NAME + 0.5}>
+        <Slam delay={tName} from={3.4} duration={0.95} glow glowDelay={tName + 0.5}>
           ללו״ז העניין,
         </Slam>
       </span>
       <span className={s.small}>
-        <Swipe delay={T_SMALL}>הבית</Swipe> <Swipe delay={T_SMALL + 0.14}>לחומרי</Swipe>{" "}
-        <Swipe delay={T_SMALL + 0.28}>הבגרות!</Swipe>
+        <Swipe delay={tSmall}>הבית</Swipe> <Swipe delay={tSmall + 0.14}>לחומרי</Swipe>{" "}
+        <Swipe delay={tSmall + 0.28}>הבגרות!</Swipe>
       </span>
       <span className={s.swoosh} aria-hidden>
         <svg viewBox="0 0 280 24" xmlns="http://www.w3.org/2000/svg">
@@ -138,7 +152,6 @@ export function HeroTitle() {
           />
         </svg>
         {!reduce && (
-          // eslint-disable-next-line @next/next/no-img-element
           <motion.img
             src="/images/hero-pen-draw.webp"
             alt=""

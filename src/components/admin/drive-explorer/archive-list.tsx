@@ -94,7 +94,7 @@ export function ArchiveList(p: Props) {
                   <td className="c-mod num">{fmtDate(a.modified)}<span className="sub">{relTime(a.modified)}</span></td>
                   <td style={{ whiteSpace: "nowrap", textAlign: "left" }}>
                     {a.webViewLink && (
-                      <a className="kebab" style={{ display: "inline-grid" }} href={a.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={`פתח את ${a.name} בדרייב`} title="פתח בדרייב">
+                      <a className="kebab" style={{ display: "inline-grid" }} href={a.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={`פתח את ${a.name} בדרייב`} title="פתח בדרייב — קישור ישיר (למנהלת בלבד), לא ייפתח מאחורי נטפרי / סינון אינטרנט">
                         <ExternalLink className="ic" aria-hidden />
                       </a>
                     )}

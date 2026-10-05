@@ -1,6 +1,6 @@
 import Image from "next/image";
 import s from "@/app/home.module.css";
-import goatHouseLogoImg from "../../public/images/goat-house-logo.png";
+import goatHouseLogoImg from "../../public/images/logo.png";
 
 /** לוגו "לו״ז העניין" — איור העז והלוח עם הכיתוב מוטבע בתוך התמונה */
 export function GoatCalendarArt() {

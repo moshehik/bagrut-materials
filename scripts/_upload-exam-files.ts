@@ -134,7 +134,7 @@ async function main() {
     const { fileId } = await driveUpload({ name: fileName, mimeType: DOCX, bytes });
     const [row] = await db.insert(materials).values({
       categoryId: cat, title: stripExtension(fileName), kind: detectKind(fileName), fileUrl: driveUrlFor(fileId),
-      fileName, mime: DOCX, size: bytes.length, price: 1500, premiumOnly: false, minTier: "none", access: "paid", status: "draft",
+      fileName, mime: DOCX, size: bytes.length, price: 1500, premiumOnly: false, access: "paid", status: "draft",
     }).returning({ id: materials.id });
     try {
       await logDriveEvent({ kind: "file.add", materialId: row.id, categoryId: cat, driveId: fileId, newValue: fileName, details: { via: "exam-files-upload-script" } });

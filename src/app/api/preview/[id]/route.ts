@@ -7,9 +7,11 @@ import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampPreview, firstPageOnly } from "@/lib/watermark";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdf } from "@/lib/driveBridge";
-import { logAudit } from "@/lib/audit";
+import { logAudit, requestMeta } from "@/lib/audit";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
+import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
+import { officeMimeFor } from "@/lib/office-mime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +22,9 @@ export const maxDuration = 60;
  * - חומר עם allowPreview=true: עמוד ראשון בלבד, לכל מבקרת (גם לא מחוברת), ללא זיהוי אישי.
  * - משתמשת עם גישה לחומר (גם כשמותר להוריד): המסמך המלא, מוטבע במספר האישי (בדיוק כמו הורדה).
  *   "צפייה בלבד" (allowDownload=false) אומר לא ניתן להוריד, לא שלא ניתן לראות.
+ *   צפייה מלאה נספרת בדיוק כמו הורדה (מכסה יומית, מגבלה לחומר, מכסת המנוי) ונרשמת בטבלת
+ *   downloads עם via="view:<via>" – אחרת מנויה שנתית יכלה לצפות במקצוע שלם ועדיין "להחליף" אותו
+ *   (ההחלפה מותרת רק כל עוד downloadsUsed=0). העמוד הראשון לאורחות נשאר חופשי ולא נספר.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -67,8 +72,48 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: "אין תצוגה מקדימה לסוג קובץ זה" }, { status: 400 });
   }
 
+  // צפייה מלאה של משתמשת רגילה: הזמנת מכסה (כמו הורדה) לפני ההבאה; משוחררת אם ההצגה נכשלה
+  let reservation: Reservation | null = null;
+  if (fullView && user && !isAdmin && ent.ok) {
+    let r: ReserveResult;
+    try {
+      const meta = await requestMeta();
+      r = await reserveDownloads({ user, items: [{ material, ent }], kind: "view", meta });
+    } catch (e) {
+      console.error("preview limit check failed", e);
+      await fail("preview.denied", "limit_check_failed");
+      return NextResponse.json({ error: "לא ניתן לבדוק את מכסת הצפיות כרגע, נסי שוב בעוד רגע" }, { status: 503 });
+    }
+    if (!r.ok) {
+      await logAudit({
+        actorId: user.id,
+        action: "preview.denied",
+        entityType: "material",
+        entityId: material.id,
+        details: { ...r.denied },
+      });
+      const error =
+        r.denied.reason === "quota"
+          ? "מכסת ההורדות והצפיות במנוי נוצלה"
+          : r.denied.reason === "material_limit"
+            ? "החומר הזה כבר הורד/נצפה את מספר הפעמים המותר"
+            : "המכסה היומית להורדות וצפיות נוצלה – נסי שוב מחר";
+      return NextResponse.json({ error }, { status: 403 });
+    }
+    reservation = r.reservation;
+  }
+  const release = async () => {
+    if (!reservation) return;
+    try {
+      await reservation.release();
+    } catch (e) {
+      console.error("preview quota release failed", e);
+    }
+  };
+
   const file = await fetchFile(material.fileUrl);
   if (!file) {
+    await release();
     await fail("preview.failed", "file_missing");
     return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
   }
@@ -97,10 +142,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   let pdfBytes: Uint8Array;
   try {
     pdfBytes = isOffice
-      ? await convertOfficeToPdf({ bytes: raw, mimeType: material.mime, name: material.fileName })
+      ? await convertOfficeToPdf({
+          bytes: raw,
+          // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
+          mimeType: officeMimeFor(material.mime, material.fileName),
+          name: material.fileName,
+        })
       : raw;
   } catch (e) {
     console.error("preview conversion failed", e);
+    await release();
     await fail("preview.failed", "conversion_failed");
     return NextResponse.json({ error: "לא ניתן להציג תצוגה מקדימה כרגע" }, { status: 502 });
   }
@@ -113,6 +164,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         : await stampPreview(await firstPageOnly(pdfBytes));
   } catch (e) {
     console.error("preview stamp failed", e);
+    await release();
     await fail("preview.failed", "stamp_failed");
     // לא נופלים חזרה לקובץ המלא והלא־מסומן
     return NextResponse.json({ error: "לא ניתן להציג תצוגה מקדימה כרגע" }, { status: 502 });
@@ -129,7 +181,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       action: "preview",
       entityType: "material",
       entityId: material.id,
-      details: { title: material.title, fullView },
+      details: { title: material.title, fullView, accounted: !!reservation, via: ent.ok ? ent.via : null },
     });
   } catch (e) {
     console.error("preview view log failed", e);

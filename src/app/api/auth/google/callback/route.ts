@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { createSession } from "@/lib/session";
@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
     const info = await exchangeGoogleCode(code, googleRedirectUri(req));
     const email = info.email?.trim().toLowerCase();
     if (!email) return fail("no_email");
+    // גוגל מאפשרת חשבון עם מייל לא-מאומת (למשל כתובת חיצונית). בלי אימות אין לקשר לפי מייל
+    // ואין להעניק ניהול – דוחים (ההודעה הכללית של error=google)
+    if (info.email_verified !== true) return fail("email_not_verified");
 
     // 1) לפי googleId
     let [u] = await db.select().from(users).where(eq(users.googleId, info.sub)).limit(1);
@@ -51,21 +54,33 @@ export async function GET(req: NextRequest) {
       // 2) לפי מייל – קישור חשבון קיים
       const [byEmail] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (byEmail) {
-        await db
+        // אם הכתובת בחשבון הקיים מעולם לא אומתה, ייתכן שמישהו "תפס" אותה מראש בהרשמה בסיסמה.
+        // בעלת הכתובת האמיתית (שאומתה כעת מול גוגל) מקבלת את החשבון: הסיסמה הישנה נדרסת
+        // ב-hash אקראי וכל הסשנים הקיימים נפסלים (session_version+1)
+        const squatterRisk = !byEmail.emailVerified;
+        const [linked] = await db
           .update(users)
           .set({
             googleId: info.sub,
             avatarUrl: info.picture ?? byEmail.avatarUrl,
             emailVerified: true,
+            ...(squatterRisk
+              ? {
+                  passwordHash: await bcrypt.hash(randomToken(24), 10),
+                  sessionVersion: sql`${users.sessionVersion} + 1`,
+                }
+              : {}),
           })
-          .where(eq(users.id, byEmail.id));
+          .where(eq(users.id, byEmail.id))
+          .returning();
         await logAudit({
           actorId: byEmail.id,
           action: "account.google_linked",
           entityType: "user",
           entityId: byEmail.id,
+          details: squatterRisk ? { passwordReset: true, reason: "email_was_unverified" } : undefined,
         });
-        u = { ...byEmail, googleId: info.sub, avatarUrl: info.picture ?? byEmail.avatarUrl, emailVerified: true };
+        u = linked;
       } else {
         // 3) יצירת משתמשת חדשה
         if (!(await getBool("registration_open"))) {
@@ -82,7 +97,8 @@ export async function GET(req: NextRequest) {
             email,
             passwordHash,
             personalCode,
-            role: isAdminEmail(email) ? "admin" : "user",
+            // ניהול לפי ADMIN_EMAILS רק כשגוגל אימתה את הכתובת (נבדק למעלה – כאן לשם הבהירות)
+            role: info.email_verified === true && isAdminEmail(email) ? "admin" : "user",
             googleId: info.sub,
             avatarUrl: info.picture ?? null,
             emailVerified: true,
@@ -110,7 +126,7 @@ export async function GET(req: NextRequest) {
       return fail("suspended", "suspended=1", false);
     }
 
-    await createSession(u.id);
+    await createSession(u.id, u.sessionVersion);
     await logAudit({
       actorId: u.id,
       action: created ? "register.google" : "login.google",

@@ -101,7 +101,7 @@ export function DetailsPanel({ file: f, location, rev, onClose, onRename, onMove
           <button type="button" className="btn btn-ghost" onClick={onRename}><Pencil className="ic" aria-hidden />שנה שם</button>
           <button type="button" className="btn btn-ghost" onClick={onMove}><MoveLeft className="ic" aria-hidden />העבר ל…</button>
           {f.webViewLink && (
-            <a className="btn btn-ghost" href={f.webViewLink} target="_blank" rel="noopener noreferrer"><ExternalLink className="ic" aria-hidden />פתח בדרייב</a>
+            <a className="btn btn-ghost" href={f.webViewLink} target="_blank" rel="noopener noreferrer" title="קישור ישיר לדרייב (למנהלת בלבד) — לא ייפתח מאחורי נטפרי / סינון אינטרנט"><ExternalLink className="ic" aria-hidden />פתח בדרייב</a>
           )}
           <button type="button" className="btn btn-ghost" onClick={onArchive}><Archive className="ic" aria-hidden />לארכיון</button>
         </div>

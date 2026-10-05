@@ -1,9 +1,11 @@
 import "server-only";
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { cartItems, categories, materials, type Category, type Plan } from "@/db/schema";
-import { PLANS, PREMIUM_ADDON_PRICE } from "@/lib/constants";
-import { getCategoryChain, chainToHref, getDescendantIds } from "@/lib/data";
+import { PLANS } from "@/lib/constants";
+import { getCategoryChain, chainToHref } from "@/lib/data";
+import { getPlanPrices } from "@/lib/pricing";
+import { bundleAmountFor, planAmountFor } from "@/lib/purchase-helpers";
 
 /** מספר פריטים בעגלה */
 export async function cartCount(userId: number) {
@@ -32,17 +34,12 @@ export type CartLine = {
 
 export type Cart = { items: CartLine[]; total: number; count: number };
 
-/** מחיר תיקייה: bundlePrice, ואם אין – 70% מסכום החומרים שתחתיה */
+/** מחיר תיקייה – אותו חישוב כמו בקופה (bundlePriceFor דרך purchase-helpers) */
 export async function bundlePrice(c: Category): Promise<number> {
-  if (c.bundlePrice) return c.bundlePrice;
-  const ids = await getDescendantIds(c.id);
-  const ms = ids.length
-    ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
-    : [];
-  return Math.round(ms.reduce((s, x) => s + x.price, 0) * 0.7);
+  return bundleAmountFor(c);
 }
 
-/** העגלה של המשתמשת – פריטים מצורפים לחומר/קטגוריה, מחירים וסה"כ */
+/** העגלה של המשתמשת – פריטים מצורפים לחומר/קטגוריה, מחירים וסה"כ (מחירים מאותו מקור כמו purchaseAction) */
 export async function getCart(userId: number): Promise<Cart> {
   const rows = await db
     .select({ item: cartItems, material: materials, category: categories })
@@ -52,6 +49,7 @@ export async function getCart(userId: number): Promise<Cart> {
     .where(eq(cartItems.userId, userId))
     .orderBy(desc(cartItems.createdAt));
 
+  const prices = await getPlanPrices();
   const items: CartLine[] = [];
   for (const { item, material, category } of rows) {
     const plan: Plan = item.plan ?? (item.materialId ? "single" : item.categoryId ? "bundle" : "single");
@@ -80,7 +78,7 @@ export async function getCart(userId: number): Promise<Cart> {
       });
     } else if (plan === "bundle") {
       if (!category) continue;
-      const price = await bundlePrice(category);
+      const price = await bundleAmountFor(category);
       items.push({
         id: item.id,
         kind: "bundle",
@@ -99,9 +97,7 @@ export async function getCart(userId: number): Promise<Cart> {
       });
     } else {
       const def = PLANS[plan];
-      const months = Math.max(1, Math.round((def.days ?? 30) / 30));
-      const base = def.price ?? 0;
-      const addon = item.premium ? PREMIUM_ADDON_PRICE * months : 0;
+      const amount = planAmountFor(plan, item.premium, prices);
       items.push({
         id: item.id,
         kind: "plan",
@@ -112,11 +108,11 @@ export async function getCart(userId: number): Promise<Cart> {
         subtitle: def.description,
         crumbs: plan === "subject_monthly" ? crumbs : [],
         href: plan === "subject_monthly" ? catHref : "/pricing",
-        basePrice: base,
+        basePrice: amount.base,
         premium: item.premium,
-        premiumAddon: PREMIUM_ADDON_PRICE * months,
-        months,
-        price: base + addon,
+        premiumAddon: amount.addonFull,
+        months: amount.months,
+        price: amount.total,
       });
     }
   }

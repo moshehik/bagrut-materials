@@ -265,7 +265,7 @@ export function FileList(p: Props) {
                     <td className="c-mod num">{fmtDate(u.modified)}</td>
                     <td style={{ whiteSpace: "nowrap", textAlign: "left" }}>
                       {u.webViewLink && (
-                        <a className="btn btn-ghost btn-sm" href={u.webViewLink} target="_blank" rel="noopener noreferrer" style={{ marginInlineEnd: ".4rem" }}>
+                        <a className="btn btn-ghost btn-sm" href={u.webViewLink} target="_blank" rel="noopener noreferrer" style={{ marginInlineEnd: ".4rem" }} title="קישור ישיר לדרייב (למנהלת בלבד) — לא ייפתח מאחורי נטפרי / סינון אינטרנט">
                           <ExternalLink className="ic" aria-hidden />פתח בדרייב
                         </a>
                       )}

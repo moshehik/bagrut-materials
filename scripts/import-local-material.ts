@@ -1,13 +1,13 @@
 /**
  * מעלה קובץ בודד מהמחשב המקומי (מ"חומרים מוכנים מחדש/...") לדרייב, ויוצר
- * עבורו שורת materials תחת קטגוריה קיימת. לא נוגע ב-Blob (מושעה) בכלל.
+ * עבורו שורת materials תחת קטגוריה קיימת. האחסון הוא Google Drive בלבד (Vercel Blob בוטל לחלוטין).
  *
  * הרצה:
  *   npx tsx scripts/import-local-material.ts \
  *     --file "חומרים מוכנים מחדש/נביא/נביא הערכה חילופית/אהוד בן גרא (פרק ג)/דף למורה - אהוד בן גרא.docx" \
  *     --category ehud \
  *     [--title "..."] [--kind teacher_sheet|student_sheet|presentation|past_exam|tips|ideas|other] \
- *     [--status draft|active|suspended] [--access free|paid|tier|premium] [--price 15]
+ *     [--status draft|active|suspended] [--access free|paid|premium] [--price 15]
  *
  * ברירות מחדל: status=draft (בטוח - לא עולה לחיים בלי סקירה), access=paid,
  * price=15, kind מזוהה אוטומטית מהשם (כמו טופס ההעלאה באתר, ר' admin-utils.ts).
@@ -102,7 +102,6 @@ async function main() {
       size: bytes.length,
       price: Math.round(price * 100),
       premiumOnly: false,
-      minTier: "none",
       access,
       status,
     })

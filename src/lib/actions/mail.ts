@@ -8,6 +8,7 @@ import { users, purchases } from "@/db/schema";
 import { requireAdmin, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates, type MailAttachment } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
+import { TOO_MANY_MESSAGE, clientIp, limitKey, tooMany } from "@/lib/rate-limit";
 
 export type MailState = { error?: string; ok?: string } | undefined;
 
@@ -178,6 +179,8 @@ export async function contactAction(_prev: MailState, form: FormData): Promise<M
     website: form.get("website") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // הגבלת קצב (בנוסף ל-honeypot): 3 פניות לשעה לכל IP
+  if (await tooMany(limitKey("contact", "ip", await clientIp()), 3, 3600)) return { error: TOO_MANY_MESSAGE };
   const admin = adminEmail();
   if (!admin) return { error: "כתובת המנהל לא מוגדרת" };
   const { name, email, message } = parsed.data;
@@ -197,6 +200,8 @@ export async function faqQuestionAction(_prev: MailState, form: FormData): Promi
     website: form.get("website") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // הגבלת קצב (בנוסף ל-honeypot): 3 שאלות לשעה לכל IP
+  if (await tooMany(limitKey("faq-question", "ip", await clientIp()), 3, 3600)) return { error: TOO_MANY_MESSAGE };
   const admin = adminEmail();
   if (!admin) return { error: "כתובת המנהל לא מוגדרת" };
   const user = await getCurrentUser();
