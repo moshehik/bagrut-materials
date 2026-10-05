@@ -25,7 +25,9 @@ export function Footer() {
             <li><Link href="/subjects" className="link-draw hover:text-sun">המקצועות</Link></li>
             <li><Link href="/map" className="link-draw hover:text-sun">מפת הבגרות</Link></li>
             <li><Link href="/pricing" className="link-draw hover:text-sun">מסלולים ומחירים</Link></li>
-            <li><Link href="/sell" className="link-draw hover:text-sun">מכירת חומרים לאתר</Link></li>
+            <li><Link href="/coupons" className="link-draw hover:text-sun">קופונים זמינים</Link></li>
+            <li><Link href="/account" className="link-draw hover:text-sun">האזור האישי</Link></li>
+            <li><Link href="/account/downloads/calendar" className="link-draw hover:text-sun">ההורדות שלי</Link></li>
           </ul>
         </div>
         <div>

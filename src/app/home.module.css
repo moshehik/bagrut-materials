@@ -23,159 +23,41 @@
   position: absolute;
   inset: 1.4%;
   z-index: 0;
-  /* הרקע בלי העט — העט עצמו הוא שכבה נפרדת (heroPen) שמתנועעת כאילו היא כותבת */
-  background: url("/images/hero-intro-nopen.webp") center / cover no-repeat;
+  /* הרקע: הרים ולוח שנה, והלוגו בלי מחוגים — המחוגים החיים הם שכבה נפרדת (heroClock) */
+  background: url("/images/hero-intro-noclockhands.webp") center / cover no-repeat;
   border-radius: 22px;
 }
-/* מיקום העט בתוך תמונת הפתיח (1528×587): x=1275, y=220, רוחב 255. נקודת הציר בקצה הימני של התמונה, כדי שהקצה החתוך לא יזוז */
-.heroPen {
+/* העט שמצייר את הקו מתחת לסלוגן – קצה הפן (הפינה השמאלית-תחתונה של התמונה) יושב בדיוק על נקודת הציור (left/top נקבעים ב-hero-title.tsx) */
+.drawPen {
   position: absolute;
-  left: 82.657%;
-  top: 36.29%;
+  width: 76px;
+  height: auto;
+  transform: translate(-2%, -99%);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
+}
+/* שעון הלוגו – מחוגים חיים על התמונה (hero-intro-noclockhands.webp) שמראים את השעה האמיתית. מרכז השעון בתמונה: x=455, y=335 מתוך 1528×587; הריבוע 260×260 סביבו */
+.heroClock {
+  position: absolute;
+  left: 21.27%;
+  top: 34.923%;
   width: 17.016%;
-  aspect-ratio: 260 / 352;
-  transform-origin: 98% 22%;
-  animation: penWrite 7s ease-in-out infinite;
-  will-change: transform;
+  aspect-ratio: 1;
+  opacity: 0;
+  transition: opacity 0.8s ease 0.4s;
   pointer-events: none;
 }
-.heroPenImg {
+.heroClock[data-ready="true"] {
+  opacity: 1;
+}
+.heroClock svg {
   display: block;
   width: 100%;
   height: 100%;
-  transform-origin: 98% 22%;
-  animation: penScribble 0.42s ease-in-out infinite alternate;
 }
-/* תנועת כתיבה איטית: העט נע לאורך שורה, מתרומם קלות וחוזר */
-@keyframes penWrite {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  12% {
-    transform: rotate(-2.4deg);
-  }
-  30% {
-    transform: rotate(2.2deg);
-  }
-  38% {
-    transform: rotate(-0.6deg);
-  }
-  55% {
-    transform: rotate(3.2deg);
-  }
-  68% {
-    transform: rotate(-1.6deg);
-  }
-  85% {
-    transform: rotate(1.2deg);
-  }
-}
-/* רעד כתיבה זעיר ומהיר של קצה הפן */
-@keyframes penScribble {
-  from {
-    transform: rotate(-0.55deg) translateY(0.5px);
-  }
-  to {
-    transform: rotate(0.55deg) translateY(-0.5px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .heroPen,
-  .heroPenImg {
-    animation: none;
-  }
-}
-/* העז הדוהרת — אותה עז מהתמונה המקורית, ממוקמת באותו מקום ליד העט, עם ניתור-דהירה בלולאה */
-/* העז עומדת במקום שבו העט נגמר (קצה הפן), ומשם יוצאת לדהור שמאלה לאורך הרצפה; בסוף הריצה נעלמת וחוזרת לעמוד ליד העט */
-@property --goat-amp {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
-}
-.heroGoatRun {
-  position: absolute;
-  left: 78.5%;
-  bottom: 2.4%;
-  width: 7%;
-  /* עיכוב שלילי: במחזור הראשון העז כבר דוהרת כשהאותיות של הכותרת מתחילות להופיע; בסיבובים הבאים היא שוב עומדת רגע ליד העט */
-  animation: goatRun 18s linear -2.6s infinite;
-  will-change: translate, opacity;
-}
-.heroGoat {
-  display: block;
-  width: 100%;
-  aspect-ratio: 428 / 443;
-  height: auto;
-  transform-origin: 50% 100%;
-  opacity: 0.6; /* שקיפות 40% */
-  animation: goatGallop 0.9s ease-in-out infinite;
-  will-change: transform;
-}
-/* --goat-amp: 0 = עומדת במקום, 1 = דוהרת (גובה הניתור והנטייה מוכפלים בו) */
-@keyframes goatRun {
-  0%,
-  14% {
-    translate: 0 0;
-    --goat-amp: 0;
-    opacity: 1;
-  }
-  16% {
-    translate: 0 0;
-    --goat-amp: 1;
-    opacity: 1;
-  }
-  78% {
-    translate: -760% 0;
-    --goat-amp: 1;
-    opacity: 1;
-  }
-  82% {
-    translate: -815% 0;
-    --goat-amp: 1;
-    opacity: 0;
-  }
-  82.1% {
-    translate: 0 0;
-    --goat-amp: 0;
-    opacity: 0;
-  }
-  96% {
-    translate: 0 0;
-    --goat-amp: 0;
-    opacity: 0;
-  }
-  100% {
-    translate: 0 0;
-    --goat-amp: 0;
-    opacity: 1;
-  }
-}
-@keyframes goatGallop {
-  0% {
-    transform: translateY(0) rotate(0deg);
-  }
-  18% {
-    transform: translateY(calc(-16% * var(--goat-amp))) rotate(calc(-5deg * var(--goat-amp)));
-  }
-  36% {
-    transform: translateY(calc(-20% * var(--goat-amp))) rotate(calc(-2deg * var(--goat-amp)));
-  }
-  55% {
-    transform: translateY(calc(-4% * var(--goat-amp))) rotate(calc(4deg * var(--goat-amp)));
-  }
-  70% {
-    transform: translateY(0) rotate(0deg);
-  }
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .heroGoatRun,
-  .heroGoat {
-    animation: none;
-  }
+.clockHand {
+  transform-box: view-box;
+  transform-origin: 130px 130px;
 }
 .hero .wrap {
   height: 100%;
@@ -216,8 +98,11 @@
   font-size: 0.62em;
 }
 .swoosh {
+  position: relative;
   display: block;
-  width: min(420px, 88%);
+  /* מרווח בצד ימין (תחילת הקו בעברית) בגודל העט, כדי שגוף העט לא ייחתך בקצה האזור כשהוא מתחיל לצייר */
+  margin-inline-start: 72px;
+  width: min(360px, calc(88% - 72px));
   margin-top: 10px;
 }
 .swoosh svg {
@@ -430,45 +315,12 @@
   box-shadow: 0 4px 12px rgba(31, 45, 51, 0.18);
 }
 .lessonNote {
-  margin: 34px 0 0;
+  margin: 34px 0 90px;
   text-align: center;
   font-family: var(--font-hand);
   font-size: 28px;
   line-height: 1.2;
   opacity: 0.85;
-}
-.lessonNuts {
-  display: flex;
-  justify-content: center;
-  margin: 50px 0 90px;
-}
-.lessonNuts img {
-  width: min(70%, 240px);
-  height: auto;
-  transform-origin: 50% 100%;
-  animation: lessonNutsBounce 1.6s cubic-bezier(0.28, 0.84, 0.42, 1) infinite;
-}
-@keyframes lessonNutsBounce {
-  0% {
-    transform: translateY(0) scale(1.06, 0.92);
-  }
-  12% {
-    transform: translateY(0) scale(1, 1);
-  }
-  50% {
-    transform: translateY(-34px) scale(0.97, 1.04) rotate(2deg);
-  }
-  88% {
-    transform: translateY(0) scale(1, 1);
-  }
-  100% {
-    transform: translateY(0) scale(1.06, 0.92);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .lessonNuts img {
-    animation: none;
-  }
 }
 
 /* ---------- SUBJECTS ---------- */
@@ -1001,6 +853,10 @@
   color: var(--sea2);
 }
 .kind > span {
+  /* הכיתוב נשאר בתוך קו המסגרת של הכתם: צר, ובשבירת שורה מאוזנת אם צריך */
+  max-width: 68%;
+  text-align: center;
+  text-wrap: balance;
   font-family: var(--font-hand);
   font-size: 17px;
   opacity: 0.8;
@@ -1040,100 +896,141 @@
   transition-delay: 0.32s;
 }
 
-/* ---------- ABOUT (מי אנחנו) — מכתב-מדבקה מאויר, עם הטקסט "כתוב" בתוך שטח הכתיבה שלו ---------- */
-.aboutLetter {
+/* ---------- ABOUT (מי אנחנו) — איגרת-גליל שנפתחת תוך כדי הכתיבה; שורות הדף מותאמות לגובה שורת הטקסט ---------- */
+.scroll {
+  --fs: clamp(17px, 2.2vw, 22px);
+  --lh: calc(var(--fs) * 1.7);
+  --paper: #f8ecd9;
+  --paper-edge: rgba(150, 112, 66, 0.4);
+  --rule: rgba(176, 140, 92, 0.38);
   position: relative;
-  width: min(100%, 840px);
-  aspect-ratio: 709 / 874;
+  width: min(100%, 680px);
   margin: 0 auto 100px;
-  filter: drop-shadow(0 20px 40px rgba(31, 45, 51, 0.16));
+  filter: drop-shadow(0 18px 30px rgba(31, 45, 51, 0.16));
 }
-.aboutLetterImg {
+/* הגליל — למעלה קבוע, ולמטה נגרר יחד עם קצה הדף כשהוא נפתח */
+.scrollRoll {
+  position: relative;
+  z-index: 2;
+  height: 30px;
+  margin: 0 -12px;
+  border-radius: 15px;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 38%, rgba(110, 72, 30, 0) 58%, rgba(110, 72, 30, 0.35)),
+    #ecd6b4;
+  box-shadow:
+    inset 9px 0 8px -6px rgba(110, 72, 30, 0.45),
+    inset -9px 0 8px -6px rgba(110, 72, 30, 0.45),
+    0 2px 3px rgba(110, 72, 30, 0.25);
+}
+.scrollBody {
+  position: relative;
+  overflow: hidden;
+  margin: 0 4px;
+  background: var(--paper);
+  border-inline: 1px solid var(--paper-edge);
+}
+/* הצללה בקצוות העליון והתחתון: הדף "נכנס" אל הגלילים */
+.scrollBody::before,
+.scrollBody::after {
+  content: "";
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  inset-inline: 0;
+  height: 18px;
+  pointer-events: none;
+  z-index: 1;
 }
-/* אזור הכתיבה בתוך המכתב — משאיר מרווח מהמסגרת המחוררת משמאל ומעמודת תיבות הסימון מימין, ומתחיל גבוה כדי לפנות מקום לכל הפסקאות עד לחתימה */
-.aboutText {
-  position: absolute;
-  top: 7%;
-  bottom: 7%;
-  right: 26%;
-  left: 9%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.scrollBody::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(110, 72, 30, 0.22), transparent);
 }
-.aboutText p {
-  font-size: clamp(12px, 1.4vw, 16.5px);
-  line-height: 1.45;
+.scrollBody::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(110, 72, 30, 0.22), transparent);
+}
+.scrollSheet {
+  padding: clamp(22px, 4vw, 40px) clamp(20px, 5vw, 56px) clamp(16px, 3vw, 28px);
+}
+/* "נכתב" אות אחר אות (about-writing.tsx): כל אות מוסתרת עד שהאיגרת נכנסת למסך, ואז נחשפת לפי --d */
+.writing {
+  font-family: var(--font-hand);
+  font-size: var(--fs);
+  line-height: var(--lh);
   color: var(--ink);
   text-align: center;
-  margin: 0 0 6px;
+  /* שורות הדף: קו בתחתית כל שורת טקסט */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--lh) - 1.5px),
+    var(--rule) calc(var(--lh) - 1.5px),
+    var(--rule) var(--lh)
+  );
 }
-.aboutText p:last-child {
+.writing p {
+  margin: 0 0 var(--lh);
+}
+.writing p:last-child {
   margin-bottom: 0;
+}
+.wLine {
+  display: block;
+}
+.wWord {
+  white-space: nowrap;
+}
+.wArmed .wCh {
+  opacity: 0;
+}
+.wOn .wCh {
+  opacity: 0;
+  animation: wInk 0.16s ease-out forwards;
+  animation-delay: var(--d);
+}
+@keyframes wInk {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 .aboutBrand {
   font-family: var(--font-hand);
   font-weight: 400;
-  font-size: 1.35em;
+  font-size: 1.3em;
+  line-height: 1;
   color: var(--sea2);
 }
 .aboutClose {
   font-weight: 700;
   color: var(--terra);
 }
-.aboutSign {
-  margin-top: 4px;
+.aboutHeart {
+  display: inline-block;
+  font-size: 1.1em;
+  line-height: 1;
+  color: var(--terra);
 }
 .aboutLogo {
   display: block;
-  width: clamp(120px, 16vw, 230px);
+  width: clamp(120px, 16vw, 210px);
   height: auto;
-  margin: 6px auto 0;
+  margin: clamp(10px, 2vw, 18px) auto 0;
 }
-.aboutHeart {
-  display: inline-block;
-  font-size: 1.15em;
-  line-height: 1;
-  margin: 1px 0;
+.wArmed .aboutLogo {
+  opacity: 0;
 }
-/* מתחת לרוחב הזה אין מספיק גובה בתוך יחס-הרוחב הקבוע של המכתב לטקסט המלא — עוברים לתמונה דקורטיבית מעל וכרטיס טקסט רגיל מתחתיה */
-@media (max-width: 760px) {
-  .aboutLetter {
-    width: 100%;
-    aspect-ratio: auto;
-    filter: none;
-  }
-  .aboutLetterImg {
-    position: static;
-    width: min(100%, 200px);
-    height: auto;
-    aspect-ratio: 709 / 874;
-    object-fit: contain;
-    margin: 0 auto 20px;
-    display: block;
-    filter: drop-shadow(0 14px 26px rgba(31, 45, 51, 0.16));
-  }
-  .aboutText {
-    position: static;
-    inset: auto;
-    background: #fff;
-    border-radius: 28px;
-    padding: 34px 26px;
-    box-shadow: 0 16px 40px rgba(31, 45, 51, 0.1);
-  }
-  .aboutText p {
-    font-size: 16.5px;
-    line-height: 1.8;
-    margin: 0 0 16px;
-  }
-  .aboutBrand {
-    font-size: 1.3em;
-  }
+.wOn .aboutLogo {
+  opacity: 0;
+  animation: wInk 0.5s ease-out forwards;
+  animation-delay: var(--logo-d);
+}
+/* לפני הכתיבה הדף סגור (גובה 0); האנימציה פותחת אותו לפי קצב הכתיבה */
+.wArmed .scrollBody {
+  height: 0;
 }
 
 /* ---------- SECURITY ---------- */
@@ -1234,15 +1131,14 @@
   .secure {
     padding: 30px 24px;
   }
-  .aboutText {
-    right: 22%;
-    left: 7%;
-  }
 }
 @media (max-width: 520px) {
-  .stats,
-  .kinds {
+  .stats {
     grid-template-columns: 1fr;
+  }
+  /* ארבעת כרטיסי הנתונים נשארים 2×2 גם בטלפון */
+  .kinds {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -1537,4 +1433,54 @@
   display: flex;
   justify-content: center;
   margin-top: 70px;
+}
+
+/* ---------- מפת הבגרויות — תרשים + הסבר, מתחת למקצועות ---------- */
+.mapSec {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, 5vw, 70px);
+  margin: 0 auto 100px;
+  max-width: 980px;
+}
+.mapArt {
+  flex: 0 1 42%;
+  width: 42%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+.mapText {
+  flex: 1 1 0;
+  text-align: right;
+}
+.mapText h2 {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: clamp(32px, 4.3vw, 48px);
+  line-height: 1.1;
+  color: var(--sea);
+}
+.mapText p {
+  margin: 10px 0 22px;
+  font-family: var(--font-hand);
+  font-size: clamp(16px, 1.9vw, 22px);
+  line-height: 1.3;
+  color: #9a6f12; /* זהב כהה */
+}
+@media (max-width: 760px) {
+  .mapSec {
+    flex-direction: column;
+    text-align: center;
+    margin-bottom: 70px;
+  }
+  .mapArt {
+    flex-basis: auto;
+    width: min(80%, 340px);
+  }
+  .mapText {
+    text-align: center;
+  }
 }

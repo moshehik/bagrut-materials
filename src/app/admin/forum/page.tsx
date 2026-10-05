@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -8,6 +9,7 @@ import { DeleteThreadButton } from "@/components/admin/delete-thread-button";
 export const dynamic = "force-dynamic";
 
 export default async function AdminForumPage() {
+  await requireAdminPage();
   const rows = await db
     .select({
       id: forumThreads.id,

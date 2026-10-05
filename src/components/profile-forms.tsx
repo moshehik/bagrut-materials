@@ -9,12 +9,14 @@ import {
   requestEmailChangeAction,
 } from "@/lib/actions/profile";
 
+/* הטפסים יושבים בתוך חלונית כחולה כהה (.gate-panel): שדות זהב בהיר במסגרת שחורה, לחצני זהב */
+
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-xl bg-pink-soft text-[#9d4a2a] px-3 py-2 text-xs animate-pop">
-      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-      <span>{error}</span>
+    <div role="alert" className="gate-strip gate-strip-alert animate-pop !py-2 text-base">
+      <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="flex-1">{error}</span>
     </div>
   );
 }
@@ -22,10 +24,26 @@ function ErrorBox({ error }: { error?: string }) {
 function SuccessBox({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <div role="status" className="flex items-start gap-2 rounded-xl bg-green-50 text-green-800 px-3 py-2 text-xs animate-pop">
-      <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-      <span>{message}</span>
+    <div role="status" className="gate-strip animate-pop !justify-start !py-2 text-base">
+      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="flex-1">{message}</span>
     </div>
+  );
+}
+
+function FormTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 text-xl text-[#ffd45a]">
+      {icon} {children}
+    </p>
+  );
+}
+
+function SubmitBtn({ pending, children }: { pending: boolean; children: React.ReactNode }) {
+  return (
+    <button type="submit" disabled={pending} className="btn btn-gold btn-gate py-1.5 disabled:opacity-50">
+      {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {children}
+    </button>
   );
 }
 
@@ -33,16 +51,19 @@ export function EditNameForm({ currentName }: { currentName: string }) {
   const [state, action, pending] = useActionState(updateNameAction, undefined);
   return (
     <form action={action} className="space-y-3">
-      <p className="text-sm font-bold flex items-center gap-2">
-        <UserRound className="h-4 w-4 text-blue" /> שינוי שם
-      </p>
+      <FormTitle icon={<UserRound className="h-5 w-5" aria-hidden />}>שינוי שם</FormTitle>
       <ErrorBox error={state?.error} />
       <SuccessBox message={state?.ok ? state.message : undefined} />
       <div className="flex flex-wrap gap-2">
-        <input name="name" defaultValue={currentName} required minLength={2} className="input !py-1.5 flex-1 min-w-[180px]" />
-        <button type="submit" disabled={pending} className="btn btn-ghost !py-1.5 text-sm">
-          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} עדכני
-        </button>
+        <input
+          name="name"
+          defaultValue={currentName}
+          required
+          minLength={2}
+          aria-label="שם"
+          className="gate-input min-w-[180px] flex-1"
+        />
+        <SubmitBtn pending={pending}>עדכני</SubmitBtn>
       </div>
     </form>
   );
@@ -52,11 +73,7 @@ export function EditPhoneForm({ currentPhone, next }: { currentPhone?: string | 
   const [state, action, pending] = useActionState(updatePhoneAction, undefined);
   return (
     <form action={action} className="space-y-3">
-      {!next && (
-        <p className="text-sm font-bold flex items-center gap-2">
-          <Phone className="h-4 w-4 text-blue" /> מספר טלפון
-        </p>
-      )}
+      {!next && <FormTitle icon={<Phone className="h-5 w-5" aria-hidden />}>מספר טלפון</FormTitle>}
       <ErrorBox error={state?.error} />
       <SuccessBox message={state?.ok ? state.message : undefined} />
       {next && <input type="hidden" name="next" value={next} />}
@@ -70,11 +87,10 @@ export function EditPhoneForm({ currentPhone, next }: { currentPhone?: string | 
           required
           dir="ltr"
           placeholder="050-1234567"
-          className="input !py-1.5 flex-1 min-w-[180px] text-left"
+          aria-label="מספר טלפון"
+          className="gate-input min-w-[180px] flex-1 text-left"
         />
-        <button type="submit" disabled={pending} className={next ? "btn btn-pink !py-1.5 text-sm" : "btn btn-ghost !py-1.5 text-sm"}>
-          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {next ? "שמירה והמשך להורדה" : "עדכני"}
-        </button>
+        <SubmitBtn pending={pending}>{next ? "שמירה והמשך להורדה" : "עדכני"}</SubmitBtn>
       </div>
     </form>
   );
@@ -84,9 +100,7 @@ export function ChangePasswordForm() {
   const [state, action, pending] = useActionState(changePasswordAction, undefined);
   return (
     <form action={action} className="space-y-3">
-      <p className="text-sm font-bold flex items-center gap-2">
-        <KeyRound className="h-4 w-4 text-pink" /> שינוי סיסמה
-      </p>
+      <FormTitle icon={<KeyRound className="h-5 w-5" aria-hidden />}>שינוי סיסמה</FormTitle>
       <ErrorBox error={state?.error} />
       <SuccessBox message={state?.ok ? state.message : undefined} />
       <div className="grid gap-2 sm:grid-cols-3">
@@ -95,34 +109,35 @@ export function ChangePasswordForm() {
           type="password"
           autoComplete="current-password"
           placeholder="סיסמה נוכחית"
+          aria-label="סיסמה נוכחית"
           required
           dir="ltr"
-          className="input !py-1.5 text-left"
+          className="gate-input text-left"
         />
         <input
           name="password"
           type="password"
           autoComplete="new-password"
           placeholder="סיסמה חדשה"
+          aria-label="סיסמה חדשה"
           required
           minLength={6}
           dir="ltr"
-          className="input !py-1.5 text-left"
+          className="gate-input text-left"
         />
         <input
           name="confirm"
           type="password"
           autoComplete="new-password"
           placeholder="אימות סיסמה"
+          aria-label="אימות סיסמה"
           required
           minLength={6}
           dir="ltr"
-          className="input !py-1.5 text-left"
+          className="gate-input text-left"
         />
       </div>
-      <button type="submit" disabled={pending} className="btn btn-ghost !py-1.5 text-sm">
-        {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} עדכני סיסמה
-      </button>
+      <SubmitBtn pending={pending}>עדכני סיסמה</SubmitBtn>
     </form>
   );
 }
@@ -131,12 +146,10 @@ export function ChangeEmailForm({ currentEmail, pendingEmail }: { currentEmail: 
   const [state, action, pending] = useActionState(requestEmailChangeAction, undefined);
   return (
     <form action={action} className="space-y-3">
-      <p className="text-sm font-bold flex items-center gap-2">
-        <Mail className="h-4 w-4 text-gold" /> שינוי כתובת מייל
-      </p>
+      <FormTitle icon={<Mail className="h-5 w-5" aria-hidden />}>שינוי כתובת מייל</FormTitle>
       {pendingEmail && !state?.ok && (
-        <p className="text-xs text-muted">
-          ממתין לאימות: <span dir="ltr" className="font-mono">{pendingEmail}</span> (בדקי את תיבת המייל)
+        <p className="text-base">
+          ממתין לאימות: <span dir="ltr">{pendingEmail}</span> (בדקי את תיבת המייל)
         </p>
       )}
       <ErrorBox error={state?.error} />
@@ -148,13 +161,12 @@ export function ChangeEmailForm({ currentEmail, pendingEmail }: { currentEmail: 
           defaultValue={pendingEmail ?? currentEmail}
           required
           dir="ltr"
-          className="input !py-1.5 text-left flex-1 min-w-[200px]"
+          aria-label="כתובת מייל"
+          className="gate-input min-w-[200px] flex-1 text-left"
         />
-        <button type="submit" disabled={pending} className="btn btn-ghost !py-1.5 text-sm">
-          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} שלחי קישור אימות
-        </button>
+        <SubmitBtn pending={pending}>שלחי קישור אימות</SubmitBtn>
       </div>
-      <p className="text-xs text-muted">השינוי ייכנס לתוקף רק לאחר אימות הכתובת החדשה במייל.</p>
+      <p className="text-base opacity-80">השינוי ייכנס לתוקף רק לאחר אימות הכתובת החדשה במייל.</p>
     </form>
   );
 }

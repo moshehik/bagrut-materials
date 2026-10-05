@@ -64,7 +64,8 @@ const NAV = [
   { href: "/map", label: "מפת הבגרות" },
   { href: "/pricing", label: "מסלולים" },
   { href: "/coupons", label: "קופונים זמינים" },
-  { href: "/account/downloads", label: "ההורדות שלי" },
+  { href: "/account", label: "אזור אישי" },
+  { href: "/account/downloads/calendar", label: "ההורדות שלי" },
 ];
 
 /** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */
@@ -95,7 +96,12 @@ export function Header({ user }: { user: HeaderUser }) {
 
         <nav className="hidden xl:flex items-center gap-1 ms-4" aria-label="ניווט ראשי">
           {NAV.map((n) => {
-            const active = n.href === "/" ? path === "/" : path === n.href || path.startsWith(n.href + "/");
+            const active =
+              n.href === "/"
+                ? path === "/"
+                : n.href === "/account"
+                  ? path === "/account" || (path.startsWith("/account/") && !path.startsWith("/account/downloads"))
+                  : path === n.href || path.startsWith(n.href + "/");
             return (
               <Link
                 key={n.href}
@@ -122,7 +128,7 @@ export function Header({ user }: { user: HeaderUser }) {
                 count={cartCount}
                 className="p-2 rounded-full text-white/80 hover:bg-white/10 hover:text-sun transition-colors"
               />
-              <Link href="/account" className="btn btn-line-white text-sm py-2">
+              <Link href="/account" title="האזור האישי" className="btn btn-line-white text-sm py-2">
                 <UserRound className="h-4 w-4" /> {user.name.split(" ")[0]}
               </Link>
               <form action={logoutAction}>
@@ -182,9 +188,6 @@ export function Header({ user }: { user: HeaderUser }) {
                     ניהול האתר
                   </Link>
                 )}
-                <Link href="/account" onClick={() => setOpen(false)} className="btn btn-ghost">
-                  האזור האישי
-                </Link>
                 <CartLink
                   count={cartCount}
                   withLabel

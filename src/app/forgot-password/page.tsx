@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "שכחתי סיסמה" };
 
 export default async function ForgotPasswordPage() {
   const user = await getCurrentUser();
-  if (user) redirect("/account");
+  if (user) redirect("/");
 
   return (
     <AuthShell

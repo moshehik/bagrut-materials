@@ -1,18 +1,17 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef } from "react";
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import s from "@/app/home.module.css";
 
 /* האטה חדה: פותחת במהירות ונעצרת בכבדות, כמו משקל שנוחת */
 const SLAM = [0.16, 1, 0.3, 1] as const;
 
 /* ציר הזמן (בשניות) */
-const T_STAMP = 0.25; // "הגיע הזמן!" נחתת מגדול
-const T_SMALL = 1.45; // "להוציא את" נכנסת בתנופה מהצד
-const T_GOAT = 2.55; // שקט קצר, ואז "העז" נחתת בכבדות
-const T_LUZ = 3.15; // "מהלו״ז." נכנסת וצמודה אליה
-const T_PART = 3.85; // הבזק זהב בתפר, והמילים נפרדות בכוח
-const T_SWOOSH = 4.45; // שני הקווים נמשכים מתחת במהירות
+const T_STAMP = 0.25; // "ברוכה הבאה" נחתת מגדול
+const T_NAME = 1.2; // "ללו״ז העניין," נחתת בכבדות
+const T_SMALL = 2.1; // "הבית לחומרי הבגרות!" נכנסת בתנופה מהצד
+const T_SWOOSH = 2.9; // שני הקווים נמשכים מתחת במהירות
 
 const GOLD = "217,164,65";
 
@@ -84,9 +83,26 @@ function Swipe({ children, delay, fromX = 70 }: { children: string; delay: numbe
   );
 }
 
-/** כותרת הירו: נחיתות כבדות, שקט, הבזק זהב ופרידה חדה בין "העז" ל"מהלו״ז". */
+/** כותרת הירו: ברכת פתיחה, שם האתר והסלוגן. נחיתות כבדות ואז תנופה מהצד. */
 export function HeroTitle() {
   const reduce = useReducedMotion();
+  const pathRef = useRef<SVGPathElement>(null);
+  const progress = useMotionValue(0);
+
+  // העט עוקב אחרי נקודת הקצה של הקו שמצויר (קצה הפן = הנקודה); המיקום באחוזים מתוך תיבת ה-SVG (280×24)
+  const pointAt = (v: number) => {
+    const el = pathRef.current;
+    return el ? el.getPointAtLength(v * el.getTotalLength()) : { x: 278, y: 8 };
+  };
+  const penLeft = useTransform(progress, (v) => `${(pointAt(v).x / 280) * 100}%`);
+  const penTop = useTransform(progress, (v) => `${(pointAt(v).y / 24) * 100}%`);
+  const penOpacity = useTransform(progress, [0, 0.04, 0.93, 1], [0, 1, 1, 0]);
+
+  useEffect(() => {
+    if (reduce) return;
+    const controls = animate(progress, 1, { duration: 1.4, delay: T_SWOOSH, ease: [0.45, 0.05, 0.3, 1] });
+    return () => controls.stop();
+  }, [reduce, progress]);
 
   return (
     <h1 className={s.h1}>
@@ -97,66 +113,41 @@ export function HeroTitle() {
         transition={{ duration: 1.4, ease: SLAM, delay: T_STAMP }}
       >
         <Slam delay={T_STAMP} from={2.6}>
-          הגיע
+          ברוכה
         </Slam>{" "}
         <Slam delay={T_STAMP + 0.24} from={2.6}>
-          הזמן!
+          הבאה
         </Slam>
       </motion.span>
-      <span className={s.small}>
-        <Swipe delay={T_SMALL}>להוציא</Swipe> <Swipe delay={T_SMALL + 0.18}>את</Swipe>
-      </span>
       <span>
-        <Slam delay={T_GOAT} from={3.4} duration={0.95} glow glowDelay={T_PART}>
-          העז
+        <Slam delay={T_NAME} from={3.4} duration={0.95} glow glowDelay={T_NAME + 0.5}>
+          ללו״ז העניין,
         </Slam>
-        <motion.span
-          aria-hidden
-          style={{ display: "inline-block", position: "relative" }}
-          initial={reduce ? false : { width: "0.03em" }}
-          animate={{ width: "0.34em" }}
-          transition={{ duration: 0.85, ease: SLAM, delay: T_PART }}
-        >
-          {/* הבזק זהב אנכי בתפר, נע עם הרווח הנפתח */}
-          {!reduce && (
-            <motion.span
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "-8%",
-                height: "116%",
-                width: 3,
-                marginLeft: -1.5,
-                borderRadius: 2,
-                background: `linear-gradient(to bottom, rgba(${GOLD},0), rgb(${GOLD}) 25%, #f6e3a8 50%, rgb(${GOLD}) 75%, rgba(${GOLD},0))`,
-                boxShadow: `0 0 18px 4px rgba(${GOLD},0.75)`,
-                transformOrigin: "50% 50%",
-              }}
-              initial={{ opacity: 0, scaleY: 0 }}
-              animate={{ opacity: [0, 1, 1, 0], scaleY: [0, 1, 1, 0.6] }}
-              transition={{ duration: 0.95, delay: T_PART - 0.06, times: [0, 0.12, 0.45, 1], ease: "easeOut" }}
-            />
-          )}
-        </motion.span>
-        <Slam delay={T_LUZ} from={1.9} duration={0.7}>
-          מהלו״ז.
-        </Slam>
+      </span>
+      <span className={s.small}>
+        <Swipe delay={T_SMALL}>הבית</Swipe> <Swipe delay={T_SMALL + 0.14}>לחומרי</Swipe>{" "}
+        <Swipe delay={T_SMALL + 0.28}>הבגרות!</Swipe>
       </span>
       <span className={s.swoosh} aria-hidden>
         <svg viewBox="0 0 280 24" xmlns="http://www.w3.org/2000/svg">
+          {/* קו אחד, מצויר מימין לשמאל (כמו כתיבה בעברית) – העט מצייר אותו */}
           <motion.path
-            d="M2 8c46 12 92 12 138 0s92-12 138 0"
-            initial={reduce ? false : { pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.9, ease: SLAM, delay: T_SWOOSH }}
-          />
-          <motion.path
-            d="M2 17c46 11 92 11 138 0s92-11 138 0"
-            initial={reduce ? false : { pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.9, ease: SLAM, delay: T_SWOOSH + 0.12 }}
+            ref={pathRef}
+            d="M278 8C232 -4 186 -4 140 8C94 20 48 20 2 8"
+            style={{ pathLength: reduce ? 1 : progress }}
           />
         </svg>
+        {!reduce && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <motion.img
+            src="/images/hero-pen-draw.webp"
+            alt=""
+            width={256}
+            height={264}
+            className={s.drawPen}
+            style={{ left: penLeft, top: penTop, opacity: penOpacity }}
+          />
+        )}
       </span>
     </h1>
   );

@@ -23,6 +23,7 @@ import {
   PencilLine,
   Bot,
   Inbox,
+  Ticket,
 } from "lucide-react";
 
 const ITEMS = [
@@ -34,6 +35,7 @@ const ITEMS = [
   { href: "/admin/users", label: "משתמשות", icon: Users },
   { href: "/admin/fixes", label: "בקשות שינוי", icon: PencilLine },
   { href: "/admin/offers", label: "הצעות מכירה", icon: HandCoins },
+  { href: "/admin/coupons", label: "קופונים פרטיים", icon: Ticket },
   { href: "/admin/forum", label: "פורום", icon: MessagesSquare },
   { href: "/admin/sichot", label: "שיחות מורות", icon: Sparkles },
   { href: "/admin/mail", label: "מיילים", icon: Mail },

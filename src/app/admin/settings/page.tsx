@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { SETTING_DEFS, getSettings, getNumber } from "@/lib/settings";
@@ -23,6 +24,7 @@ async function countOldLogs(): Promise<{ days: number; total: number }> {
 }
 
 export default async function AdminSettingsPage() {
+  await requireAdminPage();
   const [values, purgeInfo] = await Promise.all([getSettings(), countOldLogs()]);
   const defs: SettingDefClient[] = Object.entries(SETTING_DEFS).map(([key, d]) => ({
     key,

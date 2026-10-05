@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, count, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
@@ -33,6 +34,7 @@ function chainOf(byId: Map<number, Category>, id: number | null): Category[] {
 }
 
 export default async function AdminDownloadsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const userQ = sp1(sp, "user").trim();
   const materialQ = sp1(sp, "material").trim();
@@ -113,7 +115,10 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-2xl font-bold">היסטוריית הורדות</h2>
         <span className="chip bg-oak-soft text-oak-deep">{total.toLocaleString("he-IL")} רשומות</span>
-        <a href={`/admin/downloads/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
+        <Link href="/admin/downloads/calendar" className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
+          לוח שנה עברי
+        </Link>
+        <a href={`/admin/downloads/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs">
           ייצוא CSV
         </a>
       </div>

@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { asc, count } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
@@ -7,6 +8,7 @@ import { CategoryForm } from "@/components/admin/category-form";
 export const dynamic = "force-dynamic";
 
 export default async function AdminCategoriesPage() {
+  await requireAdminPage();
   const [all, counts] = await Promise.all([
     db.select().from(categories).orderBy(asc(categories.sort), asc(categories.id)),
     db

@@ -3,6 +3,8 @@ import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles, Eye, PauseCircle, 
 import type { Material } from "@/db/schema";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { Entitlement } from "@/lib/data";
+import { FreeTrialDownload } from "@/components/free-trial-download";
+import type { FreeTrialState } from "@/lib/free-trial";
 import { MATERIAL_KINDS, PREMIUM_KINDS, formatPrice } from "@/lib/constants";
 
 type Props = {
@@ -13,6 +15,8 @@ type Props = {
   currentPath?: string;
   /** כמה פעמים המשתמשת הנוכחית הורידה את הקובץ הזה בעצמה */
   myDownloadCount?: number;
+  /** מצב ההורדה החינמית האחת של המשתמשת (ר' src/lib/free-trial.ts) */
+  freeTrial?: FreeTrialState;
 };
 
 /** נקודות נצנצים שיוצאות מכפתור ההורדה במעבר עכבר */
@@ -51,6 +55,7 @@ export function MaterialCard({
   loggedIn,
   currentPath = "/subjects",
   myDownloadCount = 0,
+  freeTrial = "off",
 }: Props) {
   const kind = MATERIAL_KINDS[m.kind] ?? MATERIAL_KINDS.other;
   const isPremium = m.premiumOnly || m.access === "premium" || PREMIUM_KINDS.includes(m.kind);
@@ -103,7 +108,7 @@ export function MaterialCard({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-4">
-        <Actions m={m} entitlement={entitlement} loggedIn={loggedIn} currentPath={currentPath} />
+        <Actions m={m} entitlement={entitlement} loggedIn={loggedIn} currentPath={currentPath} freeTrial={freeTrial} />
         {m.allowPreview && !entitlement.ok && (
           <a
             href={`/api/preview/${m.id}`}
@@ -118,7 +123,7 @@ export function MaterialCard({
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted">
         <Fingerprint className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        מוטבע במספר האישי שלך
+        הדף שלך נשאר שלך
         {myDownloadCount > 0 && (
           <span>· הורדת קובץ זה {myDownloadCount.toLocaleString("he-IL")} פעמים</span>
         )}
@@ -131,11 +136,13 @@ export function Actions({
   m,
   entitlement,
   currentPath,
+  freeTrial = "off",
 }: {
   m: Material;
   entitlement: Entitlement;
   loggedIn: boolean;
   currentPath: string;
+  freeTrial?: FreeTrialState;
 }) {
   if (entitlement.ok) {
     const viaLabel =
@@ -171,7 +178,7 @@ export function Actions({
         <a
           href={`/api/download/${m.id}`}
           className="btn btn-download text-sm py-2"
-          title="הקובץ יוטבע במספר האישי שלך"
+          title="הדף שלך נשאר שלך"
         >
           <Download className="h-4 w-4" aria-hidden /> הורדה
           <DownloadSparkles />
@@ -188,15 +195,19 @@ export function Actions({
           <PauseCircle className="h-4 w-4" aria-hidden /> הדף מושהה זמנית
         </span>
       );
-    case "login":
+    case "login": {
+      // קובץ חינמי: אורחת צריכה לראות שהוא פתוח לה (בכפתור בולט), כדי שתבין שההרשמה החינמית פותחת אותו
+      const isFree = m.access === "free";
       return (
         <Link
           href={`/login?next=${encodeURIComponent(currentPath ?? "/subjects")}`}
-          className="btn btn-ghost text-sm py-2"
+          className={`btn text-sm py-2 ${isFree ? "btn-gold" : "btn-ghost"}`}
         >
-          <LogIn className="h-4 w-4" aria-hidden /> התחברי להורדה
+          {isFree ? <Gift className="h-4 w-4" aria-hidden /> : <LogIn className="h-4 w-4" aria-hidden />}
+          {isFree ? "התחברי להורדה – חינם!" : "התחברי להורדה"}
         </Link>
       );
+    }
     case "premium":
       return (
         <Link href="/checkout?premium=1" className="btn btn-gold text-sm py-2">
@@ -206,6 +217,11 @@ export function Actions({
     case "purchase":
       return (
         <>
+          {m.allowDownload && (freeTrial === "available" || freeTrial === "unverified") && (
+            <FreeTrialDownload materialId={m.id} title={m.title} state={freeTrial} className="btn btn-gold text-sm py-2">
+              <Gift className="h-4 w-4" aria-hidden /> הורדה אחת חינם
+            </FreeTrialDownload>
+          )}
           <Link href={`/checkout?material=${m.id}`} className="btn btn-primary text-sm py-2">
             <ShoppingBag className="h-4 w-4" aria-hidden /> רכישה בודדת {formatPrice(m.price)}
           </Link>

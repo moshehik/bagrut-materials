@@ -26,7 +26,7 @@ async function postChunk(session: string, index: number, chunk: ArrayBuffer): Pr
 async function uploadChunked(
   file: File,
   onProgress: (pct: number) => void,
-): Promise<{ url: string; contentType?: string; size: number }> {
+): Promise<{ url: string; sig: string; contentType?: string; size: number }> {
   const buf = await file.arrayBuffer();
   const session = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) =>
     b.toString(36).padStart(2, "0"),
@@ -50,7 +50,7 @@ async function uploadChunked(
   });
   const j = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(j.error || `איחוד הקובץ נכשל (${res.status})`);
-  return { url: j.url as string, contentType: j.contentType as string | undefined, size: buf.byteLength };
+  return { url: j.url as string, sig: j.sig as string, contentType: j.contentType as string | undefined, size: buf.byteLength };
 }
 
 type Item = { key: string; file: File; title: string };
@@ -104,6 +104,7 @@ export function SichaUploadForm({ categoryId, path }: { categoryId: number; path
           description: description.trim() || undefined,
           seminarType,
           fileUrl: uploaded.url,
+          fileSig: uploaded.sig,
           fileName: it.file.name,
           mime: it.file.type || uploaded.contentType || "application/octet-stream",
           size: uploaded.size,

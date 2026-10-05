@@ -43,7 +43,31 @@ export function IconSubjects(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** כמות ההורדות — חץ אל מגש */
+/** מספר קבצי התוכן בכל שיעור — רשימת סימון */
+export function IconLessonTypes(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path pathLength={1} d="M7 13l3 3 5-6" />
+      <path pathLength={1} d="M7 25l3 3 5-6" />
+      <path pathLength={1} d="M7 37l3 3 5-6" />
+      <path pathLength={1} d="M22 13h19M22 25h19M22 37h19" />
+    </Base>
+  );
+}
+
+/** כמות הקבצים החינמיים — מתנה */
+export function IconFree(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path pathLength={1} d="M8 21h32v19H8z" />
+      <path pathLength={1} d="M6 14h36v7H6z" />
+      <path pathLength={1} d="M24 14v26" />
+      <path pathLength={1} d="M24 14c-3-7-11-8-11-3s8 3 11 3c3 0 11 2 11-3s-8-4-11 3z" />
+    </Base>
+  );
+}
+
+/** כמות ההורדות — חץ אל מגש (לא בשימוש בדף הבית כרגע) */
 export function IconDownloads(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>
@@ -54,7 +78,7 @@ export function IconDownloads(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** כמות הכניסות — עין */
+/** כמות הכניסות — עין (לא בשימוש בדף הבית כרגע) */
 export function IconVisits(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

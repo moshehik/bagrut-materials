@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { Search } from "lucide-react";
@@ -18,6 +19,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const me = await getCurrentUser();

@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { eq, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, materials, purchases, transactions } from "@/db/schema";
+import { categories, materials, privateCoupons, purchases, transactions, users } from "@/db/schema";
+import { citySchema, schoolSchema } from "@/lib/profile-validation";
+import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { PLANS, YEARLY_INCLUDED_SUBJECTS, bundlePriceFor, formatPrice } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
@@ -105,6 +107,14 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
     return denied("invalid_input", parsed.error.issues[0]?.message ?? "נתוני הזמנה לא תקינים");
   }
   const input = parsed.data;
+
+  // רכישה ראשונה: עיר מגורים ושם תיכון (לא נשאלים בהרשמה)
+  let location: { city: string; school: string } | null = null;
+  if (!user.city || !user.school) {
+    const loc = z.object({ city: citySchema, school: schoolSchema }).safeParse(Object.fromEntries(form));
+    if (!loc.success) return denied("invalid_location", loc.error.issues[0]?.message ?? "יש להשלים עיר ותיכון");
+    location = loc.data;
+  }
 
   const prices = await getPlanPrices();
   const paymentRef = `MOCK-${Date.now()}`;
@@ -241,7 +251,34 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   }
 
   if (!rows.length) return denied("no_rows", "לא נוצרה הזמנה");
-  const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
+
+  // קופון הנחה פרטי (חד-פעמי): תפיסה אטומית לפני הרישום, ושחרור אם הרישום נכשל
+  let usedCoupon: { id: number; percent: number } | null = null;
+  const pctCoupon = await getBestPercentCoupon(user);
+  if (pctCoupon && pctCoupon.percent) {
+    const got = await db
+      .update(privateCoupons)
+      .set({ status: "used", usedAt: new Date(), claimedBy: user.id })
+      .where(and(eq(privateCoupons.id, pctCoupon.id), eq(privateCoupons.status, "active")))
+      .returning({ id: privateCoupons.id });
+    if (got.length) {
+      usedCoupon = { id: pctCoupon.id, percent: pctCoupon.percent };
+      for (const r of rows) r.amount = Math.round(((r.amount ?? 0) * (100 - pctCoupon.percent)) / 100);
+    }
+  }
+  let inserted: { id: number }[];
+  try {
+    if (location) {
+      await db.update(users).set(location).where(eq(users.id, user.id));
+      await logAudit({ actorId: user.id, action: "profile.complete", entityType: "user", entityId: user.id, details: location });
+    }
+    inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
+  } catch (e) {
+    if (usedCoupon) {
+      await db.update(privateCoupons).set({ status: "active", usedAt: null }).where(eq(privateCoupons.id, usedCoupon.id));
+    }
+    throw e;
+  }
 
   // רישום תנועה כספית (חיוב) – סכום כולל של ההזמנה
   const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
@@ -261,7 +298,7 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       amount: total,
       method: "mock",
       reference: paymentRef,
-      note: description,
+      note: usedCoupon ? `${description} (קופון ${usedCoupon.percent}% הנחה)` : description,
       createdById: null,
     });
   } catch (e) {
@@ -287,6 +324,7 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       categoryId: bundleCategoryId ?? ("categoryId" in input ? input.categoryId : null),
       categoryIds: "categoryIds" in input ? input.categoryIds : undefined,
       materialId: input.kind === "single" ? input.materialId : null,
+      coupon: usedCoupon,
     },
   });
 

@@ -1,10 +1,12 @@
+import { requireAdminPage } from "@/lib/session";
 import { DriveExplorer } from "@/components/admin/drive-explorer";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "סייר קבצי דרייב" };
 
-export default function AdminDrivePage() {
+export default async function AdminDrivePage() {
+  await requireAdminPage();
   return (
     <>
       <details className="card" style={{ padding: "0.9rem 1.1rem", marginBottom: "1rem" }}>

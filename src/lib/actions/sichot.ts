@@ -14,6 +14,7 @@ import {
   type SichaSeminar,
 } from "@/db/schema";
 import { requireUser } from "@/lib/session";
+import { verifyUpload } from "@/lib/upload-id";
 import { logAudit } from "@/lib/audit";
 import {
   SICHA_REGULAR_CADENCE_WEEKS,
@@ -75,7 +76,9 @@ const itemSchema = z.object({
   title: z.string().trim().min(4, "כותרת קצרה מדי").max(200, "כותרת ארוכה מדי"),
   description: z.string().trim().max(2000).optional(),
   seminarType: z.enum(["mainstream", "kiruv", "charedi_modern"]),
-  fileUrl: z.string().min(1),
+  fileUrl: z.string().regex(/^drive:\/\/[A-Za-z0-9_-]{10,100}$/, "קובץ לא תקין"),
+  /** חתימת /api/sichot/upload/finish - מוכיחה שהקובץ הועלה ע"י המשתמשת הזו */
+  fileSig: z.string().min(1),
   fileName: z.string().min(1).max(255),
   mime: z.string().min(1).max(120),
   size: z.coerce.number().int().min(0),
@@ -103,6 +106,10 @@ export async function createSichaBatch(input: {
   const parsed = batchSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { items, path } = parsed.data;
+  if (user.suspended) return { error: "החשבון מושעה" };
+  if (items.some((i) => !verifyUpload(user.id, i.fileUrl, i.fileSig))) {
+    return { error: "הקובץ לא הועלה מהחשבון הזה - יש להעלות אותו מחדש" };
+  }
 
   const categoryIds = [...new Set(items.map((i) => i.categoryId))];
   const cats = await db

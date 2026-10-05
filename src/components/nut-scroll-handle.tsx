@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const TOP_MARGIN = 90; // מרווח קבוע מתחת לכותרת העליונה של האתר
@@ -12,6 +13,8 @@ const HIT_SIZE = 52; // אזור אחיזה נוח לגרירה
 const ICON_SIZE = 34; // גודל האגוז המוצג בפועל
 const MIN_SCROLLABLE = 400; // לא מציגים ציר בדפים קצרים מדי
 const MIN_SCROLLABLE_X = 24; // לא מציגים ציר אופקי כשאין ממש מה לגלול לצדדים
+const HINT_TEXT = "גלגלי אותי ותגלי מה יש לנו להציע";
+const HINT_MS = 9000; // כמה זמן הטולטיפ נשאר פתוח אם לא נגעו בכלום
 
 function getMaxScroll() {
   return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
@@ -23,11 +26,77 @@ export function NutScrollHandle() {
   const [dragging, setDragging] = useState(false);
   const [percent, setPercent] = useState(0); // 0 = למעלה, 1 = למטה
 
+  // דף הבית: האגוז נכנס באנימציה, ובסיומה נפתח טולטיפ שמזמין לגלול (פעם אחת בכל כניסה לדף)
+  const isHome = usePathname() === "/";
+  const [introDone, setIntroDone] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+  const [hovered, setHovered] = useState(false); // ריחוף עכבר: אותו טולטיפ מעוצב במקום ה-title הרגיל של הדפדפן
+  const hintUsed = useRef(false);
+
   const syncFromScroll = useCallback(() => {
     const max = getMaxScroll();
     setVisible(max > MIN_SCROLLABLE);
     setPercent(max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0);
   }, []);
+
+  const closeHint = useCallback(() => {
+    hintUsed.current = true;
+    setHintOpen(false);
+  }, []);
+
+  // יוצאים מדף הבית – מאפסים, כדי שבחזרה אליו האנימציה והטולטיפ יופיעו שוב
+  useEffect(() => {
+    if (isHome) return;
+    setIntroDone(false);
+    setHintOpen(false);
+    hintUsed.current = false;
+  }, [isHome]);
+
+  // בלי תנועה (העדפת משתמש) אין אנימציה שתסתיים, אז מדלגים עליה
+  useEffect(() => {
+    if (!isHome || !visible || introDone) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntroDone(true);
+  }, [isHome, visible, introDone]);
+
+  // פותחים את הטולטיפ רק אחרי שאנימציות דף הבית נגמרו: אם יש הודעה מיוחדת – אחרי שהיא נעלמה ודף הבית
+  // התחיל מחדש ושוב סיים; אם אין – כשהכיתוב האחרון בדף (פסקת הפתיחה) סיים להיכתב
+  useEffect(() => {
+    if (!isHome || !introDone || hintUsed.current) return;
+    let openTimer = 0;
+    let closeTimer = 0;
+    const open = () => {
+      setHintOpen(true);
+      closeTimer = window.setTimeout(closeHint, HINT_MS);
+    };
+    const poll = window.setInterval(() => {
+      const d = document.documentElement.dataset;
+      if (d.homePopup || !d.homeLeadDone) return;
+      window.clearInterval(poll);
+      if (window.scrollY > 12) return; // כבר התחילה לגלול – אין צורך להזמין
+      openTimer = window.setTimeout(open, 600);
+    }, 250);
+    return () => {
+      window.clearInterval(poll);
+      window.clearTimeout(openTimer);
+      window.clearTimeout(closeTimer);
+    };
+  }, [isHome, introDone, closeHint]);
+
+  // ברגע שהגולל/ת התחיל/ה לגלול (או לחץ/ה מקש) – הטולטיפ עשה את שלו
+  useEffect(() => {
+    if (!hintOpen) return;
+    const onScroll = () => {
+      if (window.scrollY > 12) closeHint();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", closeHint, { passive: true });
+    window.addEventListener("keydown", closeHint);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", closeHint);
+      window.removeEventListener("keydown", closeHint);
+    };
+  }, [hintOpen, closeHint]);
 
   useEffect(() => {
     syncFromScroll();
@@ -59,6 +128,7 @@ export function NutScrollHandle() {
       e.preventDefault();
       (e.target as Element).setPointerCapture(e.pointerId);
       setDragging(true);
+      closeHint();
 
       // כיבוי זמני של scroll-behavior: smooth הגלובלי — הוא זה שגרם לקפיצות בגרירה
       const html = document.documentElement;
@@ -89,7 +159,7 @@ export function NutScrollHandle() {
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     },
-    [percentFromClientY]
+    [percentFromClientY, closeHint]
   );
 
   if (!visible) return null;
@@ -119,7 +189,8 @@ export function NutScrollHandle() {
           type="button"
           onPointerDown={onThumbPointerDown}
           aria-label="גררי למעלה או למטה כדי לגלול בדף"
-          title="גררי כדי לגלול בדף"
+          onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(true)}
+          onPointerLeave={() => setHovered(false)}
           className="absolute grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-gold/50"
           style={{
             width: HIT_SIZE,
@@ -132,8 +203,11 @@ export function NutScrollHandle() {
           }}
         >
           <span
-            className="pointer-events-none block drop-shadow-md transition-transform"
+            className={`pointer-events-none block drop-shadow-md transition-transform${
+              isHome && !introDone ? " nut-intro" : ""
+            }`}
             style={{ width: ICON_SIZE, height: ICON_SIZE, transform: dragging ? "scale(1.15)" : "scale(1)" }}
+            onAnimationEnd={() => setIntroDone(true)}
           >
             <Image
               src="/images/nut-handle.png"
@@ -144,6 +218,15 @@ export function NutScrollHandle() {
               draggable={false}
               priority={false}
             />
+          </span>
+
+          {/* טולטיפ ההזמנה לגלול: נפתח מצד שמאל של האגוז, בכתב גברת לוין */}
+          <span
+            aria-hidden
+            dir="rtl"
+            className={`nut-hint${hintOpen || (hovered && !dragging) ? " nut-hint-on" : ""}`}
+          >
+            <span className="nut-hint-text">{HINT_TEXT}</span>
           </span>
         </button>
       </div>

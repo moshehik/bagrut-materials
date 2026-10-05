@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, count, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
@@ -22,6 +23,7 @@ function prettyDetails(s: string | null): { short: string; full: string; isJson:
 }
 
 export default async function AdminLogsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const actionQ = sp1(sp, "action").trim();
   const actorQ = sp1(sp, "actor").trim();

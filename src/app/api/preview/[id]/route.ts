@@ -114,7 +114,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   } catch (e) {
     console.error("preview stamp failed", e);
     await fail("preview.failed", "stamp_failed");
-    out = pdfBytes;
+    // לא נופלים חזרה לקובץ המלא והלא־מסומן
+    return NextResponse.json({ error: "לא ניתן להציג תצוגה מקדימה כרגע" }, { status: 502 });
   }
 
   try {

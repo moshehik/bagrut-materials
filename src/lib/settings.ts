@@ -36,6 +36,7 @@ export const SETTING_DEFS = {
   forum_enabled: { label: "פורום פעיל", type: "boolean", default: "true", group: "תכונות" },
   sell_enabled: { label: "מכירת חומרים לאתר פעילה", type: "boolean", default: "true", group: "תכונות" },
   cart_enabled: { label: "עגלת קניות פעילה", type: "boolean", default: "true", group: "תכונות" },
+  free_trial_enabled: { label: "הורדה חינמית אחת לכל מורה (על כל חומר שתבחר)", type: "boolean", default: "true", group: "תכונות" },
   track_page_views: { label: "רישום היסטוריית גלישה", type: "boolean", default: "true", group: "לוגים" },
   logs_retention_days: { label: "שמירת לוגים (ימים)", type: "number", default: "365", group: "לוגים" },
   online_window_minutes: { label: '"מחוברות כעת" = פעילות ב-X דקות האחרונות', type: "number", default: "5", group: "לוגים" },

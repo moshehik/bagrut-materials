@@ -9,6 +9,7 @@ import { getRootSubjects } from "@/lib/data";
 import { SUBJECT_HOUSES, SUBJECT_ICONS, subjectDisplayTitle } from "@/lib/constants";
 import { swapYearlySubjectAction } from "@/lib/actions/subscription-subjects";
 import { PendingSubjectsForm } from "@/components/pending-subjects-form";
+import { BackButton } from "@/components/account-ui";
 
 export const metadata: Metadata = { title: "המקצועות במנוי השנתי" };
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ export default async function SubscriptionSubjectsPage({
         <div>
           <h1 className="text-4xl md:text-5xl">המקצועות במנוי השנתי</h1>
           <p className="mt-2 max-w-md">בחרי מקצועות, או החליפי מקצוע שעדיין לא הורדת ממנו.</p>
+          <BackButton href="/account/purchases" label="חזרה לרכישות ומנויים" />
         </div>
       </div>
 

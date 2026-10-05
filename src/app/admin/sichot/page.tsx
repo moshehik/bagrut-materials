@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sichot, sichaTeacherStatus, users, categories } from "@/db/schema";
@@ -7,6 +8,7 @@ import { SichaModerationButtons } from "@/components/admin/sicha-moderation-butt
 export const dynamic = "force-dynamic";
 
 export default async function AdminSichotPage() {
+  await requireAdminPage();
   const rows = await db
     .select({
       id: sichot.id,

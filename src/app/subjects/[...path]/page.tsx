@@ -26,6 +26,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { MaterialCard } from "@/components/material-card";
 import { getPublishedFixes } from "@/lib/fixes";
+import { getFreeTrialState } from "@/lib/free-trial";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 import { SichotModule } from "@/components/sichot/sichot-module";
@@ -133,6 +134,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     : new Map<number, number>();
 
   const fixesByMaterial = await getPublishedFixes(mats.map((m) => m.id));
+  const freeTrial = await getFreeTrialState(user).catch(() => "off" as const);
 
   // כל חומר מסווג לסוג כרטיסייה לפי שמו; מה ששייך לאותה שורה בעיצוב מוצג יחד
   type Item = { m: Material; ent: Entitlement };
@@ -302,6 +304,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                         folderTitle={category.title}
                         currentPath={here}
                         myDownloadCount={downloadCounts.get(item.m.id) ?? 0}
+                        freeTrial={freeTrial}
                         fixes={fixesByMaterial.get(item.m.id)?.map((f) => ({
                           number: f.number,
                           originalText: f.originalText,
@@ -330,6 +333,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                     loggedIn={!!user}
                     currentPath={here}
                     myDownloadCount={downloadCounts.get(m.id) ?? 0}
+                    freeTrial={freeTrial}
                   />
                 ))}
               </AnimatedGrid>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
-import { isSafeId } from "@/lib/upload-id";
+import { isSafeId, signUpload } from "@/lib/upload-id";
 import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/admin-utils";
 import { driveChunkFinish, driveUrlFor } from "@/lib/driveBridge";
 import { logAudit } from "@/lib/audit";
@@ -14,7 +14,9 @@ type Body = { session?: string; name?: string; mimeType?: string; size?: number 
 export async function POST(request: Request): Promise<NextResponse> {
   let actorId: number | null = null;
   try {
-    actorId = (await requireUser()).id;
+    const user = await requireUser();
+    if (user.suspended) throw new Error("FORBIDDEN");
+    actorId = user.id;
     let body: Body;
     try {
       body = (await request.json()) as Body;
@@ -45,8 +47,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       action: "sicha.upload",
       details: { name, contentType, size: driveSize || total },
     });
+    const url = driveUrlFor(fileId);
     return NextResponse.json({
-      url: driveUrlFor(fileId),
+      url,
+      sig: signUpload(actorId, url),
       contentType,
       size: driveSize || total,
     });

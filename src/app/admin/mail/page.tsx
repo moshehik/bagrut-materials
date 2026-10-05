@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { desc, ilike, or, sql, count } from "drizzle-orm";
 import { db } from "@/db";
 import { emailLogs, users } from "@/db/schema";
@@ -24,6 +25,7 @@ export default async function AdminMailPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string; to?: string }>;
 }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const page = Math.max(1, Number(sp.page ?? 1) || 1);

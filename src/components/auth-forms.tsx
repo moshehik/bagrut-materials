@@ -164,17 +164,28 @@ export function LoginForm({
 }
 
 /** שדה טקסט בעיצוב "שער" (חלונית כחולה, שדה זהב בהיר במסגרת שחורה) */
-function GateField({
+export function GateField({
   label,
   hint,
   ltr,
+  light,
   ...input
-}: { label: string; hint?: string; ltr?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: {
+  label: string;
+  hint?: string;
+  ltr?: boolean;
+  /** עיצוב בהיר (כרטיס רגיל) במקום חלונית ה"שער" הכחולה */
+  light?: boolean;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block">
-      <span className="text-xl">{label}</span>
-      <input {...input} dir={ltr ? "ltr" : undefined} className={`gate-input mt-1 ${ltr ? "text-left" : ""}`} />
-      {hint && <span className="block text-base text-[#ffd45a]">{hint}</span>}
+      <span className={light ? "text-sm font-semibold" : "text-xl"}>{label}</span>
+      <input
+        {...input}
+        dir={ltr ? "ltr" : undefined}
+        className={`${light ? "input" : "gate-input"} mt-1 ${ltr ? "text-left" : ""}`}
+      />
+      {hint && <span className={`block ${light ? "text-xs text-muted" : "text-base text-[#ffd45a]"}`}>{hint}</span>}
     </label>
   );
 }
@@ -212,7 +223,7 @@ function GateCheck({
 const NAME_PATTERN = "[\\u05D0-\\u05EAa-zA-Z][\\u05D0-\\u05EAa-zA-Z '\"\\u05F3\\u05F4\\-]*";
 
 /** "עיר מגורים": שדה עם רשימה נגללת מעוצבת (פילטור תוך כדי הקלדה); ערך שאינו ברשימה נחסם גם בדפדפן וגם בשרת */
-function CityField() {
+export function CityField({ light }: { light?: boolean }) {
   const [value, setValue] = useState("");
   const [touched, setTouched] = useState(false);
   const [open, setOpen] = useState(false);
@@ -249,7 +260,7 @@ function CityField() {
 
   return (
     <div className="block">
-      <label htmlFor="city-input" className="text-xl">
+      <label htmlFor="city-input" className={light ? "text-sm font-semibold" : "text-xl"}>
         עיר מגורים
       </label>
       <div className="city-combo">
@@ -292,7 +303,7 @@ function CityField() {
             }
           }}
           aria-invalid={invalid}
-          className="gate-input mt-1"
+          className={`${light ? "input" : "gate-input"} mt-1`}
         />
         {open && (
           <div className="city-pop" dir="ltr">
@@ -334,10 +345,32 @@ function CityField() {
           </div>
         )}
       </div>
-      <span className={`block text-base ${invalid ? "text-[#ffd45a]" : "opacity-80"}`}>
+      <span
+        className={`block ${light ? "text-xs" : "text-base"} ${
+          invalid ? (light ? "text-[#9d4a2a]" : "text-[#ffd45a]") : light ? "text-muted" : "opacity-80"
+        }`}
+      >
         {invalid ? "לא נמצאה עיר בשם הזה — בחרי מהרשימה." : "התחילי להקליד ובחרי את העיר מהרשימה."}
       </span>
     </div>
+  );
+}
+
+/** עיר מגורים + שם התיכון – נשאלים ברכישה הראשונה (לא בהרשמה) */
+export function LocationFields({ light }: { light?: boolean }) {
+  return (
+    <>
+      <CityField light={light} />
+      <GateField
+        light={light}
+        label="שם התיכון בו את מלמדת"
+        name="school"
+        type="text"
+        required
+        minLength={2}
+        autoComplete="organization"
+      />
+    </>
   );
 }
 
@@ -400,15 +433,6 @@ export function RegisterForm({ next, googleEnabled }: { next?: string; googleEna
             title="אותיות בלבד (בלי מספרים וסימנים)"
           />
         </div>
-        <CityField />
-        <GateField
-          label="שם התיכון בו את מלמדת"
-          name="school"
-          type="text"
-          required
-          minLength={2}
-          autoComplete="organization"
-        />
         <GateField
           label="כתובת מייל"
           name="email"
@@ -495,7 +519,7 @@ export function RegisterForm({ next, googleEnabled }: { next?: string; googleEna
   );
 }
 
-/** השלמת פרטים אחרי הרשמה דרך גוגל: עיר, תיכון וטלפון – הכל חובה (גוגל לא מוסר אותם) */
+/** השלמת פרטים אחרי הרשמה דרך גוגל: טלפון – חובה (גוגל לא מוסר אותו). עיר ותיכון נשאלים ברכישה הראשונה */
 export function CompleteProfileForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(completeProfileAction, undefined);
   return (
@@ -507,15 +531,6 @@ export function CompleteProfileForm({ next }: { next: string }) {
           <span className="flex-1">{state.error}</span>
         </div>
       )}
-      <CityField />
-      <GateField
-        label="שם התיכון בו את מלמדת"
-        name="school"
-        type="text"
-        required
-        minLength={2}
-        autoComplete="organization"
-      />
       <GateField
         label="מספר טלפון"
         name="phone"

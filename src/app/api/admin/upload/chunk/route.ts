@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/session";
-import { isSafeId } from "@/lib/upload-id";
+import { isSafeId, MAX_CHUNK_INDEX } from "@/lib/upload-id";
 import { driveChunkAppend } from "@/lib/driveBridge";
 
 // חתיכות (עד 4MB) של קובץ שמועלה מהדפדפן. ה-PUT הישיר ל-vercel.com נחסם ע"י
@@ -18,7 +18,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const url = new URL(request.url);
     const session = url.searchParams.get("session");
     const index = parseInt(url.searchParams.get("index") ?? "", 10);
-    if (!isSafeId(session) || !Number.isInteger(index) || index < 0 || index > 999) {
+    if (!isSafeId(session) || !Number.isInteger(index) || index < 0 || index > MAX_CHUNK_INDEX) {
       return NextResponse.json({ error: "פרמטרים לא חוקיים" }, { status: 400 });
     }
     const bytes = new Uint8Array(await request.arrayBuffer());

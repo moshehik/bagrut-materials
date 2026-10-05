@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
-const START_DELAY = 5000; // ms — מתחיל כשהכותרת כמעט סיימה להיכנס (הקווים התחתונים עדיין נמשכים)
+const START_DELAY = 3200; // ms — מתחיל כשהכותרת כמעט סיימה להיכנס (הקווים התחתונים עדיין נמשכים)
 const CHAR_MS = 34; // ms לאות — קצב כתיבה טבעי
 
 /** פסקת הפתיחה מוקלדת אות-אות, כאילו מישהי כותבת אותה עכשיו. */
@@ -39,6 +39,16 @@ export function TypewriterLead({ text, className }: { text: string; className?: 
   }, [started, reduce, text]);
 
   const done = count >= text.length;
+
+  // מסמן ל-NutScrollHandle שאנימציית הפתיחה של דף הבית הסתיימה (הכיתוב האחרון נכתב), כדי שטולטיפ האגוז ייפתח אחריה
+  useEffect(() => {
+    if (!done) return;
+    const root = document.documentElement;
+    root.dataset.homeLeadDone = "1";
+    return () => {
+      delete root.dataset.homeLeadDone;
+    };
+  }, [done]);
 
   return (
     <p className={className} aria-label={text}>

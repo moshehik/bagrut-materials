@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { Download } from "lucide-react";
@@ -26,6 +27,7 @@ const TX_CLASS: Record<string, string> = {
 };
 
 export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const type = txTypeEnum.enumValues.find((t) => t === sp.type);
   const userId = sp.user && Number.isInteger(Number(sp.user)) ? Number(sp.user) : undefined;

@@ -5,6 +5,8 @@ import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { FIX_TIPS, FixRequestButton, FixViewer, type CardFix } from "@/components/material-fixes";
+import { FreeTrialDownload } from "@/components/free-trial-download";
+import type { FreeTrialState } from "@/lib/free-trial";
 
 type Props = {
   material: Material;
@@ -24,6 +26,8 @@ type Props = {
   plainViewSrc?: string;
   /** מנויה במסלול "ממלאת מקום יומית" (סל צפיות/הורדות) – רק לה מוצג הטולטיפ על ספירת הצפיות. המסלול עוד לא נבנה, לכן ברירת המחדל false */
   isDailySubstitute?: boolean;
+  /** מצב ההורדה החינמית האחת של המשתמשת (ר' src/lib/free-trial.ts) – כשזמינה, על קובץ בתשלום מוצג "הורדה אחת חינם" */
+  freeTrial?: FreeTrialState;
 };
 
 const DAILY_SUBSTITUTE_VIEW_TIP =
@@ -58,6 +62,7 @@ export function MaterialTypeCard({
   fixesViewSrc,
   plainViewSrc,
   isDailySubstitute = false,
+  freeTrial = "off",
 }: Props) {
   const s = CARD_STYLES[type];
   const target = downloadTarget(m, entitlement, currentPath, bundleHref);
@@ -69,6 +74,16 @@ export function MaterialTypeCard({
   const lockedHref = entitlement.ok ? null : target;
   // צפייה בקובץ באתר – רק למי שמורשית לקובץ (שילמה / מנוי / חינם למחוברת / מנהלת)
   const canView = entitlement.ok && !viewOnly;
+  // אורחת על קובץ חינמי: הכפתור אומר במפורש שהוא חינם (ההרשמה פותחת אותו), כדי שתראה איפה השיעור הפתוח
+  const guestFree = !entitlement.ok && entitlement.reason === "login" && m.access === "free";
+  // מחוברת שעוד לא רכשה את הקובץ ועדיין יש לה הורדה חינמית אחת (או שחסר לה רק אימות מייל)
+  const trialOffer =
+    !entitlement.ok &&
+    entitlement.reason === "purchase" &&
+    m.allowDownload &&
+    (freeTrial === "available" || freeTrial === "unverified")
+      ? freeTrial
+      : null;
 
   return (
     <article
@@ -76,6 +91,7 @@ export function MaterialTypeCard({
       className="mtc relative scroll-mt-24"
       style={{ "--mtc-body": s.body, "--mtc-strip": s.strip } as React.CSSProperties}
     >
+      {guestFree && <span className="mtc-free">חינם בהרשמה</span>}
       <header className="mtc-head">
         <Image
           src={`/images/mat-cards/art4/${s.art}.webp`}
@@ -106,7 +122,7 @@ export function MaterialTypeCard({
       <div className="mtc-body">
         <div className={`mtc-print ${s.lightPrint ? "mtc-print-light" : ""}`}>
           <Fingerprint className="mtc-print-icon" strokeWidth={1.4} aria-hidden />
-          <span>הפרטים שלך על הקובץ</span>
+          <span>הדף שלך נשאר שלך</span>
         </div>
 
         {viewOnly ? (
@@ -114,12 +130,28 @@ export function MaterialTypeCard({
             <Eye className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
           </FileViewerButton>
+        ) : trialOffer ? (
+          <FreeTrialDownload
+            materialId={m.id}
+            title={`${s.label} - ${folderTitle}`}
+            state={trialOffer}
+            className="mtc-download"
+          >
+            <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+            <span>להורדה חינם</span>
+          </FreeTrialDownload>
         ) : target ? (
           <a
             href={target}
             className="mtc-download"
-            title={entitlement.ok ? "הקובץ יוטבע במספר האישי שלך" : "כדי להוריד צריך קודם להשלים את השלב הבא"}
-            aria-label={`הורדת ${s.label}`}
+            title={
+              entitlement.ok
+                ? "הדף שלך נשאר שלך"
+                : guestFree
+                  ? "הקובץ חינם לכל מורה שנרשמה – ההרשמה חינמית"
+                  : "כדי להוריד צריך קודם להשלים את השלב הבא"
+            }
+            aria-label={`הורדת ${s.label}${guestFree ? " – חינם בהרשמה" : ""}`}
           >
             <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
             <span>להורדה</span>

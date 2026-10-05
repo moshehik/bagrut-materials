@@ -409,14 +409,28 @@ export async function userHasPremium(user: User | null) {
   return !!row;
 }
 
+/** יחידה חינמית = יש בה חומרים וכולם חינמיים (אותה הגדרה כמו hasPaid בדף היחידה) */
+export async function isFreeUnit(categoryId: number) {
+  const [row] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      paid: sql<number>`count(*) filter (where ${materials.access} <> 'free')::int`,
+    })
+    .from(materials)
+    .where(eq(materials.categoryId, categoryId));
+  return !!row && row.total > 0 && row.paid === 0;
+}
+
 /**
  * גישה לפורום של יחידה: מנהלת, מנויה (פרימיום פעיל או מנוי שמכסה את היחידה),
  * או מי שרכשה את תיקיית היחידה / קובץ בודד שנמצא בה. מושעה – אין גישה.
+ * ביחידה חינמית – כל מורה מחוברת (הרשמה בלבד) יכולה לכתוב; אורחת רק צופה (ר' isFreeUnit).
  */
 export async function userCanUseUnitForum(user: User | null, categoryId: number) {
   if (!user) return false;
   if (user.role === "admin") return true;
   if (user.suspended) return false;
+  if (await isFreeUnit(categoryId)) return true;
   const active = await getActivePurchases(user.id);
   if (active.length === 0) return false;
   if (active.some((p) => p.premium)) return true;
@@ -451,6 +465,7 @@ export async function getHomeStats() {
       .select({
         n: sql<number>`count(*)::int`,
         d: sql<number>`coalesce(sum(${materials.downloads}),0)::int`,
+        free: sql<number>`count(*) filter (where ${materials.access} = 'free' and ${materials.status} = 'active')::int`,
       })
       .from(materials)
       .where(inArray(materials.status, ["active", "draft"])),
@@ -464,6 +479,7 @@ export async function getHomeStats() {
     folders: cats?.n ?? 0,
     files: mats?.n ?? 0,
     downloads: mats?.d ?? 0,
+    freeFiles: mats?.free ?? 0,
     visits,
   };
 }

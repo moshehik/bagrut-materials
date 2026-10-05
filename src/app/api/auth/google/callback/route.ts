@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
       entityId: u.id,
     });
 
-    // גוגל לא מוסר עיר, תיכון וטלפון - נרשמת חדשה משלימה אותם מיד (הטלפון ממילא נדרש לפני הורדה)
+    // גוגל לא מוסר טלפון - נרשמת חדשה משלימה אותו מיד (נדרש לפני הורדה). עיר ותיכון נשאלים ברכישה הראשונה
     const dest = created ? `/account/complete?next=${encodeURIComponent(next)}` : next;
     const res = NextResponse.redirect(new URL(dest, origin));
     res.cookies.delete(G_STATE_COOKIE);

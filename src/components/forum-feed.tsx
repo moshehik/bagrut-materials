@@ -63,17 +63,20 @@ export function ForumFeed({
   entries,
   meId,
   canParticipate,
+  canView = canParticipate,
   isAdmin = false,
   demo = false,
 }: {
   entries: FeedEntry[];
   meId: number | null;
   canParticipate: boolean;
+  /** צפייה בתוכן המלא (ביחידה חינמית גם אורחת צופה, בלי להגיב); ברירת מחדל = canParticipate */
+  canView?: boolean;
   /** מנהלת: יכולה למחוק כל הודעה ותשובה (גם של אחרות) */
   isAdmin?: boolean;
   demo?: boolean;
 }) {
-  const blur = canParticipate ? "" : "select-none blur-[3px]";
+  const blur = canView ? "" : "select-none blur-[3px]";
   const [filter, setFilter] = useState<"all" | ForumKind>("all");
   // שורת הסינון מוצגת רק אחרי לחיצה על לחצן הסינון; סגירה מאפסת לתצוגת הכול
   const [filterOpen, setFilterOpen] = useState(false);
@@ -150,9 +153,9 @@ export function ForumFeed({
               <KindTag kind={t.kind} />
               <p
                 className={`whitespace-pre-wrap leading-relaxed ${blur}`}
-                aria-hidden={!canParticipate}
+                aria-hidden={!canView}
               >
-                {canParticipate ? t.body : t.body.slice(0, 140)}
+                {canView ? t.body : t.body.slice(0, 140)}
               </p>
               <Meta author={t.author} mine={mine} when={t.when} />
               {canParticipate && (
@@ -190,9 +193,9 @@ export function ForumFeed({
                         <KindTag kind="answer" />
                         <p
                           className={`whitespace-pre-wrap leading-relaxed ${blur}`}
-                          aria-hidden={!canParticipate}
+                          aria-hidden={!canView}
                         >
-                          {canParticipate ? a.body : a.body.slice(0, 140)}
+                          {canView ? a.body : a.body.slice(0, 140)}
                         </p>
                         <Meta
                           author={a.author}

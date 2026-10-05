@@ -40,7 +40,7 @@ export function randomToken(bytes = 24) {
 }
 
 /** נתיב חזרה בטוח – רק נתיב יחסי באותו origin */
-export function safeNextPath(next: string | null | undefined, fallback = "/account") {
+export function safeNextPath(next: string | null | undefined, fallback = "/") {
   if (!next) return fallback;
   if (!next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
   return next;

@@ -9,10 +9,10 @@ import { authTokens, purchases, users, userInterests } from "@/db/schema";
 import { requireUser } from "@/lib/session";
 import { sendMail, sendMailInBackground, adminEmail, siteUrl, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
-import { randomToken } from "@/lib/auth-utils";
+import { randomToken, safeNextPath } from "@/lib/auth-utils";
 import { PLANS } from "@/lib/constants";
 import { normalizeIsraeliPhone, PHONE_ERROR } from "@/lib/phone";
-import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
+import { phoneSchema } from "@/lib/profile-validation";
 
 export type ProfileState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -60,30 +60,30 @@ export async function updatePhoneAction(_: ProfileState, form: FormData): Promis
   });
 
   const next = String(form.get("next") ?? "");
-  if (next.startsWith("/") && !next.startsWith("//")) redirect(next);
+  if (safeNextPath(next, "") === next) redirect(next);
   return { ok: true, message: "הטלפון עודכן בהצלחה." };
 }
 
-const completeSchema = z.object({ city: citySchema, school: schoolSchema, phone: phoneSchema });
+const completeSchema = z.object({ phone: phoneSchema });
 
-/** השלמת פרטים אחרי הרשמה דרך גוגל (גוגל לא מוסר עיר, תיכון וטלפון) – הכל חובה */
+/** השלמת פרטים אחרי הרשמה דרך גוגל (גוגל לא מוסר טלפון) – חובה. עיר ותיכון נשאלים ברכישה הראשונה */
 export async function completeProfileAction(_: ProfileState, form: FormData): Promise<ProfileState> {
   const user = await requireUser();
   const parsed = completeSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { city, school, phone } = parsed.data;
+  const { phone } = parsed.data;
 
-  await db.update(users).set({ city, school, phone }).where(eq(users.id, user.id));
+  await db.update(users).set({ phone }).where(eq(users.id, user.id));
   await logAudit({
     actorId: user.id,
     action: "profile.complete",
     entityType: "user",
     entityId: user.id,
-    details: { city, school, phone: maskPhone(phone) },
+    details: { phone: maskPhone(phone) },
   });
 
   const next = String(form.get("next") ?? "");
-  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/account");
+  redirect(safeNextPath(next));
 }
 
 const pwSchema = z
@@ -176,7 +176,7 @@ export async function updateInterestsAction(form: FormData) {
     entityId: user.id,
     details: { categoryIds: ids },
   });
-  redirect("/account?interests=1");
+  redirect("/account/interests?saved=1");
 }
 
 /** בקשת ביטול מנוי – לא מבטלת מיידית, פונה למנהלת האתר */
@@ -217,5 +217,5 @@ export async function requestCancelSubscriptionAction(form: FormData) {
       userId: user.id,
     });
   }
-  redirect("/account?cancelreq=1");
+  redirect("/account/purchases?cancelreq=1");
 }

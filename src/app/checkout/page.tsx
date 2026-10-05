@@ -11,6 +11,7 @@ import { getCategoryChain, chainToHref, getDescendantIds, getRootSubjects } from
 import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, bundlePriceFor, formatPrice, subjectDisplayTitle } from "@/lib/constants";
 import { PlanCheckoutView } from "@/components/plan-checkout";
 import { getPlanPrices } from "@/lib/pricing";
+import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { CheckoutForm, type CheckoutFormProps, type CheckoutSubject } from "@/components/checkout-form";
 
 export const metadata: Metadata = { title: "השלמת הזמנה" };
@@ -227,21 +228,39 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     );
   }
 
+  // רכישה ראשונה: חסרים עיר מגורים ושם תיכון (לא נשאלים בהרשמה)
+  formProps.needsLocation = !user.city || !user.school;
+
+  // קופון הנחה פרטי של המשתמשת (אם יש) – יורד אוטומטית מהסכום בעת האישור
+  const coupon = await getBestPercentCoupon(user);
+  const couponBanner = coupon ? (
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 pt-6">
+      <div className="rounded-xl bg-gold-soft p-3 text-sm text-[#8a6500] font-semibold">
+        🎟️ יש לך קופון «{coupon.label}» – {coupon.percent}% הנחה יורדים אוטומטית מסכום ההזמנה בעת האישור.
+      </div>
+    </div>
+  ) : null;
+
   // מסלולי מנוי – באותו עיצוב של עמוד "מסלולים ומחירים"
   if (formProps.kind === "plan" && formProps.plan) {
     return (
-      <PlanCheckoutView
-        formProps={formProps}
-        prices={prices}
-        firstName={user.name.split(" ")[0]}
-        fullName={user.name}
-        email={user.email}
-        phone={user.phone}
-        personalCode={user.personalCode}
-      />
+      <>
+        {couponBanner}
+        <PlanCheckoutView
+          formProps={formProps}
+          prices={prices}
+          firstName={user.name.split(" ")[0]}
+          fullName={user.name}
+          email={user.email}
+          phone={user.phone}
+          personalCode={user.personalCode}
+        />
+      </>
     );
   }
   return (
+    <>
+    {couponBanner}
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
       <div className="mb-6 animate-fade-up">
         <p className="text-sm text-muted flex items-center gap-1">
@@ -269,5 +288,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         </section>
       </div>
     </div>
+    </>
   );
 }

@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { ArrowLeft, Check, Loader2, Lock, Sparkles, AlertCircle, CreditCard } from "lucide-react";
 import { GateShekel } from "@/components/gate-shekel";
+import { LocationFields } from "@/components/auth-forms";
 import { purchaseAction } from "@/lib/actions/purchase";
 import { formatPrice, PREMIUM_ADDON_PRICE, YEARLY_INCLUDED_SUBJECTS, SUBJECT_HOUSES } from "@/lib/constants";
 
@@ -30,6 +31,8 @@ export type CheckoutFormProps = {
   gate?: boolean;
   /** תוספת מקצוע למנוי שנתי, לחודש באגורות (× 12 לכל מקצוע מעבר ל-3 הכלולים) */
   extraSubjectPrice?: number;
+  /** רכישה ראשונה: חסרים עיר מגורים ושם תיכון – מבקשים אותם בטופס */
+  needsLocation?: boolean;
 };
 
 export function CheckoutForm(props: CheckoutFormProps) {
@@ -47,6 +50,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
     addonPrice = PREMIUM_ADDON_PRICE,
     gate = false,
     extraSubjectPrice = 0,
+    needsLocation = false,
   } = props;
 
   const [state, action, pending] = useActionState(purchaseAction, undefined);
@@ -165,6 +169,13 @@ export function CheckoutForm(props: CheckoutFormProps) {
             {needsMulti && isYearly && left > 0 && selected.length > 0 && (
               <p className="mt-3 text-[#ffd45a]">נשארו עוד {left} מקצועות כלולים בלי תוספת.</p>
             )}
+          </section>
+        )}
+
+        {needsLocation && (
+          <section className="space-y-4" aria-labelledby="loc-h">
+            <h3 id="loc-h" className="text-3xl">עוד שני פרטים לרכישה הראשונה</h3>
+            <LocationFields />
           </section>
         )}
 
@@ -349,6 +360,13 @@ export function CheckoutForm(props: CheckoutFormProps) {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {needsLocation && (
+        <div className="space-y-4">
+          <p className="text-sm font-semibold">עוד שני פרטים לרכישה הראשונה</p>
+          <LocationFields light />
         </div>
       )}
 

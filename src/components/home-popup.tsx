@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
-/** כמה זמן דף הבית נראה לבד, לפני שההודעה מופיעה מעליו */
-const DELAY_MS = 3000;
+/** רגע קצר אחרי שהאנימציה של דף הבית נגמרה, לפני שההודעה מופיעה */
+const AFTER_ANIM_MS = 600;
+/** רשת ביטחון: אם האנימציה לא מסמנת שנגמרה, ההודעה מופיעה בכל זאת אחרי הזמן הזה */
+const MAX_WAIT_MS = 20000;
 /** ms לאות – קצב כתיבה בכתב יד */
 const CHAR_MS = 55;
 /** כמה זמן ההודעה נשארת אחרי שהאותיות סיימו להיכתב (כדי להספיק לקרוא), ואז נעלמת */
@@ -25,7 +27,7 @@ function buildSegments(d: HomePopupData): Seg[] {
   for (const item of d.items) {
     const [head, ...rest] = item.split("\n");
     // כשיש כמה הודעות – אגוז מסתובב בתחילת כל אחת
-    segs.push({ text: head, cls: "hp-head", nut: many });
+    segs.push({ text: head, cls: many ? "hp-head hp-head-nut" : "hp-head", nut: many });
     const body = rest.join("\n").trim();
     if (body) segs.push({ text: body, cls: "hp-body" });
   }
@@ -33,11 +35,11 @@ function buildSegments(d: HomePopupData): Seg[] {
 }
 
 /**
- * עוטף את דף הבית. הודעה בדף הבית (מקצוע חדש, קופונים חדשים וכו') מופיעה במקביל לדף שנפתח:
- * קודם דף הבית עושה את האנימציות שלו 3 שניות, ואז קופץ מעליו כרטיס ההודעה (public/images/home-popup-card.webp)
- * והטקסט נכתב עליו אות-אחר-אות בכחול האתר בכתב גברת לוין. ההודעה נשארת כל עוד האותיות נכתבות, ומיד אחרי
- * שהסתיימו (ועוד רגע לקריאה) היא נעלמת – ובאותו רגע דף הבית מתחיל את האנימציות שלו מחדש (remount לפי epoch).
- * מופיעה בכל כניסה לדף. אפשר גם לסגור ב-Esc / לחיצה על הרקע. העיצוב בקלאסים .hp-* ב-globals.css.
+ * עוטף את דף הבית. הודעה בדף הבית (מקצוע חדש, קופונים חדשים וכו') מופיעה אחרי שהאנימציות של דף הבית נגמרו:
+ * אז קופץ מעליו כרטיס ההודעה (public/images/home-popup-card.webp) והטקסט נכתב עליו אות-אחר-אות בכחול האתר
+ * בכתב גברת לוין. ההודעה נשארת כל עוד האותיות נכתבות, ומיד אחרי שהסתיימו (ועוד רגע לקריאה) היא נעלמת –
+ * ורק אז נפתח הטולטיפ של גלילת האגוז (NutScrollHandle מחכה ל-data-home-popup שייעלם).
+ * מופיעה בכל כניסה לדף. אפשר גם לסגור ב-X / Esc / לחיצה על הרקע. העיצוב בקלאסים .hp-* ב-globals.css.
  */
 export function HomePopup({ data, children }: { data: HomePopupData; children: React.ReactNode }) {
   const reduce = useReducedMotion();
@@ -48,11 +50,40 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
   const [leaving, setLeaving] = useState(false);
   const [gone, setGone] = useState(false);
   const [count, setCount] = useState(0);
-  const [epoch, setEpoch] = useState(0);
 
+  // ההודעה מופיעה רק אחרי שאנימציות דף הבית נגמרו (הכיתוב האחרון, פסקת הפתיחה, סיים להיכתב)
+  // ואם מישהי התחילה לגלול ולא חיכתה לאנימציה – ההודעה קופצת לה מיד
   useEffect(() => {
-    const t = setTimeout(() => setShown(true), DELAY_MS);
-    return () => clearTimeout(t);
+    const started = Date.now();
+    let after = 0;
+    const stopWaiting = () => {
+      clearInterval(poll);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onNudge);
+      window.removeEventListener("touchmove", onNudge);
+    };
+    const showNow = () => {
+      stopWaiting();
+      setShown(true);
+    };
+    const onScroll = () => {
+      if (window.scrollY > 12) showNow();
+    };
+    const onNudge = () => showNow();
+    const poll = setInterval(() => {
+      const done = !!document.documentElement.dataset.homeLeadDone;
+      if (!done && Date.now() - started < MAX_WAIT_MS) return;
+      stopWaiting();
+      after = window.setTimeout(() => setShown(true), AFTER_ANIM_MS);
+    }, 200);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", onNudge, { passive: true });
+    window.addEventListener("touchmove", onNudge, { passive: true });
+    onScroll(); // כבר גללה לפני שהדף סיים להיטען
+    return () => {
+      stopWaiting();
+      clearTimeout(after);
+    };
   }, []);
 
   // מסמן ל-NutScrollHandle שיש הודעה פעילה, כדי שטולטיפ האגוז ימתין עד שהיא נעלמת
@@ -67,7 +98,6 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
 
   const dismiss = useCallback(() => {
     setLeaving(true);
-    setEpoch((e) => e + 1); // דף הבית מתחיל מחדש את האנימציות שלו, בזמן שההודעה נמוגה
     setTimeout(() => setGone(true), FADE_MS);
   }, []);
 
@@ -109,7 +139,7 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
   let left = count; // כמה אותיות עוד "נכתבות" לפני הקטע הנוכחי
   return (
     <>
-      <div key={epoch} className="overflow-x-clip">
+      <div className="overflow-x-clip">
         {children}
       </div>
       {shown && !gone && (
@@ -120,6 +150,11 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
           }}
         >
           <div className="hp-card" role="dialog" aria-modal="true" aria-label={segs.map((s) => s.text).join(". ")}>
+            <button type="button" className="hp-close" aria-label="סגירה" onClick={dismiss}>
+              <svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+              </svg>
+            </button>
             <div className="hp-text" aria-hidden>
               {/* מקום שמור ללוגו שבפינה השמאלית-תחתונה של הכרטיס: הטקסט עוטף אותו */}
               <span className="hp-logo-gap-top" />

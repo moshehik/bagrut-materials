@@ -19,7 +19,7 @@ export default async function LoginPage({
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
 
   const user = await getCurrentUser();
-  if (user) redirect(safeNext ?? "/account");
+  if (user) redirect(safeNext ?? "/");
 
   const googleEnabled = googleConfigured() && (await getBool("google_login_enabled"));
   const urlError = suspended === "1" ? "suspended" : error || undefined;

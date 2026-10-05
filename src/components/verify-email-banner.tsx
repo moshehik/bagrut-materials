@@ -5,7 +5,7 @@ import { MailWarning, MailCheck, Loader2, CheckCircle2, AlertCircle } from "luci
 import { sendVerificationEmail } from "@/lib/actions/password";
 
 /**
- * באנר "המייל שלך עדיין לא אומת" – לאזור האישי.
+ * באנר "המייל שלך עדיין לא אומת" – לאזור האישי, בעיצוב חלונית "שימי לב!".
  * props: verified (מצב נוכחי), email (להצגה), justVerified (?verified=1 מה-URL)
  */
 export function VerifyEmailBanner({
@@ -25,8 +25,9 @@ export function VerifyEmailBanner({
   if (verified) {
     if (!justVerified) return null;
     return (
-      <div className="card p-4 flex items-center gap-3 bg-green-50 text-green-800 text-sm animate-pop">
-        <CheckCircle2 className="h-5 w-5 shrink-0" />
+      <div role="status" className="gate-panel mx-auto mt-6 flex max-w-3xl items-center gap-3 text-[#ffd45a] animate-pop">
+        <span className="gold-ring" aria-hidden="true" />
+        <CheckCircle2 className="h-6 w-6 shrink-0" aria-hidden />
         <span>כתובת המייל אומתה בהצלחה. תודה!</span>
       </div>
     );
@@ -42,30 +43,31 @@ export function VerifyEmailBanner({
   }
 
   return (
-    <div className="card p-4 sm:p-5 bg-gold-soft/50 border border-gold/30 animate-fade-up">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="grid place-items-center h-10 w-10 rounded-xl bg-white text-[#8a6500] shrink-0">
-          <MailWarning className="h-5 w-5" />
+    <div className="gate-panel mx-auto mt-6 max-w-3xl animate-fade-up">
+      <span className="gold-ring" aria-hidden="true" />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <span className="gate-icon">
+          <MailWarning className="h-6 w-6" strokeWidth={1.5} aria-hidden />
         </span>
-        <div className="flex-1 min-w-[200px]">
-          <p className="font-semibold text-sm">
+        <div className="min-w-[200px] flex-1">
+          <p className="text-xl text-[#ffd45a]">
             {failed ? "קישור האימות אינו תקף או שפג תוקפו." : "כתובת המייל שלך עדיין לא אומתה"}
           </p>
-          <p className="text-xs text-muted">
+          <p className="text-base">
             נשלח קישור אימות אל <span dir="ltr">{email}</span>. האימות עוזר לנו לשמור על החשבון שלך.
           </p>
         </div>
-        <button type="button" onClick={send} disabled={pending} className="btn btn-gold text-sm py-2">
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailCheck className="h-4 w-4" />}
+        <button type="button" onClick={send} disabled={pending} className="btn btn-gold btn-gate py-2 disabled:opacity-50">
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <MailCheck className="h-4 w-4" aria-hidden />}
           שלחי מייל אימות
         </button>
       </div>
       {msg && (
         <p
           role="status"
-          className={`mt-3 text-sm flex items-center gap-2 ${msg.ok ? "text-green-800" : "text-[#9d4a2a]"}`}
+          className={`mt-3 flex items-center gap-2 text-base ${msg.ok ? "text-[#ffd45a]" : "text-[#ffd9d2]"}`}
         >
-          {msg.ok ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+          {msg.ok ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <AlertCircle className="h-4 w-4" aria-hidden />}
           {msg.text}
         </p>
       )}

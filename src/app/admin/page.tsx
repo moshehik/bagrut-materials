@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, count, desc, eq, gte, inArray, sum } from "drizzle-orm";
 import { Radio, Download, Activity, Wallet, BarChart3, ScrollText, Inbox } from "lucide-react";
@@ -31,6 +32,7 @@ async function safeCount(p: Promise<{ n: number }[]>): Promise<number> {
 }
 
 export default async function AdminDashboard() {
+  await requireAdminPage();
   const windowMin = Math.max(1, await getNumber("online_window_minutes"));
   const since = minutesAgo(windowMin);
   const today = startOfToday();

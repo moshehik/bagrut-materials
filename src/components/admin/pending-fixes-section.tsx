@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
@@ -5,6 +6,7 @@ import { FixPublishForm } from "@/components/admin/fix-publish-form";
 
 /** בקשות תיקון שממתינות לטיפול – משותף ל-/admin/fixes ול-/admin/inbox */
 export async function PendingFixesSection({ title = "ממתינות לטיפול" }: { title?: string }) {
+  await requireAdminPage();
   const pending = await db
     .select({
       id: materialFixes.id,

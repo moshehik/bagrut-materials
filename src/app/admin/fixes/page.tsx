@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
@@ -7,6 +8,7 @@ import { PendingFixesSection } from "@/components/admin/pending-fixes-section";
 export const dynamic = "force-dynamic";
 
 export default async function AdminFixesPage() {
+  await requireAdminPage();
   const rows = await db
     .select({
       id: materialFixes.id,

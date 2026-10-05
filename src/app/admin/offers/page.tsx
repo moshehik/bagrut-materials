@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sellOffers, users } from "@/db/schema";
@@ -13,6 +14,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export default async function AdminOffersPage() {
+  await requireAdminPage();
   const rows = await db
     .select({
       id: sellOffers.id,

@@ -1,0 +1,39 @@
+.root {
+  line-height: 0;
+}
+.root svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* מצב מוכן: הכול מוסתר עד שהתרשים נכנס לתצוגה */
+.armed .boxWipe {
+  transform: scaleX(0);
+}
+.armed .lineDraw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.boxWipe {
+  transform-box: fill-box;
+  transform-origin: right center;
+}
+.drawing .boxWipe {
+  transform: scaleX(0);
+  animation: mapWipe 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.drawing .lineDraw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mapLine 0.4s ease-in-out both;
+}
+@keyframes mapWipe {
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes mapLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

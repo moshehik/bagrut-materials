@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Tags } from "lucide-react";
+import { ArrowLeft, BookOpen, Gift, Tags } from "lucide-react";
+import { getFreeTrialState } from "@/lib/free-trial";
 import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
@@ -9,12 +10,15 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { HeroTitle } from "@/components/hero-title";
+import { HeroClock } from "@/components/hero-clock";
+import { AboutWriting } from "@/components/about-writing";
 import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
-import { IconMaterials, IconSubjects, IconDownloads, IconVisits } from "@/components/kind-icons";
+import { IconMaterials, IconSubjects, IconLessonTypes, IconFree } from "@/components/kind-icons";
 import { CountUp } from "@/components/count-up";
 import { nutForLevel } from "@/lib/nut-images";
 import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
+import { MapDraw } from "@/components/map-draw";
 import { FaqSection } from "@/components/faq-section";
 import { HomePopup, type HomePopupData } from "@/components/home-popup";
 import { getSettings } from "@/lib/settings";
@@ -34,7 +38,7 @@ async function safeStats() {
   try {
     return await getHomeStats();
   } catch {
-    return { subjects: 0, folders: 0, files: 0, downloads: 0, visits: 0 };
+    return { subjects: 0, folders: 0, files: 0, downloads: 0, freeFiles: 0, visits: 0 };
   }
 }
 
@@ -71,19 +75,17 @@ export default async function HomePage({
     };
   }
 
+  // כפתור "נסי שיעור אחד בחינם": לאורחת (ההרשמה פותחת אותו) ולמחוברת שעוד לא מימשה; אחרת חוזרים ל"מסלולים ומחירים"
+  const trialState = await getFreeTrialState(user).catch(() => "off" as const);
+  const trialCta =
+    cfg.free_trial_enabled === "true" && (!user || trialState === "available" || trialState === "unverified");
+
   const body = (
     <>
       {/* ================= HERO ================= */}
       <div className={s.hero}>
         <div className={s.heroBg} aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <span className={s.heroPen}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/hero-pen.png" alt="" className={s.heroPenImg} width={260} height={352} />
-          </span>
-          <span className={s.heroGoatRun}>
-            <img src="/images/goat-run.png" alt="" className={s.heroGoat} width={428} height={443} />
-          </span>
+          <HeroClock />
         </div>
         <div className={s.wrap}>
           <div className={s.heroGrid}>
@@ -91,7 +93,7 @@ export default async function HomePage({
               <HeroTitle />
               <TypewriterLead
                 className={s.lead}
-                text={'בלו"ז העניין תקבלי את המעטפת המושלמת לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור! בואי להיות חלק ממשהו גדול, להוציא את העז מהלו"ז, ולתת לתלמידות שלך מעבר.'}
+                text={'כאן תקבלי את המעטפת המושלמת לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור!'}
               />
               <div className={s.acts}>
                 <Link href="/subjects" className="btn btn-gold btn-gate">
@@ -99,10 +101,17 @@ export default async function HomePage({
                   למאגר המקצועות
                   <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
                 </Link>
-                <Link href="/pricing" className="btn btn-ghost btn-plans text-base">
-                  <Tags className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
-                  מסלולים ומחירים
-                </Link>
+                {trialCta ? (
+                  <Link href={user ? "/subjects" : "/register"} className="btn btn-ghost btn-plans text-base">
+                    <Gift className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
+                    נסי שיעור אחד בחינם
+                  </Link>
+                ) : (
+                  <Link href="/pricing" className="btn btn-ghost btn-plans text-base">
+                    <Tags className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
+                    מסלולים ומחירים
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -110,7 +119,7 @@ export default async function HomePage({
       </div>
 
       <div className={s.wrap}>
-        {/* ================= KINDS — הנתונים המשתנים של האתר (קופצים מ-0 בכל כניסה, לפי העדכון האחרון) ================= */}
+        {/* ================= KINDS — נתוני האתר (קופצים מ-0 בכל כניסה). ההורדות והכניסות הוסתרו בכוונה עד שהמספרים יגדלו — stats.downloads/visits עדיין מחושבים ב-getHomeStats ================= */}
         <AnimatedGrid className={s.kinds}>
           <div className={s.kind}>
             <img src="/images/kind-blob-1.png" alt="" className={s.kindBlob} />
@@ -122,22 +131,22 @@ export default async function HomePage({
             <img src="/images/kind-blob-2.png" alt="" className={s.kindBlob} />
             <IconSubjects className={s.kindIcon} />
             <b><CountUp value={stats.subjects} /></b>
-            <span>מקצועות</span>
+            <span>מקצועות בפריסה</span>
           </div>
           <div className={s.kind}>
             <img src="/images/kind-blob-3.png" alt="" className={s.kindBlob} />
-            <IconDownloads className={s.kindIcon} />
-            <b><CountUp value={stats.downloads} /></b>
-            <span>הורדות</span>
+            <IconLessonTypes className={s.kindIcon} />
+            {/* "עד": המפרט משתנה לפי סוג השיעור (ר' ההערה מתחת ל"מה לו״ז השיעור שלנו?"), לא בכל שיעור יש את כל הסוגים */}
+            <b>עד <CountUp value={LESSON_ITEMS.filter((t) => t !== "presentation").length} /></b>
+            <span>קבצי תוכן לשיעור</span>
           </div>
           <div className={s.kind}>
             <img src="/images/kind-blob-4.png" alt="" className={s.kindBlob} />
-            <IconVisits className={s.kindIcon} />
-            <b><CountUp value={stats.visits} /></b>
-            <span>כניסות לאתר</span>
+            <IconFree className={s.kindIcon} />
+            <b><CountUp value={stats.freeFiles} /></b>
+            <span>קבצים חינמיים</span>
           </div>
         </AnimatedGrid>
-
         {/* ================= LESSON CONTENTS (לו"ז השיעור) ================= */}
         <Reveal>
           <h2 className="sec-h" style={{ marginBottom: 40 }}>
@@ -174,10 +183,6 @@ export default async function HomePage({
           })}
         </AnimatedGrid>
         <p className={s.lessonNote}>המפרט מתעדכן לפי סוג השיעור</p>
-        <div className={s.lessonNuts} aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/nuts/many-05.webp" alt="" width={282} height={141} />
-        </div>
 
         {/* ================= STEPS ================= */}
         <Reveal>
@@ -241,125 +246,31 @@ export default async function HomePage({
           </div>
         )}
 
-        {/* ================= QUOTES ================= */}
+        {/* ================= מפת הבגרויות ================= */}
         <Reveal>
-          <h2 className="sec-h">מה מורות אומרות</h2>
-          <p className="sec-sub" style={{ marginBottom: 46 }}>
-            כשהחומר מסודר — נשאר מקום לכל מה שבין השורות.
-          </p>
+          <div className={s.mapSec}>
+            <MapDraw className={s.mapArt} />
+            <div className={s.mapText}>
+              <h2>מפת הבגרויות</h2>
+              <p>
+                פריסה מדויקת עד אחרון הפרטים בכל מקצוע.
+                <br />
+                מה צריך ללמד בסמל השאלון שלו.
+              </p>
+              <Link href="/map" className="btn btn-gold btn-gate">
+                למפת הבגרויות
+                <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
+              </Link>
+            </div>
+          </div>
         </Reveal>
-        <AnimatedGrid className={s.quotes}>
-          <div className={s.q}>
-            <img src="/images/memo/memo-cream.png" alt="" className={s.memoImg} />
-            <div className={s.qBody}>
-              <p>
-                במקום לבנות כל ערב דף עבודה מאפס, אני פותחת את הפרק ומדפיסה. את הזמן שהתפנה אני
-                משקיעה בבנות שצריכות אותי יותר.
-              </p>
-              <div className={s.who}>
-                <span className={s.av}>ר</span>רבקה, מורה ללשון
-              </div>
-            </div>
-          </div>
-          <div className={s.q}>
-            <img src="/images/memo/memo-blue.png" alt="" className={s.memoImg} />
-            <div className={s.qBody}>
-              <p>
-                המצגת מסודרת בדיוק לפי מהלך השיעור, אז אני לא &quot;מלמדת מהדף&quot; — אני מלמדת את הכיתה.
-                זה ההבדל.
-              </p>
-              <div className={s.who}>
-                <span className={s.av}>מ</span>מלכה, מורה לנביא
-              </div>
-            </div>
-          </div>
-          <div className={s.q}>
-            <img src="/images/memo/memo-pink.png" alt="" className={s.memoImg} />
-            <div className={s.qBody}>
-              <p>
-                שאלות הבגרויות הקודמות לפי פרק חסכו לי שעות של חיפוש. סוף סוף יש לי זמן גם
-                לסיפור, גם לחידה — וגם לבגרות.
-              </p>
-              <div className={s.who}>
-                <span className={s.av}>ש</span>שרה, מורה לתהילים
-              </div>
-            </div>
-          </div>
-        </AnimatedGrid>
 
         {/* ================= ABOUT ================= */}
         <Reveal>
           <h2 className="sec-h" style={{ marginBottom: 36 }}>
             מי אנחנו?
           </h2>
-          <div className={s.aboutLetter}>
-            <img src="/images/about-letter.png" alt="" className={s.aboutLetterImg} aria-hidden />
-            <div className={s.aboutText}>
-              <p>הכל התחיל כשהבנו שהגיע הזמן.</p>
-              <p>
-                אולי זאת הייתה שוועת ממלאות המקום היומיות-
-                <br />
-                שבהתראות קצרות נדרשו למלא לו״ז?
-              </p>
-              <p>
-                או שאולי דווקא התקופתיות-
-                <br />
-                כל שלושה חודשים יצאו למסע יש מאין של איסוף, איתור ואילתור?
-              </p>
-              <p>
-                ייתכן וזה היה קולו הדחוק של החלום ההוא, להוסיף שעות,
-                <br />
-                חלום שנגדע עקב אימת הכנת השיעורים מחדש.
-              </p>
-              <p>
-                או אולי משרות נחשקות שאוישו בלעדינו,
-                <br />
-                רק כי פחדנו להירטב שוב מהמים הקרים.
-              </p>
-              <p>
-                זה לא סוד.
-                <br />
-                להכין שיעור טוב- זה אתגר.
-                <br />
-                להפוך אותו למיוחד ואטרקטיבי - זה בונוס לפריווילגיות.
-              </p>
-              <p>
-                והגיע לנו, בדור שזקוק אפילו ליותר מזה, לקבל במתנה את-
-                <br />
-                <b className={s.aboutBrand}>לו״ז העניין.</b>
-                <br />
-                <b className={s.aboutBrand}>הבית של הבגרויות.</b>
-              </p>
-              <p>
-                אנחנו כאן, אחיות להוראה,
-                <br />
-                ממנעד סמינרים רחב ומגוון.
-                <br />
-                רוצות להעניק לך את השלווה של הפת בסלה.
-              </p>
-              <p className={s.aboutClose}>
-                בואי הצטרפי אלינו,
-                <br />
-                ובשטח הלו״ז הפנוי,
-                <br />
-                מלאי אותו באין סוף דברים טובים,
-                <br />
-                כאלה, שרק מורה יכולה לתת.
-              </p>
-              <p className={s.aboutSign}>
-                בהערכה,
-                <br />
-                <span className={s.aboutHeart} aria-hidden="true">
-                  ♥
-                </span>
-                <br />
-                <b className={s.aboutBrand}>צוות לו״ז העניין</b>
-                <br />
-                בהנהלת חיה שיינווטר
-              </p>
-              <img src="/images/logo.png" alt="לו״ז העניין — בית לחומרי הבגרות" className={s.aboutLogo} />
-            </div>
-          </div>
+          <AboutWriting />
         </Reveal>
 
         {/* ================= SECURITY ================= */}
@@ -397,7 +308,7 @@ export default async function HomePage({
     </>
   );
 
-  // עם הודעה פעילה – העוטף מקרין אותה מעל הדף, ומפעיל את אנימציות הדף מחדש כשהיא נעלמת
+  // עם הודעה פעילה – העוטף מקרין אותה מעל הדף אחרי שאנימציות הדף נגמרו (או מיד כשמתחילים לגלול)
   return popup ? (
     <HomePopup data={popup}>{body}</HomePopup>
   ) : (

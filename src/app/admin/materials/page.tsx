@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { asc, count, desc, eq, isNull } from "drizzle-orm";
 import { ChevronLeft } from "lucide-react";
@@ -14,6 +15,7 @@ export default async function AdminMaterialsPage({
 }: {
   searchParams: Promise<{ category?: string }>;
 }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const categoryId = sp.category ? Number(sp.category) : NaN;
 

@@ -209,6 +209,35 @@ export const materialFixes = pgTable(
 );
 
 /** מאגר שיחות מורות (שיחה / חברה / כישורי חיים) — שיחה/פעילות שמורה מעלה, לא "חומר" רגיל של המנהלת */
+/**
+ * קופון פרטי של המנהלת – נראה רק בעמוד הניהול, ומופיע ב"קופונים זמינים" רק למשתמשת שכתובת המייל שלה
+ * שויכה לקופון (או שמימשה אותו בקוד). חד-פעמי.
+ * benefit: percent = הנחה באחוזים על הרכישה הבאה; subjects = גישה חינם למקצועות (subjectIds, JSON) ל-days ימים.
+ */
+export const privateCoupons = pgTable(
+  "private_coupons",
+  {
+    id: serial("id").primaryKey(),
+    code: varchar("code", { length: 24 }).notNull(),
+    /** כתובת המייל שרשאית לממש (lowercase). null = מי שמחזיקה בקוד */
+    email: varchar("email", { length: 255 }),
+    label: varchar("label", { length: 120 }).notNull(),
+    benefit: varchar("benefit", { length: 12 }).notNull(),
+    percent: integer("percent"),
+    subjectIds: text("subject_ids"),
+    days: integer("days"),
+    expiresAt: timestamp("expires_at"),
+    /** active / used / revoked */
+    status: varchar("status", { length: 10 }).notNull().default("active"),
+    /** המשתמשת ששייכה את הקופון לעצמה בקוד (לקופון בלי מייל) */
+    claimedBy: integer("claimed_by").references(() => users.id, { onDelete: "set null" }),
+    usedAt: timestamp("used_at"),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("private_coupons_code_idx").on(t.code), index("private_coupons_email_idx").on(t.email)],
+);
+
 export const sichot = pgTable(
   "sichot",
   {

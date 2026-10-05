@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -42,6 +43,7 @@ function fillDays(days: number, rows: Row[], keyDay = "d", keyVal = "n"): Point[
 const dayExpr = (col: string) => sql.raw(`to_char(date_trunc('day', ${col}), 'YYYY-MM-DD')`);
 
 export default async function AdminStatsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const daysRaw = spInt(sp, "days", 30);
   const days = [7, 30, 90].includes(daysRaw) ? daysRaw : 30;

@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { MessageCircle, Lock, Sparkles, LogIn } from "lucide-react";
 import { db } from "@/db";
 import { forumPosts, forumReports, forumThreads, users, type Category, type User } from "@/db/schema";
-import { userCanUseUnitForum } from "@/lib/data";
+import { isFreeUnit, userCanUseUnitForum } from "@/lib/data";
 import { ForumComposer } from "@/components/forum-forms";
 import { ForumFeed, type FeedEntry } from "@/components/forum-feed";
 import { forumWhen, isForumKind } from "@/lib/forum-utils";
@@ -25,6 +25,9 @@ export async function UnitForum({
 }) {
   const premium = await userCanUseUnitForum(user, category.id);
   const isAdmin = user?.role === "admin";
+  // יחידה חינמית: כולן צופות (גם בלי הרשמה); כתיבה – רק בהרשמה (מחוברת). ביחידה בתשלום – רק מנויה/רוכשת
+  const freeUnit = await isFreeUnit(category.id);
+  const canView = premium || freeUnit;
 
   const threads = await db
     .select({
@@ -111,11 +114,13 @@ export async function UnitForum({
             <p className="flex-1">
               <b className="font-normal text-xl">רוצה לשאול או לשתף על השיעור הזה?</b>
               <span className="gate-soft block text-base leading-snug">
-                הפורום פתוח למנויות ולמי שרכשה קובץ ביחידה – כל שאלה, הערה וטיפ נשמרים כאן, צמוד ליחידה.
+                {freeUnit
+                  ? "אפשר לצפות בפורום של היחידה החינמית גם בלי להירשם. כדי לשאול, להגיב או לשתף טיפ – הירשמי (חינם) או התחברי."
+                  : "הפורום פתוח למנויות ולמי שרכשה קובץ ביחידה – כל שאלה, הערה וטיפ נשמרים כאן, צמוד ליחידה."}
               </span>
             </p>
             <Link href={`/login?next=${encodeURIComponent(here)}`} className="btn btn-gold shrink-0">
-              התחברי
+              {freeUnit ? "הרשמה / התחברות" : "התחברי"}
             </Link>
           </div>
         ) : premium ? (
@@ -151,6 +156,7 @@ export async function UnitForum({
             entries={entries}
             meId={user?.id ?? null}
             canParticipate={premium || isAdmin}
+            canView={canView || isAdmin}
             isAdmin={isAdmin}
           />
         )}

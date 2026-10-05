@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, count, desc, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
@@ -31,6 +32,7 @@ function kindTone(kind: string): string {
 }
 
 export default async function AdminAgentPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const kindQ = sp1(sp, "kind").trim();
   const sourceQ = sp1(sp, "source").trim();

@@ -24,7 +24,7 @@ export default async function RegisterPage({
   const { next } = await searchParams;
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
   const user = await getCurrentUser();
-  if (user) redirect(safeNext ?? "/account");
+  if (user) redirect(safeNext ?? "/");
   const googleEnabled = googleConfigured() && (await getBool("google_login_enabled"));
 
   return (

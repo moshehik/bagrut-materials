@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, avg, count, countDistinct, desc, eq, gte, ilike, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
@@ -21,6 +22,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 100;
 
 export default async function AdminActivityPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const userQ = sp1(sp, "user").trim();
   const pathQ = sp1(sp, "path").trim();

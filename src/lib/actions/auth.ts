@@ -10,16 +10,14 @@ import { createSession, destroySession, getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
-import { genPersonalCode } from "@/lib/auth-utils";
-import { citySchema, personName, phoneSchema, schoolSchema } from "@/lib/profile-validation";
+import { genPersonalCode, safeNextPath } from "@/lib/auth-utils";
+import { personName, phoneSchema } from "@/lib/profile-validation";
 
 export type ActionState = { error?: string } | undefined;
 
 const registerSchema = z.object({
   firstName: personName("יש להזין שם פרטי תקין"),
   lastName: personName("יש להזין שם משפחה תקין"),
-  city: citySchema,
-  school: schoolSchema,
   email: z.string().trim().toLowerCase().email("כתובת מייל לא תקינה"),
   phone: phoneSchema,
   password: z.string().min(6, "סיסמה של 6 תווים לפחות"),
@@ -39,7 +37,7 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     await logAudit({ action: "register.failed", entityType: "user", details: { reason: "invalid_input" } });
     return { error: parsed.error.issues[0].message };
   }
-  const { firstName, lastName, city, school, email, phone, password, marketing } = parsed.data;
+  const { firstName, lastName, email, phone, password, marketing } = parsed.data;
   const name = `${firstName} ${lastName}`;
 
   const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
@@ -70,8 +68,6 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
       name,
       firstName,
       lastName,
-      city,
-      school,
       marketingConsent: marketing === "on",
       termsAcceptedAt: new Date(),
       email,
@@ -90,7 +86,7 @@ export async function registerAction(_: ActionState, form: FormData): Promise<Ac
     kind: "welcome",
     userId: u.id,
   });
-  redirect("/account");
+  redirect("/");
 }
 
 const loginSchema = z.object({
@@ -130,7 +126,7 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
   }
   await createSession(u.id);
   await logAudit({ actorId: u.id, action: "login", entityType: "user", entityId: u.id });
-  redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/account");
+  redirect(safeNextPath(next));
 }
 
 export async function logoutAction() {

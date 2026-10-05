@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, desc, eq, gt, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
@@ -29,6 +30,7 @@ export default async function AdminSubscriptionsPage({
 }: {
   searchParams: Promise<SP>;
 }) {
+  await requireAdminPage();
   const sp = await searchParams;
   const status = purchaseStatusEnum.enumValues.find((s) => s === sp.status);
   const plan = planEnum.enumValues.find((p) => p === sp.plan);

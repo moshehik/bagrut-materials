@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { and, countDistinct, desc, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
@@ -10,6 +11,7 @@ import { AutoRefresh } from "@/components/admin/auto-refresh";
 export const dynamic = "force-dynamic";
 
 export default async function AdminOnlinePage() {
+  await requireAdminPage();
   const windowMin = Math.max(1, await getNumber("online_window_minutes"));
   const since = minutesAgo(windowMin);
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/session";
-import { isSafeId } from "@/lib/upload-id";
+import { isSafeId, MAX_CHUNK_INDEX } from "@/lib/upload-id";
 import { driveChunkAppend } from "@/lib/driveBridge";
 import { logAudit } from "@/lib/audit";
 
@@ -13,11 +13,13 @@ const MAX_CHUNK = 4 * 1024 * 1024;
 export async function POST(request: Request): Promise<NextResponse> {
   let actorId: number | null = null;
   try {
-    actorId = (await requireUser()).id;
+    const user = await requireUser();
+    if (user.suspended) throw new Error("FORBIDDEN");
+    actorId = user.id;
     const url = new URL(request.url);
     const session = url.searchParams.get("session");
     const index = parseInt(url.searchParams.get("index") ?? "", 10);
-    if (!isSafeId(session) || !Number.isInteger(index) || index < 0 || index > 999) {
+    if (!isSafeId(session) || !Number.isInteger(index) || index < 0 || index > MAX_CHUNK_INDEX) {
       return NextResponse.json({ error: "פרמטרים לא חוקיים" }, { status: 400 });
     }
     const bytes = new Uint8Array(await request.arrayBuffer());

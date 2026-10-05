@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
@@ -7,6 +8,7 @@ import { FORUM_LABEL, forumAuthor, isForumKind } from "@/lib/forum-utils";
 
 /** דיווחים פתוחים על תוכן לא הולם בפורום – משותף ל-/admin/forum ול-/admin/inbox. כשאין דיווחים: `showEmpty` מציג הודעה, אחרת לא מוצג כלום */
 export async function ForumReportsSection({ showEmpty = false }: { showEmpty?: boolean }) {
+  await requireAdminPage();
   const reports = await db
     .select({
       id: forumReports.id,
