@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Check,
   Award,
   CalendarDays,
   CalendarRange,
@@ -38,7 +37,28 @@ export default async function PricingPage() {
       aria-hidden
     />
   );
-  const check = <Check className="mt-1 h-4 w-4 shrink-0" aria-hidden />;
+  // במקום סימן וי – תמונת אגוז
+  const check = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/images/nut-check.png"
+      alt=""
+      aria-hidden
+      className="h-8 w-auto shrink-0"
+    />
+  );
+
+  // תמונת אגוזים מתחת לכרטיס המסלול (קישוט בלבד)
+  const decor = (name: string) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/images/plan-nuts/${name}.png`}
+      alt=""
+      aria-hidden
+      className="plan-nuts"
+      style={{ height: name === "single" ? "5.5rem" : name === "daily" ? "6.5rem" : "8.5rem" }}
+    />
+  );
 
   // כל העמוד בעיצוב ההודעה "שימי לב!" שלפני תיקון החומרים: חלונית כחולה כהה עם ניצוץ זהב, כרטיסי זהב בהיר במסגרת שחורה
   return (
@@ -85,7 +105,9 @@ export default async function PricingPage() {
           המסלולים
         </h2>
         <AnimatedGrid className="mt-6 grid gap-10">
-          <div className="gate-card gate-plan">
+                    <div className="gate-card gate-plan">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/seals/single.png" alt="כשאת צריכה דחוף שיעור." className="plan-seal" />
             <span className="gate-icon">
               <FileDown className="h-6 w-6" strokeWidth={1.5} aria-hidden />
             </span>
@@ -106,9 +128,12 @@ export default async function PricingPage() {
             >
               לבחירת פרק {arrow}
             </Link>
+            {decor("single")}
           </div>
 
-          <div className="gate-card gate-plan gate-plan-featured">
+                    <div className="gate-card gate-plan gate-plan-featured">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/seals/yearly.png" alt="כשאת צריכה הכנה מקסימלית למבחני הבגרות במינימום מאמץ" className="plan-seal" />
             <span className="gate-badge gate-ribbon">
               <Award className="inline h-5 w-5" aria-hidden /> הכי משתלם!
             </span>
@@ -143,6 +168,7 @@ export default async function PricingPage() {
             >
               בחירת מסלול {arrow}
             </Link>
+            {decor("yearly")}
           </div>
         </AnimatedGrid>
 
@@ -172,7 +198,9 @@ export default async function PricingPage() {
             <span className="btn btn-gold btn-gate py-2">כן {arrow}</span>
           </summary>
           <div className="mt-6 grid gap-10">
-            <div className="gate-card gate-plan">
+                      <div className="gate-card gate-plan">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/seals/substitute.png" alt="כשאת ממלאת מקום ולא מוותרת על הכנה מושלמת למבחני הבגרות!" className="plan-seal" />
               <span className="gate-icon">
                 <CalendarRange
                   className="h-6 w-6"
@@ -217,9 +245,12 @@ export default async function PricingPage() {
                   לקופון {arrow}
                 </Link>
               </div>
+              {decor("substitute")}
             </div>
 
-            <div className="gate-card gate-plan">
+                      <div className="gate-card gate-plan">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/seals/daily.png" alt="כשאת צריכה לשלוף מהכובע כל יום שיעור במקצוע אחר" className="plan-seal" />
               <span className="gate-icon">
                 <CalendarDays
                   className="h-6 w-6"
@@ -246,6 +277,7 @@ export default async function PricingPage() {
                   לקופון {arrow}
                 </Link>
               </div>
+              {decor("daily")}
             </div>
           </div>
         </details>

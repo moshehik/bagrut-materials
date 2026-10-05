@@ -39,6 +39,32 @@ type Props = {
   searchParams: Promise<{ dlall?: string }>;
 };
 
+/**
+ * כוכב בשרבוט עט: שלושה קווים שחוצים זה את זה ליד (cx, cy), ברדיוס r.
+ * כל קו קצת עקום, באורך ובזווית לא מדויקים, כמו שרבוט ביד – לניצוצות שליד הלוגו בהודעת "תיקייה ריקה".
+ * ה"רעש" דטרמיניסטי (לפי seed) כדי שה-HTML מהשרת וה-HTML בדפדפן יהיו זהים.
+ */
+function starPath(cx: number, cy: number, r: number, seed: number) {
+  const n = (k: number) => Math.sin(seed * 12.9898 + k * 78.233); // בין -1 ל-1
+  return [90, 30, -30]
+    .map((deg, i) => {
+      const a = (deg + n(i) * 9) * (Math.PI / 180);
+      const ux = Math.cos(a);
+      const uy = Math.sin(a);
+      const r1 = r * (0.8 + 0.25 * n(i + 3)); // קצה אחד
+      const r2 = r * (0.8 + 0.25 * n(i + 6)); // הקצה השני
+      const bend = r * 0.22 * n(i + 9); // עקמומיות הקו
+      const sx = cx - ux * r1;
+      const sy = cy - uy * r1;
+      const ex = cx + ux * r2;
+      const ey = cy + uy * r2;
+      const qx = cx - uy * bend;
+      const qy = cy + ux * bend;
+      return `M${sx.toFixed(2)} ${sy.toFixed(2)}Q${qx.toFixed(2)} ${qy.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+    })
+    .join("");
+}
+
 function decode(path: string[]) {
   return path.map((p) => {
     try {
@@ -314,13 +340,28 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
       {/* ריק */}
       {children.length === 0 && mats.length === 0 && (
-        <div className="card mt-10 p-12 text-center animate-pop">
-          <div className="text-6xl animate-float">🪄</div>
-          <h2 className="mt-4 text-2xl font-bold">התיקייה הזו עדיין ריקה</h2>
-          <p className="mt-2 text-muted">החומרים לפרק הזה בהכנה. שווה לחזור בקרוב.</p>
-          <Link href={parentHref} className="btn btn-ghost mt-6">
-            <ArrowRight className="h-4 w-4" aria-hidden /> חזרה לתיקייה הקודמת
-          </Link>
+        // בסגנון ההודעה "שימי לב!": חלונית כחולה כהה עם ניצוץ זהב, כרטיס זהב בהיר במסגרת שחורה
+        <div className="gate-panel mx-auto mt-10 max-w-2xl text-center animate-pop sm:!p-8">
+          <span className="gold-ring" aria-hidden="true" />
+          <div className="gate-card py-8">
+            {/* הלוגו בראש ההודעה (במקום האייקון), עם ניצוצות מנצנצים סביבו */}
+            <div className="empty-logo-wrap">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/logo-black.png" alt="לו״ז העניין" width={1491} height={871} className="empty-logo" />
+              <svg className="empty-art empty-sparks" viewBox="0 0 171 100" aria-hidden>
+                <path className="empty-spark" d={starPath(162, 14, 6, 1)} />
+                <path className="empty-spark" d={starPath(9, 16, 4.5, 2)} />
+                <path className="empty-spark" d={starPath(165, 52, 4, 3)} />
+              </svg>
+            </div>
+            <h2 className="empty-title mt-4 text-3xl">התיקייה הזו עדיין ריקה</h2>
+            <p className="empty-soft mx-auto mt-2 max-w-md">
+              החומרים לפרק הזה בהכנה. שווה לחזור בקרוב.
+            </p>
+            <Link href={parentHref} className="btn btn-gold btn-gate mt-6 py-2">
+              <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden /> חזרה לתיקייה הקודמת
+            </Link>
+          </div>
         </div>
       )}
 

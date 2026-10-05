@@ -1604,13 +1604,30 @@ export const TREE: Node[] = [
         children: [
           { slug: "sefer-hachinuch", title: "ספר החינוך – הקדמה, תפילות וברכות" },
           partlyNeeded(
-            { slug: "kuzari", title: 'הכוזרי (ר\' יהודה הלוי) – מאמר שלישי, סעיפים א\'-י"ז' },
+            {
+              slug: "kuzari",
+              title: 'הכוזרי (ר\' יהודה הלוי) – מאמר שלישי, סעיפים א\'-י"ז',
+              children: Array.from({ length: 17 }, (_, i): Node => {
+                const n = i + 1;
+                const seif: Node = { slug: `seif-${n}`, title: `סעיף ${hebNum(n)}` };
+                return n <= 6 ? notNeeded(seif) : seif;
+              }),
+            },
             "סעיפים א'-ו' אינם נדרשים",
           ),
           partlyNeeded(
             {
               slug: "peirush-hamishna",
               title: 'רמב"ם – הקדמה לפירוש המשנה, שמונה פרקים, י"ג עיקרים',
+              children: [
+                { slug: "hakdama", title: "הקדמה לפירוש המשנה" },
+                {
+                  slug: "shemone-prakim",
+                  title: "שמונה פרקים",
+                  children: [...prakim(1, 4).map(notNeeded), ...prakim(5, 8)],
+                },
+                { slug: "shlosha-asar-ikarim", title: 'י"ג עיקרים' },
+              ],
             },
             "שמונה פרקים: פרקים א'-ד' אינם נדרשים",
           ),
@@ -1620,6 +1637,15 @@ export const TREE: Node[] = [
               title: 'רמב"ם – משנה תורה',
               description:
                 "הלכות יסודי התורה (פרק ה'), הלכות תשובה (ז'-ח'), הלכות מלכים (י\"א-י\"ב).",
+              children: [
+                { slug: "yesodei-hatora", title: "הלכות יסודי התורה", children: [perek(5)] },
+                { slug: "teshuva", title: "הלכות תשובה", children: [perek(7), perek(8)] },
+                {
+                  slug: "melachim",
+                  title: "הלכות מלכים",
+                  children: [perek(11), perek(12)].map(notNeeded),
+                },
+              ],
             },
             'הלכות מלכים, פרקים י"א-י"ב אינם נדרשים',
           ),
@@ -1630,7 +1656,11 @@ export const TREE: Node[] = [
               "הקדמה לפירושו לתורה, מושג הקדושה, עשיית הטוב והישר, חשיבותה של ארץ ישראל.",
           },
           { slug: "drashot-haran", title: 'דרשות הר"ן – לקט מתוך הדרוש השישי' },
-          { slug: "mesilat-yesharim", title: 'מסילת ישרים (רמח"ל) – ההקדמה ופרקים א\'-ט\'' },
+          {
+            slug: "mesilat-yesharim",
+            title: 'מסילת ישרים (רמח"ל) – ההקדמה ופרקים א\'-ט\'',
+            children: [{ slug: "hakdama", title: "הקדמה" }, ...prakim(1, 9)],
+          },
           partlyNeeded(
             { slug: "derech-chaim", title: 'מהר"ל – דרך החיים לפרקי אבות (פרקים נבחרים)' },
             'פרק חמישי: "עשרה ניסיונות" אינו נדרש (פרק חמישי: "עשרה ניסים" כן נדרש)',
