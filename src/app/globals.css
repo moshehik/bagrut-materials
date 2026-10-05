@@ -3045,3 +3045,117 @@ button.underline {
   background: #ffd45a;
   color: #16244e;
 }
+
+/* הודעת דף הבית (HomePopup): כרטיס (public/images/home-popup-card.webp) עם טקסט כחול שנכתב אות-אחר-אות בכתב גברת לוין */
+.hp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(10, 16, 36, 0.45);
+  backdrop-filter: blur(4px);
+  animation: hp-fade 0.5s ease both;
+  transition: opacity 0.5s ease;
+}
+.hp-overlay.hp-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.hp-card {
+  position: relative;
+  width: min(54rem, 100%);
+  aspect-ratio: 1349 / 671;
+  container-type: inline-size;
+  background: url("/images/home-popup-card.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 24px 50px rgba(0, 0, 0, 0.35));
+  animation: hp-rise 0.7s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+}
+.hp-text {
+  position: absolute;
+  inset: 9% 5.5% 6% 5.5%;
+  overflow: hidden;
+  direction: rtl;
+  text-align: right;
+  font-family: var(--font-hand);
+  color: var(--blue);
+  line-height: 1.25;
+  font-size: 3.4cqw;
+}
+/* הלוגו בפינה השמאלית-תחתונה של הכרטיס: מקום שמור שהטקסט עוטף (גובה = עד התחתית, מתחיל ב-~52% מגובה הכרטיס) */
+.hp-logo-gap {
+  float: left;
+  width: 46%;
+  height: 100%;
+  margin-top: 24%;
+}
+.hp-text p {
+  margin: 0;
+}
+.hp-title {
+  font-size: 5.2cqw;
+  line-height: 1.15;
+}
+.hp-head {
+  margin-top: 0.55em !important;
+  font-size: 4cqw;
+}
+.hp-body {
+  white-space: pre-line;
+}
+.hp-nut {
+  display: inline-block;
+  width: 1.15em;
+  height: auto;
+  margin-inline-end: 0.35em;
+  vertical-align: -0.12em;
+  animation: hp-nut-spin 2.4s linear infinite;
+}
+@keyframes hp-nut-spin {
+  from { transform: perspective(300px) rotateY(0deg); }
+  to { transform: perspective(300px) rotateY(360deg); }
+}
+.hp-rest {
+  visibility: hidden;
+}
+@keyframes hp-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes hp-rise {
+  from { opacity: 0; transform: translateY(30px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-overlay, .hp-card, .hp-nut { animation: none; transition: none; }
+}
+
+/* אזור אישי: חלוניות כחולות שקופות למחצה (הדף הקווי נראה מבעדן) */
+.acc-glass .gate-panel {
+  background: rgba(22, 36, 78, 0.8);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+/* אזור אישי – חלון תפריט: מלבן זהוב עם תמונת אגוזים בצד */
+.acc-tile {
+  min-height: 8.5rem;
+  gap: 0.8rem;
+  overflow: visible;
+}
+.acc-tile-nut {
+  flex-shrink: 0;
+  width: 6.5rem;
+  height: 5.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.3));
+  transition: transform 0.25s ease;
+}
+.acc-tile:hover .acc-tile-nut {
+  transform: rotate(-6deg) scale(1.08);
+}
+.acc-tile:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}

@@ -16,6 +16,8 @@ import { CountUp } from "@/components/count-up";
 import { nutForLevel } from "@/lib/nut-images";
 import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
 import { FaqSection } from "@/components/faq-section";
+import { HomePopup, type HomePopupData } from "@/components/home-popup";
+import { getSettings } from "@/lib/settings";
 import s from "./home.module.css";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +41,38 @@ async function safeStats() {
 /** סדר הכרטיסיות בתוך תיקיית שיעור (אותו סדר כמו CARD_ROWS) */
 const LESSON_ITEMS: CardType[] = CARD_ROWS.flat();
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ popupPreview?: string }>;
+}) {
   const user = await getCurrentUser().catch(() => null);
   const isAdmin = user?.role === "admin";
   const [subjects, stats] = await Promise.all([safeRootSubjects(isAdmin), safeStats()]);
 
-  return (
-    <div className="overflow-x-clip">
+  // הודעה צפה בדף הבית (מקצוע חדש / קופונים וכו') – נכתבת ב"הגדרות" → "הודעת דף הבית"
+  const cfg = await getSettings();
+  const popupItems = cfg.home_popup_items
+    .split(/\r?\n\s*\r?\n/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  let popup: HomePopupData | null =
+    cfg.home_popup_enabled === "true" && popupItems.length > 0
+      ? { title: cfg.home_popup_title, items: popupItems }
+      : null;
+  // הדמיה בפיתוח מקומי בלבד: /?popupPreview=1 מציג הודעה לדוגמה גם כשההגדרה כבויה
+  if (process.env.NODE_ENV !== "production" && (await searchParams).popupPreview) {
+    popup = {
+      title: "",
+      items: [
+        "מקצוע חדש עלה לאתר!\nכל החומרים של המקצוע החדש מוכנים ומחכים לך, פרק אחרי פרק.",
+        "קופונים חדשים\nהכנו לך קופונים מיוחדים להנחה ברכישה הבאה.",
+      ],
+    };
+  }
+
+  const body = (
+    <>
       {/* ================= HERO ================= */}
       <div className={s.hero}>
         <div className={s.heroBg} aria-hidden>
@@ -367,7 +394,14 @@ export default async function HomePage() {
           </div>
         </Reveal>
       </div>
-    </div>
+    </>
+  );
+
+  // עם הודעה פעילה – העוטף מקרין אותה מעל הדף, ומפעיל את אנימציות הדף מחדש כשהיא נעלמת
+  return popup ? (
+    <HomePopup data={popup}>{body}</HomePopup>
+  ) : (
+    <div className="overflow-x-clip">{body}</div>
   );
 }
 
