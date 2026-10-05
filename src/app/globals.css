@@ -3075,7 +3075,6 @@ button.underline {
 .hp-text {
   position: absolute;
   inset: 9% 5.5% 6% 5.5%;
-  overflow: hidden;
   direction: rtl;
   text-align: right;
   font-family: var(--font-hand);
@@ -3083,12 +3082,19 @@ button.underline {
   line-height: 1.25;
   font-size: 3.4cqw;
 }
-/* הלוגו בפינה השמאלית-תחתונה של הכרטיס: מקום שמור שהטקסט עוטף (גובה = עד התחתית, מתחיל ב-~52% מגובה הכרטיס) */
+/* הלוגו בפינה השמאלית-תחתונה של הכרטיס: מקום שמור שהטקסט עוטף. מרווח עליון של float נספר כחלק ממנו ודוחס את כל הטקסט,
+   לכן "מפריד" ריק (.hp-logo-gap-top) דוחף את ה-float של הלוגו (clear) למטה, ~52% מגובה הכרטיס, ומעליו הטקסט ברוחב מלא */
+.hp-logo-gap-top {
+  float: left;
+  width: 0;
+  height: 0;
+  margin-top: 24%;
+}
 .hp-logo-gap {
   float: left;
+  clear: left;
   width: 46%;
   height: 100%;
-  margin-top: 24%;
 }
 .hp-text p {
   margin: 0;
@@ -3158,4 +3164,254 @@ button.underline {
 .acc-tile:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 3px;
+}
+
+/* אגוזי המסלול בכרטיס רכישה (אותן תמונות כמו בעמוד המסלולים) */
+.acc-plan-nut {
+  flex-shrink: 0;
+  width: 5.5rem;
+  height: auto;
+  max-height: 6rem;
+  object-fit: contain;
+  margin-top: 0.2rem;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.3));
+}
+@media (max-width: 480px) {
+  .acc-plan-nut {
+    width: 4rem;
+  }
+}
+
+/* לוח שנה עברי (האזור האישי): ריבועי זהב במסגרת שחורה, שבת בתכלת, חג בסלמון, יום עם הורדות בטבעת זהב */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.cal-head {
+  padding: 0.15rem 0;
+  border: 2px solid #0a0a0a;
+  border-radius: 0.5rem;
+  background: #16244e;
+  color: #ffd45a;
+  text-align: center;
+  font-size: 1.05rem;
+}
+.cal-cell {
+  display: flex;
+  min-height: 6.4rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+  padding: 0.35rem 0.45rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.7rem;
+  background: #fbefc2;
+  color: #000;
+  font-size: 0.95rem;
+  line-height: 1.15;
+}
+.cal-empty {
+  border: 2px dashed rgba(255, 255, 255, 0.22);
+  background: transparent;
+}
+.cal-cell.cal-shabbat,
+.cal-key.cal-shabbat {
+  background: #c8d9e8;
+}
+.cal-cell.cal-holiday,
+.cal-key.cal-holiday {
+  background: #f7c6b9;
+}
+.cal-cell.cal-has,
+.cal-key.cal-has {
+  box-shadow: 0 0 0 3px #ffd45a, 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+.cal-cell.cal-today {
+  outline: 3px solid #fff;
+  outline-offset: 1px;
+}
+.cal-parsha {
+  color: #16244e;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.cal-label {
+  color: #7a2e12;
+  font-size: 0.85rem;
+}
+.cal-dl {
+  overflow: hidden;
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.35rem;
+  background: #16244e;
+  color: #ffd45a;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-count {
+  display: grid;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: #16244e;
+  color: #ffd45a;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.cal-key {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 0.3rem;
+  background: #fbefc2;
+}
+.cal-cell.cal-link {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.cal-cell.cal-link:hover,
+.cal-cell.cal-link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 3px #ffd45a, 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+.cal-cell.cal-selected {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+/* מתג תצוגה: רשימה / לוח שנה (כמו הלחצנים והריבועים של האתר) */
+.acc-toggle {
+  display: inline-flex;
+  overflow: hidden;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: #fbefc2;
+}
+.acc-toggle-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 1rem;
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  line-height: 1.4;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.acc-toggle-item:hover,
+.acc-toggle-item:focus-visible {
+  background: #e8b82e;
+}
+.acc-toggle-item.acc-toggle-on {
+  background: #16244e;
+  color: #ffd45a;
+}
+
+/* סינון לפי סוג הורדה: צ'יפים עם אייקון */
+.acc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.acc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.75rem 0.1rem 0.6rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: #fbefc2;
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  line-height: 1.5;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.acc-chip:hover,
+.acc-chip:focus-visible {
+  transform: translateY(-2px);
+  background: #e8b82e;
+}
+.acc-chip.acc-chip-on {
+  background: #16244e;
+  color: #ffd45a;
+  box-shadow: 0 0 0 2.5px #ffd45a;
+}
+.cal-whole {
+  display: inline-block;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: #16244e;
+  color: #ffd45a;
+  font-size: 1rem;
+}
+.cal-folder {
+  overflow: hidden;
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.35rem;
+  background: #16244e;
+  color: #ffd45a;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* כפתור "סנן לפי סוג הקובץ": בלי רקע, מסגרת וכיתוב לבנים, אייקון מונפש; בריחוף – זהב כמו כפתורי האתר */
+.gate-panel .acc-filter-btn {
+  background: transparent;
+  border: 2px solid #fff;
+  color: #fff;
+  box-shadow: none;
+}
+.gate-panel .acc-filter-btn:hover,
+.gate-panel .acc-filter-btn:focus-visible,
+.acc-edit[open] > summary .acc-filter-btn {
+  border-color: #ffe9a0;
+}
+.gate-panel .acc-filter-btn:hover,
+.gate-panel .acc-filter-btn:focus-visible {
+  background: linear-gradient(135deg, #e0aa22 0%, #b8860b 55%, #8f6508 100%);
+  color: #000;
+}
+.acc-filter-ico {
+  flex-shrink: 0;
+  animation: plans-twinkle 2.6s ease-in-out infinite;
+}
+.acc-filter-btn:hover .acc-filter-ico,
+.acc-filter-btn:focus-visible .acc-filter-ico {
+  animation-duration: 0.9s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .acc-filter-ico {
+    animation: none;
+  }
+}
+
+/* רכישת מנוי בלוח השנה: אגוז המסלול ביום הרכישה */
+.cal-buy {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #16244e;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.cal-nut {
+  width: 2.2rem;
+  height: 2.2rem;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+}
+.cal-nut-lg {
+  width: 3.4rem;
+  height: 3.4rem;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
 }

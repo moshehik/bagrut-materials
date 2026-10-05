@@ -122,6 +122,7 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
           <div className="hp-card" role="dialog" aria-modal="true" aria-label={segs.map((s) => s.text).join(". ")}>
             <div className="hp-text" aria-hidden>
               {/* מקום שמור ללוגו שבפינה השמאלית-תחתונה של הכרטיס: הטקסט עוטף אותו */}
+              <span className="hp-logo-gap-top" />
               <span className="hp-logo-gap" />
               {segs.map((s, i) => {
                 const n = Math.max(0, Math.min(s.text.length, left));
