@@ -82,10 +82,12 @@ function resolve(rel) {
     const ancestorsStripped = c.pn.slice(0, -1).map(strip);
     if (parentStrip && ancestorsStripped.includes(parentStrip)) s += 6;
     if (parentStrip && ancestorsStripped[ancestorsStripped.length - 1] === parentStrip) s += 3;
-    if (tr.u3 && /3 יח/.test(T)) s += 3;
-    if (tr.u3 && /5 יח/.test(T)) s -= 3;
-    if (tr.u5 && !tr.u3 && /5 יח|בגרות 5/.test(T)) s += 3;
-    if (tr.u5 && !tr.u3 && /3 יח/.test(T) && !/5 יח|בגרות 5/.test(T)) s -= 3;
+    // צומת "משותף" (כותרת כמו "שאלון חיצוני (3 ו-5 יח"ל)") שייך לשני המסלולים – לא מענישים ולא מתגמלים לפיו
+    const shared = /3 ו-?5 יח/.test(T);
+    if (tr.u3 && (/3 יח/.test(T) || shared)) s += 3;
+    if (tr.u3 && /5 יח/.test(T) && !shared) s -= 3;
+    if (tr.u5 && !tr.u3 && (/5 יח|בגרות 5/.test(T) || shared)) s += 3;
+    if (tr.u5 && !tr.u3 && /3 יח/.test(T) && !shared && !/5 יח|בגרות 5/.test(T)) s -= 3;
     if (tr.alt && /חלופות כתובים/.test(T)) s += 3;
     if (tr.hear && /הערכה בית ספרית/.test(T)) s += 3;
     if (tr.int && /פנימית|הערכה בית ספרית/.test(T)) s += 2;
