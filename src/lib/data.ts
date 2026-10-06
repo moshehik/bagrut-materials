@@ -184,7 +184,17 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
   const q = query.trim();
   if (q.length < 2) return [];
   // % ו-_ הם תווי-כלליות ב-LIKE – מבריחים אותם כדי שמונח כמו "_" לא יתאים להכול (ולא יהפוך לסריקה יקרה)
-  const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+  const likeOf = (s: string) => `%${s.replace(/[\\%_]/g, "\\$&")}%`;
+  // חיפוש רב-מילים ("ישעיה פרק ו", "תהלים נא"): כל מילה חייבת להופיע בכותרת/תיאור או באחת מקטגוריות-האב,
+  // כי "ישעיה" ו-"פרק ו'" יושבים בצמתים שונים של העץ. מילה בודדת = חיפוש ביטוי כמו קודם.
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const multi = tokens.length > 1;
+  // ל-SQL נכנסות רק מילים באורך 2+ (מילה של אות אחת כמו "ו" הייתה מחזירה את כל הטבלה); הסינון המלא נעשה אחר כך
+  const sqlTerms = multi ? tokens.filter((t) => t.length >= 2) : [q];
+  if (sqlTerms.length === 0) return [];
+  const likes = sqlTerms.map(likeOf);
+  const limitCats = multi ? 200 : 6;
+  const limitMats = multi ? 200 : 8;
 
   const [catRows, matRows] = await Promise.all([
     db
@@ -192,23 +202,23 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
       .from(categories)
       .where(
         and(
-          or(ilike(categories.title, like), ilike(categories.description, like)),
+          or(...likes.flatMap((like) => [ilike(categories.title, like), ilike(categories.description, like)])),
           isAdmin ? undefined : eq(categories.status, "active"),
         ),
       )
       .orderBy(asc(categories.sort))
-      .limit(6),
+      .limit(limitCats),
     db
       .select()
       .from(materials)
       .where(
         and(
-          or(ilike(materials.title, like), ilike(materials.description, like)),
+          or(...likes.flatMap((like) => [ilike(materials.title, like), ilike(materials.description, like)])),
           isAdmin ? undefined : eq(materials.status, "active"),
         ),
       )
       .orderBy(desc(materials.downloads))
-      .limit(8),
+      .limit(limitMats),
   ]);
 
   if (catRows.length === 0 && matRows.length === 0) return [];
@@ -217,11 +227,28 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
     ...new Set([...catRows.map((c) => c.id), ...matRows.map((m) => m.categoryId)]),
   ]);
 
+  // השוואה בלי גרש/גרשיים ובלי רגישות לאותיות, כדי ש-"פרק ו" ימצא את "פרק ו'"
+  const norm = (s: string | null | undefined) => (s ?? "").replace(/["'״׳]/g, "").toLowerCase();
+  const normTokens = tokens.map(norm).filter(Boolean);
+  // מילה קצרה (אות-שתיים, בדרך כלל מספר פרק כמו "ו" / "נא") חייבת להופיע כמילה שלמה, אחרת "ו" מתאים להכול
+  const tokenHits = (t: string, hay: string) =>
+    t.length <= 2 ? new RegExp(`(^|[\\s\\-–(])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[\\s\\-–),:])`).test(hay) : hay.includes(t);
+  const matchesAll = (hay: string) => normTokens.every((t) => tokenHits(t, hay));
+  const inTitle = (title: string) => normTokens.filter((t) => tokenHits(t, norm(title))).length;
+
   const results: SearchResult[] = [];
 
-  for (const c of catRows) {
-    const chain = chains.get(c.id);
-    if (!chain || (!isAdmin && chainSuspended(chain))) continue;
+  const cats = catRows
+    .map((c) => ({ c, chain: chains.get(c.id) }))
+    .filter(({ c, chain }) => {
+      if (!chain || (!isAdmin && chainSuspended(chain))) return false;
+      if (!multi) return true;
+      return matchesAll(norm([...chain.map((n) => n.title), c.description ?? ""].join(" ")));
+    })
+    .sort((a, b) => inTitle(b.c.title) - inTitle(a.c.title))
+    .slice(0, 6);
+  for (const { c, chain } of cats) {
+    if (!chain) continue;
     results.push({
       type: "category",
       id: c.id,
@@ -232,9 +259,17 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
     });
   }
 
-  for (const m of matRows) {
-    const chain = chains.get(m.categoryId);
-    if (!chain || (!isAdmin && chainSuspended(chain))) continue;
+  const mats = matRows
+    .map((m) => ({ m, chain: chains.get(m.categoryId) }))
+    .filter(({ m, chain }) => {
+      if (!chain || (!isAdmin && chainSuspended(chain))) return false;
+      if (!multi) return true;
+      return matchesAll(norm([m.title, m.description ?? "", ...chain.map((n) => n.title)].join(" ")));
+    })
+    .sort((a, b) => inTitle(b.m.title) - inTitle(a.m.title))
+    .slice(0, 8);
+  for (const { m, chain } of mats) {
+    if (!chain) continue;
     results.push({
       type: "material",
       id: m.id,
