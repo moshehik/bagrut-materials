@@ -13,7 +13,7 @@ import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { chainToHref, getCategoryChain, getDescendantIds } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
-import { addDays } from "@/lib/purchase-helpers";
+import { addDays, termFields } from "@/lib/purchase-helpers";
 
 /*
  * TODO(payments): כרגע אין ספק סליקה מחובר. ה"תשלום" הוא מדומה (mock):
@@ -48,6 +48,13 @@ const schema = z.discriminatedUnion("kind", [
     /** "דלג" – רכישה בלי בחירת מקצועות כעת (נבחרים אחר כך בחשבון) */
     skipSubjects: z.string().optional(),
   }),
+  z.object({
+    kind: z.literal("plan"),
+    plan: z.literal("substitute_3m"),
+    categoryIds: z.array(idNum).min(1, "בחרי לפחות מקצוע אחד").max(3, "עד 3 מקצועות"),
+  }),
+  // ממלאת מקום יומית: סל הורדות לכל המקצועות, בלי בחירת מקצוע ובלי הגבלת זמן
+  z.object({ kind: z.literal("plan"), plan: z.literal("substitute_daily") }),
   z.object({ kind: z.literal("premium") }),
 ]);
 
@@ -179,9 +186,25 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       const basePrice = prices.plans[input.plan];
       const days = def.days ?? 30;
       const months = Math.max(1, Math.round(days / 30));
-      const addon = premium ? prices.premiumAddon * months : 0;
-      const endsAt = addDays(days);
-      if (input.plan === "subject_monthly") {
+      // ממלאת מקום – בלי תוסף פרימיום
+      const isSubstitute = input.plan === "substitute_3m" || input.plan === "substitute_daily";
+      const planPremium = premium && !isSubstitute;
+      const addon = planPremium ? prices.premiumAddon * months : 0;
+      // מנוי: התוקף מתחיל בהורדה הראשונה (endsAt ריק + termDays). ממלאת מקום יומית – בלי תוקף כלל
+      const term =
+        input.plan === "substitute_daily" ? { endsAt: null, termDays: null } : termFields(input.plan, days);
+      if (input.plan === "substitute_daily") {
+        rows.push({
+          userId: user.id,
+          plan: "substitute_daily",
+          categoryId: null, // ריק (ובלי "ממתין") = גישה לכל המקצועות, עד מכסת ההורדות
+          amount: basePrice,
+          downloadsLimit: prices.substituteDailyDownloads,
+          ...term,
+          premium: false,
+          paymentRef,
+        });
+      } else if (input.plan === "subject_monthly") {
         const c = await assertRootSubject(input.categoryId);
         if (!c) return denied("not_root_subject", "יש לבחור מקצוע ראשי", { categoryId: input.categoryId, plan: input.plan });
         rows.push({
@@ -190,12 +213,12 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
           categoryId: c.id,
           amount: basePrice + addon,
           downloadsLimit: def.downloadsLimit ?? null,
-          endsAt,
-          premium,
+          ...term,
+          premium: planPremium,
           paymentRef,
         });
       } else if (input.plan === "yearly" && input.skipSubjects) {
-        // בלי מקצועות כרגע: שורה אחת "ממתינה" שהופכת ל-3 מקצועות ב-/account/subjects
+        // בלי מקצועות כרגע: שורה אחת "ממתינה" שהופכת ל-1 עד 3 מקצועות ב-/account/subjects
         rows.push({
           userId: user.id,
           plan: "yearly",
@@ -203,24 +226,23 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
           subjectsPending: true,
           amount: basePrice + addon,
           downloadsLimit: def.downloadsLimit ?? null,
-          endsAt,
-          premium,
+          ...term,
+          premium: planPremium,
           paymentRef,
         });
       } else {
-        // custom_monthly / yearly: שורה לכל מקצוע שנבחר (שנתי – בדיוק YEARLY_INCLUDED_SUBJECTS)
+        // custom_monthly / yearly: שורה לכל מקצוע שנבחר (שנתי – מקצוע אחד ומעלה; עד YEARLY_INCLUDED_SUBJECTS באותו מחיר)
         const uniq = [...new Set(input.categoryIds)];
-        if (input.plan === "yearly" && uniq.length < YEARLY_INCLUDED_SUBJECTS) {
-          return denied("yearly_too_few_subjects", `יש לבחור לפחות ${YEARLY_INCLUDED_SUBJECTS} מקצועות שונים`, {
+        if (input.plan === "yearly" && uniq.length < 1) {
+          return denied("yearly_no_subjects", "יש לבחור לפחות מקצוע אחד", { plan: input.plan });
+        }
+        // מנוי שנתי: עד 3 מקצועות באותו מחיר, בלי תוספת
+        if (input.plan === "yearly" && uniq.length > YEARLY_INCLUDED_SUBJECTS) {
+          return denied("yearly_too_many_subjects", `המנוי כולל עד ${YEARLY_INCLUDED_SUBJECTS} מקצועות`, {
             plan: input.plan,
             selected: uniq.length,
           });
         }
-        // מנוי שנתי: כל מקצוע מעבר ל-3 הכלולים = תוספת חודשית × 12
-        const extras =
-          input.plan === "yearly"
-            ? (uniq.length - YEARLY_INCLUDED_SUBJECTS) * prices.yearlyExtraSubject * 12
-            : 0;
         const roots = await db
           .select()
           .from(categories)
@@ -234,10 +256,10 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
             userId: user.id,
             plan: input.plan,
             categoryId: c.id,
-            amount: i === 0 ? basePrice + extras + addon : 0,
+            amount: i === 0 ? basePrice + addon : 0,
             downloadsLimit: def.downloadsLimit ?? null,
-            endsAt,
-            premium,
+            ...term,
+            premium: planPremium,
             paymentRef,
           });
         });

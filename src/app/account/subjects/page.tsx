@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, eq, gt, isNull, or, asc } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, or, asc } from "drizzle-orm";
 import { db } from "@/db";
 import { purchases } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getRootSubjects } from "@/lib/data";
-import { SUBJECT_HOUSES, SUBJECT_ICONS, subjectDisplayTitle } from "@/lib/constants";
-import { swapYearlySubjectAction } from "@/lib/actions/subscription-subjects";
+import { SUBJECT_HOUSES, SUBJECT_ICONS, YEARLY_INCLUDED_SUBJECTS, subjectDisplayTitle } from "@/lib/constants";
+import { addYearlySubjectAction, swapYearlySubjectAction } from "@/lib/actions/subscription-subjects";
 import { PendingSubjectsForm } from "@/components/pending-subjects-form";
-import { BackButton } from "@/components/account-ui";
+import { BackButton, fmtDate } from "@/components/account-ui";
 
 export const metadata: Metadata = { title: "המקצועות במנוי השנתי" };
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function SubscriptionSubjectsPage({
       .where(
         and(
           eq(purchases.userId, user.id),
-          eq(purchases.plan, "yearly"),
+          inArray(purchases.plan, ["yearly", "substitute_3m"]),
           eq(purchases.status, "active"),
           or(isNull(purchases.endsAt), gt(purchases.endsAt, new Date())),
         ),
@@ -48,6 +48,13 @@ export default async function SubscriptionSubjectsPage({
   const pendingRows = rows.filter((r) => r.subjectsPending);
   // שורות עם categoryId ריק ובלי "ממתין" = מנוי ישן עם גישה לכל המקצועות (אין מה לבחור)
   const assigned = rows.filter((r) => !r.subjectsPending && r.categoryId !== null);
+  // מנויים (קבוצות לפי הזמנה) שעוד לא מילאו את המכסה: אפשר להוסיף להם מקצוע באותו מחיר, והוא מסתיים עם המנוי
+  const groups = new Map<string, typeof assigned>();
+  for (const r of assigned) {
+    const key = `${r.plan}-${r.paymentRef ?? `id-${r.id}`}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  const addable = [...groups.values()].filter((g) => g.length < YEARLY_INCLUDED_SUBJECTS);
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
@@ -56,7 +63,10 @@ export default async function SubscriptionSubjectsPage({
         <img src="/images/logo-black.png" alt="לו״ז העניין" className="w-44 sm:w-52" />
         <div>
           <h1 className="text-4xl md:text-5xl">המקצועות במנוי השנתי</h1>
-          <p className="mt-2 max-w-md">בחרי מקצועות, או החליפי מקצוע שעדיין לא הורדת ממנו.</p>
+          <p className="mt-2 max-w-md">
+            המנוי כולל עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר. אפשר להוסיף מקצוע בכל שלב, או להחליף מקצוע
+            שעדיין לא הורדת ממנו.
+          </p>
           <BackButton href="/account/purchases" label="חזרה לרכישות ומנויים" />
         </div>
       </div>
@@ -79,7 +89,8 @@ export default async function SubscriptionSubjectsPage({
         <section key={p.id} className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8">
           <span className="gold-ring" aria-hidden="true" />
           <p className="mb-6 text-xl text-[#ffd45a]">
-            המנוי השנתי שלך פעיל, אבל עוד לא בחרת מקצועות – עד הבחירה אין גישה להורדות.
+            המנוי השנתי שלך פעיל, אבל עוד לא בחרת מקצוע – עד הבחירה אין גישה להורדות. אפשר לבחור מקצוע אחד ולהוסיף
+            עוד בהמשך השנה, עד {YEARLY_INCLUDED_SUBJECTS} מקצועות.
           </p>
           <PendingSubjectsForm purchaseId={p.id} subjects={subjects} />
         </section>
@@ -96,7 +107,11 @@ export default async function SubscriptionSubjectsPage({
             {assigned.map((p) => {
               const s = p.categoryId !== null ? byId.get(p.categoryId) : undefined;
               const locked = p.downloadsUsed > 0;
-              const held = new Set(assigned.map((a) => a.categoryId));
+              const held = new Set(
+                assigned
+                  .filter((a) => a.plan === p.plan && a.paymentRef === p.paymentRef)
+                  .map((a) => a.categoryId),
+              );
               return (
                 <li key={p.id} className="gate-card gate-pick !cursor-default flex-wrap">
                   {s?.slug && SUBJECT_HOUSES[s.slug] && (
@@ -133,6 +148,40 @@ export default async function SubscriptionSubjectsPage({
           </ul>
         </section>
       )}
+
+      {addable.map((g) => {
+        const held = new Set(g.map((a) => a.categoryId));
+        const left = YEARLY_INCLUDED_SUBJECTS - g.length;
+        return (
+          <section key={g[0].id} className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-labelledby={`add-h-${g[0].id}`}>
+            <span className="gold-ring" aria-hidden="true" />
+            <h2 id={`add-h-${g[0].id}`} className="text-center text-3xl">הוספת מקצוע</h2>
+            <p className="mt-1 text-center text-[#ffd45a]">
+              אפשר להוסיף עוד {left === 1 ? "מקצוע אחד" : `${left} מקצועות`} באותו מחיר, בלי תשלום נוסף. המקצוע שיתווסף
+              יסתיים יחד עם המנוי{g[0].endsAt ? ` – בתאריך ${fmtDate(g[0].endsAt)}` : " (שנה מההורדה הראשונה)"}.
+            </p>
+            <form action={addYearlySubjectAction} className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <input type="hidden" name="purchaseId" value={g[0].id} />
+              <label className="sr-only" htmlFor={`add-${g[0].id}`}>מקצוע להוספה</label>
+              <select
+                id={`add-${g[0].id}`}
+                name="categoryId"
+                required
+                defaultValue=""
+                className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base"
+              >
+                <option value="" disabled>בחרי מקצוע…</option>
+                {subjects
+                  .filter((x) => !held.has(x.id))
+                  .map((x) => (
+                    <option key={x.id} value={x.id}>{x.title}</option>
+                  ))}
+              </select>
+              <button type="submit" className="btn btn-gold btn-gate py-1">הוספה</button>
+            </form>
+          </section>
+        );
+      })}
     </div>
   );
 }

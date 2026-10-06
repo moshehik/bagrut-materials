@@ -46,6 +46,8 @@ export const planEnum = pgEnum("plan", [
   "subject_monthly",
   "custom_monthly",
   "yearly",
+  "substitute_3m", // ממלאת מקום 3 חודשים
+  "substitute_daily", // ממלאת מקום יומית – סל צפיות/הורדות בלי הגבלת זמן
 ]);
 
 export const users = pgTable(
@@ -351,6 +353,11 @@ export const purchases = pgTable(
     downloadsUsed: integer("downloads_used").notNull().default(0),
     startsAt: timestamp("starts_at").notNull().defaultNow(),
     endsAt: timestamp("ends_at"),
+    /**
+     * מנוי שמתחיל בהורדה הראשונה: עד אז endsAt ריק (גישה פעילה), ובהורדה הראשונה endsAt = עכשיו + termDays
+     * (ר' reserveDownloads). ריק = מסלול שתוקפו נקבע ברכישה / בלי תוקף.
+     */
+    termDays: integer("term_days"),
     premium: boolean("premium").notNull().default(false),
     /** מנוי שנתי שנרכש עם "דלג" – המקצועות ייבחרו מאוחר יותר (עד אז אין גישה); ראו /account/subjects */
     subjectsPending: boolean("subjects_pending").notNull().default(false),

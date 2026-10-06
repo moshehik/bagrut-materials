@@ -360,7 +360,7 @@ export async function checkEntitlement(
 
   // מנויים
   const subs = active.filter((p) =>
-    ["subject_monthly", "custom_monthly", "yearly"].includes(p.plan),
+    ["subject_monthly", "custom_monthly", "yearly", "substitute_3m", "substitute_daily"].includes(p.plan),
   );
   for (const s of subs) {
     // categoryId ריק = גישה לכל המקצועות (מנויים שנתיים ישנים, מלפני בחירת 3 המקצועות)

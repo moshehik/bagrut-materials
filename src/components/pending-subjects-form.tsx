@@ -6,7 +6,7 @@ import { chooseYearlySubjectsAction } from "@/lib/actions/subscription-subjects"
 import { SUBJECT_HOUSES, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import type { CheckoutSubject } from "@/components/checkout-form";
 
-/** בחירת 3 המקצועות של מנוי שנתי שנרכש עם "דלג" – אותו עיצוב של עמוד הרכישה */
+/** בחירת מקצוע אחד עד 3 מקצועות במנוי שנתי שנרכש עם "דלג" – אותו עיצוב של עמוד הרכישה */
 export function PendingSubjectsForm({
   purchaseId,
   subjects,
@@ -16,7 +16,7 @@ export function PendingSubjectsForm({
 }) {
   const [state, action, pending] = useActionState(chooseYearlySubjectsAction, undefined);
   const [selected, setSelected] = useState<number[]>([]);
-  const ready = selected.length === YEARLY_INCLUDED_SUBJECTS;
+  const ready = selected.length >= 1 && selected.length <= YEARLY_INCLUDED_SUBJECTS;
 
   function toggle(id: number) {
     setSelected((cur) => {
@@ -39,7 +39,7 @@ export function PendingSubjectsForm({
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-3xl">בחרי {YEARLY_INCLUDED_SUBJECTS} מקצועות</h3>
+        <h3 className="text-3xl">בחרי עד {YEARLY_INCLUDED_SUBJECTS} מקצועות</h3>
         <span className="gate-badge" aria-live="polite">
           נבחרו {selected.length} מתוך {YEARLY_INCLUDED_SUBJECTS}
         </span>
@@ -80,7 +80,8 @@ export function PendingSubjectsForm({
           אישור המקצועות <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
         </button>
         <p className="mt-2 text-[#ffd45a]">
-          כל עוד לא בוצעה הורדה במקצוע, אפשר להחליף אותו.
+          המחיר זהה למקצוע אחד ול-{YEARLY_INCLUDED_SUBJECTS} מקצועות. אפשר להוסיף מקצוע גם בהמשך השנה, וכל עוד לא
+          בוצעה הורדה במקצוע – אפשר להחליף אותו.
         </p>
       </div>
     </form>

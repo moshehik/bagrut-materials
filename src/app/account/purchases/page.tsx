@@ -82,8 +82,8 @@ export default async function AccountPurchasesPage({
           <ul className="space-y-5">
             {activePurchases.map(({ p, materialTitle, categoryTitle }) => {
               const scope = p.subjectsPending
-                ? "ממתין לבחירת מקצועות"
-                : materialTitle ?? categoryTitle ?? (p.plan === "yearly" ? "כל המקצועות" : "—");
+                ? "ממתין לבחירת מקצוע"
+                : materialTitle ?? categoryTitle ?? (p.plan === "yearly" || p.plan === "substitute_daily" ? "כל המקצועות" : "—");
               const usage =
                 p.downloadsLimit === null
                   ? "ללא הגבלה"
@@ -119,13 +119,22 @@ export default async function AccountPurchasesPage({
                     </div>
                     <div>
                       <dt className="gate-soft text-base">בתוקף עד</dt>
-                      <dd>{fmtDate(p.endsAt)}</dd>
+                      <dd>
+                        {p.endsAt === null && p.termDays
+                          ? "מתחיל בהורדה הראשונה"
+                          : fmtDate(p.endsAt)}
+                      </dd>
                     </div>
                   </dl>
                   <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-lg">
-                    {p.plan === "yearly" && (
+                    {(p.plan === "substitute_3m" || p.plan === "substitute_daily") && (
+                      <Link href="/account/upgrade" className="acc-link">
+                        שדרוג למנוי שנתי
+                      </Link>
+                    )}
+                    {(p.plan === "yearly" || p.plan === "substitute_3m") && (
                       <Link href="/account/subjects" className="acc-link">
-                        {p.subjectsPending ? "בחירת מקצועות" : "המקצועות שלי"}
+                        {p.subjectsPending ? "בחירת מקצוע" : "המקצועות שלי"}
                       </Link>
                     )}
                     {order?.eligible ? (

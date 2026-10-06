@@ -11,14 +11,18 @@ import { logAudit } from "@/lib/audit";
 import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 
 /*
- * מקצועות המנוי השנתי: נבחרים ברכישה, או אחר כך (כפתור "דלג" בקופה).
+ * מקצועות המנוי השנתי: מקצוע אחד עד YEARLY_INCLUDED_SUBJECTS באותו מחיר. נבחרים ברכישה, או אחר כך (כפתור "דלג" בקופה).
  * כל מקצוע = שורה ב-purchases (אותו paymentRef). שורה "ממתינה" = subjectsPending (אין גישה עד הבחירה).
  * כל עוד לא בוצעה הורדה בשורה (downloadsUsed = 0) אפשר להחליף בה מקצוע.
+ * מקצוע שנוסף באמצע השנה (addYearlySubjectAction) מקבל את startsAt/endsAt של המנוי המקורי – כלומר מסתיים איתו.
  */
 
 export type SubjectsState = { error?: string; ok?: boolean } | undefined;
 
 const idNum = z.coerce.number().int().positive();
+
+/** מסלולים שנבחרים בהם מקצועות (1–3) שאפשר להוסיף/להחליף: מנוי שנתי וממלאת מקום 3 חודשים */
+const SUBJECT_PLANS: (typeof purchases.$inferSelect)["plan"][] = ["yearly", "substitute_3m"];
 
 async function rootSubjectIds(ids: number[]) {
   if (!ids.length) return [];
@@ -52,8 +56,8 @@ export async function chooseYearlySubjectsAction(
   const ids = z.array(idNum).safeParse(form.getAll("categoryIds").map(String).filter(Boolean));
   if (!purchaseId.success || !ids.success) return denied("invalid_input", "נתונים לא תקינים");
   const uniq = [...new Set(ids.data)];
-  if (uniq.length !== YEARLY_INCLUDED_SUBJECTS) {
-    return denied("wrong_subject_count", `יש לבחור בדיוק ${YEARLY_INCLUDED_SUBJECTS} מקצועות`, {
+  if (uniq.length < 1 || uniq.length > YEARLY_INCLUDED_SUBJECTS) {
+    return denied("wrong_subject_count", `יש לבחור בין מקצוע אחד ל-${YEARLY_INCLUDED_SUBJECTS} מקצועות`, {
       purchaseId: purchaseId.data,
       selected: uniq.length,
     });
@@ -65,7 +69,7 @@ export async function chooseYearlySubjectsAction(
     .where(and(eq(purchases.id, purchaseId.data), eq(purchases.userId, user.id)))
     .limit(1);
   if (!p || p.plan !== "yearly" || !p.subjectsPending || p.status !== "active") {
-    return denied("no_pending_subscription", "לא נמצא מנוי שממתין לבחירת מקצועות", { purchaseId: purchaseId.data });
+    return denied("no_pending_subscription", "לא נמצא מנוי שממתין לבחירת מקצוע", { purchaseId: purchaseId.data });
   }
   if ((await rootSubjectIds(uniq)).length !== uniq.length) {
     return denied("not_root_subject", "יש לבחור מקצועות ראשיים בלבד", { purchaseId: p.id, categoryIds: uniq });
@@ -91,6 +95,7 @@ export async function chooseYearlySubjectsAction(
         downloadsLimit: p.downloadsLimit,
         startsAt: p.startsAt,
         endsAt: p.endsAt,
+        termDays: p.termDays,
         premium: false,
         paymentRef: p.paymentRef,
       })),
@@ -105,6 +110,97 @@ export async function chooseYearlySubjectsAction(
   });
   revalidatePath("/account", "layout");
   return { ok: true };
+}
+
+/**
+ * הוספת מקצוע באמצע שנת המנוי – בלי תשלום נוסף, עד YEARLY_INCLUDED_SUBJECTS מקצועות במנוי.
+ * המקצוע הנוסף מקבל את תאריך הסיום של המנוי המקורי (כלומר מסתיים יחד איתו).
+ */
+export async function addYearlySubjectAction(form: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/account/subjects");
+
+  const back = (msg: string) => redirect(`/account/subjects?msg=${encodeURIComponent(msg)}`);
+  const deny = async (reason: string, msg: string, extra?: Record<string, unknown>) => {
+    await logAudit({
+      actorId: user.id,
+      action: "purchase.subjects_denied",
+      entityType: "purchase",
+      details: { reason, op: "add", ...extra },
+    });
+    return back(msg);
+  };
+  const purchaseId = idNum.safeParse(form.get("purchaseId"));
+  const newId = idNum.safeParse(form.get("categoryId"));
+  if (!purchaseId.success || !newId.success) return deny("invalid_input", "נתונים לא תקינים");
+
+  const [p] = await db
+    .select()
+    .from(purchases)
+    .where(and(eq(purchases.id, purchaseId.data), eq(purchases.userId, user.id)))
+    .limit(1);
+  if (
+    !p ||
+    !SUBJECT_PLANS.includes(p.plan) ||
+    p.status !== "active" ||
+    p.categoryId === null ||
+    p.subjectsPending ||
+    (p.endsAt !== null && p.endsAt <= new Date())
+  ) {
+    return deny("not_addable", "לא ניתן להוסיף מקצוע למנוי הזה", { purchaseId: purchaseId.data });
+  }
+  if ((await rootSubjectIds([newId.data])).length !== 1) {
+    return deny("not_root_subject", "יש לבחור מקצוע ראשי", { purchaseId: p.id, categoryId: newId.data });
+  }
+
+  const groupWhere = and(
+    eq(purchases.userId, user.id),
+    eq(purchases.plan, p.plan),
+    eq(purchases.status, "active"),
+    p.paymentRef ? eq(purchases.paymentRef, p.paymentRef) : eq(purchases.id, p.id),
+  );
+  const mine = await db.select({ categoryId: purchases.categoryId }).from(purchases).where(groupWhere);
+  if (mine.some((m) => m.categoryId === newId.data)) {
+    return deny("already_included", "המקצוע הזה כבר כלול במנוי שלך", { purchaseId: p.id, categoryId: newId.data });
+  }
+  if (mine.length >= YEARLY_INCLUDED_SUBJECTS) {
+    return deny(
+      "subjects_full",
+      `במנוי כבר ${YEARLY_INCLUDED_SUBJECTS} מקצועות – זו המכסה`,
+      { purchaseId: p.id },
+    );
+  }
+
+  const [added] = await db
+    .insert(purchases)
+    .values({
+      userId: user.id,
+      plan: p.plan,
+      categoryId: newId.data,
+      amount: 0,
+      downloadsLimit: p.downloadsLimit,
+      startsAt: p.startsAt,
+      endsAt: p.endsAt,
+      termDays: p.termDays,
+      premium: false,
+      paymentRef: p.paymentRef,
+    })
+    .returning({ id: purchases.id });
+  // הגנה מבקשות מקבילות: אם נוספו מעבר למכסה – מבטלים את השורה שזה עתה נוספה
+  const after = await db.select({ id: purchases.id }).from(purchases).where(groupWhere);
+  if (after.length > YEARLY_INCLUDED_SUBJECTS) {
+    await db.delete(purchases).where(eq(purchases.id, added.id));
+    return deny("subjects_full", `במנוי כבר ${YEARLY_INCLUDED_SUBJECTS} מקצועות`, { purchaseId: p.id });
+  }
+  await logAudit({
+    actorId: user.id,
+    action: "purchase.subject_added",
+    entityType: "purchase",
+    entityId: added.id,
+    details: { categoryId: newId.data, groupPurchaseId: p.id, endsAt: p.endsAt },
+  });
+  revalidatePath("/account", "layout");
+  return back("המקצוע נוסף למנוי שלך, והוא יסתיים יחד עם המנוי");
 }
 
 /** החלפת מקצוע במנוי שנתי – רק בשורה שלא בוצעה בה הורדה */
@@ -132,7 +228,7 @@ export async function swapYearlySubjectAction(form: FormData) {
     .from(purchases)
     .where(and(eq(purchases.id, purchaseId.data), eq(purchases.userId, user.id)))
     .limit(1);
-  if (!p || p.plan !== "yearly" || p.status !== "active" || p.categoryId === null || p.subjectsPending) {
+  if (!p || !SUBJECT_PLANS.includes(p.plan) || p.status !== "active" || p.categoryId === null || p.subjectsPending) {
     return deny("not_swappable", "לא ניתן להחליף מקצוע במנוי הזה", { purchaseId: purchaseId.data });
   }
   if (p.downloadsUsed > 0) {
@@ -150,7 +246,7 @@ export async function swapYearlySubjectAction(form: FormData) {
     .where(
       and(
         eq(purchases.userId, user.id),
-        eq(purchases.plan, "yearly"),
+        eq(purchases.plan, p.plan),
         eq(purchases.status, "active"),
         p.paymentRef ? eq(purchases.paymentRef, p.paymentRef) : eq(purchases.id, p.id),
       ),

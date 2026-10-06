@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCalm } from "@/lib/calm-mode";
 import s from "./map-draw.module.css";
 
 /**
@@ -34,11 +35,13 @@ const LINE_DUR = 0.4;
 export function MapDraw({ className = "" }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<"idle" | "armed" | "drawing">("idle");
+  const calm = useCalm();
 
   useLayoutEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    setPhase("armed");
-  }, []);
+    // "אני מסוחררת": התרשים מוצג מיד במלואו; בחזרה למצב רגיל הוא נארז ומצטייר מחדש כשהוא בתצוגה
+    setPhase((p) => (calm ? "idle" : p === "idle" ? "armed" : p));
+  }, [calm]);
 
   useEffect(() => {
     if (phase !== "armed") return;

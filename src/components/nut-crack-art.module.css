@@ -162,3 +162,16 @@
   .left  { transform: translate(-32px, 0) rotate(-25deg); }
   .right { transform: translate(32px, 0) rotate(25deg); }
 }
+
+/* "אני מסוחררת" (ראו globals.css): אותו מצב סטטי כמו בתנועה מופחתת */
+:global(.calm-mode) .scene, :global(.calm-mode) .ground, :global(.calm-mode) .ground2, :global(.calm-mode) .outline,
+:global(.calm-mode) .details, :global(.calm-mode) .hammer, :global(.calm-mode) .nut, :global(.calm-mode) .whole,
+:global(.calm-mode) .crack, :global(.calm-mode) .left, :global(.calm-mode) .right, :global(.calm-mode) .halves,
+:global(.calm-mode) .kernel, :global(.calm-mode) .rays, :global(.calm-mode) .trail, :global(.calm-mode) .trail2,
+:global(.calm-mode) .flash, :global(.calm-mode) .ripple, :global(.calm-mode) .chip, :global(.calm-mode) .spark { animation: none !important; }
+:global(.calm-mode) .hammer, :global(.calm-mode) .whole, :global(.calm-mode) .crack, :global(.calm-mode) .rays,
+:global(.calm-mode) .trail, :global(.calm-mode) .trail2, :global(.calm-mode) .flash, :global(.calm-mode) .ripple,
+:global(.calm-mode) .chip, :global(.calm-mode) .spark { opacity: 0; }
+:global(.calm-mode) .ground, :global(.calm-mode) .ground2 { stroke-dashoffset: 0; }
+:global(.calm-mode) .left  { transform: translate(-32px, 0) rotate(-25deg); }
+:global(.calm-mode) .right { transform: translate(32px, 0) rotate(25deg); }

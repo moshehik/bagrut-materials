@@ -25,6 +25,7 @@ export type QuotaItem = { material: Material; ent: EntitlementOk };
 
 export type QuotaDenied =
   | { reason: "daily_limit"; dailyLimit: number; used: number; requested: number }
+  | { reason: "period_limit"; periodLimit: number; used: number; requested: number }
   | { reason: "material_limit"; materialId: number; maxDownloadsPerUser: number }
   | { reason: "quota"; purchaseId: number };
 
@@ -74,6 +75,34 @@ export async function dailyRemaining(user: Pick<User, "id" | "dailyDownloadLimit
   return Math.max(0, limit - (await countToday(user.id)));
 }
 
+/** חלון המכסה ה"חודשית": 30 הימים האחרונים (מתגלגל) */
+export const PERIOD_DAYS = 30;
+
+/** המגבלה ל-30 הימים האחרונים (0 = ללא מגבלה) – מההגדרות */
+export async function periodLimitFor() {
+  return getNumber("monthly_download_limit");
+}
+
+function periodStart() {
+  return new Date(Date.now() - PERIOD_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/** כמה שורות downloads (הורדות + צפיות מלאות) נרשמו ב-30 הימים האחרונים למשתמשת */
+export async function countPeriod(userId: number) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(downloads)
+    .where(and(eq(downloads.userId, userId), gte(downloads.createdAt, periodStart())));
+  return Number(row?.n ?? 0);
+}
+
+/** כמה הורדות נותרו ב-30 הימים (null = ללא מגבלה) */
+export async function periodRemaining(user: Pick<User, "id">): Promise<number | null> {
+  const limit = await periodLimitFor();
+  if (!(limit > 0)) return null;
+  return Math.max(0, limit - (await countPeriod(user.id)));
+}
+
 /** כמה הורדות נותרו במנוי (null = ללא מכסה / המנוי לא נמצא) */
 export async function subscriptionRemaining(purchaseId: number): Promise<number | null> {
   const [p] = await db
@@ -98,10 +127,17 @@ async function explainDenial(
   user: Pick<User, "id">,
   items: QuotaItem[],
   dailyLimit: number,
+  periodLimit: number,
 ): Promise<QuotaDenied> {
   const used = await countToday(user.id);
   if (dailyLimit > 0 && used + items.length > dailyLimit) {
     return { reason: "daily_limit", dailyLimit, used, requested: items.length };
+  }
+  if (periodLimit > 0) {
+    const usedPeriod = await countPeriod(user.id);
+    if (usedPeriod + items.length > periodLimit) {
+      return { reason: "period_limit", periodLimit, used: usedPeriod, requested: items.length };
+    }
   }
   for (const it of items) {
     const max = it.material.maxDownloadsPerUser;
@@ -150,7 +186,11 @@ export async function reserveDownloads(opts: {
   for (const [pid, n] of subscriptionUse) {
     const got = await db
       .update(purchases)
-      .set({ downloadsUsed: sql`${purchases.downloadsUsed} + ${n}` })
+      .set({
+        downloadsUsed: sql`${purchases.downloadsUsed} + ${n}`,
+        // מנוי שמתחיל בהורדה הראשונה: endsAt ריק + termDays → תאריך סיום מעכשיו (שורות אחרות לא משתנות)
+        endsAt: sql`COALESCE(${purchases.endsAt}, now() + ${purchases.termDays} * interval '1 day')`,
+      })
       .where(
         and(
           eq(purchases.id, pid),
@@ -164,14 +204,25 @@ export async function reserveDownloads(opts: {
       return { ok: false, denied: { reason: "quota", purchaseId: pid } };
     }
     claimed.push([pid, n]);
+    // שאר שורות אותה הזמנה (מקצועות נוספים באותו מנוי) מסתיימות באותו תאריך – ההורדה הראשונה בהזמנה מתחילה את כולן
+    await db.execute(sql`
+      UPDATE purchases p SET ends_at = s.ends_at
+      FROM purchases s
+      WHERE s.id = ${pid}::int AND s.ends_at IS NOT NULL AND s.term_days IS NOT NULL AND s.payment_ref IS NOT NULL
+        AND p.user_id = s.user_id AND p.payment_ref = s.payment_ref
+        AND p.ends_at IS NULL AND p.term_days IS NOT NULL AND p.status = 'active'
+    `);
   }
 
   // 2. שורות downloads – INSERT מותנה במגבלה היומית ובמגבלה לחומר, בפקודה אחת
   let insertedIds: number[] = [];
   let dailyLimit = 0;
+  let periodLimit = 0;
   try {
     dailyLimit = await dailyLimitFor(user);
+    periodLimit = await periodLimitFor();
     const start = startOfToday().toISOString();
+    const pStart = periodStart().toISOString();
     const n = items.length;
     const values = sql.join(
       items.map((it) => {
@@ -190,6 +241,10 @@ export async function reserveDownloads(opts: {
         OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.created_at >= ${start}::timestamp) + ${n}::int <= ${dailyLimit}::int
       )
       AND (
+        ${periodLimit}::int <= 0
+        OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.created_at >= ${pStart}::timestamp) + ${n}::int <= ${periodLimit}::int
+      )
+      AND (
         v.max_per_user IS NULL
         OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.material_id = v.material_id) < v.max_per_user
       )
@@ -199,7 +254,7 @@ export async function reserveDownloads(opts: {
     if (insertedIds.length !== n) {
       if (insertedIds.length) await db.delete(downloads).where(inArray(downloads.id, insertedIds));
       await refundAll();
-      return { ok: false, denied: await explainDenial(user, items, dailyLimit) };
+      return { ok: false, denied: await explainDenial(user, items, dailyLimit, periodLimit) };
     }
     const byMaterial = new Map(res.rows.map((r) => [Number(r.material_id), Number(r.id)]));
     const entries = items.map((it) => ({

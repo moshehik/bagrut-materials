@@ -10,6 +10,14 @@ export function addDays(days: number, from: Date = new Date()) {
   return new Date(from.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
+/** מסלולי מנוי שהתוקף שלהם מתחיל בהורדה הראשונה ולא ברכישה (ר' purchases.termDays) */
+export const FIRST_USE_PLANS: Plan[] = ["subject_monthly", "custom_monthly", "yearly", "substitute_3m"];
+
+/** תוקף שורת רכישה חדשה: מנוי שמתחיל בהורדה הראשונה – endsAt ריק + termDays; אחרת תאריך סיום מהיום */
+export function termFields(plan: Plan, days: number): { endsAt: Date | null; termDays: number | null } {
+  return FIRST_USE_PLANS.includes(plan) ? { endsAt: null, termDays: days } : { endsAt: addDays(days), termDays: null };
+}
+
 /*
  * חישובי מחיר משותפים לקופה (purchaseAction) ולעגלה (getCart / checkoutCart) – מקור אמת אחד,
  * כדי שהעגלה לעולם לא תהיה זולה מהרכישה הישירה: מחירי המסלולים מההגדרות (getPlanPrices)

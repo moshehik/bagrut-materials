@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCalm } from "@/lib/calm-mode";
 import s from "@/app/home.module.css";
 
 /** הטקסט של "מי אנחנו": פסקאות ← שורות ← קטעים (קטע מודגש = שם המותג). */
@@ -47,64 +48,41 @@ const PARAS: Para[] = [
 
 const SIGN: Line[] = [[B("צוות לו״ז העניין")], [T("בהנהלת חיה שיינווטר")]];
 
-const CHAR_MS = 32; // ms לאות – קצב כתיבה
-const LINE_PAUSE = 170; // ms בין שורות
-const PARA_PAUSE = 450; // ms בין פסקאות
-const LEAD_MS = 350; // ms מתחילת הפתיחה עד האות הראשונה
+// השורות לא נכתבות אות אחר אות אלא עולות בהדרגה, שורה שורה (דהייה רכה) – פחות "מהבהב" לעין.
+const LINE_BASE_MS = 680; // ms קבועים לכל שורה (בין תחילת שורה לתחילת הבאה)
+const LINE_CHAR_MS = 18; // ms נוספים לכל אות בשורה – שורה ארוכה "מחזיקה" קצת יותר
+const PARA_PAUSE = 600; // ms נוספים בין פסקאות
+const LEAD_MS = 350; // ms מתחילת הפתיחה עד השורה הראשונה
 
-/** כל אות מקבלת השהיה משלה (--d) לפי מקומה בטקסט; מחושב פעם אחת, באותו סדר לשרת ולדפדפן. */
+/** כל שורה מקבלת השהיה משלה (--d) לפי מקומה בטקסט; מחושב פעם אחת, באותו סדר לשרת ולדפדפן. */
 function plan() {
   let d = LEAD_MS;
+  const planLine = (line: Line) => {
+    const out = {
+      d,
+      segs: line.map((seg) => ({ brand: seg.brand, words: seg.t.split(" ") })),
+    };
+    d += LINE_BASE_MS + LINE_CHAR_MS * line.reduce((n, seg) => n + [...seg.t].length, 0);
+    return out;
+  };
   const paras = PARAS.map((p) => {
-    const lines = p.lines.map((line) => {
-      const segs = line.map((seg) => ({
-        brand: seg.brand,
-        words: seg.t.split(" ").map((w) => ({
-          chars: [...w].map((c) => {
-            const out = { c, d };
-            d += CHAR_MS;
-            return out;
-          }),
-        })),
-      }));
-      d += LINE_PAUSE;
-      return segs;
-    });
+    const lines = p.lines.map(planLine);
     d += PARA_PAUSE;
     return { className: p.className, lines };
   });
-  const sign = SIGN.map((line) => {
-    const segs = line.map((seg) => ({
-      brand: seg.brand,
-      words: seg.t.split(" ").map((w) => ({
-        chars: [...w].map((c) => {
-          const out = { c, d };
-          d += CHAR_MS;
-          return out;
-        }),
-      })),
-    }));
-    d += LINE_PAUSE;
-    return segs;
-  });
+  const sign = SIGN.map(planLine);
   return { paras, sign, total: d };
 }
 const PLAN = plan();
 
-function Words({ segs }: { segs: ReturnType<typeof plan>["sign"][number] }) {
+function Words({ segs }: { segs: ReturnType<typeof plan>["sign"][number]["segs"] }) {
   return (
     <>
       {segs.map((seg, si) => {
         // הרווח בין מילים נשאר מחוץ ל-nowrap כדי שהשורה תוכל להישבר בו במסכים צרים
         const inner = seg.words.map((w, wi) => (
           <span key={wi}>
-            <span className={s.wWord}>
-              {w.chars.map((ch, ci) => (
-                <span key={ci} className={s.wCh} style={{ "--d": `${ch.d}ms` } as CSSProperties}>
-                  {ch.c}
-                </span>
-              ))}
-            </span>
+            <span className={s.wWord}>{w}</span>
             {wi < seg.words.length - 1 ? " " : ""}
           </span>
         ));
@@ -121,22 +99,37 @@ function Words({ segs }: { segs: ReturnType<typeof plan>["sign"][number] }) {
 }
 
 const OPEN_AHEAD = 250; // הדף נפתח מעט לפני שהשורה מתחילה להיכתב
-const LOGO_MS = 600; // זמן הצגת הלוגו אחרי החתימה
+const LOGO_MS = 1300; // זמן הצגת הלוגו אחרי החתימה
 
-const FOLLOW_MARGIN = 130; // הקצה התחתון של האיגרת נשמר כך הרחק מתחתית המסך
+// גלילה אוטומטית שלא מסחררת: גלישה איטית וקבועה (כמו כתוביות בסוף סרט) ולא קפיצות ועצירות.
+// הקצה התחתון של האיגרת מוחזק בגובה קבוע במסך, והטקסט פשוט עולה לאט למעלה. תאוצה עדינה בהתחלה, מהירות מוגבלת,
+// ואם הגלילה לא מדביקה – הפתיחה והשורות עוצרות יחד (GATE) ולא נעלמות מתחת למסך.
+const FOLLOW_TARGET = 0.7; // היכן במסך (חלק מגובהו) הקצה התחתון נשאר
+const FOLLOW_MAX_PX_S = 48; // תקרת מהירות הגלילה, פיקסלים לשנייה (שורה ≈ 40px לכל ~1.7 שנ')
+const FOLLOW_TAU_S = 1.6; // כמה "רכה" ההתקרבות לגובה היעד (גדול = חלק יותר)
+const FOLLOW_EASE_S = 0.7; // החלקת התאוצה – המהירות לא קופצת, גם בתחילת הגלילה
+const GATE_MARGIN = 28; // אם הקצה התחתון בכל זאת מגיע לגובה הזה מתחתית המסך – מחכים לקוראת
 
 type Phase = "static" | "armed" | "writing" | "done";
 
-/** מי אנחנו: איגרת-גליל שנפתחת תוך כדי כתיבת הטקסט אות אחר אות. בלי JS / עם "הפחתת תנועה" – הכול גלוי מיד. */
+/** מי אנחנו: איגרת-גליל שנפתחת תוך כדי הופעת הטקסט שורה אחר שורה. בלי JS / עם "הפחתת תנועה" – הכול גלוי מיד. */
 export function AboutWriting() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>("static");
+  const calm = useCalm();
+  const played = useRef(false); // כבר התחילה/הסתיימה פעם אחת – לא מנגנים שוב כשחוזרים ממצב "אני מסוחררת"
 
   useEffect(() => {
     const wrap = wrapRef.current;
     const body = bodyRef.current;
     if (!wrap || !body) return;
+    if (calm) {
+      // "אני מסוחררת": הדף נפתח ומופיע במלואו מיד (הניקוי של הריצה הקודמת עוצר את הכתיבה והגלילה)
+      setPhase("static");
+      return;
+    }
+    if (played.current) return;
     if (
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
       wrap.closest(".a11y-no-motion") ||
@@ -168,47 +161,62 @@ export function AboutWriting() {
     setPhase("armed"); // מעכשיו האותיות מוסתרות והדף סגור
     let anim: Animation | undefined;
     let raf = 0;
-    let following = false;
-    let lastY = 0;
+    // הפתיחה והופעת השורות רצות על אותו ציר זמן – עוצרים ומחדשים את כולן יחד, כדי שהן נשארות מסונכרנות.
+    // הקצה התחתון נמדד כולל הגליל התחתון (+30). כשהקוראת גוללת למטה הקצה עולה במסך והפתיחה ממשיכה.
+    const gate = () => {
+      if (!anim) return;
+      const bottom = body.getBoundingClientRect().bottom + 30;
+      const blocked = bottom > window.innerHeight - GATE_MARGIN;
+      const running = anim.playState === "running";
+      if (blocked === !running) return;
+      for (const a of wrap.getAnimations({ subtree: true })) blocked ? a.pause() : a.play();
+    };
+    let following = true;
+    let pos = window.scrollY; // המיקום שאנחנו קבענו (עשרוני); גלילה שלה כלפי מטה נספרת אליו, גלילה למעלה עוצרת אותנו
+    let v = 0; // מהירות הגלילה הנוכחית, px/s
     let last = 0;
     const onWheel = (ev: WheelEvent) => ev.deltaY < 0 && stopFollow();
     const onKey = (ev: KeyboardEvent) => ["ArrowUp", "PageUp", "Home"].includes(ev.key) && stopFollow();
     function stopFollow() {
-      if (!following) return;
       following = false;
-      cancelAnimationFrame(raf);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     }
-    // הדף נפתח כלפי מטה – גוללים אחריו מעצמו כדי שהקוראת לא תצטרך לגלול.
-    // עוצרים רק כשהיא גוללת למעלה (גלגלת/מקש/גרירה) – לא על גלילה כלפי מטה, כדי שהתנופה של הגלילה שהביאה אותה לכאן לא תעצור אותנו.
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("keydown", onKey);
     const follow = (now: number) => {
-      if (!following) return;
-      if (window.scrollY < lastY - 3) return stopFollow(); // המשתמשת גללה למעלה (גם בגרירת פס הגלילה או במגע)
-      const k = 1 - Math.exp(-Math.min(now - last, 250) / 170); // החלקה שלא תלויה בקצב הפריימים
+      const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      const bottom = body.getBoundingClientRect().bottom + 30; // + הגליל התחתון
-      const delta = bottom - (window.innerHeight - FOLLOW_MARGIN);
-      if (delta > 1) window.scrollTo({ top: window.scrollY + Math.max(1, delta * k), behavior: "instant" });
-      lastY = window.scrollY;
-      raf = requestAnimationFrame(follow);
+      // גלילה כלפי מטה של הקוראת (גם התנופה שהביאה אותה לכאן) – מצטרפת; כלפי מעלה (גם גרירת פס או מגע) – היא מנהלת
+      if (window.scrollY < pos - 4) return stopFollow();
+      if (window.scrollY > pos + 4) pos = window.scrollY;
+      // גם כשה-GATE עצר את הפתיחה ממשיכים לגלול – זה בדיוק מה שמחזיר אותה לרוץ (אחרת נתקעים עד שהקוראת גוללת)
+      if (dt <= 0 || !anim) return;
+      const bottom = body.getBoundingClientRect().bottom + 30;
+      const over = bottom - window.innerHeight * FOLLOW_TARGET;
+      const want = over > 0 ? Math.min(FOLLOW_MAX_PX_S, over / FOLLOW_TAU_S) : 0;
+      v += (want - v) * (1 - Math.exp(-dt / FOLLOW_EASE_S));
+      if (v < 0.05) return;
+      pos = Math.min(pos + v * dt, document.documentElement.scrollHeight - window.innerHeight);
+      window.scrollTo({ top: pos, behavior: "instant" });
     };
-    const startFollow = () => {
-      following = true;
-      last = performance.now();
-      lastY = window.scrollY;
-      window.addEventListener("wheel", onWheel, { passive: true });
-      window.addEventListener("keydown", onKey);
-      raf = requestAnimationFrame(follow);
+    const tick = (now: number) => {
+      gate();
+      if (following) follow(now);
+      raf = requestAnimationFrame(tick);
     };
     const io = new IntersectionObserver(
       ([e]) => {
         if (!e.isIntersecting) return;
         io.disconnect();
+        played.current = true;
         setPhase("writing");
         anim = body.animate(frames, { duration: dur, easing: "linear", fill: "forwards" });
-        startFollow();
+        last = performance.now();
+        pos = window.scrollY;
+        raf = requestAnimationFrame(tick);
         anim.onfinish = () => {
+          cancelAnimationFrame(raf);
           stopFollow();
           wrap.style.minHeight = "";
           setPhase("done"); // חוזר לגובה אוטומטי – מגיב לשינוי רוחב מסך
@@ -219,13 +227,15 @@ export function AboutWriting() {
     );
     io.observe(wrap);
     return () => {
+      cancelAnimationFrame(raf);
       stopFollow();
       io.disconnect();
       anim?.cancel();
+      wrap.style.minHeight = "";
     };
-  }, []);
+  }, [calm]);
 
-  const sc = PLAN.sign[0][0].words[0].chars[0].d;
+  const sc = PLAN.sign[0].d;
   return (
     <div
       ref={wrapRef}
@@ -239,8 +249,8 @@ export function AboutWriting() {
             {PARAS.map((p, i) => (
               <p key={i} className={PLAN.paras[i].className}>
                 {PLAN.paras[i].lines.map((line, li) => (
-                  <span key={li} className={s.wLine} data-t={line[0].words[0].chars[0].d}>
-                    <Words segs={line} />
+                  <span key={li} className={s.wLine} data-t={line.d} style={{ "--d": `${line.d}ms` } as CSSProperties}>
+                    <Words segs={line.segs} />
                   </span>
                 ))}
               </p>
@@ -250,8 +260,8 @@ export function AboutWriting() {
                 ♥
               </span>
               {PLAN.sign.map((line, li) => (
-                <span key={li} className={s.wLine} data-t={line[0].words[0].chars[0].d}>
-                  <Words segs={line} />
+                <span key={li} className={s.wLine} data-t={line.d} style={{ "--d": `${line.d}ms` } as CSSProperties}>
+                  <Words segs={line.segs} />
                 </span>
               ))}
             </p>

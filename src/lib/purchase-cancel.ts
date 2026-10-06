@@ -6,7 +6,13 @@ import { getDescendantIds } from "@/lib/data";
 
 type Purchase = typeof purchases.$inferSelect;
 
-const SUBSCRIPTION_PLANS: Purchase["plan"][] = ["subject_monthly", "custom_monthly", "yearly"];
+const SUBSCRIPTION_PLANS: Purchase["plan"][] = [
+  "subject_monthly",
+  "custom_monthly",
+  "yearly",
+  "substitute_3m",
+  "substitute_daily",
+];
 
 /** מפתח הזמנה: שורות שנוצרו באותו תשלום חולקות paymentRef; שורה בלי paymentRef היא הזמנה לעצמה */
 export function orderKey(p: Pick<Purchase, "id" | "paymentRef">) {

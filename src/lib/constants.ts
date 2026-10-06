@@ -64,9 +64,22 @@ export const PLANS: Record<
     downloadsLimit: 300,
     days: 30,
   },
+  substitute_3m: {
+    label: "ממלאת מקום 3 חודשים",
+    description: "מקצוע אחד – אפשר להרחיב עד 3 מקצועות באותו מחיר",
+    price: 39000, // 3 × מחיר ההשקה החודשי; בפועל מההגדרות (getPlanPrices)
+    downloadsLimit: 900,
+    days: 90,
+  },
+  substitute_daily: {
+    label: "ממלאת מקום יומית",
+    description: "סל צפיות או הורדות, בלי הגבלת זמן",
+    price: 16000, // מחיר מבצע; בפועל מההגדרות (getPlanPrices)
+    downloadsLimit: 20,
+  },
   yearly: {
     label: "מנוי שנתי",
-    description: "גישה מלאה ל-3 מקצועות, כל השנה",
+    description: "מנוי למקצוע – אפשר להרחיב עד 3 מקצועות באותו מחיר",
     price: 58800,
     downloadsLimit: 2000,
     days: 365,
@@ -75,9 +88,12 @@ export const PLANS: Record<
 
 export const PREMIUM_ADDON_PRICE = 1900; // לחודש
 
-/** המנוי השנתי מיועד ל-3 מקצועות; כל מקצוע נוסף בתוספת חודשית (באגורות, × 12 חודשים) */
+/**
+ * המנוי השנתי הוא מנוי למקצוע (מחיר אחד), ואפשר להרחיב אותו עד YEARLY_INCLUDED_SUBJECTS מקצועות באותו מחיר
+ * (לבחור כבר ברכישה, או להוסיף במהלך השנה – מקצוע שנוסף מסתיים יחד עם המנוי המקורי).
+ * אין תוספת תשלום למקצוע רביעי – המכסה היא 3
+ */
 export const YEARLY_INCLUDED_SUBJECTS = 3;
-export const YEARLY_EXTRA_SUBJECT_PRICE = 1900;
 /** המחיר החודשי המלא של המנוי השנתי (באגורות) – מוצג מחוק ליד מחיר המבצע בפועל (PLANS.yearly.price / 12) */
 export const YEARLY_LIST_PRICE_MONTHLY = 7900;
 

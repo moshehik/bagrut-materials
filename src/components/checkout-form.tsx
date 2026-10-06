@@ -11,7 +11,7 @@ export type CheckoutSubject = { id: number; title: string; icon: string; slug?: 
 
 export type CheckoutFormProps = {
   kind: "single" | "bundle" | "plan" | "premium";
-  plan?: "subject_monthly" | "custom_monthly" | "yearly";
+  plan?: "subject_monthly" | "custom_monthly" | "yearly" | "substitute_3m" | "substitute_daily";
   materialId?: number;
   categoryId?: number;
   /** רשימת מקצועות ראשיים לבחירה (למנוי מקצוע / מערכת) */
@@ -29,8 +29,6 @@ export type CheckoutFormProps = {
   addonPrice?: number;
   /** עיצוב "שער" (כמו עמוד המסלולים והמחירים) – למסלולי מנוי */
   gate?: boolean;
-  /** תוספת מקצוע למנוי שנתי, לחודש באגורות (× 12 לכל מקצוע מעבר ל-3 הכלולים) */
-  extraSubjectPrice?: number;
   /** רכישה ראשונה: חסרים עיר מגורים ושם תיכון – מבקשים אותם בטופס */
   needsLocation?: boolean;
 };
@@ -49,7 +47,6 @@ export function CheckoutForm(props: CheckoutFormProps) {
     allowPremium = true,
     addonPrice = PREMIUM_ADDON_PRICE,
     gate = false,
-    extraSubjectPrice = 0,
     needsLocation = false,
   } = props;
 
@@ -59,16 +56,15 @@ export function CheckoutForm(props: CheckoutFormProps) {
   const [subjectId, setSubjectId] = useState<number | undefined>(categoryId ?? preselected[0]);
 
   const needsSelect = kind === "plan" && plan === "subject_monthly" && !categoryId;
-  const needsMulti = kind === "plan" && (plan === "custom_monthly" || plan === "yearly");
-  /** מנוי שנתי = לפחות 3 מקצועות (כל מקצוע נוסף בתוספת תשלום); מנוי לפי מערכת = עד 3 */
-  const isYearly = plan === "yearly";
-  const minPick = isYearly ? YEARLY_INCLUDED_SUBJECTS : 1;
-  const maxPick = isYearly ? Math.max(subjects.length, minPick) : 3;
-  const extraCount = isYearly ? Math.max(0, selected.length - YEARLY_INCLUDED_SUBJECTS) : 0;
-  const extrasPrice = extraCount * extraSubjectPrice * 12;
+  const needsMulti =
+    kind === "plan" && (plan === "custom_monthly" || plan === "yearly" || plan === "substitute_3m");
+  /** מנוי שנתי / ממלאת מקום 3 חודשים = מקצוע אחד, ואפשר להרחיב עד 3 באותו מחיר; מנוי לפי מערכת = עד 3 */
+  const isYearly = plan === "yearly" || plan === "substitute_3m";
+  const minPick = 1;
+  const maxPick = isYearly ? YEARLY_INCLUDED_SUBJECTS : 3;
 
   const addon = premium && allowPremium && kind !== "premium" ? addonPrice * months : 0;
-  const total = basePrice + extrasPrice + addon;
+  const total = basePrice + addon;
 
   const canSubmit = useMemo(() => {
     if (needsSelect && !subjectId) return false;
@@ -86,11 +82,10 @@ export function CheckoutForm(props: CheckoutFormProps) {
 
   if (gate) {
     const pickTitle = isYearly
-      ? "בחרי מקצועות"
+      ? "בחרי מקצוע"
       : needsMulti
         ? "בחרי עד 3 מקצועות"
         : "בחרי מקצוע";
-    const left = minPick - selected.length;
     const arrow = <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />;
     return (
       <form action={action} className="mt-8 space-y-8">
@@ -112,20 +107,19 @@ export function CheckoutForm(props: CheckoutFormProps) {
           <section aria-labelledby="pick-h">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 id="pick-h" className="text-3xl">{pickTitle}</h3>
-              {needsMulti && (
+              {needsMulti && (!isYearly || selected.length > 0) && (
                 <span className="gate-badge" aria-live="polite">
                   {isYearly
-                    ? `נבחרו ${selected.length} (${YEARLY_INCLUDED_SUBJECTS} כלולים${extraCount > 0 ? ` + ${extraCount} נוספים` : ""})`
+                    ? selected.length === 1
+                      ? "נבחר מקצוע"
+                      : `מקצוע + ${selected.length - 1} נוספים – כלולים במחיר`
                     : `נבחרו ${selected.length} מתוך ${maxPick}`}
                 </span>
               )}
             </div>
             <p className="mt-1 text-[#ffd45a]">
               {isYearly ? (
-                <>
-                  סמני וי על {YEARLY_INCLUDED_SUBJECTS} המקצועות שאת מלמדת. מקצוע נוסף –{" "}
-                  <GateShekel agorot={extraSubjectPrice} /> × 12 חודשים לכל מקצוע.
-                </>
+                "סמני וי על המקצוע שאת מלמדת."
               ) : needsMulti ? (
                 "סמני וי על המקצועות שאת מלמדת לפי מערכת השעות שלך."
               ) : (
@@ -166,8 +160,11 @@ export function CheckoutForm(props: CheckoutFormProps) {
                 })}
               </div>
             )}
-            {needsMulti && isYearly && left > 0 && selected.length > 0 && (
-              <p className="mt-3 text-[#ffd45a]">נשארו עוד {left} מקצועות כלולים בלי תוספת.</p>
+            {needsMulti && isYearly && selected.length > 0 && selected.length < YEARLY_INCLUDED_SUBJECTS && (
+              <p className="mt-3 text-[#ffd45a]">
+                תרצי עוד? מקצוע נוסף כלול במחיר – אפשר לסמן אותו עכשיו, או להוסיף בכל שלב במהלך השנה (הוא יסתיים יחד
+                עם המנוי).
+              </p>
             )}
           </section>
         )}
@@ -213,14 +210,6 @@ export function CheckoutForm(props: CheckoutFormProps) {
               <span>מחיר המסלול</span>
               <GateShekel agorot={basePrice} />
             </div>
-            {extraCount > 0 && (
-              <div className="flex justify-between gap-4">
-                <span>
-                  {extraCount} {extraCount === 1 ? "מקצוע נוסף" : "מקצועות נוספים"} (<GateShekel agorot={extraSubjectPrice} /> × 12)
-                </span>
-                <GateShekel agorot={extrasPrice} />
-              </div>
-            )}
             {addon > 0 && (
               <div className="flex justify-between gap-4">
                 <span>פרימיום ({months} {months === 1 ? "חודש" : "חודשים"})</span>
@@ -242,7 +231,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
               {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" aria-hidden />}
               לתשלום ואישור {arrow}
             </button>
-            {isYearly && (
+            {plan === "yearly" && (
               <button
                 type="submit"
                 name="skipSubjects"
@@ -257,7 +246,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
           </div>
           {!canSubmit && needsMulti && (
             <p className="mt-2 text-[#ffd45a]">
-              {isYearly ? `יש לבחור לפחות ${minPick} מקצועות כדי להמשיך.` : "יש לבחור לפחות מקצוע אחד כדי להמשיך."}
+              יש לבחור לפחות מקצוע אחד כדי להמשיך.
             </p>
           )}
           <p className="mt-3 flex items-center justify-center gap-1.5 text-base opacity-80">
@@ -323,7 +312,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
           <div className="flex items-baseline justify-between mb-2">
             <label className="block text-sm font-semibold">
               {isYearly
-                ? `בחרי לפחות ${minPick} מקצועות לפי מערכת השעות שלך`
+                ? "בחרי מקצוע (מקצוע נוסף כלול במחיר)"
                 : "בחרי עד 3 מקצועות לפי מערכת השעות שלך"}
             </label>
             <span className="text-xs text-muted">{selected.length}/{maxPick}</span>

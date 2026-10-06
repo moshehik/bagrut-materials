@@ -13,6 +13,7 @@ import { contentDisposition } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
 import {
   dailyRemaining,
+  periodRemaining,
   reserveDownloads,
   subscriptionRemaining,
   type EntitlementOk,
@@ -205,6 +206,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         limitsHit.push(`המכסה היומית (נותרו ${daily})`);
         allowed = allowed.slice(0, daily);
       }
+
+      // מכסה ל-30 הימים האחרונים – נגד הורדה המונית של תיקיות שלמות
+      const period = await periodRemaining(user);
+      if (period !== null && allowed.length > period) {
+        limitsHit.push(`המכסה ל-30 הימים האחרונים (נותרו ${period})`);
+        allowed = allowed.slice(0, period);
+      }
     } catch (e) {
       console.error("folder download limit check failed", e);
       await deny("limit_check_failed");
@@ -245,7 +253,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           ? "מכסת ההורדות במנוי נוצלה"
           : r.denied.reason === "material_limit"
             ? "אחד הקבצים כבר הורד את מספר הפעמים המותר"
-            : "המכסה היומית להורדות נוצלה";
+            : r.denied.reason === "period_limit"
+              ? "מכסת ההורדות ל-30 הימים האחרונים נוצלה"
+              : "המכסה היומית להורדות נוצלה";
       return NextResponse.json({ error }, { status: 403 });
     }
     reservation = r.reservation;

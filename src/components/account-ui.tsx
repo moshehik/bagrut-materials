@@ -179,7 +179,8 @@ const PLAN_NUT: Record<string, string> = {
   yearly: "yearly",
   custom_monthly: "substitute",
   subject_monthly: "substitute",
-  // מסלולי "ממלאת מקום" (כשיהיו להם סוגי רכישה משלהם)
+  substitute_3m: "substitute",
+  substitute_daily: "daily",
   substitute: "substitute",
   daily: "daily",
 };

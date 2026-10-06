@@ -120,6 +120,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           return NextResponse.redirect(new URL("/account?limit=1&material=" + material.id, origin));
         case "quota":
           return NextResponse.redirect(new URL("/pricing?reason=quota", origin));
+        case "period_limit":
+          return NextResponse.redirect(new URL("/account?limit=period", origin));
         default:
           return NextResponse.redirect(new URL("/account?limit=1", origin));
       }

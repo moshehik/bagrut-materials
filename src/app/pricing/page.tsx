@@ -29,9 +29,9 @@ export const dynamic = "force-dynamic";
 export default async function PricingPage() {
   const prices = await getPlanPrices();
   const user = await getCurrentUser();
-  const hasYearly = user
-    ? (await getActivePurchases(user.id)).some((p) => p.plan === "yearly")
-    : false;
+  const activePurchases = user ? await getActivePurchases(user.id) : [];
+  const hasYearly = activePurchases.some((p) => p.plan === "yearly");
+  const hasSubstitute = activePurchases.some((p) => p.plan === "substitute_3m" || p.plan === "substitute_daily");
   const arrow = (
     <ArrowLeft
       className="h-4 w-4 fix-gate-arrow"
@@ -84,18 +84,32 @@ export default async function PricingPage() {
         </div>
       </div>
 
-      {/* למי שכבר רכשה מנוי שנתי: כפתור לתוספת מקצוע (עדיין אין רכישה בסל – מוביל ל"צרי קשר") */}
+      {/* למי שרכשה ממלאת מקום: שדרוג למנוי שנתי בהפרש */}
+      {hasSubstitute && !hasYearly && (
+        <div className="gate-panel mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <span className="gold-ring" aria-hidden="true" />
+          <p className="text-xl">
+            יש לך תוכנית ממלאת מקום פעילה. רוצה לשדרג למנוי שנתי?{" "}
+            <span className="text-[#ffd45a]">תשלמי רק את ההפרש.</span>
+          </p>
+          <Link href="/account/upgrade" className="btn btn-gold btn-gate py-2">
+            שדרוג למנוי שנתי {arrow}
+          </Link>
+        </div>
+      )}
+
+      {/* למי שכבר רכשה מנוי שנתי: הוספת מקצוע (עד 3 באותו מחיר) נעשית ב"המקצועות שלי" */}
       {hasYearly && (
         <div className="gate-panel mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <span className="gold-ring" aria-hidden="true" />
           <p className="text-xl">
             יש לך מנוי שנתי פעיל. רוצה להוסיף מקצוע?{" "}
             <span className="text-[#ffd45a]">
-              <GateShekel agorot={prices.yearlyExtraSubject} /> × 12 חודשים
+              עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר, והמקצוע הנוסף יסתיים יחד עם המנוי.
             </span>
           </p>
-          <Link href="/contact" className="btn btn-gold btn-gate py-2">
-            <Plus className="h-4 w-4" aria-hidden /> תוספת מקצוע {arrow}
+          <Link href="/account/subjects" className="btn btn-gold btn-gate py-2">
+            <Plus className="h-4 w-4" aria-hidden /> הוספת מקצוע {arrow}
           </Link>
         </div>
       )}
@@ -160,21 +174,23 @@ export default async function PricingPage() {
             <hr className="gate-divider" />
             <ul className="mb-4 space-y-1 text-start">
               <li className="flex gap-2">
-                {check} מיועד עבור {YEARLY_INCLUDED_SUBJECTS} מקצועות
+                {check} מנוי למקצוע – ואפשר להרחיב עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר
               </li>
               <li className="flex gap-2">
                 {check}
                 <span>
-                  לכל מקצוע נוסף{" "}
-                  <GateShekel agorot={prices.yearlyExtraSubject} /> × 12 חודשים
+                  התחלת עם מקצוע אחד? אפשר להוסיף עוד מקצוע בכל שלב בשנה – הוא יסתיים יחד עם המנוי
                 </span>
+              </li>
+              <li className="flex gap-2">
+                {check} השנה מתחילה מההורדה הראשונה, לא ממועד הרכישה
               </li>
             </ul>
             <Link
               href="/checkout?plan=yearly"
               className="btn btn-gold btn-gate mt-auto py-2"
             >
-              לבחירת המקצועות {arrow}
+              לבחירת המקצוע {arrow}
             </Link>
             {decor("yearly")}
           </div>
@@ -228,14 +244,16 @@ export default async function PricingPage() {
               <hr className="gate-divider" />
               <ul className="mb-4 space-y-1 text-start">
                 <li className="flex gap-2">
-                  {check} {YEARLY_INCLUDED_SUBJECTS} מקצועות
+                  {check} מקצוע אחד – ואפשר להרחיב עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר
                 </li>
-                <li
-                  className="flex cursor-help gap-2"
-                  tabIndex={0}
-                  data-tip={`אם תצטרכי חודש נוסף תוכלי לשלם עבורו ${prices.substituteLaunchMonthly / 100} ש"ח כמו ששלמת על החודשים הקודמים.`}
-                >
-                  {check} אפשרות הארכה לחודש נוסף במחיר הטבת המסלול
+                <li className="flex gap-2">
+                  {check} התחלת עם מקצוע אחד? אפשר להוסיף עוד מקצוע בכל שלב – הוא יסתיים יחד עם המנוי
+                </li>
+                <li className="flex gap-2">
+                  {check} שלושת החודשים מתחילים מההורדה הראשונה
+                </li>
+                <li className="flex gap-2">
+                  {check} אפשר לשדרג בכל שלב למנוי שנתי – תשלמי רק את ההפרש
                 </li>
               </ul>
               <div className="gate-strip gate-strip-dark mt-auto">
@@ -243,8 +261,8 @@ export default async function PricingPage() {
                   <Gift className="inline h-5 w-5" aria-hidden /> מחיר השקה –
                   כבר מעודכן, בלי קופון
                 </p>
-                <Link href="/contact" className="btn btn-gold btn-gate py-2">
-                  לבחירת המקצועות {arrow}
+                <Link href="/checkout?plan=substitute_3m" className="btn btn-gold btn-gate py-2">
+                  לבחירת המקצוע {arrow}
                 </Link>
               </div>
               {decor("substitute")}
@@ -280,12 +298,17 @@ export default async function PricingPage() {
                 לשימוש מתי שצריך, בלי הגבלת זמן
               </p>
               <hr className="gate-divider" />
+              <ul className="mb-4 space-y-1 text-start">
+                <li className="flex gap-2">
+                  {check} אפשר לשדרג בכל שלב למנוי שנתי – תשלמי רק את ההפרש
+                </li>
+              </ul>
               <div className="gate-strip gate-strip-dark mt-auto">
                 <p>
                   <Gift className="inline h-5 w-5" aria-hidden /> מחיר מבצע –
                   כבר מעודכן, בלי קופון
                 </p>
-                <Link href="/contact" className="btn btn-gold btn-gate py-2">
+                <Link href="/checkout?plan=substitute_daily" className="btn btn-gold btn-gate py-2">
                   לרכישה {arrow}
                 </Link>
               </div>

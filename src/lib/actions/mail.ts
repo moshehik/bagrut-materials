@@ -108,7 +108,7 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
       audience === "premium"
         ? and(eq(purchases.premium, true), or(isNull(purchases.endsAt), gt(purchases.endsAt, now)))
         : and(
-            inArray(purchases.plan, ["subject_monthly", "custom_monthly", "yearly"]),
+            inArray(purchases.plan, ["subject_monthly", "custom_monthly", "yearly", "substitute_3m", "substitute_daily"]),
             or(isNull(purchases.endsAt), gt(purchases.endsAt, now)),
           );
     const ids = await db.selectDistinct({ id: purchases.userId }).from(purchases).where(cond);

@@ -1,5 +1,5 @@
 import { Check, CalendarDays, Crown } from "lucide-react";
-import { PLANS, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
+import { PLANS, SUBSTITUTE_MONTHS, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import type { PlanPrices } from "@/lib/pricing";
 import { GateShekel } from "@/components/gate-shekel";
 import { CheckoutForm, type CheckoutFormProps } from "@/components/checkout-form";
@@ -25,9 +25,13 @@ export function PlanCheckoutView({
   const plan = formProps.plan ?? "yearly";
   const def = PLANS[plan];
   const isYearly = plan === "yearly";
+  const isSub3 = plan === "substitute_3m";
+  const isDaily = plan === "substitute_daily";
+  const expandable = isYearly || isSub3;
   const days = def.days ?? 30;
   const check = <Check className="mt-1 h-4 w-4 shrink-0" aria-hidden />;
   const showList = isYearly && formProps.basePrice / 12 < prices.yearlyListMonthly;
+  const subMonthly = Math.round(formProps.basePrice / SUBSTITUTE_MONTHS);
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
@@ -37,7 +41,9 @@ export function PlanCheckoutView({
         <div>
           <h1 className="text-4xl md:text-5xl">השלמת הרשמה</h1>
           <p className="mt-2 max-w-md">
-            שלום {firstName}, בחרי את המקצועות שלך ואשרי את ההזמנה.
+            {isDaily
+              ? `שלום ${firstName}, בדקי את פרטי ההזמנה ואשרי.`
+              : `שלום ${firstName}, בחרי את המקצוע (או המקצועות) שלך ואשרי את ההזמנה.`}
           </p>
         </div>
       </div>
@@ -72,6 +78,29 @@ export function PlanCheckoutView({
                 סה״כ <GateShekel agorot={formProps.basePrice} /> לשנה
               </p>
             </>
+          ) : isSub3 ? (
+            <>
+              <div className="gate-price gate-price-lg mt-2">
+                <GateShekel agorot={subMonthly} />{" "}
+                {subMonthly < prices.substituteMonthly && (
+                  <s className="gate-old-price text-[0.6em]">
+                    <GateShekel agorot={prices.substituteMonthly} />
+                  </s>
+                )}
+              </div>
+              <p>לחודש × {SUBSTITUTE_MONTHS} חודשים</p>
+              <p className="gate-soft text-base">
+                סה״כ <GateShekel agorot={formProps.basePrice} />
+              </p>
+            </>
+          ) : isDaily ? (
+            <>
+              <div className="gate-price gate-price-lg mt-2">
+                <GateShekel agorot={formProps.basePrice} />
+              </div>
+              <p>עבור {prices.substituteDailyDownloads} צפיות או הורדות</p>
+              <p className="gate-soft text-base">לשימוש מתי שצריך, בלי הגבלת זמן</p>
+            </>
           ) : (
             <>
               <div className="gate-price gate-price-lg mt-2">
@@ -82,18 +111,29 @@ export function PlanCheckoutView({
           )}
           <hr className="gate-divider" />
           <ul className="space-y-1 text-start">
-            {isYearly && (
+            {expandable && (
               <>
                 <li className="flex gap-2">
-                  {check} מיועד עבור {YEARLY_INCLUDED_SUBJECTS} מקצועות – הבחירה כאן למטה
+                  {check}{" "}
+                  {isSub3 ? "מקצוע אחד" : "מנוי למקצוע"} – ואפשר להרחיב עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר
                 </li>
                 <li className="flex gap-2">
                   {check}
                   <span>
-                    לכל מקצוע נוסף <GateShekel agorot={prices.yearlyExtraSubject} /> × 12 חודשים
+                    אפשר להתחיל במקצוע אחד ולהוסיף עוד {isSub3 ? "בכל שלב" : "במהלך השנה"} – המקצוע הנוסף יסתיים יחד עם המנוי
                   </span>
                 </li>
+                <li className="flex gap-2">
+                  {check}
+                  <span>התקופה מתחילה מההורדה הראשונה, לא ממועד הרכישה</span>
+                </li>
               </>
+            )}
+            {isDaily && (
+              <li className="flex gap-2">
+                {check}
+                <span>אפשר לשדרג בכל שלב למנוי שנתי – תשלמי רק את ההפרש</span>
+              </li>
             )}
           </ul>
           <p className="mt-3 text-start text-sm leading-snug !text-gray-500">
@@ -107,7 +147,6 @@ export function PlanCheckoutView({
         <CheckoutForm
           {...formProps}
           addonPrice={prices.premiumAddon}
-          extraSubjectPrice={prices.yearlyExtraSubject}
           allowPremium={false}
           gate
         />

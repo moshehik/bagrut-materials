@@ -275,6 +275,19 @@
     opacity: 0;
   }
 }
+/* "אני מסוחררת" – ראו globals.css (.calm-mode) */
+:global(.calm-mode) .lead [data-gold-reveal] {
+  animation: none;
+  background-position: 0 0;
+}
+:global(.calm-mode) .lead [data-gold-reveal][data-done] {
+  color: #b8841f;
+  background-image: none;
+}
+:global(.calm-mode) .lead [data-cursor] {
+  animation: none;
+  opacity: 0;
+}
 .acts {
   display: flex;
   gap: 14px;
@@ -1024,7 +1037,7 @@
 .scrollSheet {
   padding: clamp(22px, 4vw, 40px) clamp(20px, 5vw, 56px) clamp(16px, 3vw, 28px);
 }
-/* "נכתב" אות אחר אות (about-writing.tsx): כל אות מוסתרת עד שהאיגרת נכנסת למסך, ואז נחשפת לפי --d */
+/* "נכתב" שורה אחר שורה (about-writing.tsx): כל שורה מוסתרת עד שהאיגרת נכנסת למסך, ואז עולה בדהייה רכה לפי --d */
 .writing {
   font-family: var(--font-hand);
   font-size: var(--fs);
@@ -1052,13 +1065,25 @@
 .wWord {
   white-space: nowrap;
 }
-.wArmed .wCh {
+.wArmed .wLine {
   opacity: 0;
 }
-.wOn .wCh {
+.wOn .wLine {
   opacity: 0;
-  animation: wInk 0.16s ease-out forwards;
+  animation: wLineIn 1.1s ease-out forwards;
   animation-delay: var(--d);
+}
+@keyframes wLineIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 @keyframes wInk {
   from {

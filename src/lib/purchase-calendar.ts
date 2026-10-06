@@ -18,10 +18,12 @@ export type CalPurchase = {
  * ממלאת מקום 3 חודשים ו-20 הורדות עדיין לא נשמרים במסד כסוג רכישה נפרד, ולכן לא מוצגים עד שיוגדרו.
  * (custom_monthly / subject_monthly הם סוגים פנימיים ישנים – למשל מענק קופון – ואינם מסלול לקוחה.)
  */
-const SHOWN_PLANS = ["yearly", "single", "bundle"] as const;
+const SHOWN_PLANS = ["yearly", "single", "bundle", "substitute_3m", "substitute_daily"] as const;
 
 export const PLAN_CAL_LABEL: Record<string, string> = {
   yearly: "מנוי שנתי",
+  substitute_3m: "ממלאת מקום 3 חודשים",
+  substitute_daily: "ממלאת מקום יומית",
   single: "הורדה בודדת",
   bundle: "קובץ מורחב",
   substitute: "ממלאת מקום 3 חודשים",

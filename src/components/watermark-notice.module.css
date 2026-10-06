@@ -65,3 +65,9 @@
     display: none;
   }
 }
+
+/* "אני מסוחררת" (ראו globals.css) */
+:global(.calm-mode) .scan,
+:global(.calm-mode) .caret {
+  display: none;
+}

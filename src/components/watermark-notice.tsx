@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useInView, useReducedMotion } from "motion/react";
 import { FingerprintPattern } from "lucide-react";
+import { useCalm } from "@/lib/calm-mode";
 import styles from "./watermark-notice.module.css";
 
 const TEXT =
@@ -14,7 +15,8 @@ const CHAR_MS = 32; // ms לאות
  * מקום הטקסט שמור מראש (החלק שטרם נכתב שקוף) כדי שהפריסה לא תקפוץ.
  */
 export function WatermarkText({ className }: { className?: string }) {
-  const reduce = useReducedMotion();
+  const calm = useCalm();
+  const reduce = !!useReducedMotion() || calm;
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "0px 0px -15% 0px" });
   const [count, setCount] = useState(0);

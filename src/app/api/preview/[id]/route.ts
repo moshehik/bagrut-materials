@@ -97,7 +97,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           ? "מכסת ההורדות והצפיות במנוי נוצלה"
           : r.denied.reason === "material_limit"
             ? "החומר הזה כבר הורד/נצפה את מספר הפעמים המותר"
-            : "המכסה היומית להורדות וצפיות נוצלה – נסי שוב מחר";
+            : r.denied.reason === "period_limit"
+              ? "מכסת ההורדות והצפיות ל-30 הימים האחרונים נוצלה"
+              : "המכסה היומית להורדות וצפיות נוצלה – נסי שוב מחר";
       return NextResponse.json({ error }, { status: 403 });
     }
     reservation = r.reservation;

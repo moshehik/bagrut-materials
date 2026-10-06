@@ -2,7 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import { useCalm } from "@/lib/calm-mode";
 import s from "@/app/home.module.css";
+
+/** בלי תנועה: העדפת מערכת, או הלחצן "אני מסוחררת". שני ה-hooks נקראים תמיד (סדר קבוע). */
+function useStill() {
+  const os = useReducedMotion();
+  const calm = useCalm();
+  return !!os || calm;
+}
 
 /* האטה חדה: פותחת במהירות ונעצרת בכבדות, כמו משקל שנוחת */
 const SLAM = [0.16, 1, 0.3, 1] as const;
@@ -33,7 +41,7 @@ function Slam({
   glow?: boolean;
   glowDelay?: number;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useStill();
   if (reduce) return <span style={{ display: "inline-block" }}>{children}</span>;
   return (
     <motion.span
@@ -67,7 +75,7 @@ function Slam({
 
 /** מילה שנכנסת בתנופה מהצד מאחורי טשטוש תנועה */
 function Swipe({ children, delay, fromX = 70 }: { children: string; delay: number; fromX?: number }) {
-  const reduce = useReducedMotion();
+  const reduce = useStill();
   if (reduce) return <span style={{ display: "inline-block" }}>{children}</span>;
   return (
     <motion.span
@@ -87,7 +95,7 @@ function Swipe({ children, delay, fromX = 70 }: { children: string; delay: numbe
 
 /** כותרת הירו: ברכת פתיחה, שם האתר והסלוגן. נחיתות כבדות ואז תנופה מהצד. */
 export function HeroTitle({ name }: { name?: string }) {
-  const reduce = useReducedMotion();
+  const reduce = useStill();
   const shift = name ? HELLO_SHIFT : 0;
   const tStamp = T_STAMP + shift;
   const tName = T_NAME + shift;
@@ -124,7 +132,7 @@ export function HeroTitle({ name }: { name?: string }) {
         className={s.stamp}
         initial={reduce ? false : { letterSpacing: "0.3em" }}
         animate={{ letterSpacing: "0em" }}
-        transition={{ duration: 1.4, ease: SLAM, delay: tStamp }}
+        transition={reduce ? { duration: 0 } : { duration: 1.4, ease: SLAM, delay: tStamp }}
       >
         <Slam delay={tStamp} from={2.6}>
           ברוכה

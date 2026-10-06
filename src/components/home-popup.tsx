@@ -1,16 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useReducedMotion } from "motion/react";
 
-/** רגע קצר אחרי שהאנימציה של דף הבית נגמרה, לפני שההודעה מופיעה */
+/** רגע קצר אחרי שהכיתוב הזהב של דף הבית נגמר, לפני שההודעה מופיעה */
 const AFTER_ANIM_MS = 600;
-/** רשת ביטחון: אם האנימציה לא מסמנת שנגמרה, ההודעה מופיעה בכל זאת אחרי הזמן הזה */
-const MAX_WAIT_MS = 20000;
-/** ms לאות – קצב כתיבה בכתב יד */
-const CHAR_MS = 55;
-/** כמה זמן ההודעה נשארת אחרי שהאותיות סיימו להיכתב (כדי להספיק לקרוא), ואז נעלמת */
-const HOLD_MS = 2200;
+/** מי שמתחילה לגלול בלי לחכות לאנימציה: ההודעה מופיעה שנייה אחרי תחילת הגלילה */
+const AFTER_SCROLL_MS = 1000;
+/** רשת ביטחון בלבד (אם הכיתוב הזהב לא מסמן שנגמר, או שהדף איטי מאוד) */
+const MAX_WAIT_MS = 60000;
+/** זמן קריאה: בסיס + תוספת לכל אות, ואז ההודעה נעלמת (אפשר גם לסגור מוקדם עם ה-X) */
+const READ_BASE_MS = 4000;
+const READ_CHAR_MS = 60;
+const READ_MAX_MS = 20000;
 const FADE_MS = 500;
 
 export type HomePopupData = {
@@ -26,7 +27,7 @@ function buildSegments(d: HomePopupData): Seg[] {
   const many = d.items.length > 1;
   for (const item of d.items) {
     const [head, ...rest] = item.split("\n");
-    // כשיש כמה הודעות – אגוז מסתובב בתחילת כל אחת
+    // כשיש כמה הודעות – אגוז בתחילת כל אחת
     segs.push({ text: head, cls: many ? "hp-head hp-head-nut" : "hp-head", nut: many });
     const body = rest.join("\n").trim();
     if (body) segs.push({ text: body, cls: "hp-body" });
@@ -36,53 +37,59 @@ function buildSegments(d: HomePopupData): Seg[] {
 
 /**
  * עוטף את דף הבית. הודעה בדף הבית (מקצוע חדש, קופונים חדשים וכו') מופיעה אחרי שהאנימציות של דף הבית נגמרו:
- * אז קופץ מעליו כרטיס ההודעה (public/images/home-popup-card.webp) והטקסט נכתב עליו אות-אחר-אות בכחול האתר
- * בכתב גברת לוין. ההודעה נשארת כל עוד האותיות נכתבות, ומיד אחרי שהסתיימו (ועוד רגע לקריאה) היא נעלמת –
+ * אז קופץ מעליו כרטיס ההודעה (public/images/home-popup-card.webp) והטקסט מופיע עליו במלואו בכחול האתר
+ * בכתב גברת לוין. ההודעה נשארת זמן קריאה (לפי אורך הטקסט) ואז נעלמת –
  * ורק אז נפתח הטולטיפ של גלילת האגוז (NutScrollHandle מחכה ל-data-home-popup שייעלם).
  * מופיעה בכל כניסה לדף. אפשר גם לסגור ב-X / Esc / לחיצה על הרקע. העיצוב בקלאסים .hp-* ב-globals.css.
  */
 export function HomePopup({ data, children }: { data: HomePopupData; children: React.ReactNode }) {
-  const reduce = useReducedMotion();
   const segs = useMemo(() => buildSegments(data), [data]);
   const total = useMemo(() => segs.reduce((n, s) => n + s.text.length, 0), [segs]);
 
   const [shown, setShown] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [gone, setGone] = useState(false);
-  const [count, setCount] = useState(0);
 
-  // ההודעה מופיעה רק אחרי שאנימציות דף הבית נגמרו (הכיתוב האחרון, פסקת הפתיחה, סיים להיכתב)
-  // ואם מישהי התחילה לגלול ולא חיכתה לאנימציה – ההודעה קופצת לה מיד
+  // ההודעה מופיעה רק אחרי שהכיתוב הזהב של דף הבית (פסקת הפתיחה) סיים להיכתב.
+  // ואם מישהי התחילה לגלול ולא חיכתה לאנימציה – ההודעה מופיעה שנייה אחרי תחילת הגלילה
   useEffect(() => {
     const started = Date.now();
-    let after = 0;
-    const stopWaiting = () => {
+    let timer = 0;
+    const arm = (ms: number) => {
+      if (timer) return;
+      timer = window.setTimeout(() => setShown(true), ms);
+    };
+    const stopListening = () => {
       clearInterval(poll);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("wheel", onNudge);
       window.removeEventListener("touchmove", onNudge);
+      window.removeEventListener("keydown", onKey);
     };
-    const showNow = () => {
-      stopWaiting();
-      setShown(true);
+    const onNudge = () => {
+      stopListening();
+      arm(AFTER_SCROLL_MS);
     };
+    // גלילה שהדפדפן משחזר בטעינה (רענון) לא נחשבת – רק גלילה אחרי שהדף כבר נפתח
     const onScroll = () => {
-      if (window.scrollY > 12) showNow();
+      if (Date.now() - started > 1500 && window.scrollY > 12) onNudge();
     };
-    const onNudge = () => showNow();
+    const onKey = (e: KeyboardEvent) => {
+      if (["ArrowDown", "PageDown", "End", " "].includes(e.key)) onNudge();
+    };
     const poll = setInterval(() => {
       const done = !!document.documentElement.dataset.homeLeadDone;
       if (!done && Date.now() - started < MAX_WAIT_MS) return;
-      stopWaiting();
-      after = window.setTimeout(() => setShown(true), AFTER_ANIM_MS);
+      stopListening();
+      arm(AFTER_ANIM_MS);
     }, 200);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("wheel", onNudge, { passive: true });
     window.addEventListener("touchmove", onNudge, { passive: true });
-    onScroll(); // כבר גללה לפני שהדף סיים להיטען
+    window.addEventListener("keydown", onKey);
     return () => {
-      stopWaiting();
-      clearTimeout(after);
+      stopListening();
+      clearTimeout(timer);
     };
   }, []);
 
@@ -101,31 +108,12 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
     setTimeout(() => setGone(true), FADE_MS);
   }, []);
 
-  // כתיבת האותיות
+  // ההודעה מופיעה במלואה; אחרי זמן קריאה (לפי אורך הטקסט) היא נעלמת
   useEffect(() => {
     if (!shown || leaving) return;
-    if (reduce) {
-      setCount(total);
-      return;
-    }
-    const id = setInterval(() => {
-      setCount((c) => {
-        if (c >= total) {
-          clearInterval(id);
-          return c;
-        }
-        return c + 1;
-      });
-    }, CHAR_MS);
-    return () => clearInterval(id);
-  }, [shown, leaving, reduce, total]);
-
-  // אחרי שכל האותיות נכתבו – רגע לקריאה, ואז ההודעה נעלמת
-  useEffect(() => {
-    if (!shown || leaving || count < total) return;
-    const t = setTimeout(dismiss, HOLD_MS);
+    const t = setTimeout(dismiss, Math.min(READ_MAX_MS, READ_BASE_MS + total * READ_CHAR_MS));
     return () => clearTimeout(t);
-  }, [shown, leaving, count, total, dismiss]);
+  }, [shown, leaving, total, dismiss]);
 
   useEffect(() => {
     if (!shown || gone) return;
@@ -136,7 +124,6 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
     return () => window.removeEventListener("keydown", onKey);
   }, [shown, gone, dismiss]);
 
-  let left = count; // כמה אותיות עוד "נכתבות" לפני הקטע הנוכחי
   return (
     <>
       <div className="overflow-x-clip">
@@ -159,26 +146,15 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
               {/* מקום שמור ללוגו שבפינה השמאלית-תחתונה של הכרטיס: הטקסט עוטף אותו */}
               <span className="hp-logo-gap-top" />
               <span className="hp-logo-gap" />
-              {segs.map((s, i) => {
-                const n = Math.max(0, Math.min(s.text.length, left));
-                left -= s.text.length;
-                // המשך הטקסט שעוד לא נכתב נשאר במקומו (נסתר), כדי שמילים לא "יקפצו" בין שורות בזמן הכתיבה
-                return (
-                  <p key={i} className={s.cls}>
-                    {s.nut && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src="/images/nut-handle.png"
-                        alt=""
-                        className="hp-nut"
-                        style={{ visibility: n > 0 ? "visible" : "hidden" }}
-                      />
-                    )}
-                    {s.text.slice(0, n)}
-                    <span className="hp-rest">{s.text.slice(n)}</span>
-                  </p>
-                );
-              })}
+              {segs.map((s, i) => (
+                <p key={i} className={s.cls}>
+                  {s.nut && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src="/images/nut-handle.png" alt="" className="hp-nut" />
+                  )}
+                  {s.text}
+                </p>
+              ))}
             </div>
           </div>
         </div>

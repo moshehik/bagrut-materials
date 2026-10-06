@@ -12,7 +12,7 @@ import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
 import { getPlanPrices } from "@/lib/pricing";
-import { addDays, planAmountFor } from "@/lib/purchase-helpers";
+import { planAmountFor, termFields } from "@/lib/purchase-helpers";
 import { cartCount, getCart } from "@/lib/cart";
 
 /*
@@ -257,7 +257,7 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
         categoryId: c.id,
         amount: amount.total,
         downloadsLimit: amount.downloadsLimit,
-        endsAt: addDays(amount.days),
+        ...termFields("subject_monthly", amount.days),
         premium: it.premium,
         paymentRef,
       });
@@ -272,7 +272,7 @@ export async function checkoutCart(_prev: CheckoutCartState, _form: FormData): P
         subjectsPending: true,
         amount: amount.total,
         downloadsLimit: amount.downloadsLimit,
-        endsAt: addDays(amount.days),
+        ...termFields("yearly", amount.days),
         premium: it.premium,
         paymentRef,
       });

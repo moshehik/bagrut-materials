@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCalm } from "@/lib/calm-mode";
 
 const TOP_MARGIN = 90; // מרווח קבוע מתחת לכותרת העליונה של האתר
 const BOTTOM_MARGIN = 24;
@@ -32,6 +33,7 @@ export function NutScrollHandle() {
   const [hintOpen, setHintOpen] = useState(false);
   const [hovered, setHovered] = useState(false); // ריחוף עכבר: אותו טולטיפ מעוצב במקום ה-title הרגיל של הדפדפן
   const hintUsed = useRef(false);
+  const calm = useCalm(); // "אני מסוחררת": אין אנימציית פתיחה לחכות לה
 
   const syncFromScroll = useCallback(() => {
     const max = getMaxScroll();
@@ -55,8 +57,8 @@ export function NutScrollHandle() {
   // בלי תנועה (העדפת משתמש) אין אנימציה שתסתיים, אז מדלגים עליה
   useEffect(() => {
     if (!isHome || !visible || introDone) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntroDone(true);
-  }, [isHome, visible, introDone]);
+    if (calm || window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntroDone(true);
+  }, [isHome, visible, introDone, calm]);
 
   // פותחים את הטולטיפ רק אחרי שאנימציות דף הבית נגמרו: אם יש הודעה מיוחדת – אחרי שהיא נעלמה ודף הבית
   // התחיל מחדש ושוב סיים; אם אין – כשהכיתוב האחרון בדף (פסקת הפתיחה) סיים להיכתב

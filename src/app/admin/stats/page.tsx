@@ -85,7 +85,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
       sql`SELECT coalesce(sum(amount),0)::bigint n FROM transactions WHERE type IN ('charge','manual') AND created_at >= ${d30}`,
     ),
     one(
-      sql`SELECT count(*)::int n FROM purchases WHERE status = 'active' AND (ends_at IS NULL OR ends_at > now()) AND plan IN ('subject_monthly','custom_monthly','yearly')`,
+      sql`SELECT count(*)::int n FROM purchases WHERE status = 'active' AND (ends_at IS NULL OR ends_at > now()) AND plan IN ('subject_monthly','custom_monthly','yearly','substitute_3m','substitute_daily')`,
     ),
     one(
       sql`SELECT count(DISTINCT user_id)::int n FROM purchases WHERE premium = true AND status = 'active' AND (ends_at IS NULL OR ends_at > now())`,

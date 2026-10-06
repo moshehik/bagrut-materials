@@ -131,7 +131,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       </div>
     );
     formProps = { kind: "bundle", categoryId: c.id, basePrice: price, months: 1, premiumDefault };
-  } else if (planKey === "subject_monthly" || planKey === "custom_monthly" || planKey === "yearly") {
+  } else if (
+    planKey === "subject_monthly" ||
+    planKey === "custom_monthly" ||
+    planKey === "yearly" ||
+    planKey === "substitute_3m" ||
+    planKey === "substitute_daily"
+  ) {
     const def = PLANS[planKey];
     const planPrice = prices.plans[planKey];
     const days = def.days ?? 30;
@@ -144,7 +150,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       scopeTitle = s ? `${s.icon} ${s.title}` : null;
     }
     const pre =
-      planKey === "custom_monthly" || planKey === "yearly"
+      planKey === "custom_monthly" || planKey === "yearly" || planKey === "substitute_3m"
         ? (sp.categories ?? "")
             .split(",")
             .map((x) => num(x.trim()))

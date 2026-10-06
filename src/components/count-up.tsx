@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCalm } from "@/lib/calm-mode";
 
 /**
  * מספר שסופר מ-0 עד הערך העדכני בכל פעם שהדף נטען (ברגע שהוא נכנס למסך).
@@ -9,11 +10,16 @@ import { useEffect, useRef, useState } from "react";
 export function CountUp({ value, duration = 1400 }: { value: number; duration?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [shown, setShown] = useState(value);
+  const calm = useCalm();
 
   useEffect(() => {
     const el = ref.current;
     if (!el || value <= 0) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (calm) {
+      setShown(value); // "אני מסוחררת": הערך הסופי מיד
+      return;
+    }
 
     let raf = 0;
     let started = false;
@@ -44,7 +50,7 @@ export function CountUp({ value, duration = 1400 }: { value: number; duration?: 
       io.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [value, duration]);
+  }, [value, duration, calm]);
 
   return <span ref={ref}>{shown.toLocaleString("he-IL")}</span>;
 }

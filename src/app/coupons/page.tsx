@@ -19,16 +19,11 @@ import { ClaimCouponForm } from "@/components/claim-coupon-form";
 export const metadata: Metadata = { title: "קופונים זמינים" };
 export const dynamic = "force-dynamic";
 
-/** במקום לחצן מימוש: ההטבה מוחלת לבד, ורואים אותה בעת התשלום */
+/** במקום לחצן מימוש: ההטבה מוחלת לבד ונראית בעת התשלום */
 function AutoStub() {
   return (
-    <div className="coupon-stub coupon-stub-auto">
-      <span className="coupon-auto-spark" aria-hidden>✦</span>
-      <span className="coupon-auto-spark" aria-hidden>✦</span>
-      <span>
-        <span className="coupon-auto">מעודכן אוטומטית</span>
-        <span className="coupon-auto-sub">תראי את ההטבה בעת התשלום</span>
-      </span>
+    <div className="coupon-stub">
+      <span className="coupon-auto">ההטבה תחול בעת הרכישה</span>
     </div>
   );
 }
@@ -124,6 +119,9 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
             <p className="gate-soft text-base">
               סה״כ <GateShekel agorot={prices.plans.yearly} /> לשנה.
             </p>
+            <p className="gate-soft text-base">
+              מנוי למקצוע – ואפשר להרחיב עד 3 מקצועות באותו מחיר.
+            </p>
             <p className="mt-2 text-xl">בואי ותהני ממחיר היכרות שלא יחזור!</p>
           </div>
           <AutoStub />
@@ -145,6 +143,9 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
             </div>
             <p className="gate-soft text-base">
               סה״כ <GateShekel agorot={prices.substituteLaunchMonthly * SUBSTITUTE_MONTHS} />.
+            </p>
+            <p className="gate-soft text-base">
+              מקצוע אחד – ואפשר להרחיב עד 3 מקצועות באותו מחיר.
             </p>
           </div>
           <AutoStub />

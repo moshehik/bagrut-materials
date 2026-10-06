@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useReducedMotion } from "motion/react";
+import { useCalm } from "@/lib/calm-mode";
 
 const START_DELAY = 3200; // ms — מתחיל כשהכותרת כמעט סיימה להיכנס (הקווים התחתונים עדיין נמשכים)
 const CHAR_MS = 34; // ms לאות — קצב כתיבה טבעי
 
 /** פסקת הפתיחה מוקלדת אות-אות, כאילו מישהי כותבת אותה עכשיו. */
 export function TypewriterLead({ text, className }: { text: string; className?: string }) {
-  const reduce = useReducedMotion();
+  const calm = useCalm();
+  const reduce = !!useReducedMotion() || calm;
   const [count, setCount] = useState(0);
   const [started, setStarted] = useState(false);
 
