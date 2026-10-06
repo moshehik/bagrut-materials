@@ -308,6 +308,21 @@ body {
   color: var(--plaster);
 }
 
+/* תגית סמל שאלון — זהב בולט, במפה ובכרטיסי הבתים */
+.q-code-tag {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #3d2a00;
+  background: linear-gradient(180deg, #fbe39a 0%, #e3ae2c 100%);
+  border: 1.5px solid #a87a14;
+  border-radius: 9999px;
+  box-shadow: 0 1px 3px rgba(120, 84, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.02em;
+}
+
 /* מסגרת צפה מודרנית על החץ בריחוף: כתב-יד, צבע אחיד ייחודי שלא קיים בשום מקום אחר בתרשים */
 .flow-tip {
   position: relative;
@@ -2117,6 +2132,12 @@ button.underline {
   color: #fff;
   transition: transform 0.2s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
+/* "נסי שיעור אחד בחינם" בדף הבית: כתב גברת לוין (קיים רק במשקל רגיל) */
+.btn-plans.btn-hand {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.2rem;
+}
 .btn-plans .plans-icon {
   flex-shrink: 0;
   animation: plans-twinkle 2.6s ease-in-out infinite;
@@ -3750,4 +3771,272 @@ button.underline {
   flex-shrink: 0;
   object-fit: contain;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* ============================================================
+   מפת הבגרות: כפתור "הסבר" וחלונית ההסבר (סגנון המסלולים והקופונים),
+   ופאנל ההוראות שמעל התרשים
+   ============================================================ */
+.flow-explain-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1.5px solid var(--sea2);
+  border-radius: 999px;
+  background: #fbefc2;
+  color: var(--sea2);
+  padding: 0 0.45rem;
+  font-family: var(--font-hand);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.flow-explain-btn:hover,
+.flow-explain-btn:focus-visible {
+  background: #ffd45a;
+  transform: scale(1.06);
+}
+
+.explain-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1.5rem 1rem 3rem;
+  background: rgba(10, 14, 30, 0.62);
+  animation: explain-fade 0.18s ease-out;
+}
+@keyframes explain-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.explain-panel {
+  width: 100%;
+  max-width: 42rem;
+  margin-block: auto;
+  padding: 1.6rem 1.4rem 1.4rem;
+  background: #2d395f; /* אטום, כדי שה"ניקובים" של הקופונים יתאימו בדיוק לרקע */
+  outline: none;
+}
+.explain-close {
+  position: absolute;
+  top: 0.8rem;
+  inset-inline-start: 0.8rem;
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+}
+.explain-close:hover,
+.explain-close:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+.explain-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding-inline-start: 2.4rem;
+}
+.explain-header .gate-icon {
+  flex-shrink: 0;
+}
+.explain-title {
+  font-size: 2rem;
+  line-height: 1.15;
+}
+.explain-subtitle {
+  color: #ffd45a;
+  font-size: 1.1rem;
+}
+.explain-section {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.4rem 0 0.6rem;
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  color: #fff;
+}
+.explain-section::after {
+  content: "";
+  flex: 1;
+  border-top: 2px dashed rgba(255, 212, 90, 0.55);
+}
+.explain-group + .explain-group {
+  margin-top: 1.2rem;
+}
+.explain-group-title {
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  color: #ffd45a;
+}
+.explain-hint {
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+  opacity: 0.85;
+}
+.explain-bar {
+  display: flex;
+  overflow: hidden;
+  margin: 0.4rem 0 0.8rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.6rem;
+}
+.explain-bar-seg {
+  display: grid;
+  place-items: center;
+  min-width: 2.6rem;
+  padding: 0.15rem 0.3rem;
+  color: #000;
+  font-size: 1.1rem;
+}
+.explain-bar-seg + .explain-bar-seg {
+  border-inline-start: 2.5px solid #0a0a0a;
+}
+.explain-tickets {
+  display: grid;
+  gap: 0.9rem;
+}
+.gate-card.explain-ticket {
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+}
+.explain-ticket-main {
+  padding: 0.8rem 1rem;
+}
+.explain-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.explain-ticket-name {
+  margin-top: 0.3rem;
+  font-family: var(--font-hand);
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+.explain-ticket-covers {
+  margin-top: 0.2rem;
+  color: #3b3000;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+.explain-stub {
+  min-width: 6.2rem;
+  padding: 0.8rem 1rem;
+  text-align: center;
+}
+.explain-weight {
+  display: block;
+  font-size: 1.9rem;
+  line-height: 1.1;
+  -webkit-text-stroke: 0.3px currentColor;
+}
+.explain-code {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.95rem;
+  color: #3b3000;
+  overflow-wrap: anywhere;
+}
+.explain-steps {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+.explain-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+.explain-step-num {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  background: #ffd45a;
+  color: #000;
+  line-height: 1;
+}
+.explain-notes {
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-top: 1.2rem;
+}
+.explain-notes ul {
+  display: grid;
+  gap: 0.35rem;
+  list-style: none;
+  padding: 0;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+@media (max-width: 520px) {
+  .gate-card.explain-ticket {
+    grid-template-columns: 1fr;
+  }
+  .explain-stub {
+    border-inline-start: 0;
+    border-top: 2.5px dashed #0a0a0a;
+  }
+  .explain-stub::before,
+  .explain-stub::after {
+    display: none;
+  }
+  .explain-header {
+    padding-inline-start: 2rem;
+  }
+}
+
+/* פאנל ההוראות: "איך קוראים את התרשים" — לפני התרשים */
+.map-guide {
+  margin-top: 1.5rem;
+  padding: 1.1rem 1.2rem 1.3rem;
+}
+.map-guide-title {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  text-align: center;
+}
+.map-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+}
+.map-guide-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+.map-guide-tile .gate-icon {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+}
+.map-guide-tile b {
+  display: block;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.2rem;
 }

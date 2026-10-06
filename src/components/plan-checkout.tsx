@@ -105,16 +105,25 @@ export function PlanCheckoutView({
           <ul className="space-y-1 text-start">
             {expandable && (
               <>
-                <li className="flex gap-2">
-                  {check}{" "}
-                  {isSub3 ? "מקצוע אחד" : "מנוי למקצוע"} – ואפשר להרחיב עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר
-                </li>
-                <li className="flex gap-2">
-                  {check}
-                  <span>
-                    אפשר להתחיל במקצוע אחד ולהוסיף עוד {isSub3 ? "בכל שלב" : "במהלך השנה"} – המקצוע הנוסף יסתיים יחד עם המנוי
-                  </span>
-                </li>
+                {isSub3 ? (
+                  <li className="flex gap-2">
+                    {check}
+                    <span>מקצוע אחד – המסלול אינו ניתן להרחבה למקצועות נוספים</span>
+                  </li>
+                ) : (
+                  <>
+                    <li className="flex gap-2">
+                      {check}{" "}
+                      מנוי למקצוע – ואפשר להרחיב עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר
+                    </li>
+                    <li className="flex gap-2">
+                      {check}
+                      <span>
+                        אפשר להתחיל במקצוע אחד ולהוסיף עוד במהלך השנה – המקצוע הנוסף יסתיים יחד עם המנוי
+                      </span>
+                    </li>
+                  </>
+                )}
                 <li className="flex gap-2">
                   {check}
                   <span>התקופה מתחילה מההורדה הראשונה, לא ממועד הרכישה</span>

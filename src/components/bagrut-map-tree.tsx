@@ -2,8 +2,10 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2 } from "lucide-react";
+import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2, CircleHelp } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
+import { getExplainer } from "@/lib/bagrut-explainers";
+import { BagrutExplainDialog } from "@/components/bagrut-explain-dialog";
 import type { Category } from "@/db/schema";
 
 export type MapNode = { cat: Category; chain: Category[]; children: MapNode[] };
@@ -88,6 +90,8 @@ function NodeBox({
   const excludedNote = node.cat.excludedNote;
   const ready = node.cat.ready;
   const [meforshimOpen, setMeforshimOpen] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
+  const explainer = getExplainer(node.chain.map((c) => c.slug));
   const style = { "--flow-accent": accent } as CSSProperties;
   const size = compact
     ? "px-2 py-0.5 text-sm max-w-[14rem]"
@@ -171,8 +175,26 @@ function NodeBox({
           <Feather className="h-3.5 w-3.5" aria-hidden />
         </button>
       )}
+      {explainer && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExplainOpen(true);
+          }}
+          className="flow-explain-btn"
+          aria-label={`הסבר על ${explainer.title}`}
+        >
+          <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+          הסבר
+        </button>
+      )}
       {node.cat.questionnaireCode && (
-        <span className="shrink-0 self-center rounded-full border border-ink/40 px-1.5 text-xs leading-snug opacity-80">
+        <span
+          className="q-code-tag shrink-0 self-center px-2 py-px text-sm"
+          title="סמל שאלון"
+          aria-label={`סמל שאלון ${node.cat.questionnaireCode}`}
+        >
           {node.cat.questionnaireCode}
         </span>
       )}
@@ -201,6 +223,9 @@ function NodeBox({
       </div>
     )}
     </div>
+    {explainer && explainOpen && (
+      <BagrutExplainDialog explainer={explainer} onClose={() => setExplainOpen(false)} />
+    )}
     {meforshim && meforshimOpen && (
       <div className="flow-ellipse text-ink" style={style}>
         <span className="mb-0.5 flex items-center justify-center gap-1 text-xs opacity-70">
@@ -244,6 +269,7 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
         />
         {open &&
           node.cat.description &&
+          !getExplainer(node.chain.map((c) => c.slug)) &&
           !node.cat.description.startsWith(MEFORSHIM_PREFIX) &&
           !node.cat.description.startsWith(CHOICE_PREFIX) && (
             <p className="max-w-[15rem] text-[11px] leading-relaxed text-muted">

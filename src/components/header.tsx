@@ -58,6 +58,21 @@ function CartLink({ count, className, onClick, withLabel }: { count: number; cla
   );
 }
 
+/** טולטיפ מסביר מתחת לכפתור (מעבר עכבר / מיקוד מקלדת) */
+function HintWrap({ hint, children }: { hint: string; children: React.ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute top-full mt-2 end-0 z-50 w-56 rounded-xl bg-plaster px-3 py-2 text-center text-xs font-medium leading-snug text-sea shadow-lg ring-1 ring-sea/10 opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0"
+      >
+        {hint}
+      </span>
+    </span>
+  );
+}
+
 const NAV = [
   { href: "/", label: "בית" },
   { href: "/subjects", label: "המקצועות" },
@@ -137,12 +152,16 @@ export function Header({ user }: { user: HeaderUser }) {
             </>
           ) : (
             <>
-              <Link href="/register" className="text-[15px] font-semibold text-white/90 hover:text-sun px-2 transition-transform hover:-translate-y-0.5">
-                הצטרפות
-              </Link>
-              <Link href="/login" className="btn btn-gold text-sm py-2.5">
-                <LogIn className="h-4 w-4" /> כניסה
-              </Link>
+              <HintWrap hint="פעם ראשונה באתר? פותחים חשבון חדש (שם, מייל וסיסמה)">
+                <Link href="/register" className="text-[15px] font-semibold text-white/90 hover:text-sun px-2 transition-transform hover:-translate-y-0.5">
+                  הצטרפות
+                </Link>
+              </HintWrap>
+              <HintWrap hint="כבר יש לך חשבון? נכנסים עם המייל והסיסמה שבחרת">
+                <Link href="/login" className="btn btn-gold text-sm py-2.5">
+                  <LogIn className="h-4 w-4" /> כניסה
+                </Link>
+              </HintWrap>
             </>
           )}
         </div>
@@ -200,12 +219,18 @@ export function Header({ user }: { user: HeaderUser }) {
               </>
             ) : (
               <div className="flex gap-2">
-                <Link href="/register" onClick={() => setOpen(false)} className="btn btn-ghost flex-1">
-                  הצטרפות
-                </Link>
-                <Link href="/login" onClick={() => setOpen(false)} className="btn btn-sea flex-1">
-                  כניסה
-                </Link>
+                <div className="flex-1 flex flex-col items-stretch gap-1">
+                  <Link href="/register" onClick={() => setOpen(false)} className="btn btn-ghost">
+                    הצטרפות
+                  </Link>
+                  <span className="text-xs text-muted text-center leading-snug">פעם ראשונה באתר? פותחים חשבון חדש</span>
+                </div>
+                <div className="flex-1 flex flex-col items-stretch gap-1">
+                  <Link href="/login" onClick={() => setOpen(false)} className="btn btn-sea">
+                    כניסה
+                  </Link>
+                  <span className="text-xs text-muted text-center leading-snug">כבר יש לך חשבון? נכנסים עם המייל והסיסמה</span>
+                </div>
               </div>
             )}
           </nav>

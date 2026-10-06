@@ -244,10 +244,7 @@ export default async function PricingPage() {
               <hr className="gate-divider" />
               <ul className="mb-4 space-y-1 text-start">
                 <li className="flex gap-2">
-                  {check} מקצוע אחד – ואפשר להרחיב עד {YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר
-                </li>
-                <li className="flex gap-2">
-                  {check} התחלת עם מקצוע אחד? אפשר להוסיף עוד מקצוע בכל שלב – הוא יסתיים יחד עם המנוי
+                  {check} מקצוע אחד – המסלול אינו ניתן להרחבה למקצועות נוספים
                 </li>
                 <li className="flex gap-2">
                   {check} שלושת החודשים מתחילים מההורדה הראשונה

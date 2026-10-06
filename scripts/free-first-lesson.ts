@@ -7,6 +7,7 @@
  *   npx tsx scripts/free-first-lesson.ts --apply    ← מחיל, ושומר רשימת שחזור ב-_free_first_lesson_rollback.json
  *   npx tsx scripts/free-first-lesson.ts --rollback ← מחזיר ל-paid את מה שהוחל
  *
+ * חריג: תיקיית "פרק ..." ראשונה נפתחת תמיד, גם כשיש פחות מ-MIN אחיות.
  * חוברות הערכה חלופית (מגילות וכו'): לא נפתחות החוברות עצמן (קבצי התיקייה של הספר), רק הפרק הראשון שבתוך כל ספר.
  */
 import { config } from "dotenv";
@@ -57,8 +58,10 @@ async function main() {
   const lines: string[] = [];
   for (const arr of kids.values()) {
     const withMat = arr.filter((c) => (byCat.get(c.id)?.length ?? 0) > 0);
-    if (withMat.length < MIN) continue;
     const first = withMat[0];
+    // "הפרק הראשון תמיד חינם" – תיקיית "פרק ..." ראשונה (בלי תת-תיקיות) נפתחת גם עם פחות מ-MIN אחיות (למשל האזינו ל"ב, וזאת הברכה ל"ג)
+    const isChapter = !!first && first.title.startsWith("פרק") && !kids.has(first.id);
+    if (withMat.length < MIN && !isChapter) continue;
     const path = pathOf(first);
     // בחלופות כתובים ההורה הוא "רשימת הספרים" וכל ספר מחזיק חוברת משלו – לא פותחים את החוברות, רק את הפרק הראשון בתוך כל ספר
     const parentTitle = by.get(first.parent_id!)?.title ?? "";

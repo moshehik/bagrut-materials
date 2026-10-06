@@ -1,6 +1,7 @@
 /* כרטיס "בית" — אותה שפה עיצובית כמו רשת המקצועות בדף הבית, מוקטן כדי שיכנסו 5 בשורה */
 
 .card {
+  position: relative;
   display: block;
   background: rgba(255, 255, 255, 0.3);
   border-radius: 90px 90px 16px 16px;
@@ -138,7 +139,6 @@
   gap: 5px;
   margin: 4px 10px 3px;
 }
-.code,
 .count {
   display: inline-block;
   font-size: 10px;
@@ -147,9 +147,16 @@
   padding: 2px 8px;
   white-space: nowrap;
 }
-.code {
-  color: var(--sea2);
-  background: var(--blue-soft);
+/* תגית סמל שאלון (הזהב ב-.q-code-tag בגלובלי) — צפה על קצה העליון של הקשת, בלי לשנות את גובה הכרטיס */
+.codeTag {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 2px 11px;
+  font-size: 13px;
+  pointer-events: none;
 }
 .count {
   color: var(--terra);

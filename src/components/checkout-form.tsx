@@ -43,10 +43,10 @@ export function CheckoutForm(props: CheckoutFormProps) {
   const [selected, setSelected] = useState<number[]>(preselected.slice(0, 3));
 
   const needsMulti = kind === "plan" && (plan === "yearly" || plan === "substitute_3m");
-  /** מנוי שנתי / ממלאת מקום 3 חודשים = מקצוע אחד, ואפשר להרחיב עד 3 באותו מחיר */
-  const isYearly = plan === "yearly" || plan === "substitute_3m";
+  /** מנוי שנתי = מקצוע אחד, ואפשר להרחיב עד 3 באותו מחיר. ממלאת מקום 3 חודשים = מקצוע אחד בלבד, בלי הרחבה */
+  const isYearly = plan === "yearly";
   const minPick = 1;
-  const maxPick = YEARLY_INCLUDED_SUBJECTS;
+  const maxPick = plan === "substitute_3m" ? 1 : YEARLY_INCLUDED_SUBJECTS;
 
   const total = basePrice;
 
@@ -207,7 +207,9 @@ export function CheckoutForm(props: CheckoutFormProps) {
       {needsMulti && (
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="block text-sm font-semibold">בחרי מקצוע (מקצוע נוסף כלול במחיר)</label>
+            <label className="block text-sm font-semibold">
+              {isYearly ? "בחרי מקצוע (מקצוע נוסף כלול במחיר)" : "בחרי מקצוע"}
+            </label>
             <span className="text-xs text-muted">{selected.length}/{maxPick}</span>
           </div>
           {subjects.length === 0 ? (

@@ -54,6 +54,11 @@ export function SubjectCard({
       className={`${s.card} ${big ? s.big : ""}`}
       aria-label={`פתיחת ${title}`}
     >
+      {questionnaireCode && (
+        <span className={`q-code-tag ${s.codeTag}`} aria-label={`סמל שאלון ${questionnaireCode}`}>
+          שאלון {questionnaireCode}
+        </span>
+      )}
       <div className={s.arch} style={{ "--accent": accent } as CSSProperties}>
         {house ? (
           <div className={s.houseStack}>
@@ -70,14 +75,11 @@ export function SubjectCard({
       </div>
       {!house && <h3 className={s.title}>{title}</h3>}
       {description && <p className={s.desc}>{description}</p>}
-      {(questionnaireCode || typeof count === "number") && (
+      {typeof count === "number" && (
         <div className={s.meta}>
-          {questionnaireCode && <span className={s.code}>שאלון {questionnaireCode}</span>}
-          {typeof count === "number" && (
-            <span className={s.count}>
-              {count} {countLabel}
-            </span>
-          )}
+          <span className={s.count}>
+            {count} {countLabel}
+          </span>
         </div>
       )}
       <em className={s.go}>לחומרים ←</em>

@@ -63,7 +63,7 @@ export const PLANS: Record<
   },
   substitute_3m: {
     label: "ממלאת מקום 3 חודשים",
-    description: "מקצוע אחד – אפשר להרחיב עד 3 מקצועות באותו מחיר",
+    description: "מקצוע אחד, בלי אפשרות להרחבה",
     price: 39000, // 3 × מחיר ההשקה החודשי; בפועל מההגדרות (getPlanPrices)
     downloadsLimit: 900,
     days: 90,

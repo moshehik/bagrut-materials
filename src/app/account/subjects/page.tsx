@@ -54,7 +54,8 @@ export default async function SubscriptionSubjectsPage({
     const key = `${r.plan}-${r.paymentRef ?? `id-${r.id}`}`;
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
-  const addable = [...groups.values()].filter((g) => g.length < YEARLY_INCLUDED_SUBJECTS);
+  // הוספת מקצוע – רק במנוי שנתי; ממלאת מקום 3 חודשים כוללת מקצוע אחד ולא מרחיבים אותה
+  const addable = [...groups.values()].filter((g) => g[0].plan === "yearly" && g.length < YEARLY_INCLUDED_SUBJECTS);
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">

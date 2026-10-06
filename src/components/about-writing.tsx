@@ -101,14 +101,7 @@ function Words({ segs }: { segs: ReturnType<typeof plan>["sign"][number]["segs"]
 const OPEN_AHEAD = 250; // הדף נפתח מעט לפני שהשורה מתחילה להיכתב
 const LOGO_MS = 1300; // זמן הצגת הלוגו אחרי החתימה
 
-// גלילה אוטומטית שלא מסחררת: גלישה איטית וקבועה (כמו כתוביות בסוף סרט) ולא קפיצות ועצירות.
-// הקצה התחתון של האיגרת מוחזק בגובה קבוע במסך, והטקסט פשוט עולה לאט למעלה. תאוצה עדינה בהתחלה, מהירות מוגבלת,
-// ואם הגלילה לא מדביקה – הפתיחה והשורות עוצרות יחד (GATE) ולא נעלמות מתחת למסך.
-const FOLLOW_TARGET = 0.7; // היכן במסך (חלק מגובהו) הקצה התחתון נשאר
-const FOLLOW_MAX_PX_S = 48; // תקרת מהירות הגלילה, פיקסלים לשנייה (שורה ≈ 40px לכל ~1.7 שנ')
-const FOLLOW_TAU_S = 1.6; // כמה "רכה" ההתקרבות לגובה היעד (גדול = חלק יותר)
-const FOLLOW_EASE_S = 0.7; // החלקת התאוצה – המהירות לא קופצת, גם בתחילת הגלילה
-const GATE_MARGIN = 28; // אם הקצה התחתון בכל זאת מגיע לגובה הזה מתחתית המסך – מחכים לקוראת
+const FOLLOW_MARGIN = 130; // הקצה התחתון של האיגרת נשמר כך הרחק מתחתית המסך
 
 type Phase = "static" | "armed" | "writing" | "done";
 
@@ -161,49 +154,38 @@ export function AboutWriting() {
     setPhase("armed"); // מעכשיו האותיות מוסתרות והדף סגור
     let anim: Animation | undefined;
     let raf = 0;
-    // הפתיחה והופעת השורות רצות על אותו ציר זמן – עוצרים ומחדשים את כולן יחד, כדי שהן נשארות מסונכרנות.
-    // הקצה התחתון נמדד כולל הגליל התחתון (+30). כשהקוראת גוללת למטה הקצה עולה במסך והפתיחה ממשיכה.
-    const gate = () => {
-      if (!anim) return;
-      const bottom = body.getBoundingClientRect().bottom + 30;
-      const blocked = bottom > window.innerHeight - GATE_MARGIN;
-      const running = anim.playState === "running";
-      if (blocked === !running) return;
-      for (const a of wrap.getAnimations({ subtree: true })) blocked ? a.pause() : a.play();
-    };
-    let following = true;
-    let pos = window.scrollY; // המיקום שאנחנו קבענו (עשרוני); גלילה שלה כלפי מטה נספרת אליו, גלילה למעלה עוצרת אותנו
-    let v = 0; // מהירות הגלילה הנוכחית, px/s
+    let following = false;
+    let lastY = 0;
     let last = 0;
     const onWheel = (ev: WheelEvent) => ev.deltaY < 0 && stopFollow();
     const onKey = (ev: KeyboardEvent) => ["ArrowUp", "PageUp", "Home"].includes(ev.key) && stopFollow();
     function stopFollow() {
+      if (!following) return;
       following = false;
+      cancelAnimationFrame(raf);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     }
-    window.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("keydown", onKey);
+    // הדף נפתח כלפי מטה – גוללים אחריו מעצמו כדי שהקוראת לא תצטרך לגלול.
+    // עוצרים רק כשהיא גוללת למעלה (גלגלת/מקש/גרירה) – לא על גלילה כלפי מטה.
     const follow = (now: number) => {
-      const dt = Math.min((now - last) / 1000, 0.1);
+      if (!following) return;
+      if (window.scrollY < lastY - 3) return stopFollow();
+      const k = 1 - Math.exp(-Math.min(now - last, 250) / 170); // החלקה שלא תלויה בקצב הפריימים
       last = now;
-      // גלילה כלפי מטה של הקוראת (גם התנופה שהביאה אותה לכאן) – מצטרפת; כלפי מעלה (גם גרירת פס או מגע) – היא מנהלת
-      if (window.scrollY < pos - 4) return stopFollow();
-      if (window.scrollY > pos + 4) pos = window.scrollY;
-      // גם כשה-GATE עצר את הפתיחה ממשיכים לגלול – זה בדיוק מה שמחזיר אותה לרוץ (אחרת נתקעים עד שהקוראת גוללת)
-      if (dt <= 0 || !anim) return;
-      const bottom = body.getBoundingClientRect().bottom + 30;
-      const over = bottom - window.innerHeight * FOLLOW_TARGET;
-      const want = over > 0 ? Math.min(FOLLOW_MAX_PX_S, over / FOLLOW_TAU_S) : 0;
-      v += (want - v) * (1 - Math.exp(-dt / FOLLOW_EASE_S));
-      if (v < 0.05) return;
-      pos = Math.min(pos + v * dt, document.documentElement.scrollHeight - window.innerHeight);
-      window.scrollTo({ top: pos, behavior: "instant" });
+      const bottom = body.getBoundingClientRect().bottom + 30; // + הגליל התחתון
+      const delta = bottom - (window.innerHeight - FOLLOW_MARGIN);
+      if (delta > 1) window.scrollTo({ top: window.scrollY + Math.max(1, delta * k), behavior: "instant" });
+      lastY = window.scrollY;
+      raf = requestAnimationFrame(follow);
     };
-    const tick = (now: number) => {
-      gate();
-      if (following) follow(now);
-      raf = requestAnimationFrame(tick);
+    const startFollow = () => {
+      following = true;
+      last = performance.now();
+      lastY = window.scrollY;
+      window.addEventListener("wheel", onWheel, { passive: true });
+      window.addEventListener("keydown", onKey);
+      raf = requestAnimationFrame(follow);
     };
     const io = new IntersectionObserver(
       ([e]) => {
@@ -212,11 +194,8 @@ export function AboutWriting() {
         played.current = true;
         setPhase("writing");
         anim = body.animate(frames, { duration: dur, easing: "linear", fill: "forwards" });
-        last = performance.now();
-        pos = window.scrollY;
-        raf = requestAnimationFrame(tick);
+        startFollow();
         anim.onfinish = () => {
-          cancelAnimationFrame(raf);
           stopFollow();
           wrap.style.minHeight = "";
           setPhase("done"); // חוזר לגובה אוטומטי – מגיב לשינוי רוחב מסך
@@ -227,7 +206,6 @@ export function AboutWriting() {
     );
     io.observe(wrap);
     return () => {
-      cancelAnimationFrame(raf);
       stopFollow();
       io.disconnect();
       anim?.cancel();

@@ -23,6 +23,8 @@ const idNum = z.coerce.number().int().positive();
 
 /** מסלולים שנבחרים בהם מקצועות (1–3) שאפשר להוסיף/להחליף: מנוי שנתי וממלאת מקום 3 חודשים */
 const SUBJECT_PLANS: (typeof purchases.$inferSelect)["plan"][] = ["yearly", "substitute_3m"];
+/** מסלולים שאפשר להוסיף להם מקצועות אחרי הרכישה – רק שנתי (ממלאת מקום = מקצוע אחד) */
+const ADDABLE_PLANS: (typeof purchases.$inferSelect)["plan"][] = ["yearly"];
 
 async function rootSubjectIds(ids: number[]) {
   if (!ids.length) return [];
@@ -138,9 +140,15 @@ export async function addYearlySubjectAction(form: FormData) {
     .from(purchases)
     .where(and(eq(purchases.id, purchaseId.data), eq(purchases.userId, user.id)))
     .limit(1);
+  // הוספת מקצוע באמצע התקופה – רק במנוי שנתי. ממלאת מקום = מקצוע אחד, כדי שלא יקנו מסלול זול ויורידו הכול
+  if (p?.plan === "substitute_3m") {
+    return deny("substitute_no_add", "בממלאת מקום אי אפשר להוסיף מקצוע – המסלול כולל מקצוע אחד", {
+      purchaseId: purchaseId.data,
+    });
+  }
   if (
     !p ||
-    !SUBJECT_PLANS.includes(p.plan) ||
+    !ADDABLE_PLANS.includes(p.plan) ||
     p.status !== "active" ||
     p.categoryId === null ||
     p.subjectsPending ||

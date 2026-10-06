@@ -145,7 +145,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
               סה״כ <GateShekel agorot={prices.substituteLaunchMonthly * SUBSTITUTE_MONTHS} />.
             </p>
             <p className="gate-soft text-base">
-              מקצוע אחד – ואפשר להרחיב עד 3 מקצועות באותו מחיר.
+              מקצוע אחד – המסלול אינו ניתן להרחבה למקצועות נוספים.
             </p>
           </div>
           <AutoStub />

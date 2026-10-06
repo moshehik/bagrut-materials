@@ -42,7 +42,8 @@ const schema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("plan"),
     plan: z.literal("substitute_3m"),
-    categoryIds: z.array(idNum).min(1, "בחרי לפחות מקצוע אחד").max(3, "עד 3 מקצועות"),
+    // ממלאת מקום 3 חודשים = מקצוע אחד בלבד (אי אפשר להרחיב) – אחרת אפשר לקנות מסלול זול ולהוריד כמה מקצועות
+    categoryIds: z.array(idNum).min(1, "בחרי מקצוע").max(1, "ממלאת מקום כוללת מקצוע אחד בלבד"),
   }),
   // ממלאת מקום יומית: סל הורדות לכל המקצועות, בלי בחירת מקצוע ובלי הגבלת זמן
   z.object({ kind: z.literal("plan"), plan: z.literal("substitute_daily") }),

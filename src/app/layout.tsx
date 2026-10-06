@@ -11,6 +11,7 @@ import { NutScrollHandle } from "@/components/nut-scroll-handle";
 import { DownloadLoader } from "@/components/download-loader";
 import { NutTooltip } from "@/components/nut-tooltip";
 import { SiteNotices } from "@/components/site-notices";
+import { GlobalBackButton } from "@/components/global-back-button";
 import { Tracker } from "@/components/tracker";
 import { Suspense } from "react";
 
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           user={user ? { name: user.name, role: user.role } : null}
         />
         <main id="main" className="flex-1">
+          <GlobalBackButton />
           <SiteNotices>{children}</SiteNotices>
         </main>
         <Footer />
