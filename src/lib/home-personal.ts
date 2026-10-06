@@ -1,5 +1,6 @@
 import "server-only";
-import { eq, inArray, max } from "drizzle-orm";
+import { and, eq, inArray, max } from "drizzle-orm";
+import { materialServable } from "@/lib/data";
 import { db } from "@/db";
 import { categories, downloads, materials, type Category, type User } from "@/db/schema";
 import { getActivePurchases } from "./data";
@@ -22,7 +23,7 @@ type Tree = {
 async function loadTree(): Promise<Tree> {
   const [cats, mats] = await Promise.all([
     db.select().from(categories).where(eq(categories.status, "active")).orderBy(categories.sort, categories.id),
-    db.selectDistinct({ categoryId: materials.categoryId }).from(materials).where(eq(materials.status, "active")),
+    db.selectDistinct({ categoryId: materials.categoryId }).from(materials).where(and(eq(materials.status, "active"), materialServable)),
   ]);
   const byId = new Map(cats.map((c) => [c.id, c]));
   const children = new Map<number, Category[]>();

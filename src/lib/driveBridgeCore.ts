@@ -252,13 +252,14 @@ export async function driveFetchAuthed(
 }
 
 /* ------------------------------ תקציבי זמן ------------------------------ */
-// ה-routes של הורדה/תצוגה מקדימה רצים עם maxDuration=60s. כל מסלול ההמרה (Oracle ← Drive) חייב
-// להסתיים בפחות מזה, אחרת Vercel הורג את הבקשה באמצע בלי תשובה. כל fetch במסלול מקבל timeout,
-// ומתוכנן כך שהמקרה הגרוע (Oracle נתקע + Drive איטי) נשאר בתוך CONVERT_TOTAL_BUDGET_MS.
-export const CONVERT_TOTAL_BUDGET_MS = 55_000;
-export const ORACLE_CONVERT_TIMEOUT_MS = 25_000;
-export const DRIVE_CONVERT_UPLOAD_TIMEOUT_MS = 12_000;
-export const DRIVE_CONVERT_EXPORT_TIMEOUT_MS = 15_000;
+// ה-routes של הורדה/תצוגה מקדימה רצים עם maxDuration=120s (הועלה מ-60 ב-2026-10-06: ~7% מההורדות
+// הקרות של קבצים גדולים נהרגו ב-504 אחרי 60 שניות – הורדה מהדרייב + המרה קרה חרגו מהתקציב).
+// כל מסלול ההמרה (Oracle ← Drive) חייב להסתיים בפחות מזה, אחרת Vercel הורג את הבקשה באמצע בלי תשובה.
+// כל fetch במסלול מקבל timeout, ומתוכנן כך שהמקרה הגרוע (Oracle נתקע + Drive איטי) נשאר בתוך CONVERT_TOTAL_BUDGET_MS.
+export const CONVERT_TOTAL_BUDGET_MS = 110_000;
+export const ORACLE_CONVERT_TIMEOUT_MS = 45_000;
+export const DRIVE_CONVERT_UPLOAD_TIMEOUT_MS = 15_000;
+export const DRIVE_CONVERT_EXPORT_TIMEOUT_MS = 25_000;
 export const PDF_CACHE_LOOKUP_TIMEOUT_MS = 4_000;
 export const PDF_CACHE_DOWNLOAD_TIMEOUT_MS = 8_000;
 export const DRIVE_REST_DOWNLOAD_TIMEOUT_MS = 50_000;

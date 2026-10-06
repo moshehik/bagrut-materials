@@ -79,13 +79,17 @@ export async function getIdsWithChildren(ids: number[], isAdmin: boolean): Promi
   return new Set(rows.map((r) => r.parentId).filter((x): x is number => x !== null));
 }
 
-/** חומרים – למנהלת הכל, למשתמשות רק פעילים */
+/** חומר שאפשר באמת להגיש: הקובץ בדרייב. שורות ישנות עם Vercel Blob / example.com מתות (ר' docs/drive-storage.md)
+ *  ונשארות בטבלה רק למנהלת – למשתמשת הן היו מוצגות ככרטיס שנופל ב-502. */
+export const materialServable = sql`${materials.fileUrl} LIKE 'drive://%'`;
+
+/** חומרים – למנהלת הכל, למשתמשות רק פעילים שהקובץ שלהם קיים (בדרייב) */
 export async function getVisibleMaterials(categoryId: number, isAdmin: boolean) {
   if (isAdmin) return getMaterials(categoryId);
   return db
     .select()
     .from(materials)
-    .where(and(eq(materials.categoryId, categoryId), eq(materials.status, "active")))
+    .where(and(eq(materials.categoryId, categoryId), eq(materials.status, "active"), materialServable))
     .orderBy(asc(materials.sort), asc(materials.id));
 }
 
@@ -214,7 +218,7 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
       .where(
         and(
           or(...likes.flatMap((like) => [ilike(materials.title, like), ilike(materials.description, like)])),
-          isAdmin ? undefined : eq(materials.status, "active"),
+          isAdmin ? undefined : and(eq(materials.status, "active"), materialServable),
         ),
       )
       .orderBy(desc(materials.downloads))

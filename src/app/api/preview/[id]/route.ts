@@ -1,4 +1,5 @@
 import { NextResponse, after, type NextRequest } from "next/server";
+import { fileRouteError } from "@/lib/http-utils";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { materials } from "@/db/schema";
@@ -15,7 +16,7 @@ import { officeMimeFor } from "@/lib/office-mime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * תצוגה מקדימה בדפדפן (inline, לא הורדה):
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   if (!fullView && !material.allowPreview) {
     await fail("preview.denied", "no_preview_allowed");
-    return NextResponse.json({ error: "אין תצוגה מקדימה לחומר זה" }, { status: 403 });
+    return fileRouteError(req, "אין תצוגה מקדימה לחומר זה", 403);
   }
 
   const isOffice = isOfficeMime(material.mime) || /\.(docx?|pptx?)$/i.test(material.fileName);
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     (material.mime === "application/pdf" || material.fileName.toLowerCase().endsWith(".pdf"));
   if (!isOffice && !isPdfSource) {
     await fail("preview.denied", "unsupported_type");
-    return NextResponse.json({ error: "אין תצוגה מקדימה לסוג קובץ זה" }, { status: 400 });
+    return fileRouteError(req, "אין תצוגה מקדימה לסוג קובץ זה", 400);
   }
 
   // צפייה מלאה של משתמשת רגילה: הזמנת מכסה (כמו הורדה) לפני ההבאה; משוחררת אם ההצגה נכשלה
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     } catch (e) {
       console.error("preview limit check failed", e);
       await fail("preview.denied", "limit_check_failed");
-      return NextResponse.json({ error: "לא ניתן לבדוק את מכסת הצפיות כרגע, נסי שוב בעוד רגע" }, { status: 503 });
+      return fileRouteError(req, "לא ניתן לבדוק את מכסת הצפיות כרגע, נסי שוב בעוד רגע", 503);
     }
     if (!r.ok) {
       await logAudit({
@@ -100,7 +101,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             : r.denied.reason === "period_limit"
               ? "מכסת ההורדות והצפיות ל-30 הימים האחרונים נוצלה"
               : "המכסה היומית להורדות וצפיות נוצלה – נסי שוב מחר";
-      return NextResponse.json({ error }, { status: 403 });
+      return fileRouteError(req, error, 403);
     }
     reservation = r.reservation;
   }
@@ -117,7 +118,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!file) {
     await release();
     await fail("preview.failed", "file_missing");
-    return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
+    return fileRouteError(req, "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר", 502);
   }
   let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
 
@@ -158,7 +159,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     console.error("preview conversion failed", e);
     await release();
     await fail("preview.failed", "conversion_failed");
-    return NextResponse.json({ error: "לא ניתן להציג תצוגה מקדימה כרגע" }, { status: 502 });
+    return fileRouteError(req, "לא ניתן להציג תצוגה מקדימה כרגע", 502);
   }
 
   let out: Uint8Array;
@@ -172,7 +173,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     await release();
     await fail("preview.failed", "stamp_failed");
     // לא נופלים חזרה לקובץ המלא והלא־מסומן
-    return NextResponse.json({ error: "לא ניתן להציג תצוגה מקדימה כרגע" }, { status: 502 });
+    return fileRouteError(req, "לא ניתן להציג תצוגה מקדימה כרגע", 502);
   }
 
   try {

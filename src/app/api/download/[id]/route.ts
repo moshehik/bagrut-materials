@@ -8,7 +8,7 @@ import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
-import { contentDisposition } from "@/lib/http-utils";
+import { contentDisposition, fileRouteError } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
@@ -18,7 +18,7 @@ import { officeMimeFor } from "@/lib/office-mime";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // המרת Word/PowerPoint ל-PDF דרך Drive לוקחת כ-10-20 שניות; מעל ברירת המחדל של Vercel
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function withSuffix(fileName: string, suffix: string) {
   const dot = fileName.lastIndexOf(".");
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
   if (material.allowDownload === false && !isAdmin) {
     await deny("view_only");
-    return NextResponse.json({ error: "צפייה בלבד" }, { status: 403 });
+    return fileRouteError(req, "צפייה בלבד", 403);
   }
 
   const ent = await checkEntitlement(user, material);
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     } catch (e) {
       console.error("download limit check failed", e);
       await deny("limit_check_failed");
-      return NextResponse.json({ error: "לא ניתן לבדוק את מכסת ההורדות כרגע, נסי שוב בעוד רגע" }, { status: 503 });
+      return fileRouteError(req, "לא ניתן לבדוק את מכסת ההורדות כרגע, נסי שוב בעוד רגע", 503);
     }
     if (!r.ok) {
       await deny(r.denied.reason, r.denied);
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       entityId: material.id,
       details: { driveId: material.fileUrl.startsWith("drive://") ? material.fileUrl.slice("drive://".length) : null },
     });
-    return NextResponse.json({ error: "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר" }, { status: 502 });
+    return fileRouteError(req, "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר", 502);
   }
 
   const isOffice = isOfficeMime(material.mime) || /\.(docx?|pptx?)$/i.test(material.fileName);
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     });
     if (isAdmin) return null;
     await release();
-    return NextResponse.json({ error: "ההורדה נכשלה, נסי שוב בעוד רגע" }, { status: 502 });
+    return fileRouteError(req, "ההורדה נכשלה, נסי שוב בעוד רגע", 502);
   };
 
   let response: Response;

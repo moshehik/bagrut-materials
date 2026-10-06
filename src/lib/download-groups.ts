@@ -1,4 +1,5 @@
 import { and, count, eq, inArray } from "drizzle-orm";
+import { materialServable } from "@/lib/data";
 import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { classifyMaterial, type CardType } from "@/lib/material-card-types";
@@ -83,7 +84,7 @@ export async function buildGroups(rows: DlRow[], opts: { withWho?: boolean; type
     db
       .select({ categoryId: materials.categoryId, n: count() })
       .from(materials)
-      .where(and(inArray(materials.categoryId, catIds), eq(materials.status, "active")))
+      .where(and(inArray(materials.categoryId, catIds), eq(materials.status, "active"), materialServable))
       .groupBy(materials.categoryId),
   ]);
   const byId = new Map(cats.map((c) => [c.id, c]));
