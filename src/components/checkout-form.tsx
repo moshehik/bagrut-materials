@@ -1,32 +1,25 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { ArrowLeft, Check, Loader2, Lock, Sparkles, AlertCircle, CreditCard } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Lock, AlertCircle, CreditCard } from "lucide-react";
 import { GateShekel } from "@/components/gate-shekel";
 import { LocationFields } from "@/components/auth-forms";
 import { purchaseAction } from "@/lib/actions/purchase";
-import { formatPrice, PREMIUM_ADDON_PRICE, YEARLY_INCLUDED_SUBJECTS, SUBJECT_HOUSES } from "@/lib/constants";
+import { formatPrice, YEARLY_INCLUDED_SUBJECTS, SUBJECT_HOUSES } from "@/lib/constants";
 
 export type CheckoutSubject = { id: number; title: string; icon: string; slug?: string };
 
 export type CheckoutFormProps = {
-  kind: "single" | "bundle" | "plan" | "premium";
-  plan?: "subject_monthly" | "custom_monthly" | "yearly" | "substitute_3m" | "substitute_daily";
+  kind: "single" | "bundle" | "plan";
+  /** מסלולי המנוי שנמכרים כיום (המסלולים החודשיים הישנים הוסרו – ר' RETIRED_PLANS) */
+  plan?: "yearly" | "substitute_3m" | "substitute_daily";
   materialId?: number;
   categoryId?: number;
-  /** רשימת מקצועות ראשיים לבחירה (למנוי מקצוע / מערכת) */
+  /** רשימת מקצועות ראשיים לבחירה (למנוי שנתי / ממלאת מקום 3 חודשים) */
   subjects?: CheckoutSubject[];
   /** מקצועות שנבחרו מראש */
   preselected?: number[];
   basePrice: number;
-  /** חודשים לחישוב תוספת פרימיום */
-  months: number;
-  /** האם הפרימיום מסומן כברירת מחדל */
-  premiumDefault?: boolean;
-  /** האם ניתן להוסיף פרימיום */
-  allowPremium?: boolean;
-  /** מחיר תוסף פרימיום לחודש באגורות (ברירת מחדל מהקבועים) */
-  addonPrice?: number;
   /** עיצוב "שער" (כמו עמוד המסלולים והמחירים) – למסלולי מנוי */
   gate?: boolean;
   /** רכישה ראשונה: חסרים עיר מגורים ושם תיכון – מבקשים אותם בטופס */
@@ -42,35 +35,25 @@ export function CheckoutForm(props: CheckoutFormProps) {
     subjects = [],
     preselected = [],
     basePrice,
-    months,
-    premiumDefault = false,
-    allowPremium = true,
-    addonPrice = PREMIUM_ADDON_PRICE,
     gate = false,
     needsLocation = false,
   } = props;
 
   const [state, action, pending] = useActionState(purchaseAction, undefined);
-  const [premium, setPremium] = useState(premiumDefault);
   const [selected, setSelected] = useState<number[]>(preselected.slice(0, 3));
-  const [subjectId, setSubjectId] = useState<number | undefined>(categoryId ?? preselected[0]);
 
-  const needsSelect = kind === "plan" && plan === "subject_monthly" && !categoryId;
-  const needsMulti =
-    kind === "plan" && (plan === "custom_monthly" || plan === "yearly" || plan === "substitute_3m");
-  /** מנוי שנתי / ממלאת מקום 3 חודשים = מקצוע אחד, ואפשר להרחיב עד 3 באותו מחיר; מנוי לפי מערכת = עד 3 */
+  const needsMulti = kind === "plan" && (plan === "yearly" || plan === "substitute_3m");
+  /** מנוי שנתי / ממלאת מקום 3 חודשים = מקצוע אחד, ואפשר להרחיב עד 3 באותו מחיר */
   const isYearly = plan === "yearly" || plan === "substitute_3m";
   const minPick = 1;
-  const maxPick = isYearly ? YEARLY_INCLUDED_SUBJECTS : 3;
+  const maxPick = YEARLY_INCLUDED_SUBJECTS;
 
-  const addon = premium && allowPremium && kind !== "premium" ? addonPrice * months : 0;
-  const total = basePrice + addon;
+  const total = basePrice;
 
   const canSubmit = useMemo(() => {
-    if (needsSelect && !subjectId) return false;
     if (needsMulti && (selected.length < minPick || selected.length > maxPick)) return false;
     return true;
-  }, [needsSelect, needsMulti, minPick, maxPick, subjectId, selected]);
+  }, [needsMulti, minPick, maxPick, selected]);
 
   function toggle(id: number) {
     setSelected((cur) => {
@@ -81,19 +64,11 @@ export function CheckoutForm(props: CheckoutFormProps) {
   }
 
   if (gate) {
-    const pickTitle = isYearly
-      ? "בחרי מקצוע"
-      : needsMulti
-        ? "בחרי עד 3 מקצועות"
-        : "בחרי מקצוע";
     const arrow = <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />;
     return (
       <form action={action} className="mt-8 space-y-8">
         <input type="hidden" name="kind" value={kind} />
         {plan && <input type="hidden" name="plan" value={plan} />}
-        {kind === "plan" && plan === "subject_monthly" && subjectId && (
-          <input type="hidden" name="categoryId" value={subjectId} />
-        )}
         {needsMulti && selected.map((id) => <input key={id} type="hidden" name="categoryIds" value={id} />)}
 
         {state?.error && (
@@ -103,47 +78,37 @@ export function CheckoutForm(props: CheckoutFormProps) {
           </div>
         )}
 
-        {(needsSelect || needsMulti) && (
+        {needsMulti && (
           <section aria-labelledby="pick-h">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 id="pick-h" className="text-3xl">{pickTitle}</h3>
-              {needsMulti && (!isYearly || selected.length > 0) && (
+              <h3 id="pick-h" className="text-3xl">בחרי מקצוע</h3>
+              {selected.length > 0 && (
                 <span className="gate-badge" aria-live="polite">
-                  {isYearly
-                    ? selected.length === 1
-                      ? "נבחר מקצוע"
-                      : `מקצוע + ${selected.length - 1} נוספים – כלולים במחיר`
-                    : `נבחרו ${selected.length} מתוך ${maxPick}`}
+                  {selected.length === 1
+                    ? "נבחר מקצוע"
+                    : `מקצוע + ${selected.length - 1} נוספים – כלולים במחיר`}
                 </span>
               )}
             </div>
-            <p className="mt-1 text-[#ffd45a]">
-              {isYearly ? (
-                "סמני וי על המקצוע שאת מלמדת."
-              ) : needsMulti ? (
-                "סמני וי על המקצועות שאת מלמדת לפי מערכת השעות שלך."
-              ) : (
-                "סמני וי על המקצוע שאליו המנוי."
-              )}
-            </p>
+            <p className="mt-1 text-[#ffd45a]">סמני וי על המקצוע שאת מלמדת.</p>
             {subjects.length === 0 ? (
               <p className="mt-3">עדיין אין מקצועות במאגר.</p>
             ) : (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {subjects.map((s) => {
-                  const on = needsMulti ? selected.includes(s.id) : subjectId === s.id;
-                  const disabled = needsMulti && !on && selected.length >= maxPick;
+                  const on = selected.includes(s.id);
+                  const disabled = !on && selected.length >= maxPick;
                   return (
                     <label
                       key={s.id}
                       className={`gate-card gate-pick ${on ? "gate-pick-on" : ""} ${disabled ? "gate-pick-off" : ""}`}
                     >
                       <input
-                        type={needsMulti ? "checkbox" : "radio"}
+                        type="checkbox"
                         className="sr-only"
                         checked={on}
                         disabled={disabled}
-                        onChange={() => (needsMulti ? toggle(s.id) : setSubjectId(s.id))}
+                        onChange={() => toggle(s.id)}
                       />
                       <span className="gate-check" aria-hidden>
                         {on && <Check className="h-5 w-5" strokeWidth={3} />}
@@ -160,7 +125,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
                 })}
               </div>
             )}
-            {needsMulti && isYearly && selected.length > 0 && selected.length < YEARLY_INCLUDED_SUBJECTS && (
+            {isYearly && selected.length > 0 && selected.length < YEARLY_INCLUDED_SUBJECTS && (
               <p className="mt-3 text-[#ffd45a]">
                 תרצי עוד? מקצוע נוסף כלול במחיר – אפשר לסמן אותו עכשיו, או להוסיף בכל שלב במהלך השנה (הוא יסתיים יחד
                 עם המנוי).
@@ -176,46 +141,12 @@ export function CheckoutForm(props: CheckoutFormProps) {
           </section>
         )}
 
-        {allowPremium && kind !== "premium" && (
-          <label className={`gate-card gate-pick ${premium ? "gate-pick-on" : ""}`}>
-            <input
-              type="checkbox"
-              name="premium"
-              className="sr-only"
-              checked={premium}
-              onChange={(e) => setPremium(e.target.checked)}
-            />
-            <span className="gate-check" aria-hidden>
-              {premium && <Check className="h-5 w-5" strokeWidth={3} />}
-            </span>
-            <span className="flex-1">
-              <span className="flex flex-wrap items-center gap-x-3 text-xl">
-                <Sparkles className="h-5 w-5" aria-hidden />
-                הוסיפי פרימיום
-                <span className="gate-badge ms-auto">
-                  +<GateShekel agorot={addonPrice} /> לחודש
-                </span>
-              </span>
-              <span className="gate-soft block text-base leading-snug">
-                שאלות בגרויות קודמות, מצגות, טיפים למסירה, רעיונות לשיעור ופורום המורות. מעלה גם את
-                דרגת החברות שלך.
-              </span>
-            </span>
-          </label>
-        )}
-
         <div className="gate-strip gate-total">
           <div className="w-full space-y-1">
             <div className="flex justify-between gap-4">
               <span>מחיר המסלול</span>
               <GateShekel agorot={basePrice} />
             </div>
-            {addon > 0 && (
-              <div className="flex justify-between gap-4">
-                <span>פרימיום ({months} {months === 1 ? "חודש" : "חודשים"})</span>
-                <GateShekel agorot={addon} />
-              </div>
-            )}
           </div>
           <div className="flex w-full items-baseline justify-between gap-4 border-t-2 border-dashed border-[#ffd45a]/60 pt-2">
             <span className="text-2xl">סה״כ לתשלום</span>
@@ -264,9 +195,6 @@ export function CheckoutForm(props: CheckoutFormProps) {
       {plan && <input type="hidden" name="plan" value={plan} />}
       {materialId && <input type="hidden" name="materialId" value={materialId} />}
       {kind === "bundle" && categoryId && <input type="hidden" name="categoryId" value={categoryId} />}
-      {kind === "plan" && plan === "subject_monthly" && subjectId && (
-        <input type="hidden" name="categoryId" value={subjectId} />
-      )}
       {needsMulti && selected.map((id) => <input key={id} type="hidden" name="categoryIds" value={id} />)}
 
       {state?.error && (
@@ -276,45 +204,10 @@ export function CheckoutForm(props: CheckoutFormProps) {
         </div>
       )}
 
-      {needsSelect && (
-        <div>
-          <label className="block text-sm font-semibold mb-2">לאיזה מקצוע המנוי?</label>
-          {subjects.length === 0 ? (
-            <p className="text-sm text-muted">עדיין אין מקצועות במאגר.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {subjects.map((s) => {
-                const on = subjectId === s.id;
-                return (
-                  <button
-                    type="button"
-                    key={s.id}
-                    onClick={() => setSubjectId(s.id)}
-                    aria-pressed={on}
-                    className={`rounded-xl border px-3 py-2.5 text-sm text-start transition transition-transform hover:-translate-y-0.5 ${
-                      on
-                        ? "border-blue bg-blue-soft text-blue-deep shadow-sm"
-                        : "border-foreground/10 hover:border-blue/40 hover:bg-blue-soft/40"
-                    }`}
-                  >
-                    <span className="me-1">{s.icon}</span>
-                    {s.title}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
       {needsMulti && (
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="block text-sm font-semibold">
-              {isYearly
-                ? "בחרי מקצוע (מקצוע נוסף כלול במחיר)"
-                : "בחרי עד 3 מקצועות לפי מערכת השעות שלך"}
-            </label>
+            <label className="block text-sm font-semibold">בחרי מקצוע (מקצוע נוסף כלול במחיר)</label>
             <span className="text-xs text-muted">{selected.length}/{maxPick}</span>
           </div>
           {subjects.length === 0 ? (
@@ -359,48 +252,11 @@ export function CheckoutForm(props: CheckoutFormProps) {
         </div>
       )}
 
-      {allowPremium && kind !== "premium" && (
-        <label
-          className={`flex gap-3 items-start rounded-2xl border p-4 cursor-pointer transition ${
-            premium ? "border-gold bg-gold-soft/60" : "border-foreground/10 hover:border-gold/60 transition-transform hover:-translate-y-0.5"
-          }`}
-        >
-          <input
-            type="checkbox"
-            name="premium"
-            className="mt-1 accent-[#d9a21b]"
-            checked={premium}
-            onChange={(e) => setPremium(e.target.checked)}
-          />
-          <span className="flex-1">
-            <span className="flex items-center gap-2 font-semibold">
-              <Sparkles className="h-4 w-4 text-gold" />
-              הוסיפי פרימיום
-              <span className="chip bg-gold-soft text-[#8a6500] ms-auto">
-                +{formatPrice(addonPrice)} לחודש
-              </span>
-            </span>
-            <span className="block text-sm text-muted mt-1">
-              פותח את שאלות הבגרויות הקודמות, המצגות, הטיפים למסירה והרעיונות לשיעור – וגם את
-              פורום המורות. בנוסף, מעלה את דרגת החברות שלך.
-            </span>
-          </span>
-        </label>
-      )}
-
       <div className="rounded-2xl bg-blue-soft/60 p-4 space-y-1.5 text-sm">
         <div className="flex justify-between">
           <span>מחיר בסיס</span>
           <span className="font-semibold">{formatPrice(basePrice)}</span>
         </div>
-        {addon > 0 && (
-          <div className="flex justify-between text-[#8a6500]">
-            <span>
-              תוספת פרימיום ({months} {months === 1 ? "חודש" : "חודשים"})
-            </span>
-            <span className="font-semibold">{formatPrice(addon)}</span>
-          </div>
-        )}
         <div className="h-px bg-blue/15 my-1" />
         <div className="flex justify-between text-lg">
           <span className="font-bold">סה״כ לתשלום</span>

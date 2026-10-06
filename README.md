@@ -37,6 +37,18 @@ npm run dev
 
 - `src/db/schema.ts` – טבלאות: users, categories (עץ), materials, purchases, downloads, forum, sell_offers
 - `src/lib/data.ts` – שאילתות + `checkEntitlement` (בדיקת זכאות להורדה)
+
+### מסלולים ומחירים (עדכון 2026-10-06)
+
+- **אין "תוספת פרימיום"**: הרעיון בוטל לגמרי. מנוי פעיל שמכסה את המקצוע פותח את **כל** סוגי החומרים (גם שאלות מבגרויות,
+  מצגות, טיפים ורעיונות). העמודות `purchases.premium`, `cart_items.premium` ו-`materials.premium_only` עדיין קיימות ב-Neon
+  (לא הורצה DDL) אבל הוסרו מ-`src/db/schema.ts` – שום קוד לא קורא ולא כותב אותן. ערך ה-enum `access = 'premium'` נשאר
+  (אי אפשר למחוק ערך enum בלי DDL) ומתנהג כמו `paid`.
+- **המסלולים החודשיים הישנים** `subject_monthly` / `custom_monthly` הוסרו מהמכירה (`RETIRED_PLANS` ב-`src/lib/constants.ts`):
+  `/checkout?plan=...` מציג "המסלול הזה כבר לא קיים", `purchaseAction` / `checkoutCart` / מנוי ידני מסרבים להם. ערכי ה-enum
+  נשארים בשביל שורות היסטוריות (תוויות "(מסלול ישן)" בניהול), ושורות פעילות ישנות עדיין מקנות גישה. `custom_monthly`
+  עדיין נוצר פנימית במימוש קופון פרטי (`private-coupons.ts`) – זה מענק, לא רכישה.
+- המסלולים שנמכרים: הורדה בודדת, קובץ מורחב (תיקייה), מנוי שנתי (עד 3 מקצועות), ממלאת מקום 3 חודשים, ממלאת מקום יומית.
 - `src/lib/watermark.ts` – הטבעת מספר אישי + זכויות יוצרים על כל עמוד PDF
 - `src/app/api/download/[id]` – הורדה מאובטחת (הטבעה + רישום)
 - `src/app/admin` – ניהול עץ הקטגוריות, העלאת קבצים, משתמשות, הצעות מכירה

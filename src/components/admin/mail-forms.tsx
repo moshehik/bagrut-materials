@@ -60,7 +60,6 @@ export function BroadcastForm() {
           <select name="audience" value={audience} onChange={(e) => setAudience(e.target.value)} className="input mt-1 font-normal">
             <option value="all">כל המשתמשות</option>
             <option value="subscribers">מנויות פעילות</option>
-            <option value="premium">מנויות פרימיום</option>
           </select>
         </label>
       </div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { and, eq, gt, isNull, or, inArray } from "drizzle-orm";
+import { and, gt, isNull, or, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { users, purchases } from "@/db/schema";
 import { requireAdmin, getCurrentUser } from "@/lib/session";
@@ -82,12 +82,12 @@ export async function sendManualMail(_prev: MailState, form: FormData): Promise<
 }
 
 const broadcastSchema = z.object({
-  audience: z.enum(["all", "premium", "subscribers"]),
+  audience: z.enum(["all", "subscribers"]),
   subject: z.string().trim().min(1, "נא להזין נושא").max(300),
   body: z.string().trim().min(1, "נא להזין תוכן").max(20000),
 });
 
-/** דיוור לקבוצת משתמשות: כולן / פרימיום / מנויות פעילות */
+/** דיוור לקבוצת משתמשות: כולן / מנויות פעילות */
 export async function broadcastMail(_prev: MailState, form: FormData): Promise<MailState> {
   const admin = await requireAdmin();
   const parsed = broadcastSchema.safeParse({
@@ -104,13 +104,10 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
     recipients = await base;
   } else {
     const now = new Date();
-    const cond =
-      audience === "premium"
-        ? and(eq(purchases.premium, true), or(isNull(purchases.endsAt), gt(purchases.endsAt, now)))
-        : and(
-            inArray(purchases.plan, ["subject_monthly", "custom_monthly", "yearly", "substitute_3m", "substitute_daily"]),
-            or(isNull(purchases.endsAt), gt(purchases.endsAt, now)),
-          );
+    const cond = and(
+      inArray(purchases.plan, ["subject_monthly", "custom_monthly", "yearly", "substitute_3m", "substitute_daily"]),
+      or(isNull(purchases.endsAt), gt(purchases.endsAt, now)),
+    );
     const ids = await db.selectDistinct({ id: purchases.userId }).from(purchases).where(cond);
     if (ids.length) recipients = await base.where(inArray(users.id, ids.map((r) => r.id)));
   }

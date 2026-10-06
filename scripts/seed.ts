@@ -187,12 +187,11 @@ async function seedDemoMaterials() {
     kind: schema.MaterialKind;
     fileName: string;
     price: number;
-    premiumOnly: boolean;
   }[] = [
-    { title: "דף שכפול לתלמידה – תהילים פרק א'", kind: "student_sheet", fileName: "תהילים א לתלמיד.pdf", price: 1500, premiumOnly: false },
-    { title: "דף שכפול למורה – תהילים פרק א'", kind: "teacher_sheet", fileName: "תהילים א למורה.pdf", price: 2500, premiumOnly: false },
-    { title: "מצגת מלווה – תהילים פרק א'", kind: "presentation", fileName: "תהילים א מצגת.pptx", price: 2000, premiumOnly: true },
-    { title: "שאלות מבגרויות קודמות – תהילים פרק א'", kind: "past_exam", fileName: "תהילים א בגרות.pdf", price: 1800, premiumOnly: true },
+    { title: "דף שכפול לתלמידה – תהילים פרק א'", kind: "student_sheet", fileName: "תהילים א לתלמיד.pdf", price: 1500 },
+    { title: "דף שכפול למורה – תהילים פרק א'", kind: "teacher_sheet", fileName: "תהילים א למורה.pdf", price: 2500 },
+    { title: "מצגת מלווה – תהילים פרק א'", kind: "presentation", fileName: "תהילים א מצגת.pptx", price: 2000 },
+    { title: "שאלות מבגרויות קודמות – תהילים פרק א'", kind: "past_exam", fileName: "תהילים א בגרות.pdf", price: 1800 },
   ];
   let n = 0;
   for (let i = 0; i < demos.length; i++) {
@@ -215,7 +214,6 @@ async function seedDemoMaterials() {
         : "application/pdf",
       size: 245_000,
       price: d.price,
-      premiumOnly: d.premiumOnly,
       sort: (i + 1) * 10,
     });
     n++;

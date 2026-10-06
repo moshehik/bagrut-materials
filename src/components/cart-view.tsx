@@ -9,14 +9,13 @@ import {
   AlertCircle,
   CreditCard,
   Lock,
-  Sparkles,
   ChevronLeft,
   FileText,
   FolderOpen,
   Crown,
 } from "lucide-react";
 import type { Cart } from "@/lib/cart";
-import { checkoutCart, clearCart, removeFromCart, setCartItemPremium } from "@/lib/actions/cart";
+import { checkoutCart, clearCart, removeFromCart } from "@/lib/actions/cart";
 import { formatPrice } from "@/lib/constants";
 import { emitCartChanged } from "@/components/add-to-cart-button";
 
@@ -41,14 +40,6 @@ export function CartView({ cart }: { cart: Cart }) {
     start(async () => {
       const r = await removeFromCart(id);
       if (r.ok) emitCartChanged(r.count);
-      setBusyId(null);
-    });
-  }
-
-  function togglePremium(id: number, value: boolean) {
-    setBusyId(id);
-    start(async () => {
-      await setCartItemPremium(id, value);
       setBusyId(null);
     });
   }
@@ -121,33 +112,15 @@ export function CartView({ cart }: { cart: Cart }) {
                   )}
                 </h3>
                 <p className="text-xs text-muted">{it.subtitle}</p>
-
-                {it.kind === "plan" && (
-                  <label className="mt-3 inline-flex items-center gap-2 text-sm cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={it.premium}
-                      disabled={rowBusy}
-                      onChange={(e) => togglePremium(it.id, e.target.checked)}
-                      className="h-4 w-4 accent-[var(--color-gold,#d9a21b)]"
-                    />
-                    <Sparkles className="h-4 w-4 text-gold" />
-                    <span>
-                      תוסף פרימיום{" "}
-                      <span className="text-muted">
-                        (+{formatPrice(it.premiumAddon)}
-                        {it.months > 1 ? ` ל-${it.months} חודשים` : ""})
-                      </span>
-                    </span>
-                  </label>
+                {it.retired && (
+                  <p className="mt-2 text-xs text-[#9d4a2a] font-semibold">
+                    המסלול הזה כבר לא קיים – הסירי אותו מהעגלה ובחרי מסלול מעודכן
+                  </p>
                 )}
               </div>
               <div className="flex flex-col items-end justify-between shrink-0 gap-2">
                 <div className="text-end">
                   <div className="font-display font-bold text-lg">{formatPrice(it.price)}</div>
-                  {it.premium && it.premiumAddon > 0 && (
-                    <div className="text-[11px] text-muted">כולל פרימיום</div>
-                  )}
                 </div>
                 <button
                   type="button"

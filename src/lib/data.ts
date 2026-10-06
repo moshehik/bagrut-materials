@@ -12,7 +12,6 @@ import {
   type MaterialKind,
   type User,
 } from "@/db/schema";
-import { PREMIUM_KINDS } from "./constants";
 import { getBool } from "./settings";
 
 /**
@@ -295,10 +294,14 @@ export type Entitlement =
     }
   | {
       ok: false;
-      reason: "login" | "premium" | "purchase" | "quota" | "suspended";
+      reason: "login" | "purchase" | "quota" | "suspended";
     };
 
-/** רכישות פעילות (סטטוס active ולא פגו) של משתמשת */
+/**
+ * רכישות פעילות (סטטוס active ולא פגו) של משתמשת.
+ * שורות "פרימיום בלבד" ישנות (plan=single בלי materialId, downloadsLimit=0) חוזרות גם הן אבל לא מקנות דבר –
+ * הן לא תואמות לשום חומר ולא נחשבות מנוי. אין יותר תוספת פרימיום: מנוי פעיל פותח את כל סוגי החומרים.
+ */
 export async function getActivePurchases(userId: number) {
   const now = new Date();
   return db
@@ -337,16 +340,8 @@ export async function checkEntitlement(
 
   if (!user) return { ok: false, reason: "login" };
 
-  const isPremiumKind =
-    material.access === "premium" || material.premiumOnly || PREMIUM_KINDS.includes(material.kind);
-
+  // אין הבחנה בין סוגי חומרים (אין יותר "פרימיום"): כל רכישה/מנוי שמכסה את החומר פותחת אותו, מכל סוג
   const active = await getActivePurchases(user.id);
-  const hasPremium = active.some((p) => p.premium);
-  // רכישת תיקייה כוללת את כל הקבצים שבה, גם סוגים שבדרך כלל דורשים פרימיום
-  const ownsBundle = active.some(
-    (p) => p.plan === "bundle" && p.categoryId !== null && chainIds.has(p.categoryId),
-  );
-  if (isPremiumKind && !hasPremium && !ownsBundle) return { ok: false, reason: "premium" };
 
   // רכישה בודדת של החומר עצמו
   const single = active.find((p) => p.plan === "single" && p.materialId === material.id);
@@ -390,26 +385,6 @@ export async function getUserDownloadCounts(
   return new Map(rows.map((r) => [r.materialId, Number(r.n)]));
 }
 
-export async function userHasPremium(user: User | null) {
-  if (!user) return false;
-  if (user.role === "admin") return true;
-  if (user.suspended) return false;
-  const now = new Date();
-  const [row] = await db
-    .select({ id: purchases.id })
-    .from(purchases)
-    .where(
-      and(
-        eq(purchases.userId, user.id),
-        eq(purchases.premium, true),
-        eq(purchases.status, "active"),
-        or(isNull(purchases.endsAt), gt(purchases.endsAt, now)),
-      ),
-    )
-    .limit(1);
-  return !!row;
-}
-
 /** יחידה חינמית = יש בה חומרים וכולם חינמיים (אותה הגדרה כמו hasPaid בדף היחידה) */
 export async function isFreeUnit(categoryId: number) {
   const [row] = await db
@@ -423,7 +398,7 @@ export async function isFreeUnit(categoryId: number) {
 }
 
 /**
- * גישה לפורום של יחידה: מנהלת, מנויה (פרימיום פעיל או מנוי שמכסה את היחידה),
+ * גישה לפורום של יחידה: מנהלת, מנויה (מנוי שמכסה את היחידה),
  * או מי שרכשה את תיקיית היחידה / קובץ בודד שנמצא בה. מושעה – אין גישה.
  * ביחידה חינמית – כל מורה מחוברת (הרשמה בלבד) יכולה לכתוב; אורחת רק צופה (ר' isFreeUnit).
  */
@@ -434,7 +409,6 @@ export async function userCanUseUnitForum(user: User | null, categoryId: number)
   if (await isFreeUnit(categoryId)) return true;
   const active = await getActivePurchases(user.id);
   if (active.length === 0) return false;
-  if (active.some((p) => p.premium)) return true;
   const chainIds = new Set((await getCategoryChain(categoryId)).map((c) => c.id));
   const covers = active.some(
     (p) => p.plan !== "single" && !p.subjectsPending && (p.categoryId === null || chainIds.has(p.categoryId)),

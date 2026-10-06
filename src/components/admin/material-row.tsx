@@ -16,7 +16,8 @@ export const ACCESS_LABELS: Record<Material["access"], { label: string; classNam
   free: { label: "חינם", className: "bg-green-100 text-green-800" },
   paid: { label: "בתשלום", className: "bg-gold-soft text-gold" },
   tier: { label: "לפי רמה", className: "bg-blue-soft text-blue-deep" },
-  premium: { label: "פרימיום", className: "bg-pink-soft text-pink" },
+  // ערך ישן (אין יותר פרימיום) – מתנהג כמו "בתשלום"; מוצג רק בחומרים שסומנו כך בעבר
+  premium: { label: "בתשלום (ערך ישן)", className: "bg-gold-soft text-gold" },
 };
 
 export const STATUS_LABELS: Record<Material["status"], { label: string; className: string }> = {
@@ -69,7 +70,6 @@ export function MaterialRow({ material: m }: { material: Material }) {
         {m.status !== "active" && <span className={`chip ${status.className}`}>{status.label}</span>}
         <span className={`chip ${access.className}`}>{access.label}</span>
         {m.access !== "free" && <span className="chip bg-gold-soft text-gold">{formatPrice(m.price)}</span>}
-        {m.premiumOnly && <span className="chip bg-pink-soft text-pink">פרימיום</span>}
         {!m.allowDownload && <span className="chip bg-gray-100 text-gray-700">צפייה בלבד</span>}
         {m.allowPreview && <span className="chip bg-blue-soft text-blue-deep">תצוגה מקדימה</span>}
         <span className="ms-auto flex items-center gap-1">
@@ -162,7 +162,6 @@ function EditForm({ material: m, onDone }: { material: Material; onDone: () => v
         <select name="access" defaultValue={m.access} className="input">
           <option value="free">חינם (לכל מחוברת)</option>
           <option value="paid">בתשלום (רכישה / מנוי)</option>
-          <option value="premium">פרימיום בלבד</option>
         </select>
       </label>
       <label className="text-sm">
@@ -185,10 +184,6 @@ function EditForm({ material: m, onDone }: { material: Material; onDone: () => v
         />
       </label>
       <div className="text-sm flex flex-wrap items-center gap-4 sm:col-span-2">
-        <label className="flex items-center gap-2">
-          <input name="premiumOnly" type="checkbox" defaultChecked={m.premiumOnly} />
-          זמין רק למנויות פרימיום
-        </label>
         <label className="flex items-center gap-2">
           <input name="allowDownload" type="checkbox" defaultChecked={m.allowDownload} />
           ניתן להורדה (אחרת: צפייה בלבד)

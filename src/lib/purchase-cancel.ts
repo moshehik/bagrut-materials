@@ -41,7 +41,7 @@ async function isUnused(userId: number, p: Purchase): Promise<boolean> {
       .limit(1);
     return hit.length === 0;
   }
-  // פרימיום בלבד – אין בו הורדות
+  // שורה ישנה בלי חומר/תיקייה (למשל "פרימיום בלבד" מלפני ביטול הפרימיום) – אין בה הורדות
   return true;
 }
 

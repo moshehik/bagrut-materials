@@ -96,7 +96,6 @@ export async function chooseYearlySubjectsAction(
         startsAt: p.startsAt,
         endsAt: p.endsAt,
         termDays: p.termDays,
-        premium: false,
         paymentRef: p.paymentRef,
       })),
     );
@@ -182,7 +181,6 @@ export async function addYearlySubjectAction(form: FormData) {
       startsAt: p.startsAt,
       endsAt: p.endsAt,
       termDays: p.termDays,
-      premium: false,
       paymentRef: p.paymentRef,
     })
     .returning({ id: purchases.id });

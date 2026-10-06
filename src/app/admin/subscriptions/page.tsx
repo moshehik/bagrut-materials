@@ -69,7 +69,6 @@ export default async function AdminSubscriptionsPage({
         downloadsLimit: purchases.downloadsLimit,
         startsAt: purchases.startsAt,
         endsAt: purchases.endsAt,
-        premium: purchases.premium,
         status: purchases.status,
         paymentRef: purchases.paymentRef,
         notes: purchases.notes,
@@ -104,7 +103,6 @@ export default async function AdminSubscriptionsPage({
     downloadsLimit: r.downloadsLimit,
     startsAt: r.startsAt,
     endsAt: r.endsAt,
-    premium: r.premium,
     status: r.status,
     paymentRef: r.paymentRef,
     notes: r.notes,
@@ -161,6 +159,7 @@ export default async function AdminSubscriptionsPage({
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">מסלול:</span>
+          {/* כולל את המסלולים החודשיים הישנים – רק לסינון שורות היסטוריות */}
           {planEnum.enumValues.map((p) => (
             <Link key={p} href={link({ plan: plan === p ? undefined : p })} className={chipCls(plan === p)}>
               {PLANS[p].label}
@@ -192,7 +191,6 @@ export default async function AdminSubscriptionsPage({
                 <th className="py-2 pe-3 font-medium">סכום</th>
                 <th className="py-2 pe-3 font-medium">הורדות</th>
                 <th className="py-2 pe-3 font-medium">תוקף</th>
-                <th className="py-2 pe-3 font-medium">פרימיום</th>
                 <th className="py-2 pe-3 font-medium">סטטוס</th>
                 <th className="py-2 pe-3 font-medium">אסמכתא</th>
                 <th className="py-2 pe-3 font-medium">פעולות</th>

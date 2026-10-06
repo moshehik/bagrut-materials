@@ -62,7 +62,6 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
     views7,
     revenue30,
     activeSubs,
-    premiumUsers,
     buyers,
     dlByDay,
     usersByDay,
@@ -86,9 +85,6 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
     ),
     one(
       sql`SELECT count(*)::int n FROM purchases WHERE status = 'active' AND (ends_at IS NULL OR ends_at > now()) AND plan IN ('subject_monthly','custom_monthly','yearly','substitute_3m','substitute_daily')`,
-    ),
-    one(
-      sql`SELECT count(DISTINCT user_id)::int n FROM purchases WHERE premium = true AND status = 'active' AND (ends_at IS NULL OR ends_at > now())`,
     ),
     one(sql`SELECT count(DISTINCT user_id)::int n FROM purchases`),
     q(sql`SELECT ${dayExpr("created_at")} d, count(*)::int n FROM downloads WHERE created_at >= ${since} GROUP BY 1`),
@@ -155,7 +151,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         <StatTile label="הורדות היום" value={dlToday.toLocaleString("he-IL")} hint={`${dl7} בשבוע · ${dl30} בחודש`} tone="bg-gold-soft text-gold" href="/admin/downloads" />
         <StatTile label="צפיות בדפים (7 ימים)" value={views7.toLocaleString("he-IL")} tone="bg-pink-soft text-pink" href="/admin/activity" />
         <StatTile label="הכנסות 30 יום" value={money(revenue30)} tone="bg-emerald-50 text-emerald-700" href="/admin/finance" />
-        <StatTile label="מנויים פעילים" value={activeSubs.toLocaleString("he-IL")} hint={`${premiumUsers} עם פרימיום`} href="/admin/subscriptions" />
+        <StatTile label="מנויים פעילים" value={activeSubs.toLocaleString("he-IL")} href="/admin/subscriptions" />
         <StatTile label="המרה" value={`${conversion}%`} hint={`${buyers} רכשו מתוך ${usersTotal}`} tone="bg-violet-50 text-violet-700" />
       </div>
 

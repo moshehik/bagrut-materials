@@ -39,7 +39,6 @@ function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bund
   switch (ent.reason) {
     case "login":
       return `/login?next=${encodeURIComponent(currentPath)}`;
-    case "premium":
     case "purchase":
       return bundleHref;
     case "quota":

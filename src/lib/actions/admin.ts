@@ -25,7 +25,7 @@ import {
 import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 import { driveSafe, ensureCategoryFolder, loadCategories, placeMaterial, syncCategoryFolderName, driveTrash, logDriveEvent, folderHasLiveFiles } from "@/lib/driveTree";
-import { PLANS } from "@/lib/constants";
+import { PLANS, RETIRED_PLAN_MESSAGE, isRetiredPlan } from "@/lib/constants";
 import { addDays } from "@/lib/purchase-helpers";
 
 export type AdminActionState = { error?: string; ok?: boolean; id?: number } | undefined;
@@ -368,7 +368,6 @@ const materialSchema = z.object({
   mime: z.string().trim().max(120).default("application/octet-stream"),
   size: z.coerce.number().int().min(0).default(0),
   price: priceShekel, // בשקלים
-  premiumOnly: boolField.default(false),
   sort: z.preprocess(emptyToUndef, z.coerce.number().int().optional()),
   access: z.enum(accessEnum.enumValues).default("paid"),
   status: z.enum(statusEnum.enumValues).default("active"),
@@ -398,7 +397,6 @@ export async function createMaterial(input: MaterialInput): Promise<AdminActionS
         mime: d.mime,
         size: d.size,
         price: d.price !== undefined ? Math.round(d.price * 100) : 1500,
-        premiumOnly: d.premiumOnly,
         sort: d.sort ?? 0,
         access: d.access,
         status: d.status,
@@ -455,7 +453,6 @@ const materialUpdateSchema = z.object({
   description: optionalStr,
   kind: z.enum(materialKindEnum.enumValues),
   price: priceShekel,
-  premiumOnly: boolField.default(false),
   sort: z.preprocess(emptyToUndef, z.coerce.number().int().optional()),
   access: z.enum(accessEnum.enumValues).default("paid"),
   status: z.enum(statusEnum.enumValues).default("active"),
@@ -486,7 +483,6 @@ export async function updateMaterial(
         description: d.description ?? null,
         kind: d.kind,
         price: newPrice,
-        premiumOnly: d.premiumOnly,
         sort: d.sort ?? 0,
         access: d.access,
         status: d.status,
@@ -511,7 +507,6 @@ export async function updateMaterial(
               title: old.title,
               kind: old.kind,
               price: old.price,
-              premiumOnly: old.premiumOnly,
               access: old.access,
               status: old.status,
               allowDownload: old.allowDownload,
@@ -525,7 +520,6 @@ export async function updateMaterial(
           title: d.title,
           kind: d.kind,
           price: newPrice,
-          premiumOnly: d.premiumOnly,
           access: d.access,
           status: d.status,
           allowDownload: d.allowDownload,
@@ -930,25 +924,6 @@ export async function refundPurchase(
   return { ok: true, id };
 }
 
-/** הפעלה/כיבוי פרימיום על מנוי */
-export async function togglePurchasePremium(id: number): Promise<AdminActionState> {
-  const me = await admin();
-  if (!me) return { error: "אין הרשאה" };
-  if (!Number.isInteger(id)) return { error: "מזהה לא תקין" };
-  const p = await getPurchase(id);
-  if (!p) return { error: "המנוי לא נמצא" };
-  await db.update(purchases).set({ premium: !p.premium }).where(eq(purchases.id, id));
-  await logAudit({
-    actorId: me.id,
-    action: "purchase.premium",
-    entityType: "purchase",
-    entityId: id,
-    details: { premium: !p.premium },
-  });
-  revalidateSubs();
-  return { ok: true, id };
-}
-
 /** עדכון הערות למנוי */
 export async function updatePurchaseNotes(id: number, notes: string): Promise<AdminActionState> {
   const me = await admin();
@@ -975,7 +950,6 @@ const manualPurchaseSchema = z.object({
   materialId: optionalInt,
   days: z.preprocess(emptyToUndef, z.coerce.number().int().min(0).max(3650).optional()),
   downloadsLimit: optionalInt,
-  premium: boolField.default(false),
   amount: priceShekel, // בשקלים
   note: optionalLongStr,
 });
@@ -994,19 +968,24 @@ export async function createManualPurchase(
   const [u] = await db.select().from(users).where(eq(users.email, d.email)).limit(1);
   if (!u) return { error: "לא נמצאה משתמשת עם המייל הזה" };
 
+  // המסלולים החודשיים הישנים הוסרו מהמכירה – גם לא ידנית (שורות קיימות נשארות)
+  if (isRetiredPlan(d.plan)) return { error: RETIRED_PLAN_MESSAGE };
+
   const def = PLANS[d.plan];
   let categoryId: number | null = null;
   let materialId: number | null = null;
 
-  if (d.plan === "subject_monthly" || d.plan === "custom_monthly") {
-    if (!d.categoryId) return { error: "יש לבחור מקצוע" };
-    const [c] = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(and(eq(categories.id, d.categoryId), isNull(categories.parentId)))
-      .limit(1);
-    if (!c) return { error: "יש לבחור מקצוע ראשי" };
-    categoryId = c.id;
+  if (d.plan === "yearly" || d.plan === "substitute_3m") {
+    // מקצוע אופציונלי: ריק = גישה לכל המקצועות (כמו מנוי שנתי ישן), אחרת חייב להיות מקצוע ראשי
+    if (d.categoryId) {
+      const [c] = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.id, d.categoryId), isNull(categories.parentId)))
+        .limit(1);
+      if (!c) return { error: "יש לבחור מקצוע ראשי" };
+      categoryId = c.id;
+    }
   } else if (d.plan === "bundle") {
     if (!d.categoryId) return { error: "יש לבחור תיקייה" };
     const [c] = await db
@@ -1048,7 +1027,6 @@ export async function createManualPurchase(
         amount,
         downloadsLimit,
         endsAt,
-        premium: d.premium,
         paymentRef,
         status: "active",
         notes: d.note ?? null,
@@ -1069,7 +1047,7 @@ export async function createManualPurchase(
       action: "purchase.manual",
       entityType: "purchase",
       entityId: row.id,
-      details: { userId: u.id, plan: d.plan, amount, days, premium: d.premium, paymentRef },
+      details: { userId: u.id, plan: d.plan, amount, days, categoryId, paymentRef },
     });
     revalidateSubs();
     return { ok: true, id: row.id };
@@ -1078,7 +1056,7 @@ export async function createManualPurchase(
       actorId: me.id,
       action: "purchase.manual_failed",
       entityType: "purchase",
-      details: { userId: u.id, plan: d.plan, amount, days, premium: d.premium, paymentRef, error: clip(errMsg(e)) },
+      details: { userId: u.id, plan: d.plan, amount, days, paymentRef, error: clip(errMsg(e)) },
     });
     return { error: "שגיאה בשמירה: " + errMsg(e) };
   }

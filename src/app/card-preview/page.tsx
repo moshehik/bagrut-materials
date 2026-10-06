@@ -18,7 +18,6 @@ export default function CardPreviewPage() {
       title,
       fileName: "דמו.docx",
       kind: "other",
-      premiumOnly: false,
       access: "paid",
       price,
       allowDownload: true,

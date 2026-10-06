@@ -2610,7 +2610,7 @@ button.underline {
   justify-content: center;
   text-align: center;
 }
-/* בחירת מקצוע/פרימיום בעמוד הרכישה: כרטיס זהב עם ריבוע וי; הנבחר מקבל טבעת זהב */
+/* בחירת מקצוע בעמוד הרכישה: כרטיס זהב עם ריבוע וי; הנבחר מקבל טבעת זהב */
 .gate-pick {
   display: flex;
   align-items: center;

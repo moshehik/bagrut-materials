@@ -86,7 +86,6 @@ export async function upgradeToYearlyAction(form: FormData) {
       amount: offer.diff,
       downloadsLimit: yearly.downloadsLimit ?? null,
       endsAt: addDays(YEAR_DAYS),
-      premium: false,
       paymentRef,
     });
   } else {
@@ -101,7 +100,6 @@ export async function upgradeToYearlyAction(form: FormData) {
         downloadsLimit: yearly.downloadsLimit ?? null,
         endsAt,
         termDays: endsAt ? null : YEAR_DAYS,
-        premium: false,
         paymentRef,
       });
     });

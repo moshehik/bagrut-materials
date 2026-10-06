@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Download, Lock, LogIn, Crown, ShoppingBag, Sparkles, Eye, PauseCircle, Gift, Fingerprint } from "lucide-react";
+import { Download, Lock, LogIn, ShoppingBag, Eye, PauseCircle, Gift, Fingerprint } from "lucide-react";
 import type { Material } from "@/db/schema";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { Entitlement } from "@/lib/data";
 import { FreeTrialDownload } from "@/components/free-trial-download";
 import type { FreeTrialState } from "@/lib/free-trial";
-import { MATERIAL_KINDS, PREMIUM_KINDS, formatPrice } from "@/lib/constants";
+import { MATERIAL_KINDS, formatPrice } from "@/lib/constants";
 
 type Props = {
   material: Material;
@@ -58,17 +58,11 @@ export function MaterialCard({
   freeTrial = "off",
 }: Props) {
   const kind = MATERIAL_KINDS[m.kind] ?? MATERIAL_KINDS.other;
-  const isPremium = m.premiumOnly || m.access === "premium" || PREMIUM_KINDS.includes(m.kind);
   const ft = fileType(m);
   const size = formatSize(m.size);
 
   return (
     <article id={`material-${m.id}`} className="card card-hover relative flex h-full flex-col p-5 scroll-mt-24">
-      {isPremium && (
-        <span className="absolute -top-2 left-4 chip btn-gold shadow-md text-[11px]">
-          <Crown className="h-3 w-3" aria-hidden /> פרימיום
-        </span>
-      )}
       <div className="flex items-start gap-3">
         <span
           className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-soft text-2xl"
@@ -95,7 +89,6 @@ export function MaterialCard({
         ) : (
           <span className="chip bg-gold-soft text-[#7a5b00]">{formatPrice(m.price)}</span>
         )}
-        {m.access === "premium" && !isPremium && <span className="chip bg-pink-soft text-pink">פרימיום</span>}
         {!m.allowDownload && (
           <span className="chip bg-gray-100 text-gray-700">
             <Eye className="h-3 w-3" aria-hidden /> צפייה בלבד
@@ -208,12 +201,6 @@ export function Actions({
         </Link>
       );
     }
-    case "premium":
-      return (
-        <Link href="/checkout?premium=1" className="btn btn-gold text-sm py-2">
-          <Sparkles className="h-4 w-4" aria-hidden /> פתיחה עם פרימיום
-        </Link>
-      );
     case "purchase":
       return (
         <>

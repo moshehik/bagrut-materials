@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CalendarPlus, Ban, Undo2, Crown, StickyNote, Gauge } from "lucide-react";
+import { CalendarPlus, Ban, Undo2, StickyNote, Gauge } from "lucide-react";
 import type { Plan, PurchaseStatus } from "@/db/schema";
 import { PLANS, formatPrice } from "@/lib/constants";
 import {
@@ -9,7 +9,6 @@ import {
   setPurchaseDownloadsLimit,
   cancelPurchase,
   refundPurchase,
-  togglePurchasePremium,
   updatePurchaseNotes,
 } from "@/lib/actions/admin";
 
@@ -25,7 +24,6 @@ export type SubscriptionRowData = {
   downloadsLimit: number | null;
   startsAt: Date;
   endsAt: Date | null;
-  premium: boolean;
   status: PurchaseStatus;
   paymentRef: string | null;
   notes: string | null;
@@ -40,6 +38,12 @@ const STATUS: Record<PurchaseStatus, { label: string; className: string }> = {
 
 function fmt(d: Date | null) {
   return d ? d.toLocaleDateString("he-IL") : "—";
+}
+
+/** תווית המסלול; שורת "פרימיום בלבד" ישנה (מלפני ביטול הפרימיום) = single בלי חומר ועם מכסה 0 */
+function planLabel(p: SubscriptionRowData) {
+  if (p.plan === "single" && p.scopeTitle === null && p.downloadsLimit === 0) return "פרימיום בלבד (מסלול ישן)";
+  return PLANS[p.plan].label;
 }
 
 export function SubscriptionRow({ p }: { p: SubscriptionRowData }) {
@@ -81,7 +85,7 @@ export function SubscriptionRow({ p }: { p: SubscriptionRowData }) {
           </div>
         </td>
         <td className="py-2 pe-3">
-          <div>{p.premium && p.plan === "single" && p.downloadsLimit === 0 ? "פרימיום בלבד" : PLANS[p.plan].label}</div>
+          <div>{planLabel(p)}</div>
           {p.scopeTitle && <div className="text-xs text-muted">{p.scopeTitle}</div>}
         </td>
         <td className="py-2 pe-3 whitespace-nowrap">{formatPrice(p.amount)}</td>
@@ -94,15 +98,6 @@ export function SubscriptionRow({ p }: { p: SubscriptionRowData }) {
             עד {fmt(p.endsAt)}
             {soon && " · פג בקרוב"}
           </div>
-        </td>
-        <td className="py-2 pe-3">
-          {p.premium ? (
-            <span className="chip btn-gold text-[11px]">
-              <Crown className="h-3 w-3" /> פרימיום
-            </span>
-          ) : (
-            <span className="text-muted text-xs">—</span>
-          )}
         </td>
         <td className="py-2 pe-3">
           <span className={`chip ${st.className}`}>{st.label}</span>
@@ -129,15 +124,6 @@ export function SubscriptionRow({ p }: { p: SubscriptionRowData }) {
               title="מכסת הורדות"
             >
               <Gauge className="h-3.5 w-3.5" /> מכסה
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost text-xs py-1 px-2"
-              onClick={() => run(() => togglePurchasePremium(p.id))}
-              disabled={pending}
-              title={p.premium ? "הסרת פרימיום" : "הוספת פרימיום"}
-            >
-              <Crown className="h-3.5 w-3.5" /> {p.premium ? "בלי פרימיום" : "פרימיום"}
             </button>
             <button
               type="button"
@@ -176,7 +162,7 @@ export function SubscriptionRow({ p }: { p: SubscriptionRowData }) {
       </tr>
       {panel !== "none" && (
         <tr className="bg-oak-soft/30">
-          <td colSpan={9} className="p-3">
+          <td colSpan={8} className="p-3">
             {panel === "extend" && (
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-medium">הארכת תוקף:</span>

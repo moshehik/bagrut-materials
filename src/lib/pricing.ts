@@ -2,7 +2,6 @@ import "server-only";
 import type { Plan } from "@/db/schema";
 import {
   PLANS,
-  PREMIUM_ADDON_PRICE,
   YEARLY_LIST_PRICE_MONTHLY,
   SUBSTITUTE_PRICE_MONTHLY,
   SUBSTITUTE_LAUNCH_PRICE_MONTHLY,
@@ -14,10 +13,8 @@ import {
 import { getNumber } from "./settings";
 
 export type PlanPrices = {
-  /** מחיר לכל מסלול באגורות (single/bundle = 0 – נקבעים לפי החומר/תיקייה) */
+  /** מחיר לכל מסלול באגורות (single/bundle = 0 – נקבעים לפי החומר/תיקייה; מסלולים ישנים = 0 – לא נמכרים) */
   plans: Record<Plan, number>;
-  /** תוסף פרימיום לחודש באגורות */
-  premiumAddon: number;
   /** מחיר ברירת מחדל להורדה בודדת באגורות */
   defaultSingle: number;
   /** מחיר מחירון חודשי של המנוי השנתי (מוצג מחוק) */
@@ -37,12 +34,9 @@ function toAgorot(shekels: number, fallback: number) {
 
 /** מחירי המסלולים – ברירות המחדל מ-constants, עם דריסה מההגדרות (price_*) */
 export async function getPlanPrices(): Promise<PlanPrices> {
-  const [subject, custom, yearly, addon, single, listMonthly, subMonthly, subLaunch, daily, dailyLaunch, dailyDownloads] =
+  const [yearly, single, listMonthly, subMonthly, subLaunch, daily, dailyLaunch, dailyDownloads] =
     await Promise.all([
-      getNumber("price_subject_monthly"),
-      getNumber("price_custom_monthly"),
       getNumber("price_yearly"),
-      getNumber("price_premium_addon"),
       getNumber("default_single_price"),
       getNumber("yearly_list_price_monthly"),
       getNumber("substitute_price_monthly"),
@@ -55,13 +49,13 @@ export async function getPlanPrices(): Promise<PlanPrices> {
     plans: {
       single: 0,
       bundle: 0,
-      subject_monthly: toAgorot(subject, PLANS.subject_monthly.price ?? 0),
-      custom_monthly: toAgorot(custom, PLANS.custom_monthly.price ?? 0),
+      // מסלולים ישנים (RETIRED_PLANS) – אין להם מחיר, הקופה מסרבת להם
+      subject_monthly: 0,
+      custom_monthly: 0,
       yearly: toAgorot(yearly, PLANS.yearly.price ?? 0),
       substitute_3m: toAgorot(subLaunch, SUBSTITUTE_LAUNCH_PRICE_MONTHLY) * SUBSTITUTE_MONTHS,
       substitute_daily: toAgorot(dailyLaunch, SUBSTITUTE_DAILY_LAUNCH_PRICE),
     },
-    premiumAddon: toAgorot(addon, PREMIUM_ADDON_PRICE),
     defaultSingle: toAgorot(single, 1500),
     yearlyListMonthly: toAgorot(listMonthly, YEARLY_LIST_PRICE_MONTHLY),
     substituteMonthly: toAgorot(subMonthly, SUBSTITUTE_PRICE_MONTHLY),

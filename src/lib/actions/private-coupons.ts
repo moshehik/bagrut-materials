@@ -168,7 +168,6 @@ export async function redeemSubjectsCouponAction(form: FormData) {
         amount: 0,
         downloadsLimit: def.downloadsLimit ?? null,
         endsAt,
-        premium: false,
         paymentRef: `COUPON-${mine.id}`,
         notes: `קופון פרטי: ${mine.label}`,
       })),

@@ -3,12 +3,20 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
-import { ShoppingBag, FileText, FolderOpen, CalendarDays, Sparkles, ChevronLeft } from "lucide-react";
+import { ShoppingBag, FileText, FolderOpen, CalendarDays, ChevronLeft } from "lucide-react";
 import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getCategoryChain, chainToHref, getDescendantIds, getRootSubjects } from "@/lib/data";
-import { PLANS, MATERIAL_KINDS, SUBJECT_ICONS, bundlePriceFor, formatPrice, subjectDisplayTitle } from "@/lib/constants";
+import {
+  PLANS,
+  MATERIAL_KINDS,
+  SUBJECT_ICONS,
+  bundlePriceFor,
+  formatPrice,
+  isRetiredPlan,
+  subjectDisplayTitle,
+} from "@/lib/constants";
 import { PlanCheckoutView } from "@/components/plan-checkout";
 import { getPlanPrices } from "@/lib/pricing";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
@@ -23,7 +31,6 @@ type SP = {
   plan?: string;
   category?: string;
   categories?: string;
-  premium?: string;
 };
 
 function num(v?: string) {
@@ -53,7 +60,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(`/checkout${qs ? `?${qs}` : ""}`)}`);
 
-  const premiumDefault = sp.premium === "1" || sp.premium === "on";
   const prices = await getPlanPrices();
 
   let heading = "";
@@ -98,7 +104,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         </span>
       </div>
     );
-    formProps = { kind: "single", materialId: m.id, basePrice: m.price, months: 1, premiumDefault };
+    formProps = { kind: "single", materialId: m.id, basePrice: m.price };
   } else if (bundleId) {
     const [c] = await db.select().from(categories).where(eq(categories.id, bundleId)).limit(1);
     if (!c) redirect("/subjects");
@@ -130,34 +136,39 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         </span>
       </div>
     );
-    formProps = { kind: "bundle", categoryId: c.id, basePrice: price, months: 1, premiumDefault };
-  } else if (
-    planKey === "subject_monthly" ||
-    planKey === "custom_monthly" ||
-    planKey === "yearly" ||
-    planKey === "substitute_3m" ||
-    planKey === "substitute_daily"
-  ) {
+    formProps = { kind: "bundle", categoryId: c.id, basePrice: price };
+  } else if (planKey && isRetiredPlan(planKey)) {
+    // מסלול חודשי ישן (subject_monthly / custom_monthly) – הוסר מהמכירה; קישורים ישנים מגיעים לכאן
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center space-y-4">
+        <ShoppingBag className="h-12 w-12 mx-auto text-blue" />
+        <h1 className="font-display text-3xl font-bold">המסלול הזה כבר לא קיים</h1>
+        <p className="text-muted">המסלולים החודשיים הישנים הוחלפו במסלולים המעודכנים – בחרי מסלול בעמוד המסלולים.</p>
+        <div className="flex gap-2 justify-center">
+          <Link href="/pricing" className="btn btn-primary">
+            למסלולים ומחירים
+          </Link>
+          <Link href="/subjects" className="btn btn-ghost">
+            למקצועות
+          </Link>
+        </div>
+      </div>
+    );
+  } else if (planKey === "yearly" || planKey === "substitute_3m" || planKey === "substitute_daily") {
     const def = PLANS[planKey];
     const planPrice = prices.plans[planKey];
     const days = def.days ?? 30;
-    const months = Math.max(1, Math.round(days / 30));
     await loadSubjects();
+    // בחירה מראש של מקצועות: ?categories=1,2 (או ?category=1 בודד) – רק למסלולים שבוחרים בהם מקצוע
     const catId = num(sp.category);
-    let scopeTitle: string | null = null;
-    if (planKey === "subject_monthly" && catId) {
-      const s = subjects.find((x) => x.id === catId);
-      scopeTitle = s ? `${s.icon} ${s.title}` : null;
-    }
     const pre =
-      planKey === "custom_monthly" || planKey === "yearly" || planKey === "substitute_3m"
-        ? (sp.categories ?? "")
+      planKey === "substitute_daily"
+        ? []
+        : (sp.categories ?? "")
             .split(",")
             .map((x) => num(x.trim()))
-            .filter((x): x is number => !!x && subjects.some((s) => s.id === x))
-        : catId
-          ? [catId]
-          : [];
+            .concat(catId ? [catId] : [])
+            .filter((x): x is number => !!x && subjects.some((s) => s.id === x));
     heading = def.label;
     summary = (
       <div className="flex gap-4">
@@ -169,7 +180,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <p className="text-sm text-muted">{def.description}</p>
           <p className="text-xs text-muted mt-1">
             תוקף: {days} ימים · גישה מלאה לכל החומרים בתחום המסלול
-            {scopeTitle && <> · מקצוע: <b className="text-foreground">{scopeTitle}</b></>}
           </p>
         </div>
         <span className="ms-auto text-left whitespace-nowrap">
@@ -187,33 +197,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     formProps = {
       kind: "plan",
       plan: planKey,
-      categoryId: planKey === "subject_monthly" && scopeTitle ? catId : undefined,
       subjects,
       preselected: pre,
       basePrice: planPrice,
-      months,
-      premiumDefault,
     };
-  } else if (premiumDefault) {
-    heading = "מנוי פרימיום";
-    summary = (
-      <div className="flex gap-4">
-        <span className="grid place-items-center h-14 w-14 rounded-2xl bg-gold-soft text-[#8a6500] shrink-0">
-          <Sparkles className="h-7 w-7" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-bold text-lg leading-snug">פרימיום ל-30 יום</h2>
-          <p className="text-sm text-muted">
-            גישה לשאלות מבגרויות קודמות, מצגות, טיפים למסירה, רעיונות וחידות – ולפורום המורות.
-            שימי לב: פרימיום לבדו אינו כולל הורדות; ההורדות נעשות דרך רכישה בודדת, קובץ מורחב או מנוי.
-          </p>
-        </div>
-        <span className="ms-auto font-display font-bold text-xl text-blue-deep whitespace-nowrap">
-          {formatPrice(prices.premiumAddon)}
-        </span>
-      </div>
-    );
-    formProps = { kind: "premium", basePrice: prices.premiumAddon, months: 1, allowPremium: false };
   }
 
   if (!formProps) {
@@ -290,7 +277,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </div>
         </section>
         <section className="card p-5 sm:p-6 animate-fade-up [animation-delay:100ms]">
-          <CheckoutForm {...formProps} addonPrice={prices.premiumAddon} />
+          <CheckoutForm {...formProps} />
         </section>
       </div>
     </div>

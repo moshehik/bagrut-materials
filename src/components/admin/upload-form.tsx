@@ -73,7 +73,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [price, setPrice] = useState("15");
-  const [premiumOnly, setPremiumOnly] = useState(false);
   const [access, setAccess] = useState<Access>("paid");
   const [status, setStatus] = useState<Status>("active");
   const [description, setDescription] = useState("");
@@ -131,7 +130,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
           mime: it.file.type || blob.contentType || "application/octet-stream",
           size: it.file.size,
           price: price === "" ? undefined : Number(price),
-          premiumOnly,
           access,
           status,
         });
@@ -200,7 +198,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
           <select value={access} onChange={(e) => setAccess(e.target.value as Access)} className="input">
             <option value="free">חינם</option>
             <option value="paid">בתשלום</option>
-            <option value="premium">פרימיום בלבד</option>
           </select>
         </label>
         <label className="text-sm">
@@ -222,14 +219,6 @@ export function UploadForm({ categoryId }: { categoryId: number }) {
             onChange={(e) => setPrice(e.target.value)}
             className="input"
           />
-        </label>
-        <label className="text-sm flex items-end gap-2 pb-2">
-          <input
-            type="checkbox"
-            checked={premiumOnly}
-            onChange={(e) => setPremiumOnly(e.target.checked)}
-          />
-          פרימיום בלבד
         </label>
         <label className="text-sm">
           <span className="block mb-1 font-medium">תיאור (לכל הקבצים)</span>

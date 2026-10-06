@@ -2,7 +2,7 @@ import "server-only";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { cartItems, categories, materials, type Category, type Plan } from "@/db/schema";
-import { PLANS } from "@/lib/constants";
+import { PLANS, isRetiredPlan } from "@/lib/constants";
 import { getCategoryChain, chainToHref } from "@/lib/data";
 import { getPlanPrices } from "@/lib/pricing";
 import { bundleAmountFor, planAmountFor } from "@/lib/purchase-helpers";
@@ -25,11 +25,10 @@ export type CartLine = {
   crumbs: { title: string; href: string }[];
   href: string | null;
   basePrice: number;
-  premium: boolean;
-  /** תוספת פרימיום (למסלולים בלבד – לפי חודשים) */
-  premiumAddon: number;
   months: number;
   price: number;
+  /** מסלול ישן שכבר לא נמכר (RETIRED_PLANS) – מוצג כדי שאפשר יהיה להסיר אותו; הקופה מסרבת לו */
+  retired: boolean;
 };
 
 export type Cart = { items: CartLine[]; total: number; count: number };
@@ -71,10 +70,9 @@ export async function getCart(userId: number): Promise<Cart> {
         crumbs,
         href: catHref,
         basePrice: material.price,
-        premium: false,
-        premiumAddon: 0,
         months: 0,
         price: material.price,
+        retired: false,
       });
     } else if (plan === "bundle") {
       if (!category) continue;
@@ -90,14 +88,13 @@ export async function getCart(userId: number): Promise<Cart> {
         crumbs,
         href: catHref,
         basePrice: price,
-        premium: false,
-        premiumAddon: 0,
         months: 0,
         price,
+        retired: false,
       });
     } else {
       const def = PLANS[plan];
-      const amount = planAmountFor(plan, item.premium, prices);
+      const amount = planAmountFor(plan, prices);
       items.push({
         id: item.id,
         kind: "plan",
@@ -106,13 +103,12 @@ export async function getCart(userId: number): Promise<Cart> {
         categoryId: category?.id ?? null,
         title: def.label + (category ? ` – ${category.title}` : ""),
         subtitle: def.description,
-        crumbs: plan === "subject_monthly" ? crumbs : [],
-        href: plan === "subject_monthly" ? catHref : "/pricing",
+        crumbs: [],
+        href: "/pricing",
         basePrice: amount.base,
-        premium: item.premium,
-        premiumAddon: amount.addonFull,
         months: amount.months,
         price: amount.total,
+        retired: isRetiredPlan(plan),
       });
     }
   }

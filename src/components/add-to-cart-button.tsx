@@ -18,8 +18,8 @@ export function emitCartChanged(count?: number) {
 type Props = {
   materialId?: number;
   categoryId?: number;
-  plan?: "subject_monthly" | "custom_monthly" | "yearly";
-  premium?: boolean;
+  /** המסלול היחיד שנכנס לעגלה הוא השנתי (המסלולים החודשיים הישנים הוסרו מהמכירה) */
+  plan?: "yearly";
   label?: string;
   small?: boolean;
   className?: string;
@@ -29,7 +29,7 @@ type Props = {
  * כפתור "הוסיפי לעגלה" – חומר בודד / תיקייה / מסלול.
  * אורחת → הפניה להתחברות עם חזרה לדף הנוכחי.
  */
-export function AddToCartButton({ materialId, categoryId, plan, premium, label, small, className }: Props) {
+export function AddToCartButton({ materialId, categoryId, plan, label, small, className }: Props) {
   const router = useRouter();
   const path = usePathname();
   const [pending, start] = useTransition();
@@ -39,7 +39,7 @@ export function AddToCartButton({ materialId, categoryId, plan, premium, label, 
   function onClick() {
     setError(null);
     start(async () => {
-      const r = await addToCart({ materialId, categoryId, plan, premium });
+      const r = await addToCart({ materialId, categoryId, plan });
       if (!r.ok) {
         if (r.error === "login") {
           router.push(`/login?next=${encodeURIComponent(path || "/")}`);

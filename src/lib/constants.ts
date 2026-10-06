@@ -22,9 +22,6 @@ export const MATERIAL_KINDS: Record<MaterialKind, { label: string; icon: string;
   other: { label: "אחר", icon: "📎", hint: "" },
 };
 
-/** סוגי חומרים שנפתחים רק במנוי פרימיום */
-export const PREMIUM_KINDS: MaterialKind[] = ["past_exam", "presentation", "tips", "ideas"];
-
 /** סוג הסמינר שבו נמסרה שיחה במאגר השיחות (שיחה/חברה/כישורי חיים) */
 export const SICHA_SEMINARS: Record<SichaSeminar, { label: string; icon: string }> = {
   mainstream: { label: "מיינסטרים", icon: "🏫" },
@@ -50,17 +47,17 @@ export const PLANS: Record<
     label: "קובץ מורחב",
     description: "תיקייה שלמה – למשל פרשה שלמה עם כל פרקיה",
   },
+  // שני המסלולים החודשיים הישנים – לא נמכרים יותר (RETIRED_PLANS). נשארים כאן בלי מחיר, רק כדי שתוויות
+  // של שורות רכישה היסטוריות ימשיכו להופיע בניהול/בחשבון, ובשביל מענק קופון פרטי (custom_monthly)
   subject_monthly: {
-    label: "מנוי חודשי למקצוע",
-    description: "גישה מלאה למקצוע אחד – בלי לספור קבצים",
-    price: 4900,
+    label: "מנוי חודשי למקצוע (מסלול ישן)",
+    description: "מסלול ישן – אינו נמכר יותר",
     downloadsLimit: 150,
     days: 30,
   },
   custom_monthly: {
-    label: "מנוי חודשי לפי מערכת",
-    description: "מותאם למערכת השעות שלך – גישה מלאה עד 3 מקצועות",
-    price: 9900,
+    label: "מנוי חודשי לפי מערכת (מסלול ישן)",
+    description: "מסלול ישן – אינו נמכר יותר",
     downloadsLimit: 300,
     days: 30,
   },
@@ -86,7 +83,15 @@ export const PLANS: Record<
   },
 };
 
-export const PREMIUM_ADDON_PRICE = 1900; // לחודש
+/**
+ * מסלולים שהוסרו מהמכירה (2026-10-06): ערכי ה-enum נשארים ב-DB בשביל שורות היסטוריות, אבל הקופה, העגלה
+ * והמנוי הידני מסרבים להם. שורות ישנות פעילות עדיין מקנות גישה (checkEntitlement לא מסנן לפי זה).
+ */
+export const RETIRED_PLANS: readonly Plan[] = ["subject_monthly", "custom_monthly"];
+export function isRetiredPlan(plan: string): boolean {
+  return (RETIRED_PLANS as readonly string[]).includes(plan);
+}
+export const RETIRED_PLAN_MESSAGE = "המסלול הזה כבר לא קיים – אפשר לבחור מסלול מעודכן בעמוד המסלולים";
 
 /**
  * המנוי השנתי הוא מנוי למקצוע (מחיר אחד), ואפשר להרחיב אותו עד YEARLY_INCLUDED_SUBJECTS מקצועות באותו מחיר

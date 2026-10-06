@@ -60,7 +60,7 @@ export default function ContactPage() {
             <MessageSquare className="h-5 w-5 text-pink" aria-hidden />
             <div className="mt-2 font-bold">שאלות מקצועיות</div>
             <p className="text-muted">
-              למנויות פרימיום – בכל{" "}
+              למנויות – בכל{" "}
               <Link href="/subjects" className="text-blue-deep underline">
                 יחידת לימוד
               </Link>{" "}

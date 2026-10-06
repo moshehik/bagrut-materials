@@ -40,7 +40,6 @@ export async function claimFreeTrialAction(materialId: number): Promise<FreeTria
       amount: 0,
       downloadsLimit: null,
       endsAt: null,
-      premium: false,
       paymentRef: FREE_TRIAL_REF,
       notes: "הורדה חינמית אחת",
     })

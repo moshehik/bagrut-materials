@@ -238,14 +238,14 @@ export async function requestCancelSubscriptionAction(form: FormData) {
     action: "purchase.cancel_requested",
     entityType: "purchase",
     entityId: p.id,
-    details: { plan: p.plan, premium: p.premium },
+    details: { plan: p.plan },
   });
   const admin = adminEmail();
   if (admin) {
     sendMailInBackground({
       to: admin,
       subject: `בקשת ביטול מנוי – ${user.name}`,
-      text: `${user.name} (${user.email}) ביקשה לבטל את המנוי #${p.id} (${PLANS[p.plan].label}, ${p.premium ? "כולל פרימיום" : "ללא פרימיום"}).\n\nלטיפול: ${siteUrl()}/admin/subscriptions?user=${user.id}`,
+      text: `${user.name} (${user.email}) ביקשה לבטל את המנוי #${p.id} (${PLANS[p.plan].label}).\n\nלטיפול: ${siteUrl()}/admin/subscriptions?user=${user.id}`,
       kind: "manual",
       userId: user.id,
     });

@@ -15,7 +15,7 @@ import { TOO_MANY_MESSAGE, limitKey, tooMany } from "@/lib/rate-limit";
 export type ForumState = { error?: string; ok?: boolean; reported?: boolean } | undefined;
 
 /** כניסה + גישה ליחידה: מנויה, או מי ששילמה על קובץ/תיקייה ביחידה (categoryId ריק = רק בדיקת התחברות) */
-async function requirePremiumUser(op: string, categoryId?: number) {
+async function requireUnitUser(op: string, categoryId?: number) {
   const user = await getCurrentUser();
   if (!user) {
     await logAudit({ action: "forum.denied", details: { reason: "not_logged_in", op } });
@@ -49,7 +49,7 @@ const threadSchema = z.object({
 
 export async function createThread(_prev: ForumState, form: FormData): Promise<ForumState> {
   const catId = Number(form.get("categoryId"));
-  const auth = await requirePremiumUser("thread.create", Number.isInteger(catId) && catId > 0 ? catId : undefined);
+  const auth = await requireUnitUser("thread.create", Number.isInteger(catId) && catId > 0 ? catId : undefined);
   if ("error" in auth) return { error: auth.error };
   // הגבלת קצב: 10 הודעות חדשות לשעה למשתמשת
   if (await tooMany(limitKey("forum-thread", "user", auth.user.id), 10, 3600)) return { error: TOO_MANY_MESSAGE };
@@ -112,7 +112,7 @@ const replySchema = z.object({
 
 /** תשובה לשאלה (רק שאלות מקבלות תשובות – לא הערות וטיפים) */
 export async function replyThread(_prev: ForumState, form: FormData): Promise<ForumState> {
-  const auth = await requirePremiumUser("post.create");
+  const auth = await requireUnitUser("post.create");
   if ("error" in auth) return { error: auth.error };
   // הגבלת קצב: 30 תשובות לשעה למשתמשת
   if (await tooMany(limitKey("forum-reply", "user", auth.user.id), 30, 3600)) return { error: TOO_MANY_MESSAGE };
@@ -241,7 +241,7 @@ export async function deleteReply(form: FormData): Promise<void> {
 
 /** דיווח על תוכן לא הולם – על הודעה (threadId) או על תשובה (postId). המנהלת רואה ב-/admin/forum */
 export async function reportContent(_prev: ForumState, form: FormData): Promise<ForumState> {
-  const auth = await requirePremiumUser("report.create");
+  const auth = await requireUnitUser("report.create");
   if ("error" in auth) return { error: auth.error };
   // הגבלת קצב: 10 דיווחים/ביטולים לשעה למשתמשת
   if (await tooMany(limitKey("forum-report", "user", auth.user.id), 10, 3600)) return { error: TOO_MANY_MESSAGE };

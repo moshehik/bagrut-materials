@@ -78,8 +78,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         return NextResponse.redirect(
           new URL(`/login?next=${encodeURIComponent(`/api/download/${materialId}`)}`, origin),
         );
-      case "premium":
-        return NextResponse.redirect(new URL("/checkout?premium=1", origin));
       case "purchase":
         return NextResponse.redirect(new URL(`/checkout?material=${materialId}`, origin));
       default:

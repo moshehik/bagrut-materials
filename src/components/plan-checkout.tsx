@@ -28,7 +28,6 @@ export function PlanCheckoutView({
   const isSub3 = plan === "substitute_3m";
   const isDaily = plan === "substitute_daily";
   const expandable = isYearly || isSub3;
-  const days = def.days ?? 30;
   const check = <Check className="mt-1 h-4 w-4 shrink-0" aria-hidden />;
   const showList = isYearly && formProps.basePrice / 12 < prices.yearlyListMonthly;
   const subMonthly = Math.round(formProps.basePrice / SUBSTITUTE_MONTHS);
@@ -93,20 +92,13 @@ export function PlanCheckoutView({
                 סה״כ <GateShekel agorot={formProps.basePrice} />
               </p>
             </>
-          ) : isDaily ? (
+          ) : (
             <>
               <div className="gate-price gate-price-lg mt-2">
                 <GateShekel agorot={formProps.basePrice} />
               </div>
               <p>עבור {prices.substituteDailyDownloads} צפיות או הורדות</p>
               <p className="gate-soft text-base">לשימוש מתי שצריך, בלי הגבלת זמן</p>
-            </>
-          ) : (
-            <>
-              <div className="gate-price gate-price-lg mt-2">
-                <GateShekel agorot={formProps.basePrice} />
-              </div>
-              <p>תוקף: {days} ימים</p>
             </>
           )}
           <hr className="gate-divider" />
@@ -143,13 +135,7 @@ export function PlanCheckoutView({
           </p>
         </div>
 
-        {/* פרימיום יתווסף בהמשך – כרגע לא מוצע ברכישת מנוי */}
-        <CheckoutForm
-          {...formProps}
-          addonPrice={prices.premiumAddon}
-          allowPremium={false}
-          gate
-        />
+        <CheckoutForm {...formProps} gate />
       </section>
     </div>
   );

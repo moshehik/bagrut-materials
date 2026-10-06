@@ -30,6 +30,7 @@ export const materialKindEnum = pgEnum("material_kind", [
   "ideas", // רעיונות, חידות וסיפורים
   "other",
 ]);
+/** "premium" = ערך ישן (אין יותר תוספת פרימיום, 2026-10-06) – נשאר ב-enum כי אי אפשר למחוק ערך בלי DDL; מתנהג כמו "paid" */
 export const accessEnum = pgEnum("access", ["free", "paid", "tier", "premium"]);
 export const statusEnum = pgEnum("status", ["active", "suspended", "draft"]);
 export const purchaseStatusEnum = pgEnum("purchase_status", ["active", "cancelled", "refunded", "expired"]);
@@ -43,8 +44,8 @@ export const categoryModuleEnum = pgEnum("category_module", ["standard", "sichot
 export const planEnum = pgEnum("plan", [
   "single", // הורדה בודדת
   "bundle", // קובץ מורחב (תיקייה)
-  "subject_monthly",
-  "custom_monthly",
+  "subject_monthly", // מסלול ישן – לא נמכר יותר (ר' RETIRED_PLANS ב-constants); נשאר בשביל שורות היסטוריות
+  "custom_monthly", // מסלול ישן – לא נמכר יותר; עדיין משמש פנימית למענק קופון פרטי (private-coupons)
   "yearly",
   "substitute_3m", // ממלאת מקום 3 חודשים
   "substitute_daily", // ממלאת מקום יומית – סל צפיות/הורדות בלי הגבלת זמן
@@ -127,7 +128,7 @@ export const categories = pgTable(
     ready: boolean("ready").notNull().default(false),
     /** השהיית דף/תיקייה – מוסתרת מהמשתמשות (מנהלת רואה) */
     status: statusEnum("status").notNull().default("active"),
-    /** הגבלת גישה לכל התיקייה לרמת פרימיום מינימלית */
+    /** הגבלת גישה לכל התיקייה לדרגת חברות מינימלית */
     minTier: tierEnum("min_tier").notNull().default("none"),
     /** "standard" = עמוד חומרים רגיל; "sichot" = מציג את מודול מאגר השיחות (ר' sichot למטה) במקום זאת */
     contentModule: categoryModuleEnum("content_module").notNull().default("standard"),
@@ -157,14 +158,13 @@ export const materials = pgTable(
     size: integer("size").notNull().default(0),
     /** מחיר הורדה בודדת באגורות */
     price: integer("price").notNull().default(1500),
-    /** זמין רק למנויות פרימיום */
-    premiumOnly: boolean("premium_only").notNull().default(false),
-    /** רמת פרימיום מינימלית לגישה */
+    // premium_only (boolean) עדיין קיימת ב-DB אבל הוסרה מהסכמה (2026-10-06, אין יותר פרימיום) – לא נקראת ולא נכתבת
+    /** דרגת חברות מינימלית לגישה */
     minTier: tierEnum("min_tier").notNull().default("none"),
     sort: integer("sort").notNull().default(0),
     downloads: integer("downloads").notNull().default(0),
     views: integer("views").notNull().default(0),
-    /** דירוג גישה: free = חינם למחוברות, paid = רכישה/מנוי, tier = לפי minTier, premium = פרימיום בלבד */
+    /** דירוג גישה: free = חינם למחוברות, paid = רכישה/מנוי, tier = לפי minTier, premium = ערך ישן (כמו paid) */
     access: accessEnum("access").notNull().default("paid"),
     /** השהיית דף – לא מוצג ולא ניתן להורדה */
     status: statusEnum("status").notNull().default("active"),
@@ -358,7 +358,8 @@ export const purchases = pgTable(
      * (ר' reserveDownloads). ריק = מסלול שתוקפו נקבע ברכישה / בלי תוקף.
      */
     termDays: integer("term_days"),
-    premium: boolean("premium").notNull().default(false),
+    // premium (boolean) עדיין קיימת ב-DB אבל הוסרה מהסכמה (2026-10-06, אין יותר תוספת פרימיום) – שורות ישנות עם premium=true
+    // לא מקנות שום דבר (מנוי פעיל פותח את כל סוגי החומרים)
     /** מנוי שנתי שנרכש עם "דלג" – המקצועות ייבחרו מאוחר יותר (עד אז אין גישה); ראו /account/subjects */
     subjectsPending: boolean("subjects_pending").notNull().default(false),
     paymentRef: varchar("payment_ref", { length: 120 }),
@@ -532,7 +533,7 @@ export const cartItems = pgTable(
     materialId: integer("material_id").references(() => materials.id, { onDelete: "cascade" }),
     categoryId: integer("category_id").references(() => categories.id, { onDelete: "cascade" }),
     plan: planEnum("plan"),
-    premium: boolean("premium").notNull().default(false),
+    // premium (boolean) עדיין קיימת ב-DB אבל הוסרה מהסכמה (2026-10-06) – אין יותר תוסף פרימיום לפריט עגלה
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("cart_user_idx").on(t.userId)],

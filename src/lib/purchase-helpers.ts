@@ -39,23 +39,17 @@ export async function bundleAmountFor(c: Pick<Category, "id" | "bundlePrice">): 
 
 export type SubscriptionPlan = Exclude<Plan, "single" | "bundle">;
 
-/** מחיר מסלול מנוי (+ תוסף פרימיום לפי חודשים), תוקף ומכסה – בדיוק כמו ב-purchaseAction */
-export function planAmountFor(plan: SubscriptionPlan, premium: boolean, prices: PlanPrices) {
+/** מחיר מסלול מנוי, תוקף ומכסה – בדיוק כמו ב-purchaseAction */
+export function planAmountFor(plan: SubscriptionPlan, prices: PlanPrices) {
   const def = PLANS[plan];
   const days = def.days ?? 30;
   const months = Math.max(1, Math.round(days / 30));
   const base = prices.plans[plan];
-  const addonFull = prices.premiumAddon * months;
-  const addon = premium ? addonFull : 0;
   return {
     base,
-    /** התוסף שנגבה בפועל (0 בלי פרימיום) */
-    addon,
-    /** התוסף המלא למסלול – לתצוגת "+₪" גם כשלא נבחר */
-    addonFull,
     months,
     days,
-    total: base + addon,
+    total: base,
     downloadsLimit: def.downloadsLimit ?? null,
   };
 }

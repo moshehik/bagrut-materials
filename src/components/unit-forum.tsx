@@ -23,11 +23,12 @@ export async function UnitForum({
   here: string;
   user: User | null;
 }) {
-  const premium = await userCanUseUnitForum(user, category.id);
+  // מנויה / מי שרכשה ביחידה – יכולה לכתוב (ר' userCanUseUnitForum)
+  const canUse = await userCanUseUnitForum(user, category.id);
   const isAdmin = user?.role === "admin";
   // יחידה חינמית: כולן צופות (גם בלי הרשמה); כתיבה – רק בהרשמה (מחוברת). ביחידה בתשלום – רק מנויה/רוכשת
   const freeUnit = await isFreeUnit(category.id);
-  const canView = premium || freeUnit;
+  const canView = canUse || freeUnit;
 
   const threads = await db
     .select({
@@ -123,7 +124,7 @@ export async function UnitForum({
               {freeUnit ? "הרשמה / התחברות" : "התחברי"}
             </Link>
           </div>
-        ) : premium ? (
+        ) : canUse ? (
           /* הלחצנים שלפני הצ'אט */
           <ForumComposer categoryId={category.id} />
         ) : (
@@ -146,7 +147,7 @@ export async function UnitForum({
             <MessageCircle className="h-9 w-9 mx-auto mb-1" aria-hidden />
             <p className="text-xl">עדיין אין כאן הודעות על היחידה הזו</p>
             <p className="gate-soft text-base">
-              {user && premium
+              {user && canUse
                 ? "יש לך שאלה, הערה או טיפ? היי הראשונה לכתוב."
                 : "ברגע שמורה תכתוב על היחידה, זה יופיע כאן."}
             </p>
@@ -155,7 +156,7 @@ export async function UnitForum({
           <ForumFeed
             entries={entries}
             meId={user?.id ?? null}
-            canParticipate={premium || isAdmin}
+            canParticipate={canUse || isAdmin}
             canView={canView || isAdmin}
             isAdmin={isAdmin}
           />

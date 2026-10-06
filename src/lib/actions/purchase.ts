@@ -7,13 +7,13 @@ import { db } from "@/db";
 import { categories, materials, privateCoupons, purchases, transactions, users } from "@/db/schema";
 import { citySchema, schoolSchema } from "@/lib/profile-validation";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
-import { PLANS, YEARLY_INCLUDED_SUBJECTS, bundlePriceFor, formatPrice } from "@/lib/constants";
+import { PLANS, RETIRED_PLAN_MESSAGE, YEARLY_INCLUDED_SUBJECTS, bundlePriceFor, formatPrice, isRetiredPlan } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { chainToHref, getCategoryChain, getDescendantIds } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
-import { addDays, termFields } from "@/lib/purchase-helpers";
+import { termFields } from "@/lib/purchase-helpers";
 
 /*
  * TODO(payments): כרגע אין ספק סליקה מחובר. ה"תשלום" הוא מדומה (mock):
@@ -28,19 +28,10 @@ import { addDays, termFields } from "@/lib/purchase-helpers";
 
 const idNum = z.coerce.number().int().positive();
 
+// המסלולים החודשיים הישנים (subject_monthly / custom_monthly) הוסרו מהמכירה – ר' RETIRED_PLANS; הקופה מסרבת להם למטה
 const schema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("single"), materialId: idNum }),
   z.object({ kind: z.literal("bundle"), categoryId: idNum }),
-  z.object({
-    kind: z.literal("plan"),
-    plan: z.literal("subject_monthly"),
-    categoryId: idNum,
-  }),
-  z.object({
-    kind: z.literal("plan"),
-    plan: z.literal("custom_monthly"),
-    categoryIds: z.array(idNum).min(1, "בחרי לפחות מקצוע אחד").max(3, "עד 3 מקצועות"),
-  }),
   z.object({
     kind: z.literal("plan"),
     plan: z.literal("yearly"),
@@ -55,38 +46,9 @@ const schema = z.discriminatedUnion("kind", [
   }),
   // ממלאת מקום יומית: סל הורדות לכל המקצועות, בלי בחירת מקצוע ובלי הגבלת זמן
   z.object({ kind: z.literal("plan"), plan: z.literal("substitute_daily") }),
-  z.object({ kind: z.literal("premium") }),
 ]);
 
 export type PurchaseState = { error?: string } | undefined;
-
-/** שורת פרימיום בלבד ל-30 יום (ללא זכאות הורדה) */
-function premiumOnlyRow(
-  userId: number,
-  paymentRef: string,
-  amount: number,
-): typeof purchases.$inferInsert {
-  return {
-    userId,
-    plan: "single",
-    materialId: null,
-    categoryId: null,
-    amount,
-    downloadsLimit: 0,
-    endsAt: addDays(30),
-    premium: true,
-    paymentRef,
-  };
-}
-
-async function assertRootSubject(id: number) {
-  const [c] = await db
-    .select()
-    .from(categories)
-    .where(and(eq(categories.id, id), isNull(categories.parentId)))
-    .limit(1);
-  return c ?? null;
-}
 
 /** רכישה (מדומה) – מקבלת FormData מדף ה-checkout */
 export async function purchaseAction(_prev: PurchaseState, form: FormData): Promise<PurchaseState> {
@@ -107,7 +69,11 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
 
   const ids = form.getAll("categoryIds").map(String).filter(Boolean);
   if (ids.length) raw.categoryIds = ids;
-  const premium = form.get("premium") === "on";
+
+  // מסלול שהוסר מהמכירה – הודעה ברורה במקום שגיאת ולידציה כללית
+  if (raw.kind === "plan" && typeof raw.plan === "string" && isRetiredPlan(raw.plan)) {
+    return denied("plan_retired", RETIRED_PLAN_MESSAGE, { plan: raw.plan });
+  }
 
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
@@ -144,11 +110,8 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
         amount: m.price,
         downloadsLimit: null,
         endsAt: null,
-        premium: false,
         paymentRef,
       });
-      // רכישה בודדת אינה פגת-תוקף, לכן תוספת הפרימיום נרשמת כשורה נפרדת ל-30 יום
-      if (premium) rows.push(premiumOnlyRow(user.id, paymentRef, prices.premiumAddon));
       break;
     }
     case "bundle": {
@@ -175,21 +138,14 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
         amount,
         downloadsLimit: null,
         endsAt: null,
-        premium: false,
         paymentRef,
       });
-      if (premium) rows.push(premiumOnlyRow(user.id, paymentRef, prices.premiumAddon));
       break;
     }
     case "plan": {
       const def = PLANS[input.plan];
       const basePrice = prices.plans[input.plan];
       const days = def.days ?? 30;
-      const months = Math.max(1, Math.round(days / 30));
-      // ממלאת מקום – בלי תוסף פרימיום
-      const isSubstitute = input.plan === "substitute_3m" || input.plan === "substitute_daily";
-      const planPremium = premium && !isSubstitute;
-      const addon = planPremium ? prices.premiumAddon * months : 0;
       // מנוי: התוקף מתחיל בהורדה הראשונה (endsAt ריק + termDays). ממלאת מקום יומית – בלי תוקף כלל
       const term =
         input.plan === "substitute_daily" ? { endsAt: null, termDays: null } : termFields(input.plan, days);
@@ -201,20 +157,6 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
           amount: basePrice,
           downloadsLimit: prices.substituteDailyDownloads,
           ...term,
-          premium: false,
-          paymentRef,
-        });
-      } else if (input.plan === "subject_monthly") {
-        const c = await assertRootSubject(input.categoryId);
-        if (!c) return denied("not_root_subject", "יש לבחור מקצוע ראשי", { categoryId: input.categoryId, plan: input.plan });
-        rows.push({
-          userId: user.id,
-          plan: "subject_monthly",
-          categoryId: c.id,
-          amount: basePrice + addon,
-          downloadsLimit: def.downloadsLimit ?? null,
-          ...term,
-          premium: planPremium,
           paymentRef,
         });
       } else if (input.plan === "yearly" && input.skipSubjects) {
@@ -224,14 +166,13 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
           plan: "yearly",
           categoryId: null,
           subjectsPending: true,
-          amount: basePrice + addon,
+          amount: basePrice,
           downloadsLimit: def.downloadsLimit ?? null,
           ...term,
-          premium: planPremium,
           paymentRef,
         });
       } else {
-        // custom_monthly / yearly: שורה לכל מקצוע שנבחר (שנתי – מקצוע אחד ומעלה; עד YEARLY_INCLUDED_SUBJECTS באותו מחיר)
+        // yearly / substitute_3m: שורה לכל מקצוע שנבחר (מקצוע אחד ומעלה; עד YEARLY_INCLUDED_SUBJECTS באותו מחיר)
         const uniq = [...new Set(input.categoryIds)];
         if (input.plan === "yearly" && uniq.length < 1) {
           return denied("yearly_no_subjects", "יש לבחור לפחות מקצוע אחד", { plan: input.plan });
@@ -256,18 +197,13 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
             userId: user.id,
             plan: input.plan,
             categoryId: c.id,
-            amount: i === 0 ? basePrice + addon : 0,
+            amount: i === 0 ? basePrice : 0,
             downloadsLimit: def.downloadsLimit ?? null,
             ...term,
-            premium: planPremium,
             paymentRef,
           });
         });
       }
-      break;
-    }
-    case "premium": {
-      rows.push(premiumOnlyRow(user.id, paymentRef, prices.premiumAddon));
       break;
     }
   }
@@ -305,13 +241,11 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
   // רישום תנועה כספית (חיוב) – סכום כולל של ההזמנה
   const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
   const description =
-    input.kind === "premium"
-      ? "מנוי פרימיום חודשי"
-      : input.kind === "single"
-        ? "הורדה בודדת"
-        : input.kind === "bundle"
-          ? "קובץ מורחב (תיקייה שלמה)"
-          : PLANS[input.plan].label + (premium ? " + פרימיום" : "");
+    input.kind === "single"
+      ? "הורדה בודדת"
+      : input.kind === "bundle"
+        ? "קובץ מורחב (תיקייה שלמה)"
+        : PLANS[input.plan].label;
   try {
     await db.insert(transactions).values({
       userId: user.id,
@@ -342,7 +276,6 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       kind: input.kind,
       total,
       paymentRef,
-      premium,
       categoryId: bundleCategoryId ?? ("categoryId" in input ? input.categoryId : null),
       categoryIds: "categoryIds" in input ? input.categoryIds : undefined,
       materialId: input.kind === "single" ? input.materialId : null,

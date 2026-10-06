@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { Plan } from "@/db/schema";
-import { PLANS } from "@/lib/constants";
+import { PLANS, isRetiredPlan } from "@/lib/constants";
 import { createManualPurchase, type AdminActionState } from "@/lib/actions/admin";
 
 export type SubjectOption = { id: number; title: string; icon: string | null };
@@ -18,9 +18,10 @@ export function ManualPurchaseForm({
     createManualPurchase,
     undefined,
   );
-  const [plan, setPlan] = useState<Plan>("subject_monthly");
+  const [plan, setPlan] = useState<Plan>("yearly");
   const def = PLANS[plan];
-  const needsSubject = plan === "subject_monthly" || plan === "custom_monthly";
+  // מקצוע אופציונלי למנוי שנתי / ממלאת מקום 3 חודשים (ריק = כל המקצועות). המסלולים החודשיים הישנים לא מוצעים
+  const subjectOptional = plan === "yearly" || plan === "substitute_3m";
 
   return (
     <form action={formAction} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -44,20 +45,20 @@ export function ManualPurchaseForm({
           onChange={(e) => setPlan(e.target.value as Plan)}
           className="input"
         >
-          {Object.entries(PLANS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.label}
-            </option>
-          ))}
+          {Object.entries(PLANS)
+            .filter(([k]) => !isRetiredPlan(k))
+            .map(([k, v]) => (
+              <option key={k} value={k}>
+                {v.label}
+              </option>
+            ))}
         </select>
       </label>
-      {needsSubject && (
+      {subjectOptional && (
         <label className="text-sm">
-          <span className="block mb-1 font-medium">מקצוע *</span>
-          <select name="categoryId" className="input" required defaultValue="">
-            <option value="" disabled>
-              בחרי מקצוע
-            </option>
+          <span className="block mb-1 font-medium">מקצוע</span>
+          <select name="categoryId" className="input" defaultValue="">
+            <option value="">כל המקצועות</option>
             {subjects.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.icon ?? "📘"} {s.title}
@@ -101,9 +102,6 @@ export function ManualPurchaseForm({
       <label className="text-sm">
         <span className="block mb-1 font-medium">סכום ששולם (₪)</span>
         <input name="amount" type="number" step="0.5" min={0} className="input" placeholder="0" />
-      </label>
-      <label className="text-sm flex items-end gap-2 pb-2">
-        <input name="premium" type="checkbox" /> כולל פרימיום
       </label>
       <label className="text-sm sm:col-span-2 lg:col-span-3">
         <span className="block mb-1 font-medium">הערה</span>
