@@ -98,12 +98,14 @@ export function NutTooltip() {
       delete tip!.dataset.on;
     }
 
+    // אלמנטים עם .flow-tip (מפת הבגרויות) מציגים טולטיפ משלהם ב-CSS – לא מציירים עליהם עוד אחד
+    const SEL = "[data-tip]:not(.flow-tip)";
     const onOver = (e: Event) => {
-      const el = (e.target as Element | null)?.closest?.("[data-tip]");
+      const el = (e.target as Element | null)?.closest?.(SEL);
       if (el && el !== current) show(el);
     };
     const onOut = (e: Event) => {
-      const el = (e.target as Element | null)?.closest?.("[data-tip]");
+      const el = (e.target as Element | null)?.closest?.(SEL);
       if (el && el === current) {
         const to = (e as MouseEvent).relatedTarget as Node | null;
         if (!to || !el.contains(to)) hide();
