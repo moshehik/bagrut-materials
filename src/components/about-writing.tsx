@@ -13,6 +13,7 @@ const T = (t: string): Seg => ({ t });
 const B = (t: string): Seg => ({ t, brand: true });
 
 const PARAS: Para[] = [
+  { lines: [[T("מי אנחנו?")]] },
   { lines: [[T("מורות.")], [T("כמוך.")]] },
   {
     lines: [
