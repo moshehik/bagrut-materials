@@ -101,6 +101,7 @@ function Words({ segs }: { segs: ReturnType<typeof plan>["sign"][number]["segs"]
 const OPEN_AHEAD = 250; // הדף נפתח מעט לפני שהשורה מתחילה להיכתב
 const LOGO_MS = 1300; // זמן הצגת הלוגו אחרי החתימה
 
+const PAUSE_MS = 2500; // כמה זמן הגלילה האוטומטית מחכה אחרי שהקוראת גוללה בעצמה למעלה
 const FOLLOW_MARGIN = 130; // הקצה התחתון של האיגרת נשמר כך הרחק מתחתית המסך
 
 type Phase = "static" | "armed" | "writing" | "done";
@@ -155,36 +156,55 @@ export function AboutWriting() {
     let anim: Animation | undefined;
     let raf = 0;
     let following = false;
-    let lastY = 0;
+    let lastSet = window.scrollY; // המיקום האחרון שאנחנו קבענו – כל שינוי אחר הוא של הקוראת
     let last = 0;
-    const onWheel = (ev: WheelEvent) => ev.deltaY < 0 && stopFollow();
-    const onKey = (ev: KeyboardEvent) => ["ArrowUp", "PageUp", "Home"].includes(ev.key) && stopFollow();
+    let pauseUntil = 0;
+    // רק גלילה יזומה של הקוראת עוצרת אותנו, ורק לכמה שניות – ואז הגלילה האוטומטית ממשיכה (אפשר לשבת ולצפות בלי לגעת).
+    const pause = () => {
+      pauseUntil = performance.now() + PAUSE_MS;
+    };
+    const onWheel = (ev: WheelEvent) => ev.deltaY < 0 && pause();
+    const onKey = (ev: KeyboardEvent) => ["ArrowUp", "PageUp", "Home"].includes(ev.key) && pause();
+    const onTouch = () => pause();
+    const onScroll = () => {
+      // גלילה כלפי מעלה שלא אנחנו עשינו (גרירת פס, מגע) – עוצרים; כלפי מטה – רק מקבלים את המיקום החדש
+      if (window.scrollY < lastSet - 12) pause();
+      else lastSet = Math.max(lastSet, window.scrollY);
+    };
     function stopFollow() {
       if (!following) return;
       following = false;
       cancelAnimationFrame(raf);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("scroll", onScroll);
     }
-    // הדף נפתח כלפי מטה – גוללים אחריו מעצמו כדי שהקוראת לא תצטרך לגלול.
-    // עוצרים רק כשהיא גוללת למעלה (גלגלת/מקש/גרירה) – לא על גלילה כלפי מטה.
+    // הדף נפתח כלפי מטה – גוללים אחריו מעצמו כדי שהקוראת לא תצטרך לגלול כלל.
     const follow = (now: number) => {
       if (!following) return;
-      if (window.scrollY < lastY - 3) return stopFollow();
-      const k = 1 - Math.exp(-Math.min(now - last, 250) / 170); // החלקה שלא תלויה בקצב הפריימים
+      const dt = Math.min(now - last, 250);
       last = now;
-      const bottom = body.getBoundingClientRect().bottom + 30; // + הגליל התחתון
-      const delta = bottom - (window.innerHeight - FOLLOW_MARGIN);
-      if (delta > 1) window.scrollTo({ top: window.scrollY + Math.max(1, delta * k), behavior: "instant" });
-      lastY = window.scrollY;
+      if (now >= pauseUntil) {
+        const k = 1 - Math.exp(-dt / 170); // החלקה שלא תלויה בקצב הפריימים
+        const bottom = body.getBoundingClientRect().bottom + 30; // + הגליל התחתון
+        const delta = bottom - (window.innerHeight - FOLLOW_MARGIN);
+        if (delta > 1) {
+          const maxY = document.documentElement.scrollHeight - window.innerHeight;
+          lastSet = Math.min(maxY, window.scrollY + Math.max(1, delta * k));
+          window.scrollTo({ top: lastSet, behavior: "instant" });
+        }
+      }
       raf = requestAnimationFrame(follow);
     };
     const startFollow = () => {
       following = true;
       last = performance.now();
-      lastY = window.scrollY;
+      lastSet = window.scrollY;
       window.addEventListener("wheel", onWheel, { passive: true });
       window.addEventListener("keydown", onKey);
+      window.addEventListener("touchmove", onTouch, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true });
       raf = requestAnimationFrame(follow);
     };
     const io = new IntersectionObserver(
@@ -202,7 +222,7 @@ export function AboutWriting() {
           anim?.cancel();
         };
       },
-      { threshold: 0.2 },
+      { rootMargin: "0px 0px -60px 0px", threshold: 0 }, // מתחילים ברגע שראש הדף נכנס למסך
     );
     io.observe(wrap);
     return () => {
