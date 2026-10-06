@@ -93,7 +93,8 @@ export function classifyMaterial(m: Pick<Material, "title" | "kind">): CardType 
   if (/העשרה/.test(t)) return "enrichment";
   if (/מיומנויות/.test(t)) return "skills";
   if (/הכנה|בקיאות/.test(t)) return "prep";
-  if (/פעילות|דיונים/.test(t)) return "discussions";
+  // "דף להרחבת השיעור" (תהלים/עזרא-נחמיה: שיח עמוק + משחקים) = כרטיס "דיונים ופעילויות"
+  if (/פעילות|דיונים|הרחבת השיעור/.test(t)) return "discussions";
   if (/מצגת/.test(t) || m.kind === "presentation") return "presentation";
   if (/תלמיד/.test(t)) return "student";
   if (/מורה/.test(t)) return "teacher";
