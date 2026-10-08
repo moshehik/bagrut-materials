@@ -462,10 +462,9 @@
 }
 .subj {
   display: block;
-  background: rgba(255, 255, 255, 0.3);
+  background: transparent;
   border-radius: 160px 160px 24px 24px;
   overflow: hidden;
-  box-shadow: 0 12px 30px rgba(31, 45, 51, 0.08);
   transition: transform 0.3s;
   text-align: center;
   padding-bottom: 26px;
@@ -482,7 +481,7 @@
   margin: 14px 14px 0;
   border-radius: 120px 120px 16px 16px;
   background: transparent;
-  border: 2px solid var(--blue);
+  border: 2px solid #0a0a0a;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -494,7 +493,7 @@
 }
 .subj:hover .arch {
   background: color-mix(in srgb, var(--accent, var(--blue)) 22%, transparent);
-  border-color: color-mix(in srgb, var(--accent, var(--blue)) 70%, var(--blue));
+  border-color: #0a0a0a;
 }
 /* בית + שם המקצוע מתחתיו (השם כבר לא בתוך התמונה) */
 .houseStack {

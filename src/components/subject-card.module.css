@@ -3,10 +3,9 @@
 .card {
   position: relative;
   display: block;
-  background: rgba(255, 255, 255, 0.3);
+  background: transparent;
   border-radius: 90px 90px 16px 16px;
   overflow: hidden;
-  box-shadow: 0 10px 24px rgba(31, 45, 51, 0.08);
   transition: transform 0.3s;
   text-align: center;
   padding-bottom: 16px;
@@ -23,7 +22,7 @@
   margin: 10px 10px 0;
   border-radius: 70px 70px 12px 12px;
   background: transparent;
-  border: 2px solid var(--blue);
+  border: 2px solid #0a0a0a;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -35,10 +34,111 @@
 }
 .card:hover .arch {
   background: color-mix(in srgb, var(--accent, var(--blue)) 22%, transparent);
-  border-color: color-mix(in srgb, var(--accent, var(--blue)) 70%, var(--blue));
+  border-color: #0a0a0a;
 }
 .big .arch {
   height: 174px;
+}
+
+/* טולטיפ "לחצי והיכנסי" — צף בתוך צורת הקשת, באותו מראה של הטולטיפ הכללי של האתר, בריחוף על הכרטיס */
+.tip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: 3;
+  width: max-content;
+  max-width: 90%;
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(145deg, rgba(51, 69, 110, 0.97), rgba(28, 40, 68, 0.97));
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 1rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 178, 80, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 20px rgba(25, 30, 50, 0.3);
+  text-align: center;
+  opacity: 0;
+  scale: 0.9;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    scale 0.16s ease;
+}
+/* פס זהב דק מתחת לטקסט, כמו בטולטיפ הכללי של האתר */
+.tip::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 70%;
+  margin: 0.3rem auto 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #e0b250, #fff3c4, #e0b250, transparent);
+  background-size: 200% 100%;
+}
+/* הנפשה שמזמינה ללחוץ: קפיצת כניסה, ואז "דופק" עדין של הילה זהובה + ניצוץ שרץ על פס הזהב */
+.card:hover .tip,
+.card:focus-visible .tip {
+  opacity: 1;
+  scale: 1;
+  animation:
+    tipPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    tipPulse 1.6s ease-in-out 0.45s infinite;
+}
+.card:hover .tip::after,
+.card:focus-visible .tip::after {
+  animation: tipShine 1.6s linear infinite;
+}
+@keyframes tipPop {
+  from {
+    opacity: 0;
+    scale: 0.7;
+    translate: -50% -30%;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    translate: -50% -50%;
+  }
+}
+@keyframes tipPulse {
+  0%,
+  100% {
+    scale: 1;
+    box-shadow:
+      inset 0 0 0 1px rgba(224, 178, 80, 0.85),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 8px 20px rgba(25, 30, 50, 0.3),
+      0 0 0 0 rgba(224, 178, 80, 0.55);
+  }
+  50% {
+    scale: 1.07;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 224, 130, 1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 10px 24px rgba(25, 30, 50, 0.35),
+      0 0 0 7px rgba(224, 178, 80, 0);
+  }
+}
+@keyframes tipShine {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card:hover .tip,
+  .card:focus-visible .tip,
+  .card:hover .tip::after,
+  .card:focus-visible .tip::after {
+    animation: none;
+  }
 }
 
 /* בית + שם המקצוע מתחתיו (השם כבר לא בתוך התמונה) */
@@ -158,20 +258,12 @@
   font-size: 13px;
   pointer-events: none;
 }
+/* מונה החומרים — טקסט חופשי בלי רקע, בכתב גברת לוין, בכחול כהה (דיו האתר) */
 .count {
-  color: var(--terra);
-  background: rgba(31, 45, 51, 0.06);
-}
-
-.go {
-  font-style: normal;
-  color: var(--terra);
-  font-weight: 700;
-  font-size: 12px;
-  display: inline-block;
-  margin-top: 2px;
-  transition: transform 0.25s var(--ease-snap);
-}
-.card:hover .go {
-  transform: translateX(-4px);
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--sea2);
+  background: transparent;
+  padding: 0;
 }

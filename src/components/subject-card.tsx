@@ -72,17 +72,19 @@ export function SubjectCard({
         ) : (
           <SubjectIcon slug={rootSlug || slug} className={s.folderIcon} />
         )}
+        <span className={s.tip} aria-hidden>
+          לחצי והיכנסי
+        </span>
       </div>
       {!house && <h3 className={s.title}>{title}</h3>}
       {description && <p className={s.desc}>{description}</p>}
-      {typeof count === "number" && (
+      {typeof count === "number" && count > 0 && (
         <div className={s.meta}>
           <span className={s.count}>
             {count} {countLabel}
           </span>
         </div>
       )}
-      <em className={s.go}>לחומרים ←</em>
     </Link>
   );
 }
