@@ -862,6 +862,11 @@
 .step:hover .n {
   transform: scale(1.12) translateY(-4px);
 }
+/* השלב הראשון מוזז קצת ימינה כדי שלכותרת של השלב השני יהיה מקום בשורה אחת */
+.steps > :nth-child(1) {
+  position: relative;
+  left: 24px;
+}
 .steps > :nth-child(2) .n {
   background-image: url("/images/step-circle-2.png");
   color: #fc555c;
@@ -880,6 +885,7 @@
   margin: 0 0 8px;
 }
 .highlight {
+  white-space: nowrap;
   background: color-mix(in srgb, #3a9684 50%, transparent);
   padding: 2px 8px;
   border-radius: 3px 10px 5px 9px / 8px 3px 10px 4px;

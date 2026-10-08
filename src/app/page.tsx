@@ -214,9 +214,7 @@ export default async function HomePage({
             <h4>
               <img src="/images/marker-2.png" alt="" className={s.stepMarker} />
               <mark className={s.highlight}>מגיעים לפרק הרצוי</mark>
-            </h4>
-            <p>יחידות ← פנימי/חיצוני ← נושא ← פרשה/פרק. כל תיקייה עם סמל שאלון ותיאור קצר.</p>
-          </div>
+            </h4>          </div>
           <div className={s.step}>
             <div className={s.n}>
               <span>3</span>
@@ -224,9 +222,7 @@ export default async function HomePage({
             <h4>
               <img src="/images/marker-3.png" alt="" className={s.stepMarker} />
               <mark className={s.highlight}>מורידים ומלמדים</mark>
-            </h4>
-            <p>הקובץ מוטבע במספר האישי שלך ונשמר באזור האישי. מדפיסים — ונכנסים לכיתה.</p>
-          </div>
+            </h4>          </div>
         </AnimatedGrid>
 
         {/* ================= SUBJECTS ================= */}
