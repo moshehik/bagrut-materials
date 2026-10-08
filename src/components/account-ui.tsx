@@ -221,8 +221,8 @@ export function TypeIcon({
   className?: string;
 }) {
   // סוג בלי אייקון צבעוני בתיקיית lesson-icons-v2 (סוגים נוספים וחומר שלא זוהה): הדמות הקווית הלבנה על עיגול בצבע הכרטיסייה
-  const extraType = !type || type === "other" ? "generic" : type !== "forum" && CARD_STYLES[type].extra ? type : null;
-  if (extraType) {
+  if (!type || type === "other" || (type !== "forum" && CARD_STYLES[type].extra)) {
+    const extraType: CardType = !type || type === "other" ? "generic" : type;
     return (
       <span className={`grid shrink-0 place-items-center ${className}`} aria-hidden>
         <span
@@ -235,7 +235,7 @@ export function TypeIcon({
       </span>
     );
   }
-  const art = type === "forum" ? "forum" : CARD_STYLES[type as CardType].art;
+  const art = type === "forum" ? "forum" : CARD_STYLES[type].art;
   return (
     <span className={`acc-ico relative grid shrink-0 place-items-center ${ICON_COVER.has(type) ? "overflow-hidden" : ""} ${className}`} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
