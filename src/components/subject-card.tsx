@@ -59,6 +59,12 @@ export function SubjectCard({
           שאלון {questionnaireCode}
         </span>
       )}
+      {house && slug === "kishurei-chaim" && (
+        <span className={s.promoTag}>
+          <span className={s.promoSpark} aria-hidden>✦</span>
+          במיוחד ליועצות!
+        </span>
+      )}
       <div className={s.arch} style={{ "--accent": accent } as CSSProperties}>
         {house ? (
           <div className={s.houseStack}>

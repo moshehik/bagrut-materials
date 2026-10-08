@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FolderTree } from "lucide-react";
 import { MapDraw } from "@/components/map-draw";
 import { getRootSubjects, countMaterialsUnder } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
@@ -54,12 +53,10 @@ export default async function SubjectsPage({
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4 animate-fade-up">
         <div>
           <h1 className="text-4xl font-normal" style={{ fontFamily: "var(--font-hand)" }}>
-            <FolderTree className="inline h-8 w-8 text-blue me-2" aria-hidden />
             {mineView ? "המקצועות שלך" : "המקצועות"}
           </h1>
           <p className="mt-2 max-w-2xl text-xl text-gold" style={{ fontFamily: "var(--font-hand)" }}>
-            כל מקצוע הוא תיקייה. פתחי אותה, ורדי דרך היחידות, פנימי/חיצוני והנושאים – עד לפרק
-            שאת מלמדת.
+            כל מקצוע הוא תיקייה. פתחי אותה, והגיעי עד לפרק המדויק לו את זקוקה.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
