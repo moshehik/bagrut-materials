@@ -106,10 +106,18 @@ export function PlanCheckoutView({
             {expandable && (
               <>
                 {isSub3 ? (
-                  <li className="flex gap-2">
-                    {check}
-                    <span>מקצוע אחד – המסלול אינו ניתן להרחבה למקצועות נוספים</span>
-                  </li>
+                  <>
+                    <li className="flex gap-2">
+                      {check}
+                      <span>מקצוע אחד – המסלול אינו ניתן להרחבה למקצועות נוספים</span>
+                    </li>
+                    <li className="flex gap-2">
+                      {check}
+                      <span>
+                        המסלול מוגבל ל-{def.downloadsLimit} הורדות או צפיות
+                      </span>
+                    </li>
+                  </>
                 ) : (
                   <>
                     <li className="flex gap-2">
@@ -137,11 +145,16 @@ export function PlanCheckoutView({
               </li>
             )}
           </ul>
-          <p className="mt-3 text-start text-sm leading-snug !text-gray-500">
-            כל קובץ שתורידי יוטבע בשמך (<b>{fullName}</b>), בכתובת המייל שלך (<b dir="ltr">{email}</b>),
-            {phone ? <> במספר הטלפון שלך (<b dir="ltr">{phone}</b>) </> : " במספר הטלפון שלך "}
-            ובמספר האישי שלך (<b dir="ltr">{personalCode}</b>) – כך אנחנו שומרים על זכויות היוצרים של הכותבות.
-          </p>
+          <div className="mt-5 space-y-2 text-start text-base leading-loose !text-[#6b3f1d]">
+            <p className="font-bold">כל קובץ שתורידי יוטבע:</p>
+            <ul className="space-y-1">
+              <li>בשמך (<b>{fullName}</b>)</li>
+              <li>בכתובת המייל שלך (<b dir="ltr">{email}</b>)</li>
+              <li>{phone ? <>במספר הטלפון שלך (<b dir="ltr">{phone}</b>)</> : "במספר הטלפון שלך"}</li>
+              <li>ובמספר האישי שלך (<b dir="ltr">{personalCode}</b>)</li>
+            </ul>
+            <p>כך אנחנו שומרים על זכויות היוצרים של הכותבות.</p>
+          </div>
         </div>
 
         <CheckoutForm {...formProps} gate />

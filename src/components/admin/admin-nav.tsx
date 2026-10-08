@@ -50,7 +50,7 @@ const ITEMS = [
   { href: "/admin/settings", label: "הגדרות", icon: Settings },
 ];
 
-export function AdminNav() {
+export function AdminNav({ badges = {} }: { badges?: Record<string, number> }) {
   const path = usePathname();
   return (
     <nav aria-label="ניווט ניהול" className="card p-2 lg:sticky lg:top-24">
@@ -70,6 +70,11 @@ export function AdminNav() {
               >
                 <Icon className="h-4 w-4" aria-hidden />
                 {it.label}
+                {(badges[it.href] ?? 0) > 0 && (
+                  <span className="ms-auto min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-bold leading-5 text-white tabular-nums">
+                    {badges[it.href]}
+                  </span>
+                )}
               </Link>
             </li>
           );

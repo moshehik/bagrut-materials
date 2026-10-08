@@ -26,7 +26,6 @@ export const config = {
     // הדיונים דורשים התחברות; /forum עצמו רק מפנה ליחידות
     "/forum/:path+",
     "/checkout/:path*",
-    "/cart/:path*",
     "/sell/:path*",
   ],
 };

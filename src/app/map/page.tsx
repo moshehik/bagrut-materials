@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GitBranch, FolderTree, ChevronDown, ArrowUpLeft, Scissors, Check, CircleHelp } from "lucide-react";
+import { FolderTree, ChevronDown, ArrowUpLeft, Scissors, Check, BookOpenCheck } from "lucide-react";
 import { getAllActiveCategories } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
-import { FocusNotice } from "@/components/focus-notice";
 import { MapDraw } from "@/components/map-draw";
 import { NutScrollHandleHorizontal } from "@/components/nut-scroll-handle";
 
@@ -46,13 +45,11 @@ export default async function MapPage() {
         <div className="flex items-center gap-5 sm:gap-8">
           <MapDraw className="w-24 sm:w-40 shrink-0 pointer-events-none select-none" />
           <div>
-            <h1 className="font-display text-4xl font-black">
-              <GitBranch className="inline h-8 w-8 text-pink me-2" aria-hidden />
+            <h1 className="text-4xl font-normal" style={{ fontFamily: "var(--font-hand)" }}>
               מפת הבגרות המלאה
             </h1>
-            <p className="mt-2 max-w-2xl text-muted">
-              תרשים זרימה של כל המקצועות: מקצוע ← יחידות ← פנימי/חיצוני ← הערכה בית ספרית/חלופית ←
-              נושאים ופרקים. לחצי על צומת כדי לפתוח את הענף שלו, ועל ״הסבר״ כדי להבין איך הבגרות בנויה.
+            <p className="mt-2 max-w-2xl text-xl text-gold" style={{ fontFamily: "var(--font-hand)" }}>
+              כאן תקבלי פריסה מלאה לכל חומרי הבגרות. לחצי על החלונות הנפתחים עד שתגיעי למידע שאת מחפשת.
             </p>
           </div>
         </div>
@@ -69,11 +66,20 @@ export default async function MapPage() {
         <div className="map-guide-grid">
           <div className="gate-card map-guide-tile">
             <span className="gate-icon">
-              <CircleHelp className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+              <BookOpenCheck className="h-5 w-5" strokeWidth={1.5} aria-hidden />
             </span>
-            <span>
+            <span className="map-guide-brown">
               <b>הסבר</b>
               הכפתור ״הסבר״ על כל בגרות מראה בקצרה ובסדר איך הציון בנוי
+            </span>
+          </div>
+          <div className="gate-card map-guide-tile">
+            <span className="gate-icon map-guide-code-icon">
+              <span className="q-code-tag px-1.5 text-[0.65rem]" aria-hidden>3381</span>
+            </span>
+            <span>
+              <b>סמל שאלון</b>
+              הסמל מופיע בחלון שבו יש סמל שאלון אחד. לחצי על הריבועים עד שתגיעי לסמל המבוקש
             </span>
           </div>
           <div className="gate-card map-guide-tile">
@@ -82,7 +88,7 @@ export default async function MapPage() {
             </span>
             <span>
               <b>פתיחת ריבוע</b>
-              לחיצה על הריבוע עצמו פותחת את הריבוע הבא
+              לחיצה על ריבוע החלון עצמו פותחת את הריבוע הבא. לחיצה על החלון הקודם סוגרת את החלון האחרון
             </span>
           </div>
           <div className="gate-card map-guide-tile">
@@ -108,14 +114,12 @@ export default async function MapPage() {
               <Check className="h-5 w-5" strokeWidth={1.5} aria-hidden />
             </span>
             <span>
-              <b>וי</b>
-              כבר הוכן חומר בפועל לנושא הזה
+              <b>הוכן חומר</b>
+              נושא המסומן ב-<Check className="inline h-3.5 w-3.5 align-text-bottom" strokeWidth={2} aria-label="וי" /> — כבר הוכן לו חומר בפועל
             </span>
           </div>
         </div>
       </section>
-
-      <FocusNotice />
 
       {tree.length === 0 ? (
         <div className="card mt-10 p-12 text-center">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, MessageCircle, XCircle } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { AccountMenu, AccountTitle, Notice } from "@/components/account-ui";
@@ -53,6 +54,13 @@ export default async function AccountPage({
       )}
 
       <AccountMenu />
+
+      <div className="mt-8 text-center">
+        <Link href="/contact" className="btn btn-gold btn-gate min-h-[48px] py-2">
+          <MessageCircle className="h-5 w-5 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
+          צור קשר
+        </Link>
+      </div>
     </div>
   );
 }

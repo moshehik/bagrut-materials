@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FolderTree, GitBranch } from "lucide-react";
+import { FolderTree } from "lucide-react";
+import { MapDraw } from "@/components/map-draw";
 import { getRootSubjects, countMaterialsUnder } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
 import { getMyRootSubjectIds } from "@/lib/home-personal";
@@ -8,7 +9,6 @@ import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { SubjectCard } from "@/components/subject-card";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-
 export const metadata: Metadata = { title: "המקצועות" };
 export const dynamic = "force-dynamic";
 
@@ -53,23 +53,31 @@ export default async function SubjectsPage({
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4 animate-fade-up">
         <div>
-          <h1 className="font-display text-4xl font-black">
+          <h1 className="text-4xl font-normal" style={{ fontFamily: "var(--font-hand)" }}>
             <FolderTree className="inline h-8 w-8 text-blue me-2" aria-hidden />
             {mineView ? "המקצועות שלך" : "המקצועות"}
           </h1>
-          <p className="mt-2 max-w-2xl text-muted">
+          <p className="mt-2 max-w-2xl text-xl text-gold" style={{ fontFamily: "var(--font-hand)" }}>
             כל מקצוע הוא תיקייה. פתחי אותה, ורדי דרך היחידות, פנימי/חיצוני והנושאים – עד לפרק
             שאת מלמדת.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {mineView && (
-            <Link href="/subjects" className="btn btn-ghost text-sm">
+            <Link
+              href="/subjects"
+              className="btn btn-ghost text-xl font-normal"
+              style={{ fontFamily: "var(--font-hand)" }}
+            >
               לכל המקצועות
             </Link>
           )}
-          <Link href="/map" className="btn btn-ghost text-sm">
-            <GitBranch className="h-4 w-4" aria-hidden /> לצפייה כתרשים זרימה
+          <Link
+            href="/map"
+            className="btn btn-ghost text-xl font-normal"
+            style={{ fontFamily: "var(--font-hand)" }}
+          >
+            <MapDraw className="w-10 shrink-0 pointer-events-none select-none" /> לצפייה כתרשים זרימה
           </Link>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, Filter, UserRound } from "lucide-react";
 import { formatHebrewDate } from "@/lib/hebrew-date";
-import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
+import { CARD_ROWS, CARD_STYLES, EXTRA_TYPES, type CardType } from "@/lib/material-card-types";
 
 /** רכיבי האזור האישי (שרת): כותרת עמוד, חלונית כחולה והודעת סטטוס – בעיצוב חלוניות "שימי לב!" */
 
@@ -198,10 +198,10 @@ export function PlanNut({ plan, className = "acc-plan-nut" }: { plan: string; cl
 }
 
 /** סוגי ההורדה לסינון (אותו סדר כמו בתיקייה), ו"אחר" לבסוף */
-export const TYPE_FILTERS: (CardType | "forum" | "other")[] = [...CARD_ROWS.flat(), "forum", "other"];
+export const TYPE_FILTERS: (CardType | "forum" | "other")[] = [...CARD_ROWS.flat(), ...EXTRA_TYPES.filter((t) => t !== "generic"), "forum", "other"];
 
 export const typeLabel = (t: CardType | "forum" | "other" | null) =>
-  t === "forum" ? "פורום" : t && t !== "other" ? CARD_STYLES[t].label : "אחר";
+  t === "forum" ? "פורום" : t && t !== "other" ? CARD_STYLES[t].label : "חומר נוסף";
 
 /** הגדלה לאייקונים שהקו שלהם דק ורחב עם הרבה רווח (שאלות מבגרויות וכד'), כדי שיראו כמו האחרים */
 const ICON_ZOOM: Record<string, number> = {
@@ -220,14 +220,22 @@ export function TypeIcon({
   type: CardType | "forum" | "other" | null;
   className?: string;
 }) {
-  if (!type || type === "other") {
+  // סוג בלי אייקון צבעוני בתיקיית lesson-icons-v2 (סוגים נוספים וחומר שלא זוהה): הדמות הקווית הלבנה על עיגול בצבע הכרטיסייה
+  const extraType = !type || type === "other" ? "generic" : type !== "forum" && CARD_STYLES[type].extra ? type : null;
+  if (extraType) {
     return (
-      <span className={`acc-ico-emoji grid shrink-0 place-items-center text-xl ${className}`} aria-hidden>
-        📎
+      <span className={`grid shrink-0 place-items-center ${className}`} aria-hidden>
+        <span
+          className="grid aspect-square h-full max-h-8 place-items-center rounded-full"
+          style={{ background: CARD_STYLES[extraType].strip }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/images/mat-cards/art4/${CARD_STYLES[extraType].art}.svg`} alt="" className="h-[78%] w-[78%] object-contain" />
+        </span>
       </span>
     );
   }
-  const art = type === "forum" ? "forum" : CARD_STYLES[type].art;
+  const art = type === "forum" ? "forum" : CARD_STYLES[type as CardType].art;
   return (
     <span className={`acc-ico relative grid shrink-0 place-items-center ${ICON_COVER.has(type) ? "overflow-hidden" : ""} ${className}`} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}

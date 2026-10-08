@@ -42,7 +42,7 @@ export function WatermarkText({ className }: { className?: string }) {
   const done = count >= TEXT.length;
 
   return (
-    <span ref={ref} className={className} aria-label={TEXT}>
+    <span ref={ref} className={`${styles.text} ${className ?? ""}`} aria-label={TEXT}>
       <span aria-hidden="true">
         {TEXT.slice(0, count)}
         {inView && !done && <span className={styles.caret} />}

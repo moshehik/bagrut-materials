@@ -1,95 +1,83 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, MessageSquare, Store, HelpCircle } from "lucide-react";
+import { Mail, HelpCircle, MessagesSquare, Clock } from "lucide-react";
 import { SITE_NAME } from "@/lib/constants";
+import { getCurrentUser } from "@/lib/session";
 import { ContactForm } from "@/components/contact-form";
 
-export const metadata: Metadata = { title: "צרי קשר" };
+export const metadata: Metadata = {
+  title: "צרי קשר",
+  description: "שאלה, בקשה לחומר שחסר או בעיה בהורדה – כתבי לנו ונחזור אלייך בהקדם.",
+};
 
-const EMAIL = "moshehik@gmail.com";
+const EMAIL = "loozhainyan@gmail.com";
 
-export default function ContactPage() {
+/** באותו עיצוב של "מסלולים ומחירים": כותרת עם לוגו, חלונית כחולה עם מסגרת זהב, כרטיסי זהב בהיר במסגרת שחורה */
+export default async function ContactPage() {
+  const user = await getCurrentUser();
+  const firstName = user?.name?.trim().split(/\s+/)[0] || null;
+  const mailto =`mailto:${EMAIL}?subject=${encodeURIComponent(`פנייה מאתר ${SITE_NAME}`)}`;
+
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
-      <div className="text-center animate-fade-up">
-        <span className="chip bg-pink-soft text-[#9d4a2a]">
-          <MessageSquare className="h-3.5 w-3.5" aria-hidden /> נשמח לשמוע ממך
-        </span>
-        <h1 className="font-display mt-3 text-4xl font-black">צרי קשר</h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted leading-relaxed">
-          שאלה על מנוי, בקשה לפרק שחסר, בעיה בהורדה או סתם מילה טובה – כותבים לנו במייל ואנחנו
-          עונות בהקדם.
-        </p>
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
+      <div className="gate-title animate-fade-up flex flex-col items-center justify-center gap-x-8 gap-y-3 text-center sm:flex-row sm:text-start">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/logo-black.png" alt="לו״ז העניין" className="w-44 sm:w-52" />
+        <div>
+          <h1 className="text-4xl md:text-5xl">צרי קשר</h1>
+          <p className="mt-2 max-w-md">
+            שאלה על מנוי, בקשה לפרק שחסר, בעיה בהורדה או סתם מילה טובה – כתבי לנו ונחזור אלייך
+            למייל שתציני.
+          </p>
+        </div>
       </div>
 
-      <div className="card mt-10 overflow-hidden animate-pop" style={{ animationDelay: "0.1s" }}>
-        <div className="bg-gradient-to-l from-blue-soft via-white to-pink-soft p-8 text-center">
-          <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-blue to-blue-deep text-white shadow-lg shadow-blue/30 animate-float">
-            <Mail className="h-8 w-8" aria-hidden />
+      <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8 animate-pop" aria-labelledby="contact-h">
+        <span className="gold-ring" aria-hidden="true" />
+        <h2 id="contact-h" className="text-center text-3xl">
+          {firstName ? `שלום ${firstName}, יש לך מה לומר?` : "כתבי לנו!"}
+        </h2>
+        <p className="mb-5 mt-1 text-center text-base text-[#ffd45a]">ההודעה מגיעה ישירות למנהלת האתר.</p>
+        <ContactForm defaultName={user?.name ?? ""} defaultEmail={user?.email ?? ""} />
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-white/20 pt-4 text-base">
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-4 w-4" aria-hidden /> זמן מענה ממוצע: עד 3 ימי עסקים
           </span>
-          <div className="mt-4 text-sm text-muted">כתובת המייל שלנו</div>
-          <a
-            href={`mailto:${EMAIL}?subject=${encodeURIComponent(`פנייה מאתר ${SITE_NAME}`)}`}
-            className="hover-move font-display mt-1 inline-block text-2xl font-bold text-blue-deep hover:underline sm:text-3xl"
-            dir="ltr"
-          >
-            {EMAIL}
-          </a>
-          <div className="mt-5">
-            <a
-              href={`mailto:${EMAIL}?subject=${encodeURIComponent(`פנייה מאתר ${SITE_NAME}`)}`}
-              className="btn btn-primary"
-            >
-              <Mail className="h-5 w-5" aria-hidden /> שליחת מייל
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <Mail className="h-4 w-4" aria-hidden /> או ישירות במייל:
+            <a href={mailto} dir="ltr" className="text-[#ffd45a] underline">
+              {EMAIL}
             </a>
-          </div>
+          </span>
         </div>
-        <div className="grid gap-4 p-6 sm:grid-cols-3 text-sm">
-          <div className="rounded-2xl bg-blue-soft/50 p-4">
-            <HelpCircle className="h-5 w-5 text-blue" aria-hidden />
-            <div className="mt-2 font-bold">שאלות על מנוי</div>
-            <p className="text-muted">
-              כדאי לציין את המייל שאיתו נרשמת ואת המסלול. פרטי המסלולים ב
-              <Link href="/pricing" className="text-blue-deep underline">
-                מחירים
-              </Link>
-              .
-            </p>
-          </div>
-          <div className="rounded-2xl bg-pink-soft/50 p-4">
-            <MessageSquare className="h-5 w-5 text-pink" aria-hidden />
-            <div className="mt-2 font-bold">שאלות מקצועיות</div>
-            <p className="text-muted">
-              למנויות – בכל{" "}
-              <Link href="/subjects" className="text-blue-deep underline">
-                יחידת לימוד
-              </Link>{" "}
-              מחכה פורום מורות לשאלות על השיעור הספציפי.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-gold-soft/60 p-4">
-            <Store className="h-5 w-5 text-gold" aria-hidden />
-            <div className="mt-2 font-bold">מכירת חומרים</div>
-            <p className="text-muted">
-              יש לך חומרים משלך? מלאי את{" "}
-              <Link href="/sell" className="text-blue-deep underline">
-                טופס ההצעה
-              </Link>
-              .
-            </p>
-          </div>
+      </section>
+
+      <div className="gate-title mx-auto mt-10 grid max-w-2xl gap-4 sm:grid-cols-2">
+        <div className="gate-card">
+          <HelpCircle className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+          <h3 className="mt-1 text-2xl">שאלות על מנוי</h3>
+          <p className="gate-soft">
+            כדאי לציין את המייל שאיתו נרשמת ואת המסלול. פרטים ב
+            <Link href="/pricing" className="underline">
+              מחירים
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="gate-card">
+          <MessagesSquare className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+          <h3 className="mt-1 text-2xl">שאלות מקצועיות</h3>
+          <p className="gate-soft">
+            למנויות – בכל{" "}
+            <Link href="/subjects" className="underline">
+              יחידת לימוד
+            </Link>{" "}
+            מחכה פורום מורות לשאלות על השיעור.
+          </p>
         </div>
       </div>
 
-      <div className="card mt-8 p-6 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-        <h2 className="font-display text-2xl font-bold mb-1">או כתבי לנו כאן</h2>
-        <p className="text-sm text-muted mb-4">ההודעה תישלח ישירות למנהלת האתר ונחזור אלייך למייל שציינת.</p>
-        <ContactForm />
-      </div>
-
-      <p className="mt-6 text-center text-xs text-muted">
-        זמן מענה ממוצע: עד 3 ימי עסקים. בערבי חג ובחגים המענה עשוי להתעכב.
-      </p>
+      <p className="gate-title mt-6 text-center text-base">בערבי חג המענה עשוי להתעכב.</p>
     </div>
   );
 }

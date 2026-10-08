@@ -2,76 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Menu, X, LogIn, UserRound, ShieldCheck, ShoppingCart } from "lucide-react";
+import { useState } from "react";
+import { Menu, X, LogIn, UserRound, ShieldCheck } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
+import { DizzyButton } from "@/components/dizzy-button";
 import { SearchTriggerButton, SiteSearchOverlay } from "@/components/site-search";
 
 type HeaderUser = { name: string; role: "user" | "admin" } | null;
-
-const CART_CHANGED_EVENT = "cart:changed";
-
-/** מספר פריטי העגלה – נטען מ-/api/cart/count ומתעדכן באירוע cart:changed */
-function useCartCount(enabled: boolean) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!enabled) return;
-    let alive = true;
-    const load = () =>
-      fetch("/api/cart/count", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : { count: 0 }))
-        .then((d: { count?: number }) => alive && setCount(Number(d.count ?? 0)))
-        .catch(() => {});
-    load();
-    const onChange = (e: Event) => {
-      const c = (e as CustomEvent<{ count?: number }>).detail?.count;
-      if (typeof c === "number") setCount(c);
-      else load();
-    };
-    window.addEventListener(CART_CHANGED_EVENT, onChange);
-    return () => {
-      alive = false;
-      window.removeEventListener(CART_CHANGED_EVENT, onChange);
-    };
-  }, [enabled]);
-  return count;
-}
-
-function CartLink({ count, className, onClick, withLabel }: { count: number; className?: string; onClick?: () => void; withLabel?: boolean }) {
-  return (
-    <Link
-      href="/cart"
-      onClick={onClick}
-      className={`relative inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 ${className ?? ""}`}
-      aria-label={`עגלת קניות${count ? ` – ${count} פריטים` : ""}`}
-    >
-      <span className="relative">
-        <ShoppingCart className="h-5 w-5" />
-        {count > 0 && (
-          <span className="absolute -top-2 -start-2 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-terra text-white text-[10px] font-bold leading-none animate-pop">
-            {count > 99 ? "99+" : count}
-          </span>
-        )}
-      </span>
-      {withLabel && <span>עגלה{count ? ` (${count})` : ""}</span>}
-    </Link>
-  );
-}
-
-/** טולטיפ מסביר מתחת לכפתור (מעבר עכבר / מיקוד מקלדת) */
-function HintWrap({ hint, children }: { hint: string; children: React.ReactNode }) {
-  return (
-    <span className="group relative inline-flex">
-      {children}
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute top-full mt-2 end-0 z-50 w-56 rounded-xl bg-plaster px-3 py-2 text-center text-xs font-medium leading-snug text-sea shadow-lg ring-1 ring-sea/10 opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0"
-      >
-        {hint}
-      </span>
-    </span>
-  );
-}
 
 const NAV = [
   { href: "/", label: "בית" },
@@ -100,7 +37,6 @@ export function Logo({ className = "", variant = "color" }: { className?: string
 export function Header({ user }: { user: HeaderUser }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
-  const cartCount = useCartCount(!!user);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-sea2/95 border-b border-white/10">
@@ -139,10 +75,6 @@ export function Header({ user }: { user: HeaderUser }) {
                   <ShieldCheck className="h-4 w-4" /> ניהול
                 </Link>
               )}
-              <CartLink
-                count={cartCount}
-                className="p-2 rounded-full text-white/80 hover:bg-white/10 hover:text-sun transition-colors"
-              />
               <Link href="/account" title="האזור האישי" className="btn btn-line-white text-sm py-2">
                 <UserRound className="h-4 w-4" /> {user.name.split(" ")[0]}
               </Link>
@@ -152,24 +84,21 @@ export function Header({ user }: { user: HeaderUser }) {
             </>
           ) : (
             <>
-              <HintWrap hint="פעם ראשונה באתר? פותחים חשבון חדש (שם, מייל וסיסמה)">
-                <Link href="/register" className="text-[15px] font-semibold text-white/90 hover:text-sun px-2 transition-transform hover:-translate-y-0.5">
-                  הצטרפות
-                </Link>
-              </HintWrap>
-              <HintWrap hint="כבר יש לך חשבון? נכנסים עם המייל והסיסמה שבחרת">
-                <Link href="/login" className="btn btn-gold text-sm py-2.5">
-                  <LogIn className="h-4 w-4" /> כניסה
-                </Link>
-              </HintWrap>
+              <Link
+                href="/register"
+                data-tip={"פעם ראשונה באתר?\nפותחים חשבון חדש"}
+                className="text-[15px] font-semibold text-white/90 hover:text-sun px-2 transition-transform hover:-translate-y-0.5"
+              >
+                הצטרפות
+              </Link>
+              <Link href="/login" data-tip={"כבר יש לך חשבון?\nנכנסים עם המייל והסיסמה"} className="btn btn-gold text-sm py-2.5">
+                <LogIn className="h-4 w-4" /> כניסה
+              </Link>
             </>
           )}
         </div>
 
         <div className="ms-auto xl:hidden flex items-center gap-1">
-          {user && (
-            <CartLink count={cartCount} className="p-2 rounded-xl hover:bg-white/10 text-white/80" />
-          )}
           <button
             className="p-2 rounded-xl text-white hover:bg-white/10 transition-transform hover:scale-110"
             onClick={() => setOpen((v) => !v)}
@@ -179,6 +108,8 @@ export function Header({ user }: { user: HeaderUser }) {
             {open ? <X /> : <Menu />}
           </button>
         </div>
+
+        <DizzyButton />
       </div>
 
       {open && (
@@ -207,12 +138,6 @@ export function Header({ user }: { user: HeaderUser }) {
                     ניהול האתר
                   </Link>
                 )}
-                <CartLink
-                  count={cartCount}
-                  withLabel
-                  onClick={() => setOpen(false)}
-                  className="px-3 py-2 rounded-xl hover:bg-pink-soft font-semibold"
-                />
                 <form action={logoutAction}>
                   <button className="w-full py-2 text-muted">יציאה</button>
                 </form>

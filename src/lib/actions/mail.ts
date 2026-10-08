@@ -9,6 +9,7 @@ import { requireAdmin, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates, type MailAttachment } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { TOO_MANY_MESSAGE, clientIp, limitKey, tooMany } from "@/lib/rate-limit";
+import { CONTACT_TOPICS } from "@/lib/contact-topics";
 
 export type MailState = { error?: string; ok?: string } | undefined;
 
@@ -163,6 +164,7 @@ export async function broadcastMail(_prev: MailState, form: FormData): Promise<M
 const contactSchema = z.object({
   name: z.string().trim().min(2, "נא להזין שם").max(120),
   email: z.string().trim().toLowerCase().email("כתובת מייל לא תקינה"),
+  topic: z.enum(CONTACT_TOPICS).optional().catch(undefined),
   message: z.string().trim().min(5, "כתבי כמה מילים").max(5000),
   website: z.string().max(0).optional(), // honeypot
 });
@@ -172,6 +174,7 @@ export async function contactAction(_prev: MailState, form: FormData): Promise<M
   const parsed = contactSchema.safeParse({
     name: form.get("name"),
     email: form.get("email"),
+    topic: form.get("topic") ?? undefined,
     message: form.get("message"),
     website: form.get("website") ?? "",
   });
@@ -180,8 +183,8 @@ export async function contactAction(_prev: MailState, form: FormData): Promise<M
   if (await tooMany(limitKey("contact", "ip", await clientIp()), 3, 3600)) return { error: TOO_MANY_MESSAGE };
   const admin = adminEmail();
   if (!admin) return { error: "כתובת המנהל לא מוגדרת" };
-  const { name, email, message } = parsed.data;
-  const r = await sendMail({ to: admin, ...templates.contact(name, email, message), kind: "contact" });
+  const { name, email, message, topic } = parsed.data;
+  const r = await sendMail({ to: admin, ...templates.contact(name, email, message, topic), kind: "contact" });
   return r.ok ? { ok: "הפנייה נשלחה, נחזור אלייך בהקדם" } : { error: "השליחה נכשלה, נסי שוב מאוחר יותר" };
 }
 

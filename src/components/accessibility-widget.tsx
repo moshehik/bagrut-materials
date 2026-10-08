@@ -2,20 +2,25 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Accessibility, X, RotateCcw } from "lucide-react";
+import { Accessibility, X, RotateCcw, ZoomIn, Contrast, Link2, CirclePause, Type, type LucideIcon } from "lucide-react";
 
 const STORAGE_KEY = "bagrut-a11y";
 
-const OPTIONS = [
-  { key: "a11y-large-text", label: "הגדלת טקסט", icon: "🔎" },
-  { key: "a11y-high-contrast", label: "ניגודיות גבוהה", icon: "◐" },
-  { key: "a11y-underline-links", label: "הדגשת קישורים", icon: "🔗" },
-  { key: "a11y-no-motion", label: "עצירת אנימציות", icon: "⏸" },
-  { key: "a11y-readable", label: "פונט קריא", icon: "Aa" },
-] as const;
-
-type Key = (typeof OPTIONS)[number]["key"];
+type Key =
+  | "a11y-large-text"
+  | "a11y-high-contrast"
+  | "a11y-underline-links"
+  | "a11y-no-motion"
+  | "a11y-readable";
 type State = Record<Key, boolean>;
+
+const OPTIONS: readonly { key: Key; label: string; hint: string; Icon: LucideIcon }[] = [
+  { key: "a11y-large-text", label: "הגדלת טקסט", hint: "כל הכתוב באתר גדול יותר", Icon: ZoomIn },
+  { key: "a11y-high-contrast", label: "ניגודיות גבוהה", hint: "צבעים כהים וחדים לקריאה קלה", Icon: Contrast },
+  { key: "a11y-underline-links", label: "הדגשת קישורים", hint: "קו תחתון מתחת לכל קישור", Icon: Link2 },
+  { key: "a11y-no-motion", label: "עצירת אנימציות", hint: "בלי תנועה ובלי הבהובים", Icon: CirclePause },
+  { key: "a11y-readable", label: "פונט קריא", hint: "גופן פשוט וברור במקום כתב היד", Icon: Type },
+];
 
 const EMPTY: State = {
   "a11y-large-text": false,
@@ -94,77 +99,67 @@ export function AccessibilityWidget() {
   const activeCount = Object.values(state).filter(Boolean).length;
 
   return (
-    <div className="fixed bottom-5 left-5 z-50 flex flex-col items-start gap-3" dir="rtl">
+    <div className="a11yw" dir="rtl">
       {open && (
-        <div
-          ref={panelRef}
-          id={panelId}
-          role="dialog"
-          aria-label="תפריט נגישות"
-          className="card w-72 p-4 animate-pop origin-bottom-left"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="font-bold flex items-center gap-2">
-              <Accessibility className="h-5 w-5 text-blue" aria-hidden /> נגישות
-            </h2>
+        <div ref={panelRef} id={panelId} role="dialog" aria-label="תפריט נגישות" className="a11yw-panel animate-pop">
+          <div className="a11yw-head">
+            <span className="a11yw-head-icon" aria-hidden>
+              <Accessibility className="h-5 w-5" />
+            </span>
+            <div className="a11yw-head-text">
+              <h2>נגישות</h2>
+              <p>מתאימים את האתר אליך</p>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setOpen(false);
                 btnRef.current?.focus();
               }}
-              className="rounded-full p-1 hover:bg-blue-soft transition-transform hover:scale-110"
+              className="a11yw-close"
               aria-label="סגירת תפריט נגישות"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          <ul className="mt-3 space-y-1.5">
-            {OPTIONS.map((o) => {
-              const on = state[o.key];
+          <ul className="a11yw-list">
+            {OPTIONS.map(({ key, label, hint, Icon }) => {
+              const on = state[key];
               return (
-                <li key={o.key}>
+                <li key={key}>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={on}
-                    onClick={() => update({ ...state, [o.key]: !on })}
-                    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors transition-transform hover:-translate-y-0.5 ${
-                      on
-                        ? "border-blue bg-blue-soft text-blue-deep"
-                        : "border-black/10 hover:bg-blue-soft/50"
-                    }`}
+                    onClick={() => update({ ...state, [key]: !on })}
+                    className="a11yw-opt"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-white text-base shadow-sm" aria-hidden>
-                      {o.icon}
+                    <span className="a11yw-opt-icon" aria-hidden>
+                      <Icon className="h-[18px] w-[18px]" />
                     </span>
-                    <span className="flex-1 text-start">{o.label}</span>
-                    <span
-                      aria-hidden
-                      className={`relative h-5 w-9 rounded-full transition-colors ${on ? "bg-blue" : "bg-gray-300"}`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-                          on ? "left-0.5" : "left-4"
-                        }`}
-                      />
+                    <span className="a11yw-opt-text">
+                      <strong>{label}</strong>
+                      <small>{hint}</small>
                     </span>
+                    <span className="a11yw-switch" aria-hidden />
                   </button>
                 </li>
               );
             })}
           </ul>
 
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-black/5 pt-3 text-sm">
+          <div className="a11yw-foot">
             <button
               type="button"
               onClick={() => update(EMPTY)}
-              className="hover-move inline-flex items-center gap-1 text-muted hover:text-foreground"
+              disabled={activeCount === 0}
+              className="a11yw-reset"
+              data-tip={"מחזיר את האתר\nלמצבו הרגיל"}
             >
-              <RotateCcw className="h-4 w-4" aria-hidden /> איפוס
+              <RotateCcw className="h-4 w-4" aria-hidden /> איפוס הכול
             </button>
-            <Link href="/accessibility" className="hover-move text-blue-deep hover:underline" onClick={() => setOpen(false)}>
+            <Link href="/accessibility" className="a11yw-statement" onClick={() => setOpen(false)}>
               הצהרת נגישות
             </Link>
           </div>
@@ -178,14 +173,11 @@ export function AccessibilityWidget() {
         aria-expanded={open}
         aria-controls={panelId}
         aria-label="פתיחת תפריט נגישות"
-        className="relative grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-blue to-blue-deep text-white shadow-lg shadow-blue/40 transition-transform hover:scale-105 focus-visible:outline-4"
+        className="a11yw-fab"
+        data-tip={open ? undefined : "תפריט נגישות\nהגדלת טקסט, ניגודיות,\nעצירת אנימציות ועוד"}
       >
         <Accessibility className="h-7 w-7" aria-hidden />
-        {activeCount > 0 && (
-          <span className="absolute -top-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-pink text-[11px] font-bold text-white">
-            {activeCount}
-          </span>
-        )}
+        {activeCount > 0 && <span className="a11yw-badge">{activeCount}</span>}
       </button>
     </div>
   );

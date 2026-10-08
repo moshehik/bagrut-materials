@@ -2,9 +2,11 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2, CircleHelp } from "lucide-react";
+import { ChevronDown, ArrowUpLeft, Undo2, Scissors, Check, Link2 } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
-import { getExplainer } from "@/lib/bagrut-explainers";
+import { getExplainer, codesOf, buildGenericExplainer, GENERIC_TEXT } from "@/lib/bagrut-explainers";
+import { WINDOW_TEXT } from "@/lib/bagrut-window-texts";
+
 import { BagrutExplainDialog } from "@/components/bagrut-explain-dialog";
 import type { Category } from "@/db/schema";
 
@@ -51,11 +53,55 @@ function groupChoices(children: MapNode[]): MapNode[][] {
   return groups;
 }
 
+/** האם לאחד הצאצאים של הצומת יש חלונית הסבר משלו (מפורטת יותר) */
+const hasDeeperExplainer = (n: MapNode): boolean =>
+  n.children.some((c) => !!getExplainer(c.chain.map((x) => x.slug)) || hasDeeperExplainer(c));
+
+/**
+ * הסבר ממוקד לצומת — רק מה שייחודי לו, בלי לחזור על מה שכבר הוסבר בחלון שמעליו:
+ * - אם לאחד האבות יש הסבר בגרות מפורט (שכבר מפרט את כל מה שמתחתיו) — כאן רק פרטים של הפרק עצמו (מפרשים / מה לא נדרש);
+ * - אחרת — התיאור של הצומת עצמו, ובלבד שאינו זהה לתיאור של אחד האבות.
+ * אין מה להסביר? אין כפתור.
+ */
+function genericExplainerOf(node: MapNode, ctx: TreeCtx) {
+  const findByPath = ctx.findByPath;
+  const slugs = node.chain.map((c) => c.slug);
+  const coveredAbove = slugs.slice(0, -1).some((_, i) => {
+    const prefix = slugs.slice(0, i + 1);
+    const anc = findByPath(prefix.join("/"));
+    return !!anc && !!getExplainer(prefix) && !hasDeeperExplainer(anc);
+  });
+  const ancestorDescriptions = new Set(node.chain.slice(0, -1).map((c) => c.description).filter(Boolean));
+  const d = node.cat.description;
+  const meforshim = meforshimOf(node);
+  const lines: string[] = [];
+  // הסבר קצר לחלון (WINDOW_TEXT, נכתב לפי העץ); אם אין — הנוסח הקצר הישן (GENERIC_TEXT)
+  // בטקסט החדש השורה הראשונה היא הכותרת — היא הופכת לכותרת החלונית (בלי לחזור עליה בגוף ההסבר)
+  const win = WINDOW_TEXT[slugs.join("/")];
+  const clear = win ? win.slice(1) : GENERIC_TEXT[slugs.join("/")];
+  if (clear) lines.push(...clear);
+  else if (meforshim) lines.push("קטעי מפרשים בפרק: " + meforshim.join("; "));
+  else if (!coveredAbove && d && !ancestorDescriptions.has(d) && !ctx.isRepeatedDescription(node)) lines.push(choiceNoteOf(node) ?? d);
+  if (node.cat.excludedNote) lines.push("✂ לא נדרש בתשפ״ז (מיקוד): " + node.cat.excludedNote);
+  if (!lines.length) return undefined;
+  return buildGenericExplainer({
+    title: win ? win[0] : node.cat.title,
+    description: lines.join(String.fromCharCode(10)),
+    code: node.cat.questionnaireCode,
+    ancestorTitles: win ? [] : node.chain.slice(0, -1).map((c) => c.title),
+    childPaths: [],
+  });
+}
+
 type TreeCtx = {
   isOpen: (id: number) => boolean;
   toggle: (id: number) => void;
   gotoRef: (node: MapNode) => void;
   resolveRef: (node: MapNode) => MapNode | null;
+  /** צומת לפי נתיב slug מלא מהשורש (למשל "torah/3-units/external") — לפירוט "מה ללמד" בחלונית ההסבר */
+  findByPath: (path: string) => MapNode | null;
+  /** תיאור זהה לתיאור של צומת קודם בעץ (למשל הערת תנ״ך משותפת) — מוסבר רק פעם אחת */
+  isRepeatedDescription: (node: MapNode) => boolean;
 };
 
 /**
@@ -85,33 +131,52 @@ function NodeBox({
   const ref = isRefNode(node);
   const refTarget = ref ? ctx.resolveRef(node) : null;
   const isFinal = !hasChildren && !ref;
-  const meforshim = meforshimOf(node);
   const excluded = node.cat.excluded;
-  const excludedNote = node.cat.excludedNote;
   const ready = node.cat.ready;
-  const [meforshimOpen, setMeforshimOpen] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
-  const explainer = getExplainer(node.chain.map((c) => c.slug));
+  // כפתור הסבר רק בחלון המפורט ביותר: אם לצאצא יש הסבר משלו — לא מכפילים אותו כאן
+  // הסבר בגרות מפורט רק בחלון העמוק ביותר; בכל צומת אחר עם תיאור — הסבר כללי (במקום מלל מתחת לריבוע)
+  const custom = hasDeeperExplainer(node) ? undefined : getExplainer(node.chain.map((c) => c.slug));
+  // פרק/סימן סופי — אין טעם להסבר משלו; הפרטים שלו (מפרשים, מה לא נדרש) מופיעים בפירוט של החלון שמעליו
+  // טקסט ההסבר הקצר שנכתב לחלון (WINDOW_TEXT) קודם לכרטיסי הציון הישנים — כך כל החלונות באותו סגנון
+  const generic = hasChildren ? genericExplainerOf(node, ctx) : undefined;
+  const explainer = WINDOW_TEXT[node.chain.map((c) => c.slug).join("/")] && generic ? generic : (custom ?? generic);
+  const explainCodes = custom ? codesOf(custom) : [];
+  // תגית זהב על קצה החלון עצמו, רק כשיש סמל שאלון אחד; כל עוד יש כמה סמלים — לא מציגים כלום
+  const windowCode = node.cat.questionnaireCode || (explainCodes.length === 1 ? explainCodes[0] : null);
   const style = { "--flow-accent": accent } as CSSProperties;
   const size = compact
-    ? "px-2 py-0.5 text-sm max-w-[14rem]"
+    ? "px-2 py-0.5 text-sm max-w-[18rem]"
     : level === 0
-      ? "px-3.5 py-2 text-xl max-w-[15rem]"
-      : "px-2.5 py-1 text-base max-w-[14rem]";
+      ? "px-3.5 py-2 text-xl max-w-[18rem]"
+      : "px-2.5 py-1 text-base max-w-[18rem]";
+  // הוי ורוד מעוצב בפינה הימנית-עליונה, בולט מעט מגבול הריבוע
+  const readyMark = ready ? (
+    <span
+      className="flow-ready-mark"
+      data-tip="כבר הוכן חומר לנושא זה"
+      aria-label={`כבר הוכן חומר – ${node.cat.title}`}
+    >
+      <Check className="h-2 w-2" strokeWidth={3.5} aria-hidden />
+    </span>
+  ) : null;
   const boxClass = `flow-node ${level % 2 === 1 ? "flow-node--alt" : ""} ${
     ref ? "flow-node--ref" : ""
-  } ${excluded ? "flow-node--excluded" : ""} ${excludedNote ? "flow-node--has-cut" : ""} ${
+  } ${excluded ? "flow-node--excluded" : ""} ${
     open && hasChildren ? "flow-node--open" : ""
-  } inline-flex items-center gap-1.5 text-ink ${size} ${
+  } inline-flex flex-wrap items-center gap-x-1.5 gap-y-1 text-ink ${size} ${
     hasChildren || ref ? "cursor-pointer" : ""
-  }`;
+  } ${windowCode && compact ? "mt-2.5" : ""}`;
 
   const clickAction = ref ? () => ctx.gotoRef(node) : hasChildren ? onToggle : undefined;
 
   return (
     <>
-    <div className={excludedNote ? "inline-flex flex-col items-stretch" : "contents"}>
+    <div
+      className="contents"
+    >
     <div className={boxClass} style={style} onClick={clickAction}>
+      {readyMark}
       {hasChildren || ref ? (
         <button
           type="button"
@@ -120,7 +185,7 @@ function NodeBox({
             clickAction?.();
           }}
           aria-expanded={ref ? undefined : open}
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-start"
+          className="flex min-w-0 flex-1 basis-[8rem] cursor-pointer items-center gap-1.5 text-start"
         >
           {ref ? (
             <Undo2 className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
@@ -130,50 +195,33 @@ function NodeBox({
               aria-hidden
             />
           )}
-          <span className={`min-w-0 leading-tight ${excluded ? "line-through opacity-60" : ""}`}>
-            {node.cat.title}
+          <span className="min-w-0 leading-tight">
+            <span className={excluded ? "line-through opacity-60" : ""}>{node.cat.title}</span>
           </span>
         </button>
       ) : (
-        <span className={`min-w-0 flex-1 leading-tight ${excluded ? "line-through opacity-60" : ""}`}>
-          {node.cat.title}
+        <span className="min-w-0 flex-1 basis-[8rem] leading-tight">
+          <span className={excluded ? "line-through opacity-60" : ""}>{node.cat.title}</span>
         </span>
       )}
       {excluded && (
         <span
           tabIndex={0}
-          className="flow-tip shrink-0 rounded-full p-0.5 text-[#a33]"
-          data-tip='לא נדרש בתשפ"ז (מיקוד משרד החינוך)'
-          aria-label={`לא נדרש בתשפ"ז – ${node.cat.title}`}
+          className="shrink-0 rounded-full p-0.5 text-[#a33]"
+          data-tip='ירד במיקוד תשפ"ז'
+          aria-label={`ירד במיקוד תשפ"ז – ${node.cat.title}`}
         >
           <Scissors className="h-3.5 w-3.5" aria-hidden />
         </span>
       )}
-      {ready && (
+      {windowCode && (
         <span
-          tabIndex={0}
-          className="flow-tip shrink-0 rounded-full p-0.5 text-emerald-600"
-          data-tip="כבר הוכן חומר לנושא זה"
-          aria-label={`כבר הוכן חומר – ${node.cat.title}`}
+          className="q-code-tag flow-code-window px-2 py-px text-sm"
+          title="סמל שאלון"
+          aria-label={`סמל שאלון ${windowCode}`}
         >
-          <Check className="h-3.5 w-3.5" aria-hidden />
+          {windowCode}
         </span>
-      )}
-      {meforshim && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMeforshimOpen((v) => !v);
-          }}
-          aria-expanded={meforshimOpen}
-          className="flow-tip shrink-0 cursor-pointer rounded-full p-0.5"
-          style={{ color: accent }}
-          data-tip="קטעי מפרשים בפרק זה"
-          aria-label={`קטעי מפרשים – ${node.cat.title}`}
-        >
-          <Feather className="h-3.5 w-3.5" aria-hidden />
-        </button>
       )}
       {explainer && (
         <button
@@ -183,61 +231,28 @@ function NodeBox({
             setExplainOpen(true);
           }}
           className="flow-explain-btn"
+          data-tip="בואי תביני איך זה עובד"
           aria-label={`הסבר על ${explainer.title}`}
         >
-          <CircleHelp className="h-3.5 w-3.5" aria-hidden />
           הסבר
         </button>
-      )}
-      {node.cat.questionnaireCode && (
-        <span
-          className="q-code-tag shrink-0 self-center px-2 py-px text-sm"
-          title="סמל שאלון"
-          aria-label={`סמל שאלון ${node.cat.questionnaireCode}`}
-        >
-          {node.cat.questionnaireCode}
-        </span>
       )}
       <Link
         href={hrefFor(refTarget ? refTarget.chain : node.chain)}
         onClick={(e) => e.stopPropagation()}
-        className="flow-tip flow-arrow-circle shrink-0"
+        className="flow-arrow-circle shrink-0"
         data-tip={isFinal ? "ריבוע סופי – לחיצה פותחת את דף התיקייה" : "לפתיחת דף התיקייה"}
         aria-label={`פתיחת דף ${node.cat.title}`}
       >
         <ArrowUpLeft className="h-3 w-3" aria-hidden />
       </Link>
     </div>
-    {/* פרק שרק חלקו נדרש: ריבוע "מה לא צריך" צמוד בלי רווח מתחת לריבוע הפרק */}
-    {excludedNote && (
-      <div
-        className={`flow-node flow-node--cut inline-flex items-start gap-1.5 text-ink ${
-          compact ? "px-2 py-0.5" : "px-2.5 py-1"
-        } ${level === 0 ? "max-w-[15rem]" : "max-w-[14rem]"}`}
-        style={style}
-      >
-        <Scissors className="mt-0.5 h-3 w-3 shrink-0 text-[#a33]" aria-hidden />
-        <span className="min-w-0 text-xs leading-snug opacity-80">
-          <b>לא נדרש בתשפ&quot;ז (מיקוד):</b> {excludedNote}
-        </span>
-      </div>
-    )}
     </div>
     {explainer && explainOpen && (
-      <BagrutExplainDialog explainer={explainer} onClose={() => setExplainOpen(false)} />
-    )}
-    {meforshim && meforshimOpen && (
-      <div className="flow-ellipse text-ink" style={style}>
-        <span className="mb-0.5 flex items-center justify-center gap-1 text-xs opacity-70">
-          <Feather className="h-3 w-3" aria-hidden />
-          מפרשים
-        </span>
-        {meforshim.map((line, i) => (
-          <span key={i} className="block leading-snug">
-            {line}
-          </span>
-        ))}
-      </div>
+      <BagrutExplainDialog
+        explainer={explainer}
+        onClose={() => setExplainOpen(false)}
+      />
     )}
     </>
   );
@@ -267,15 +282,6 @@ function Branch({ node, level, accent, ctx }: { node: MapNode; level: number; ac
           onToggle={() => ctx.toggle(node.cat.id)}
           ctx={ctx}
         />
-        {open &&
-          node.cat.description &&
-          !getExplainer(node.chain.map((c) => c.slug)) &&
-          !node.cat.description.startsWith(MEFORSHIM_PREFIX) &&
-          !node.cat.description.startsWith(CHOICE_PREFIX) && (
-            <p className="max-w-[15rem] text-[11px] leading-relaxed text-muted">
-              {node.cat.description}
-            </p>
-          )}
         {open && allLeaves && (
           <div className="flex flex-col">
             <span aria-hidden className="ms-6 h-3 w-px bg-ink/50" />
@@ -372,7 +378,6 @@ function ChoiceGroup({
   accent: string;
   ctx: TreeCtx;
 }) {
-  const note = choiceNoteOf(members[0]) ?? "";
   const openMember = members.find((m) => ctx.isOpen(m.cat.id)) ?? null;
   const pick = (m: MapNode) => {
     for (const other of members)
@@ -403,7 +408,6 @@ function ChoiceGroup({
           </div>
         ))}
       </div>
-      {note && <p className="max-w-[22rem] text-[11px] leading-relaxed text-muted">{note}</p>}
       {openMember && (
         <ChildrenBelow
           node={openMember}
@@ -424,15 +428,15 @@ function ChoiceGroup({
 const ROOT_GROUPS: { slugs: Set<string>; label: string }[] = [
   {
     slugs: new Set(["torah", "navi", "ktuvim"]),
-    label: 'אותה בגרות (תנ"ך) — תורה, נביא וכתובים נבחנים יחד בשאלוני תנ"ך משותפים',
+    label: "",
   },
   {
     slugs: new Set(["lashon-tzurot", "lashon-tachbir", "lashon-havaa"]),
-    label: 'אותה בגרות (לשון) — מערכת הצורות, תחביר והבעה והבנה הם בגרות אחת: שאלון חיצוני 75281 והערכה בית ספרית',
+    label: "",
   },
   {
     slugs: new Set(["yahadut", "dinim"]),
-    label: 'אותה בגרות (יהדות ודינים) — יהדות ודינים נבחנים יחד בשאלוני "יהדות ודינים" משותפים',
+    label: "",
   },
 ];
 const groupOf = (slug: string) => ROOT_GROUPS.find((g) => g.slugs.has(slug));
@@ -457,14 +461,16 @@ function groupRoots(tree: MapNode[]): MapNode[][] {
 function RootsGroup({ roots, label, ctx }: { roots: MapNode[]; label: string; ctx: TreeCtx }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="mr-7 flex items-center gap-1.5 text-xs font-bold text-muted">
-        <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span>{label}</span>
-      </div>
+      {label && (
+        <div className="mr-7 flex items-center gap-1.5 text-xs font-bold text-muted">
+          <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>{label}</span>
+        </div>
+      )}
       <div className="relative flex flex-col gap-16 pr-4">
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-1 right-0 top-1 w-3 rounded-br-2xl rounded-tr-2xl border-y-2 border-r-2 border-ink/35"
+          className="roots-bracket pointer-events-none absolute bottom-1 right-0 top-1 w-3 rounded-br-2xl rounded-tr-2xl"
         />
         {roots.map((root) => (
           <div key={root.cat.id} className="min-w-max">
@@ -502,6 +508,31 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
     return map;
   }, [tree]);
 
+  const byPath = useMemo(() => {
+    const map = new Map<string, MapNode>();
+    const walk = (n: MapNode) => {
+      map.set(n.chain.map((c) => c.slug).join("/"), n);
+      n.children.forEach(walk);
+    };
+    tree.forEach(walk);
+    return map;
+  }, [tree]);
+
+  const repeatedIds = useMemo(() => {
+    const seen = new Set<string>();
+    const repeated = new Set<number>();
+    const walk = (n: MapNode) => {
+      const d = n.cat.description;
+      if (d) {
+        if (seen.has(d)) repeated.add(n.cat.id);
+        else seen.add(d);
+      }
+      n.children.forEach(walk);
+    };
+    tree.forEach(walk);
+    return repeated;
+  }, [tree]);
+
   const resolveRef = (node: MapNode): MapNode | null => {
     const targetSlug = node.cat.slug.slice(REF_PREFIX.length);
     const rootId = node.chain[0].id;
@@ -532,6 +563,8 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
       }),
     gotoRef,
     resolveRef,
+    findByPath: (path) => byPath.get(path) ?? null,
+    isRepeatedDescription: (node) => repeatedIds.has(node.cat.id),
   };
 
   const rootGroups = useMemo(() => groupRoots(tree), [tree]);

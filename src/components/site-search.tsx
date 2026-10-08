@@ -8,7 +8,7 @@ import type { SearchResult } from "@/lib/data";
 
 const SEARCH_OPEN_EVENT = "site-search:open";
 
-/** פותחת את חלון החיפוש מכל מקום באתר (כמו emitCartChanged לעגלה) */
+/** פותחת את חלון החיפוש מכל מקום באתר */
 export function openSiteSearch() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(SEARCH_OPEN_EVENT));

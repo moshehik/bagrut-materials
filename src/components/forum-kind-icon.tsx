@@ -1,7 +1,7 @@
 import { FORUM_LABEL, type ForumKind } from "@/lib/forum-utils";
 
 /** איקון קווי דק ומונפש בתוך כל לחצן סוג (קו שחור דק על הצבע). האנימציות ב-globals.css (fi-*) */
-export function KindIcon({ kind }: { kind: ForumKind | "answer" }) {
+export function KindIcon({ kind }: { kind: ForumKind | "answer" | "reply" }) {
   const common = {
     className: "forum-kind-ico",
     viewBox: "0 0 24 24",
@@ -12,7 +12,7 @@ export function KindIcon({ kind }: { kind: ForumKind | "answer" }) {
     strokeLinejoin: "round" as const,
     "aria-hidden": true,
   };
-  if (kind === "answer")
+  if (kind === "answer" || kind === "reply")
     return (
       <svg {...common}>
         <g className="fi-bob">
@@ -53,7 +53,7 @@ export function KindIcon({ kind }: { kind: ForumKind | "answer" }) {
 }
 
 /** שם הסוג באפור בראש הריבוע, עם האיקון הקווי הדק של אותו סוג (שאלה / הערה / טיפ / תשובה) */
-export function KindTag({ kind }: { kind: ForumKind | "answer" }) {
+export function KindTag({ kind }: { kind: ForumKind | "answer" | "reply" }) {
   return (
     <p className="forum-kind-tag">
       <KindIcon kind={kind} />
@@ -63,7 +63,11 @@ export function KindTag({ kind }: { kind: ForumKind | "answer" }) {
 }
 
 /** אייקוני פעולה קוויים דקים (אותו סגנון כמו KindIcon): פח / אזהרה / תשובה / וי / סינון */
-export function ThinIcon({ name }: { name: "trash" | "warn" | "reply" | "check" | "filter" }) {
+export function ThinIcon({
+  name,
+}: {
+  name: "trash" | "warn" | "reply" | "check" | "filter" | "copy" | "edit" | "close";
+}) {
   return (
     <svg
       className="forum-thin-ico"
@@ -89,7 +93,20 @@ export function ThinIcon({ name }: { name: "trash" | "warn" | "reply" | "check" 
       )}
       {name === "reply" && <path d="M9.5 5L4 10.5 9.5 16M4 10.5h9a7 7 0 0 1 7 7V19" />}
       {name === "filter" && <path d="M3.5 5h17l-6.5 7.6V19l-4 2v-8.4z" />}
+      {name === "copy" && (
+        <>
+          <rect x="8.5" y="8.5" width="12" height="12" rx="2" />
+          <path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" />
+        </>
+      )}
       {name === "check" && <path d="M5 12.5l4.5 4.5L19 7.5" />}
+      {name === "edit" && (
+        <>
+          <path d="M15.8 3.4l4.8 4.8L8.6 20.2l-5.1 1 1-5.1z" />
+          <path d="M13.6 5.6l4.8 4.8" />
+        </>
+      )}
+      {name === "close" && <path d="M6 6l12 12M18 6L6 18" />}
     </svg>
   );
 }

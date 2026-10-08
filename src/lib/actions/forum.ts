@@ -110,7 +110,7 @@ const replySchema = z.object({
   body: z.string().trim().min(2, "התשובה קצרה מדי").max(8000, "התשובה ארוכה מדי"),
 });
 
-/** תשובה לשאלה (רק שאלות מקבלות תשובות – לא הערות וטיפים) */
+/** תשובה לשאלה, או תגובה להערה / לטיפ */
 export async function replyThread(_prev: ForumState, form: FormData): Promise<ForumState> {
   const auth = await requireUnitUser("post.create");
   if ("error" in auth) return { error: auth.error };
@@ -157,10 +157,6 @@ export async function replyThread(_prev: ForumState, form: FormData): Promise<Fo
     });
     return { error: "הפורום פתוח למנויות ולמי ששילמה על קובץ ביחידה הזו" };
   }
-  if (thread.kind !== "question") {
-    return { error: "אפשר להשיב רק על שאלה" };
-  }
-
   await db.insert(forumPosts).values({
     threadId: thread.id,
     userId: auth.user.id,
@@ -188,13 +184,77 @@ export async function replyThread(_prev: ForumState, form: FormData): Promise<Fo
   return { ok: true };
 }
 
-/** מחיקה – מי שכתבה את ההודעה, או המנהלת (שאלה/הערה/טיפ; מחיקת שאלה מוחקת גם את תשובותיה) */
+const editSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  body: z.string().trim().min(4, "כתבי לפחות כמה מילים").max(8000, "ההודעה ארוכה מדי"),
+});
+
+/** עריכת הערה או טיפ – רק מי שכתבה אותם (שאלות לא נערכות: יש עליהן תשובות שנכתבו לפי הנוסח המקורי) */
+export async function editThread(_prev: ForumState, form: FormData): Promise<ForumState> {
+  const auth = await requireUnitUser("thread.edit");
+  if ("error" in auth) return { error: auth.error };
+  if (await tooMany(limitKey("forum-edit", "user", auth.user.id), 30, 3600)) return { error: TOO_MANY_MESSAGE };
+
+  const parsed = editSchema.safeParse({ id: form.get("id"), body: form.get("body") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const [thread] = await db
+    .select({ userId: forumThreads.userId, kind: forumThreads.kind, categoryId: forumThreads.categoryId })
+    .from(forumThreads)
+    .where(eq(forumThreads.id, parsed.data.id))
+    .limit(1);
+  if (!thread) return { error: "ההודעה כבר לא קיימת" };
+  if (thread.userId !== auth.user.id || thread.kind === "question") {
+    await logAudit({
+      actorId: auth.user.id,
+      action: "forum.denied",
+      details: { reason: "not_editable", op: "thread.edit", threadId: parsed.data.id },
+    });
+    return { error: "אפשר לערוך רק הערה או טיפ שכתבת בעצמך" };
+  }
+  if (thread.categoryId && !(await userCanUseUnitForum(auth.user, thread.categoryId))) {
+    return { error: "הפורום פתוח למנויות ולמי ששילמה על קובץ ביחידה הזו" };
+  }
+
+  await db
+    .update(forumThreads)
+    .set({ body: parsed.data.body, title: forumTitleFrom(parsed.data.body) })
+    .where(and(eq(forumThreads.id, parsed.data.id), eq(forumThreads.userId, auth.user.id)));
+
+  await logAudit({
+    actorId: auth.user.id,
+    action: "forum.thread.edit",
+    entityType: "forum_thread",
+    entityId: parsed.data.id,
+  });
+  await revalidateUnit(thread.categoryId);
+  return { ok: true };
+}
+
+/** מחיקה – מי שכתבה את ההודעה, או המנהלת (שאלה/הערה/טיפ). שאלה שכבר נענתה: רק המנהלת מוחקת אותה (ומוחקת גם את תשובותיה) */
 export async function deleteThread(form: FormData): Promise<void> {
   const user = await getCurrentUser();
   const id = Number(form.get("id"));
   if (!user || !Number.isInteger(id) || id <= 0) return;
 
   const isAdmin = user.role === "admin";
+  if (!isAdmin) {
+    // שאלה שכבר נענתה לא נמחקת (כדי לא להעלים את עבודת מי שענתה) – רק המנהלת יכולה
+    const [t] = await db
+      .select({ kind: forumThreads.kind })
+      .from(forumThreads)
+      .where(and(eq(forumThreads.id, id), eq(forumThreads.userId, user.id)))
+      .limit(1);
+    if (!t) return;
+    if (t.kind === "question") {
+      const [answered] = await db
+        .select({ id: forumPosts.id })
+        .from(forumPosts)
+        .where(eq(forumPosts.threadId, id))
+        .limit(1);
+      if (answered) return;
+    }
+  }
   const [gone] = await db
     .delete(forumThreads)
     .where(isAdmin ? eq(forumThreads.id, id) : and(eq(forumThreads.id, id), eq(forumThreads.userId, user.id)))

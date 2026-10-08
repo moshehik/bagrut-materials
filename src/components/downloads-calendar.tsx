@@ -14,6 +14,7 @@ import {
 import type { CalGroup } from "@/lib/download-groups";
 import type { CalPurchase } from "@/lib/purchase-calendar";
 import { PlanNut, TypeIcon } from "@/components/account-ui";
+import { ScrollToSelected } from "@/components/scroll-to-selected";
 
 const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const LOCALE = "he-x-NoNikud";
@@ -238,10 +239,11 @@ export function DownloadsCalendar({
       {(selected || mode === "all") && (
       <section
         id="day-list"
-        className="gate-panel mx-auto mt-8 max-w-3xl sm:!p-8"
+        className="gate-panel mx-auto mt-8 max-w-3xl scroll-mt-20 sm:!p-8"
         aria-label={selected ? "ההורדות ביום שנבחר" : "ההורדות בחודש לפי יום"}
       >
         <span className="gold-ring" aria-hidden="true" />
+        <ScrollToSelected when={selected} />
         <h2 className="text-3xl">{selected ? "ההורדות ביום שנבחר" : "ההורדות לפי יום"}</h2>
         {listDays.length === 0 && !selected ? (
           <p className="gate-card mt-4 py-6 text-center text-xl">לא היו הורדות ב{monthTitle}.</p>

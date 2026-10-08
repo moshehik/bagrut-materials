@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
+import { BACK_ROW_END_ID } from "@/components/back-row-end";
 
 /**
  * כפתור "חזרה" אחיד בראש כל דף פנימי (בכל שלב באתר), במקום קבוע – מיד אחרי "דלגי לתוכן הראשי".
  *
  * - אם כבר עברנו בין דפים בתוך האתר – חוזר צעד אחד בהיסטוריה (כך גם שלבי תשלום/הרשמה חוזרים בדיוק לשלב הקודם).
  * - אחרת (נכנסנו ישר לדף, או בלי JavaScript) – קישור רגיל לדף ה"אב" ההגיוני שלו.
- * - מונגש: <nav> עם שם, קישור אמיתי (עובד במקלדת/קורא מסך/בלי JS), מטרת לחיצה 44px לפחות,
+ * - מראה: אותו לחצן זהב בכתב יד כמו "הבנתי" (btn-gold btn-gate), כדי שיבלוט.
+ * - מונגש: <nav> עם שם, קישור אמיתי (עובד במקלדת/קורא מסך/בלי JS), מטרת לחיצה 48px לפחות,
  *   טקסט גלוי "חזרה" שכלול בשם הנגיש, טבעת פוקוס מה-:focus-visible הגלובלי, ולא נדפס.
  */
 
@@ -28,7 +30,6 @@ const HAS_OWN_BACK = new Set([
 /** דף שהחזרה ממנו לא הולכת פשוט "קטע אחד למעלה". */
 const PARENT_OVERRIDE: Record<string, string> = {
   "/checkout": "/pricing",
-  "/cart": "/subjects",
   "/register": "/login",
   "/forgot-password": "/login",
   "/reset-password": "/login",
@@ -76,22 +77,32 @@ export function GlobalBackButton() {
       ? `חזרה ${parentLabel}`
       : "חזרה לדף הקודם";
 
+  // טולטיפ (data-tip הכללי של האתר, גם בפוקוס מקלדת) – מסביר לאן בדיוק הכפתור מחזיר
+  const tip = canGoBack
+    ? "חוזר לשלב הקודם שהיית בו"
+    : parentLabel
+      ? `חוזר ${parentLabel}`
+      : "חוזר לדף הקודם";
+
   return (
-    <nav aria-label="חזרה אחורה" className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 print:hidden">
+    <nav aria-label="חזרה אחורה" className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 pt-4 sm:px-6 print:hidden">
       <Link
         href={parent}
         aria-label={ariaLabel}
+        data-tip={tip}
         onClick={(e) => {
           // קליק רגיל בלבד; Ctrl/⌘/אמצעי נשאר "פתח בלשונית חדשה"
           if (!canGoBack || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
           e.preventDefault();
           router.back();
         }}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border-2 border-sea2 bg-white px-5 text-base font-bold text-sea2 transition-colors hover:bg-blue-soft"
+        className="btn btn-gold btn-gate min-h-[48px] py-2"
       >
-        <ArrowRight className="h-5 w-5" strokeWidth={2} aria-hidden />
+        <ArrowRight className="h-5 w-5 fix-gate-arrow" strokeWidth={2} aria-hidden />
         חזרה
       </Link>
+      {/* צד שמאל של השורה: דפים יכולים להציב כאן כפתור (BackRowEnd), למשל "התחברי כדי להוריד קבצים" */}
+      <div id={BACK_ROW_END_ID} className="flex items-center" />
     </nav>
   );
 }

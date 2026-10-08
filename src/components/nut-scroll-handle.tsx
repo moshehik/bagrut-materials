@@ -14,7 +14,7 @@ const HIT_SIZE = 52; // אזור אחיזה נוח לגרירה
 const ICON_SIZE = 34; // גודל האגוז המוצג בפועל
 const MIN_SCROLLABLE = 400; // לא מציגים ציר בדפים קצרים מדי
 const MIN_SCROLLABLE_X = 24; // לא מציגים ציר אופקי כשאין ממש מה לגלול לצדדים
-const HINT_TEXT = "גלגלי אותי ותגלי מה יש לנו להציע";
+const HINT_TEXT = "גללי אותי, וגלי מה יש לנו להציע";
 const HINT_MS = 9000; // כמה זמן הטולטיפ נשאר פתוח אם לא נגעו בכלום
 
 function getMaxScroll() {

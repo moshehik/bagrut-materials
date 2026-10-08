@@ -11,6 +11,8 @@ import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
 import { contentDisposition } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
+import { sendMail, layoutHtml } from "@/lib/mail";
+import { limitKey, rateLimit } from "@/lib/rate-limit";
 import {
   dailyRemaining,
   periodRemaining,
@@ -30,6 +32,11 @@ export const maxDuration = 300;
 const CONCURRENCY = 4;
 /** תקרה קשיחה לקבצים בזיפ אחד – ההמרה ל-PDF לוקחת 10-20 שניות לקובץ, ו-maxDuration הוא 300 שניות */
 const FOLDER_MAX_FILES = 40;
+/** תקרת גודל לזיפ שנשלח במייל: Gmail מגביל ל-25MB להודעה, ו-base64 מנפח בכ-33% */
+const EMAIL_MAX_ZIP_BYTES = 17 * 1024 * 1024;
+
+/** download = זיפ בתגובה; email = אותו זיפ נשלח למייל של המשתמשת (תשובת JSON) */
+type Mode = "download" | "email";
 
 /** שם רשומה בזיפ: בלי תווי נתיב (/ \) ובלי ".." – שלא ייכתב מחוץ לתיקיית החילוץ */
 function safeEntryName(fileName: string) {
@@ -99,15 +106,30 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  return handle(req, ctx, "download");
+}
+
+/** שליחת כל קבצי התיקייה למייל של המשתמשת (כקובץ זיפ אחד) */
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  return handle(req, ctx, "email");
+}
+
+async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }, mode: Mode) {
   const { id } = await ctx.params;
   const categoryId = Number(id);
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
     return NextResponse.json({ error: "bad id" }, { status: 400 });
   }
   const origin = req.nextUrl.origin;
+  // בהורדה מפנים (ניווט דפדפן); בשליחה למייל הלקוח הוא fetch, אז מחזירים JSON עם היעד להפניה
+  const bounce = (path: string, error: string, status: number) =>
+    mode === "email"
+      ? NextResponse.json({ error, redirect: path }, { status })
+      : NextResponse.redirect(new URL(path, origin));
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(`/api/download-folder/${categoryId}`)}`, origin));
+    const self = `/api/download-folder/${categoryId}`;
+    return bounce(`/login?next=${encodeURIComponent(self)}`, "יש להתחבר כדי לשלוח למייל", 401);
   }
   const isAdmin = user.role === "admin";
 
@@ -123,7 +145,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   if (user.suspended) {
     await deny("user_suspended");
-    return NextResponse.redirect(new URL("/login?suspended=1", origin));
+    return bounce("/login?suspended=1", "החשבון מושהה", 403);
   }
 
   const [cat] = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
@@ -131,10 +153,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const chain = await getCategoryChain(categoryId);
   const here = chainToHref(chain);
 
+  // שליחה למייל היא פעולה כבדה ויוצאת מחוץ לאתר – מגבילים קצב למשתמשת (לא למנהלת)
+  if (mode === "email" && !isAdmin) {
+    const rl = await rateLimit({ key: limitKey("folder-mail", user.id), limit: 6, windowSec: 3600 });
+    if (!rl.ok) {
+      return NextResponse.json({ error: "שלחת הרבה תיקיות למייל בשעה האחרונה, נסי שוב בעוד קצת" }, { status: 429 });
+    }
+  }
+
   if (!user.phone && !isAdmin) {
     await deny("no_phone");
-    return NextResponse.redirect(
-      new URL(`/account/phone?next=${encodeURIComponent(`/api/download-folder/${categoryId}`)}`, origin),
+    return bounce(
+      `/account/phone?next=${encodeURIComponent(`/api/download-folder/${categoryId}`)}`,
+      "יש להוסיף מספר טלפון לחשבון לפני הורדת קבצים",
+      409,
     );
   }
 
@@ -158,7 +190,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (owned.length === 0) {
     // אין הרשאה לאף קובץ – מפנים לרכישת התיקייה
     await deny("no_entitlement", { candidates: candidates.length });
-    return NextResponse.redirect(new URL(`/checkout?bundle=${categoryId}`, origin));
+    return bounce(`/checkout?bundle=${categoryId}`, "אין הרשאה לקבצי התיקייה", 402);
   }
 
   // כמה קבצים מותר בזיפ הזה: תקרה קשיחה, ולמשתמשת רגילה גם המכסה היומית שנותרה,
@@ -318,6 +350,40 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     throw e;
   }
 
+  // שליחה למייל: נכשלה/גדול מדי → משחררים את המכסה, כדי שלא תיספר הורדה שלא קרתה
+  if (mode === "email") {
+    const fail = async (error: string, status: number, reason: string) => {
+      await release();
+      await deny(reason);
+      return NextResponse.json({ error }, { status });
+    };
+    if (body.byteLength > EMAIL_MAX_ZIP_BYTES) {
+      return fail(
+        `הקבצים גדולים מדי לשליחה במייל (${(body.byteLength / 1048576).toFixed(0)}MB). אפשר להוריד אותם ישירות למחשב.`,
+        413,
+        "email_too_large",
+      );
+    }
+    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const list = ready.map((r) => r.name);
+    const sent = await sendMail({
+      to: user.email,
+      subject: `${cat.title} – כל הקבצים`,
+      text: [`שלום ${user.name},`, "", `מצורף קובץ זיפ עם ${ready.length} קבצים מהתיקייה "${cat.title}".`, "כל קובץ מוטבע במספר האישי שלך.", "", ...list].join("\n"),
+      html: layoutHtml(
+        `${cat.title} – כל הקבצים`,
+        `<p>שלום ${esc(user.name)},</p><p>מצורף קובץ זיפ עם <b>${ready.length}</b> קבצים מהתיקייה <b>${esc(cat.title)}</b>. כל קובץ מוטבע במספר האישי שלך.</p><ul>${list.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>`,
+      ),
+      attachment: { fileName: `${safeEntryName(cat.title)}.zip`, base64: Buffer.from(body).toString("base64"), mimeType: "application/zip" },
+      kind: "folder-zip",
+      userId: user.id,
+    });
+    if (!sent.ok) {
+      console.error("folder email send failed", sent.error);
+      return fail("שליחת המייל נכשלה, נסי שוב בעוד רגע (ההורדה לא נספרה)", 502, "email_failed");
+    }
+  }
+
   // תיעוד (שורות downloads ומכסת המנוי כבר נרשמו בהזמנה; למנהלת – נרשמות כאן)
   try {
     if (isAdmin) {
@@ -342,10 +408,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       action: "download",
       entityType: "category",
       entityId: categoryId,
-      details: { folder: cat.title, files: ready.length, here, failedIds, skippedIds },
+      details: { folder: cat.title, files: ready.length, here, failedIds, skippedIds, ...(mode === "email" ? { via: "email" } : {}) },
     });
   } catch (e) {
     console.error("folder download log failed", e);
+  }
+
+  if (mode === "email") {
+    return NextResponse.json({ ok: true, files: ready.length, email: user.email, skipped: owned.length - ready.length });
   }
 
   const res = new Response(new Uint8Array(body), {

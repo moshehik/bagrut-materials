@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Clock } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Clock, Loader2 } from "lucide-react";
 import {
   AnswerButton,
+  CopyButton,
   DeleteButton,
   ReportButton,
 } from "@/components/forum-forms";
 import { KindTag, ThinIcon } from "@/components/forum-kind-icon";
+import { editThread } from "@/lib/actions/forum";
 import { forumAuthor, type ForumKind } from "@/lib/forum-utils";
 
 export type FeedAnswer = {
@@ -55,7 +57,8 @@ function Meta({
 
 /**
  * רשימת ההודעות בפורום: כל הודעה בריבוע בצבע לפי הסוג, ובראשו (באפור) שם הסוג: שאלה / הערה / טיפ;
- * מתחת לשאלה – התשובות בזהב בהיר עם התווית "תשובה". לשאלה יש לחצן "תשובה", ולמי שכתבה – "מחיקה".
+ * מתחת להודעה – התשובות/התגובות באותו צבע בגוון בהיר יותר ("תשובה" לשאלה, "תגובה" להערה/טיפ).
+ * לכל הודעה יש לחצן תשובה/תגובה, ולמי שכתבה – "מחיקה".
  * `canParticipate` = מנויה/רוכשת מחוברת (ר' userCanUseUnitForum); בלי זה התוכן מטושטש ואין לחצנים.
  * `demo` = עמוד הדוגמה, שום דבר לא נשלח.
  */
@@ -82,6 +85,36 @@ export function ForumFeed({
   const [filterOpen, setFilterOpen] = useState(false);
   const shown =
     filter === "all" ? entries : entries.filter((e) => e.kind === filter);
+
+  // עריכה במקום של הערה/טיפ: הטקסט הופך לתיבת כתיבה; אחרי שינוי הלחצן הופך ל"שמירה"
+  const [editId, setEditId] = useState<number | null>(null);
+  const [draft, setDraft] = useState("");
+  const [editError, setEditError] = useState<string>();
+  const [saving, startSave] = useTransition();
+
+  function startEdit(t: FeedEntry) {
+    setEditId(t.id);
+    setDraft(t.body);
+    setEditError(undefined);
+  }
+  function stopEdit() {
+    setEditId(null);
+    setEditError(undefined);
+  }
+  function save(t: FeedEntry) {
+    if (demo) {
+      stopEdit();
+      return;
+    }
+    const fd = new FormData();
+    fd.set("id", String(t.id));
+    fd.set("body", draft);
+    startSave(async () => {
+      const res = await editThread(undefined, fd);
+      if (res?.ok) stopEdit();
+      else setEditError(res?.error ?? "השמירה נכשלה, נסי שוב");
+    });
+  }
 
   // סינון: הכול / שאלות ותשובות (שאלה מגיעה עם התשובות שלה) / טיפים / הערות
   const tabs: { key: "all" | ForumKind; label: string; cls: string }[] = [
@@ -142,6 +175,8 @@ export function ForumFeed({
 
       {shown.map((t, i) => {
         const mine = meId !== null && t.userId === meId;
+        const editing = editId === t.id;
+        const dirty = editing && draft.trim() !== t.body.trim();
         return (
           <article
             key={t.id}
@@ -151,29 +186,87 @@ export function ForumFeed({
           >
             <div className="forum-box">
               <KindTag kind={t.kind} />
-              <p
-                className={`whitespace-pre-wrap leading-relaxed ${blur}`}
-                aria-hidden={!canView}
-              >
-                {canView ? t.body : t.body.slice(0, 140)}
-              </p>
+              {editing ? (
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") stopEdit();
+                  }}
+                  rows={4}
+                  minLength={4}
+                  maxLength={8000}
+                  autoFocus
+                  disabled={saving}
+                  className="gate-input !bg-white resize-y forum-edit-area"
+                  aria-label={`עריכת ה${t.kind === "tip" ? "טיפ" : "הערה"}`}
+                />
+              ) : (
+                <p
+                  className={`whitespace-pre-wrap leading-relaxed ${blur}`}
+                  aria-hidden={!canView}
+                >
+                  {canView ? t.body : t.body.slice(0, 140)}
+                </p>
+              )}
+              {editing && editError && (
+                <p role="alert" className="mt-1 text-base text-[#8a1508]">
+                  {editError}
+                </p>
+              )}
               <Meta author={t.author} mine={mine} when={t.when} />
-              {canParticipate && (
+              {(canView || canParticipate) && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {t.kind === "question" && (
-                    <AnswerButton threadId={t.id} demo={demo} />
+                  {canView && <CopyButton text={t.body} />}
+                  {canParticipate && (
+                    <AnswerButton threadId={t.id} kind={t.kind} demo={demo} />
                   )}
-                  {!mine && !isAdmin && (
+                  {canParticipate && mine && t.kind !== "question" && (
+                    <>
+                      <button
+                        type="button"
+                        className={`forum-del${dirty ? " forum-del-save" : ""}`}
+                        disabled={saving}
+                        aria-label={dirty ? "שמירת השינויים" : editing ? "ביטול העריכה" : "עריכה"}
+                        data-tip={dirty ? "שמירה" : editing ? "ביטול העריכה" : "עריכה"}
+                        onClick={() => {
+                          if (dirty) save(t);
+                          else if (editing) stopEdit();
+                          else startEdit(t);
+                        }}
+                      >
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ThinIcon name={dirty ? "check" : "edit"} />
+                        )}
+                      </button>
+                      {dirty && (
+                        <button
+                          type="button"
+                          className="forum-del"
+                          disabled={saving}
+                          aria-label="ביטול העריכה"
+                          data-tip="ביטול"
+                          onClick={stopEdit}
+                        >
+                          <ThinIcon name="close" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {canParticipate && !mine && !isAdmin && (
                     <ReportButton target={{ threadId: t.id }} demo={demo} initiallyReported={t.reported} />
                   )}
-                  {(mine || isAdmin) && (
+                  {canParticipate &&
+                    (isAdmin || (mine && !(t.kind === "question" && t.answers.length > 0))) && (
                     <DeleteButton
                       id={t.id}
                       scope="thread"
                       demo={demo}
                       warn={
-                        t.kind === "question" && t.answers.length > 0
-                          ? "למחוק את השאלה? גם התשובות עליה יימחקו."
+                        t.answers.length > 0
+                          ? "למחוק את ההודעה? גם התגובות עליה יימחקו."
                           : "למחוק את ההודעה?"
                       }
                     />
@@ -183,14 +276,13 @@ export function ForumFeed({
             </div>
 
             {t.answers.length > 0 && (
-              <div className="mt-3 ms-5 sm:ms-10 space-y-3 border-s-[3px] border-[#ffd45a]/70 ps-3 sm:ps-4">
+              <div className="mt-3 ms-5 sm:ms-10 space-y-3 border-s-[3px] border-black/40 ps-3 sm:ps-4">
                 {t.answers.map((a) => {
                   const mineAnswer = meId !== null && a.userId === meId;
                   return (
-                    <div key={a.id} className="fk-answer">
-                      <div className="forum-box forum-box-answer">
-                        <span className="forum-gold-ring" aria-hidden="true" />
-                        <KindTag kind="answer" />
+                    <div key={a.id} className={`fk-${t.kind}`}>
+                      <div className="forum-box forum-box-reply">
+                        <KindTag kind={t.kind === "question" ? "answer" : "reply"} />
                         <p
                           className={`whitespace-pre-wrap leading-relaxed ${blur}`}
                           aria-hidden={!canView}
@@ -202,16 +294,17 @@ export function ForumFeed({
                           mine={mineAnswer}
                           when={a.when}
                         />
-                        {canParticipate && (
+                        {(canView || canParticipate) && (
                           <div className="mt-2 flex items-center gap-2">
-                            {!mineAnswer && !isAdmin && (
+                            {canView && <CopyButton text={a.body} />}
+                            {canParticipate && !mineAnswer && !isAdmin && (
                               <ReportButton
                                 target={{ postId: a.id }}
                                 demo={demo}
                                 initiallyReported={a.reported}
                               />
                             )}
-                            {(mineAnswer || isAdmin) && (
+                            {canParticipate && (mineAnswer || isAdmin) && (
                               <DeleteButton
                                 id={a.id}
                                 scope="reply"

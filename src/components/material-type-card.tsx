@@ -1,8 +1,9 @@
 import Image from "next/image";
-import { Eye, Fingerprint, PauseCircle } from "lucide-react";
+import { Eye, Fingerprint, Mail, PauseCircle } from "lucide-react";
+import { EmailMaterialButton } from "@/components/email-material-button";
 import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
-import { CARD_STYLES, LABEL_SIZES, type CardType } from "@/lib/material-card-types";
+import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { FIX_TIPS, FixRequestButton, FixViewer, type CardFix } from "@/components/material-fixes";
 import { FreeTrialDownload } from "@/components/free-trial-download";
@@ -32,6 +33,19 @@ type Props = {
 
 const DAILY_SUBSTITUTE_VIEW_TIP =
   "אם תורידי את החומר – הצפייה לא תחושב בסל ההורדות. אם צפית ולא הורדת – הצפייה תחושב בסל ההורדות.";
+
+const MAIL_TIP = "הקובץ ישלח אליך ישירות למייל.";
+
+/** אגוז הלוז המקורי (one-01) עם אייקון מייל דק-קווים שחור, כאילו נחרט עליו */
+function MailNut() {
+  return (
+    <span className="mtc-nut mtc-mailnut" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/nuts/one-01.webp" alt="" width={40} height={40} />
+      <Mail className="mtc-mailnut-icon" strokeWidth={1.3} />
+    </span>
+  );
+}
 
 /** לאן מובילה לחיצה על האגוז האדום – הורדה למי שמורשית, אחרת הצעד החסר (התחברות / רכישת התיקייה) */
 function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bundleHref: string): string | null {
@@ -67,6 +81,7 @@ export function MaterialTypeCard({
   const target = downloadTarget(m, entitlement, currentPath, bundleHref);
   const viewOnly = entitlement.ok && !m.allowDownload && entitlement.via !== "admin";
   const size = LABEL_SIZES[type];
+  const heading = cardHeading(type, m.title, folderTitle);
   // אגוזי התיקונים רק למי שמורשית להוריד, ורק בקובץ Word (שם התיקונים מוחלים)
   const canFix = entitlement.ok && !viewOnly && !!target && /\.docx$/i.test(m.fileName) && fixes.length > 0;
   // בלי גישה לקובץ: "שינויים בקובץ" מוביל לאותו צעד חסר כמו ההורדה (התחברות / רכישה)
@@ -93,46 +108,66 @@ export function MaterialTypeCard({
       {guestFree && <span className="mtc-free">חינם בהרשמה</span>}
       <header className="mtc-head">
         <Image
-          src={`/images/mat-cards/art4/${s.art}.webp`}
+          src={`/images/mat-cards/art4/${s.art}.${s.extra ? "svg" : "webp"}`}
           alt=""
           width={120}
           height={120}
           className={`mtc-art ${s.artWide ? "mtc-art-wide" : ""}`}
           aria-hidden
         />
-        <h3 className="mtc-title" aria-label={`${s.label} - ${folderTitle}`}>
-          {/* שם הסוג: הכתב המדויק מהעיצוב, כתמונה שקופה */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/images/mat-cards/label-${type}.webp`}
-            alt=""
-            width={size[0]}
-            height={size[1]}
-            className="mtc-label"
-            style={{ "--w": size[0] } as React.CSSProperties}
-            aria-hidden
-          />
-          <span className="mtc-chapter" aria-hidden>
-            - {folderTitle}
-          </span>
+        <h3 className="mtc-title" aria-label={heading.full}>
+          {size ? (
+            <>
+              {/* שם הסוג: הכתב המדויק מהעיצוב, כתמונה שקופה */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/images/mat-cards/label-${type}.webp`}
+                alt=""
+                width={size[0]}
+                height={size[1]}
+                className="mtc-label"
+                style={{ "--w": size[0] } as React.CSSProperties}
+                aria-hidden
+              />
+              <span className="mtc-chapter" aria-hidden>
+                - {heading.suffix}
+              </span>
+            </>
+          ) : (
+            // סוגים בלי תמונת כתב: השם בגופן גברת לוין, באותו לבן
+            <>
+              <span className={`mtc-label-text${heading.suffix === null ? " mtc-label-long" : ""}`} aria-hidden>
+                {heading.label}
+              </span>
+              {heading.suffix !== null && (
+                <span className="mtc-chapter" aria-hidden>
+                  - {heading.suffix}
+                </span>
+              )}
+            </>
+          )}
         </h3>
       </header>
 
       <div className="mtc-body">
-        <div className={`mtc-print ${s.lightPrint ? "mtc-print-light" : ""}`}>
+        <div
+          className={`mtc-print ${s.lightPrint ? "mtc-print-light" : ""}`}
+          data-tip="החומר שלך, נשאר שלך:)"
+          aria-label="החומר שלך, נשאר שלך"
+          tabIndex={0}
+        >
           <Fingerprint className="mtc-print-icon" strokeWidth={1.4} aria-hidden />
-          <span>הדף שלך נשאר שלך</span>
         </div>
 
         {viewOnly ? (
-          <FileViewerButton src={`/api/preview/${m.id}`} title={`${s.label} - ${folderTitle}`} className="mtc-download">
+          <FileViewerButton src={`/api/preview/${m.id}`} title={heading.full} className="mtc-download">
             <Eye className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
           </FileViewerButton>
         ) : trialOffer ? (
           <FreeTrialDownload
             materialId={m.id}
-            title={`${s.label} - ${folderTitle}`}
+            title={heading.full}
             state={trialOffer}
             className="mtc-download"
           >
@@ -143,9 +178,9 @@ export function MaterialTypeCard({
           <a
             href={target}
             className="mtc-download"
-            title={
+            data-tip={
               entitlement.ok
-                ? "הדף שלך נשאר שלך"
+                ? "להורדת הקובץ למחשב"
                 : guestFree
                   ? "הקובץ חינם לכל מורה שנרשמה – ההרשמה חינמית"
                   : "כדי להוריד צריך קודם להשלים את השלב הבא"
@@ -166,7 +201,7 @@ export function MaterialTypeCard({
         {canView ? (
           <FileViewerButton
             src={`/api/preview/${m.id}`}
-            title={`${s.label} - ${folderTitle}`}
+            title={heading.full}
             className="mtc-download"
             tip={isDailySubstitute ? DAILY_SUBSTITUTE_VIEW_TIP : undefined}
             label={`צפייה ב${s.label} באתר`}
@@ -190,6 +225,34 @@ export function MaterialTypeCard({
             </a>
           )
         )}
+
+        {/* שליחה ישירה למייל: מי שמורשית – שולחת (POST ל-/api/download/[id]); אחרת – אותו צעד חסר כמו ההורדה */}
+        {canView ? (
+          <span className="mtc-mail-wrap">
+            <EmailMaterialButton
+              materialId={m.id}
+              className="mtc-download"
+              tip={MAIL_TIP}
+              ariaLabel={`שליחת ${s.label} למייל`}
+            >
+              <MailNut />
+              <span>לשליחה למייל</span>
+            </EmailMaterialButton>
+          </span>
+        ) : (
+          !viewOnly &&
+          target && (
+            <a
+              href={target}
+              className="mtc-download"
+              data-tip="כדי לקבל את הקובץ במייל צריך קודם להשלים את השלב הבא"
+              aria-label={`שליחת ${s.label} למייל`}
+            >
+              <MailNut />
+              <span>לשליחה למייל</span>
+            </a>
+          )
+        )}
       </div>
 
       {/* הריבוע התחתון: עריכת שינויים תמיד; ואם כבר נעשו תיקונים – גם צפייה בהם והורדת הקובץ המתוקן */}
@@ -197,7 +260,7 @@ export function MaterialTypeCard({
         <div className="mtc-tools">
           <FixRequestButton
             materialId={m.id}
-            materialTitle={`${s.label} - ${folderTitle}`}
+            materialTitle={heading.full}
             lockedHref={lockedHref}
             nutSrc="/images/nuts/one-02.webp"
             viewSrc={plainViewSrc}
@@ -223,7 +286,7 @@ export function MaterialTypeCard({
             </span>
           )}
           {m.allowPreview && !entitlement.ok && (
-            <FileViewerButton src={`/api/preview/${m.id}`} title={`${s.label} - ${folderTitle}`} className="underline">
+            <FileViewerButton src={`/api/preview/${m.id}`} title={heading.full} className="underline">
               תצוגה מקדימה (עמוד ראשון)
             </FileViewerButton>
           )}

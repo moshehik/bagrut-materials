@@ -216,21 +216,23 @@ export const templates = {
     const url = `${siteUrl()}/forum/${threadId}`;
     return {
       subject: `תגובה חדשה בפורום: ${threadTitle}`,
-      text: `שלום ${name},\n\n${replier} הגיבה לשאלה שלך "${threadTitle}".\n${url}`,
+      text: `שלום ${name},\n\n${replier} הגיבה להודעה שלך "${threadTitle}".\n${url}`,
       html: layoutHtml(
-        "תגובה חדשה לשאלה שלך",
-        `<p>שלום ${esc(name)},</p><p><b>${esc(replier)}</b> הגיבה לשאלה <b>"${esc(threadTitle)}"</b>.</p>`,
+        "תגובה חדשה להודעה שלך",
+        `<p>שלום ${esc(name)},</p><p><b>${esc(replier)}</b> הגיבה להודעה <b>"${esc(threadTitle)}"</b>.</p>`,
         { label: "לצפייה בתגובה", href: url },
       ),
     };
   },
-  contact(name: string, email: string, message: string) {
+  contact(name: string, email: string, message: string, topic?: string) {
+    const topicText = topic ? `נושא: ${topic}\n` : "";
+    const topicHtml = topic ? `<br>נושא: <b>${esc(topic)}</b>` : "";
     return {
-      subject: `פנייה מהאתר: ${name}`,
-      text: `פנייה חדשה מטופס צור קשר\nשם: ${name}\nמייל: ${email}\n\n${message}`,
+      subject: `פנייה מהאתר${topic ? ` (${topic})` : ""}: ${name}`,
+      text: `פנייה חדשה מטופס צור קשר\nשם: ${name}\nמייל: ${email}\n${topicText}\n${message}`,
       html: layoutHtml(
         "פנייה חדשה מטופס צור קשר",
-        `<p>שם: <b>${esc(name)}</b><br>מייל: <a href="mailto:${esc(email)}">${esc(email)}</a></p><p style="white-space:pre-wrap">${esc(message)}</p>`,
+        `<p>שם: <b>${esc(name)}</b><br>מייל: <a href="mailto:${esc(email)}">${esc(email)}</a>${topicHtml}</p><p style="white-space:pre-wrap">${esc(message)}</p>`,
       ),
     };
   },

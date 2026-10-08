@@ -1,3 +1,11 @@
+/* נוסח ההודעה בכתב גברת לוין (כתב היד של האתר) */
+.text {
+  font-family: var(--font-gveret), var(--font-hand), cursive;
+  font-weight: 400;
+  font-size: 1.3em;
+  line-height: 1.35;
+}
+
 /* המשך הטקסט שטרם נכתב — תופס מקום אבל בלתי נראה */
 .rest {
   opacity: 0;

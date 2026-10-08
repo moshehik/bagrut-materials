@@ -14,7 +14,7 @@ import { FORUM_KINDS, FORUM_LABEL, type ForumKind } from "@/lib/forum-utils";
 import { KindIcon, KindTag, ThinIcon } from "@/components/forum-kind-icon";
 
 /**
- * טפסי הפורום בעיצוב "שימי לב!": ריבוע בצבע לפי סוג ההודעה (שאלה זהב בהיר / הערה סלמון / טיפ תכלת / תשובה במסגרת זהב מנצנצת),
+ * טפסי הפורום בעיצוב "שימי לב!": ריבוע בצבע לפי סוג ההודעה (שאלה זהב בהיר / הערה סלמון / טיפ תכלת; תשובה/תגובה – אותו צבע בגוון בהיר יותר),
  * במסגרת שחורה, ומעליו תווית עם שם הסוג. `demo` = עמוד הדוגמה (/forum-preview) – שום דבר לא נשלח.
  */
 
@@ -119,8 +119,17 @@ export function ForumComposer({ categoryId, demo = false }: { categoryId: number
   );
 }
 
-/** "תשובה" בתוך ריבוע שאלה: נפתח חלון לכתיבת התשובה, והיא תופיע בזהב בהיר מתחת לשאלה */
-export function AnswerButton({ threadId, demo = false }: { threadId: number; demo?: boolean }) {
+/** "תשובה" / "תגובה" בתוך ריבוע ההודעה: נפתח חלון לכתיבה, והיא תופיע מתחת להודעה באותו צבע בגוון בהיר יותר */
+export function AnswerButton({
+  threadId,
+  kind = "question",
+  demo = false,
+}: {
+  threadId: number;
+  kind?: ForumKind;
+  demo?: boolean;
+}) {
+  const label = kind === "question" ? "תשובה" : "תגובה";
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(replyThread, undefined);
@@ -137,14 +146,14 @@ export function AnswerButton({ threadId, demo = false }: { threadId: number; dem
       <button
         type="button"
         className="forum-del"
-        aria-label="כתבי תשובה"
-        data-tip="כתבי תשובה"
+        aria-label={`כתבי ${label}`}
+        data-tip={`כתבי ${label}`}
         onClick={() => dialogRef.current?.showModal()}
       >
         <ThinIcon name="reply" />
       </button>
 
-      <dialog ref={dialogRef} className="forum-dialog fk-answer" aria-label="כתיבת תשובה">
+      <dialog ref={dialogRef} className={`forum-dialog fk-${kind}`} aria-label={`כתיבת ${label}`}>
         <form
           ref={formRef}
           action={action}
@@ -156,24 +165,23 @@ export function AnswerButton({ threadId, demo = false }: { threadId: number; dem
           }}
         >
           <input type="hidden" name="threadId" value={threadId} />
-          <div className="forum-box forum-box-answer space-y-3">
-            <span className="forum-gold-ring" aria-hidden="true" />
-            <KindTag kind="answer" />
+          <div className="forum-box forum-box-reply space-y-3">
+            <KindTag kind={kind === "question" ? "answer" : "reply"} />
             <ErrorBox error={state?.error} />
             <textarea
               name="body"
               required
               minLength={2}
               rows={5}
-              className="gate-input resize-y"
-              placeholder="כתבי את התשובה שלך..."
-              aria-label="תשובה"
+              className="gate-input !bg-white resize-y"
+              placeholder={kind === "question" ? "כתבי את התשובה שלך..." : "כתבי את התגובה שלך..."}
+              aria-label={label}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="gate-soft text-base">
                 {demo ? "עמוד דוגמה – לא נשלח" : "מופיעה לפי מספרך האישי"}
               </span>
-              <div className="flex gap-2">
+              <div className="forum-dialog-actions flex max-w-full flex-wrap gap-2">
                 <button
                   type="button"
                   className="btn btn-ghost !text-black !border-black"
@@ -183,7 +191,7 @@ export function AnswerButton({ threadId, demo = false }: { threadId: number; dem
                 </button>
                 <button type="submit" disabled={pending} className="btn btn-gold">
                   {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  שלחי תשובה
+                  שלחי {label}
                 </button>
               </div>
             </div>
@@ -191,6 +199,51 @@ export function AnswerButton({ threadId, demo = false }: { threadId: number; dem
         </form>
       </dialog>
     </>
+  );
+}
+
+/** העתקת טקסט ההודעה/התשובה ללוח – אייקון העתקה; אחרי הלחיצה הופך לרגע ל-V */
+export function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // דפדפן בלי גישה ללוח (או הקשר לא מאובטח) – העתקה דרך שדה זמני
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        /* אין מה לעשות */
+      }
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <button
+      type="button"
+      className="forum-del"
+      aria-label="העתקת ההודעה"
+      data-tip={copied ? "הועתק!" : "העתקה"}
+      onClick={copy}
+    >
+      <ThinIcon name={copied ? "check" : "copy"} />
+    </button>
   );
 }
 
@@ -207,17 +260,59 @@ export function DeleteButton({
   warn: string;
   demo?: boolean;
 }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [pending, setPending] = useState(false);
+
   return (
     <form
       action={scope === "thread" ? deleteThread : deleteReply}
       onSubmit={(e) => {
-        if (demo || !window.confirm(warn)) e.preventDefault();
+        if (demo) {
+          e.preventDefault();
+          dialogRef.current?.close();
+          return;
+        }
+        setPending(true);
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <button type="submit" className="forum-del" aria-label="מחיקה" data-tip="מחיקה">
+      <button
+        type="button"
+        className="forum-del"
+        aria-label="מחיקה"
+        data-tip="מחיקה"
+        onClick={() => dialogRef.current?.showModal()}
+      >
         <ThinIcon name="trash" />
       </button>
+
+      <dialog
+        ref={dialogRef}
+        className="forum-dialog fk-note"
+        aria-label="אישור מחיקה"
+        onClick={(e) => {
+          if (e.target === dialogRef.current) dialogRef.current?.close();
+        }}
+      >
+        <div className="forum-box space-y-3">
+          <p className="forum-confirm-title">{warn}</p>
+          <p className="gate-soft text-base">אי אפשר לשחזר אחרי המחיקה.</p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className="btn btn-ghost !text-black !border-black"
+              onClick={() => dialogRef.current?.close()}
+              disabled={pending}
+            >
+              ביטול
+            </button>
+            <button type="submit" className="btn btn-gold" disabled={pending}>
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThinIcon name="trash" />}
+              כן, למחוק
+            </button>
+          </div>
+        </div>
+      </dialog>
     </form>
   );
 }

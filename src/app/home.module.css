@@ -71,7 +71,7 @@
   padding: 20px 60px;
 }
 .heroIn {
-  position: relative;
+  /* בלי position:relative בכוונה: כפתורי .acts מעוגנים ל-heroGrid (גובה ה-hero), לא לגובה הטקסט */
   color: var(--ink);
   max-width: 640px;
 }
@@ -328,6 +328,14 @@
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
+}
+/* מסכים רחבים: הכפתורים נעוגנים לתחתית התמונה (באחוזים מגובה ה-hero). הטקסט בגודל קבוע והתמונה גדלה עם הרוחב, ובלי עיגון הכפתורים נשארו באמצע התמונה ("עלו למעלה"). במסכים צרים אין מקום — שם הם נשארים בזרימת הטקסט */
+@media (min-width: 1501px) {
+  .acts {
+    position: absolute;
+    right: 60px;
+    bottom: 9%;
+  }
 }
 /* הלוגו "לו״ז העניין" — איור העז והלוח, מוצג בחלק ה"סיום" של הדף (LOGO OUTRO) */
 .paper {

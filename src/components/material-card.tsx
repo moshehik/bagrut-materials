@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Download, Lock, LogIn, ShoppingBag, Eye, PauseCircle, Gift, Fingerprint } from "lucide-react";
+import { Download, Lock, LogIn, ShoppingBag, Eye, PauseCircle, Gift, Fingerprint, Mail } from "lucide-react";
+import { EmailMaterialButton } from "@/components/email-material-button";
 import type { Material } from "@/db/schema";
-import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { Entitlement } from "@/lib/data";
 import { FreeTrialDownload } from "@/components/free-trial-download";
 import type { FreeTrialState } from "@/lib/free-trial";
@@ -176,6 +176,9 @@ export function Actions({
           <Download className="h-4 w-4" aria-hidden /> הורדה
           <DownloadSparkles />
         </a>
+        <EmailMaterialButton materialId={m.id} className="btn btn-ghost text-sm py-2">
+          <Mail className="h-4 w-4" aria-hidden /> שליחה למייל
+        </EmailMaterialButton>
         {viaLabel && <span className="text-xs text-muted">{viaLabel}</span>}
       </>
     );
@@ -212,7 +215,6 @@ export function Actions({
           <Link href={`/checkout?material=${m.id}`} className="btn btn-primary text-sm py-2">
             <ShoppingBag className="h-4 w-4" aria-hidden /> רכישה בודדת {formatPrice(m.price)}
           </Link>
-          <AddToCartButton materialId={m.id} small />
           <Link href="/pricing" className="btn btn-ghost text-sm py-2">
             למנויים
           </Link>

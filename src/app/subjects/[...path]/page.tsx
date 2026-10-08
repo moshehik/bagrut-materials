@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderOpen, Package, ArrowRight } from "lucide-react";
+import { FolderOpen, Package, ArrowRight, LogIn } from "lucide-react";
 import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import {
   resolvePath,
@@ -17,14 +17,15 @@ import {
 import { getCurrentUser } from "@/lib/session";
 import { UNIT_BUNDLE_PRICE, formatPrice } from "@/lib/constants";
 import type { Material } from "@/db/schema";
-import { CARD_ROWS, classifyMaterial, type CardType } from "@/lib/material-card-types";
+import { CARD_ROWS, EXTRA_ROWS, classifyMaterial, type CardType } from "@/lib/material-card-types";
 import { MaterialTypeCard } from "@/components/material-type-card";
 import { ForumCard } from "@/components/forum-card";
 import { FolderBundleBanner } from "@/components/folder-bundle-banner";
+import { FolderAllActions } from "@/components/folder-all-actions";
+import { BackRowEnd } from "@/components/back-row-end";
 import { AutoFolderDownload } from "@/components/auto-folder-download";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
-import { MaterialCard } from "@/components/material-card";
 import { getPublishedFixes } from "@/lib/fixes";
 import { getFreeTrialState } from "@/lib/free-trial";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
@@ -32,6 +33,9 @@ import { UnitForum } from "@/components/unit-forum";
 import { SichotModule } from "@/components/sichot/sichot-module";
 import Image from "next/image";
 import { nutForLevel } from "@/lib/nut-images";
+import { SUBJECT_HOUSES } from "@/lib/constants";
+import { folderExplainer } from "@/lib/folder-explainer";
+import { ExplainInline } from "@/components/folder-explain-button";
 
 export const dynamic = "force-dynamic";
 
@@ -139,14 +143,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   // כל חומר מסווג לסוג כרטיסייה לפי שמו; מה ששייך לאותה שורה בעיצוב מוצג יחד
   type Item = { m: Material; ent: Entitlement };
   const byType = new Map<CardType, Item[]>();
-  const generic: Item[] = [];
   mats.forEach((m, i) => {
-    const t = classifyMaterial(m);
+    // חומר שלא זוהה בשום סוג מקבל כרטיסייה מעוצבת משלו ("generic") ולא כרטיס "אחר" כללי
+    const t = classifyMaterial(m) ?? "generic";
     const item = { m, ent: entitlements[i] };
-    if (!t) generic.push(item);
-    else byType.set(t, [...(byType.get(t) ?? []), item]);
+    byType.set(t, [...(byType.get(t) ?? []), item]);
   });
-  const cardRows = CARD_ROWS.flatMap((types) => {
+  const cardRows = [...CARD_ROWS, ...EXTRA_ROWS].flatMap((types) => {
     const n = Math.max(0, ...types.map((t) => byType.get(t)?.length ?? 0));
     return Array.from({ length: n }, (_, i) =>
       types.map((t) => ({ type: t, item: byType.get(t)?.[i] ?? null })),
@@ -159,6 +162,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const ownsAll = mats.length > 0 && entitlements.every((e) => e.ok);
   const showBundle = isUnit && hasPaid && mats.length > 0;
   const bundlePrice = category.bundlePrice || UNIT_BUNDLE_PRICE;
+  // כפתור "הורדת הכל / שליחה למייל": ליחידה שכל קבציה שלה, או ליחידה חינמית (אורחת תופנה להתחברות)
+  const showAllActions = isUnit && mats.length > 0 && (ownsAll || !hasPaid);
+
+  const showGuestLogin = !user && mats.length > 0;
 
   const accent = category.color || root.color || "var(--blue)";
   const parentHref = chain.length > 1 ? chainToHref(chain.slice(0, -1)) : "/subjects";
@@ -167,60 +174,112 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   // רמה אחת פנימה מקבלת תמונה אחרת, וכל מקצוע רץ על מסלול תמונות משלו
   const depth = chain.length - 1;
   const nutImg = nutForLevel(root.slug, depth);
+  const houseImg = depth === 0 ? SUBJECT_HOUSES[root.slug] : undefined;
+
+  // הסברים בסגנון תרשים הזרימה (כפתור "הסבר" וחלונית) במקום טקסט התיאור
+  const infoOf = (c: (typeof chain)[number]) => ({
+    slug: c.slug,
+    title: c.title,
+    description: c.description,
+    questionnaireCode: c.questionnaireCode,
+    excludedNote: c.excludedNote,
+  });
+  const chainInfo = chain.map(infoOf);
+  const categoryExplainer = folderExplainer(chainInfo);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      {/* אורחת: "התחברי כדי להוריד קבצים" – ללא רקע (רקע רק בעמידה עליו), בצד שמאל של שורת "חזרה" */}
+      {showGuestLogin && (
+        <BackRowEnd>
+          <Link href={`/login?next=${encodeURIComponent(here)}`} className="back-row-login">
+            <LogIn className="h-4 w-4" aria-hidden />
+            התחברי כדי להוריד קבצים
+          </Link>
+        </BackRowEnd>
+      )}
       <Breadcrumbs chain={chain} />
 
       {/* כותרת */}
       <header className="mt-5 animate-fade-up">
-        <div className="card relative overflow-hidden p-6 md:p-8">
-          <span
-            aria-hidden
-            className="absolute inset-y-0 right-0 w-2"
-            style={{ background: `linear-gradient(180deg, ${accent}, color-mix(in srgb, ${accent} 30%, white))` }}
-          />
-          <div className="flex flex-col gap-5 md:flex-row md:items-center">
-            <span
-              className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-3xl animate-float"
-              style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}
-            >
-              <Image src={nutImg} alt="" className="h-9 w-9 object-contain" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
+        {/* באותו עיצוב של "קופונים" ו"מסלולים ומחירים": חלונית כחולה כהה עם טבעת זהב, וכרטיס זהב בהיר במסגרת שחורה */}
+        <div className="gate-panel">
+          <span className="gold-ring" aria-hidden="true" />
+          <div className={`coupon gate-card${showGuestLogin && category.bundlePrice !== null ? " coupon-4" : ""}${categoryExplainer ? " coupon-x" : ""}`}>
+            {houseImg ? (
+              // מקצוע ראשי (למשל תורה): תמונת הבית של המקצוע, בלי רקע
+              <span className="chapter-nut chapter-house animate-float">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={houseImg}
+                  alt=""
+                  width={356}
+                  height={266}
+                  className="object-contain drop-shadow-[0_4px_6px_rgba(31,45,51,0.2)]"
+                  aria-hidden
+                />
+              </span>
+            ) : (
+              <span className="chapter-nut animate-float">
+                <Image
+                  src={nutImg}
+                  alt=""
+                  className="h-[4.25rem] w-[4.25rem] object-contain drop-shadow-[0_4px_6px_rgba(31,45,51,0.2)]"
+                  aria-hidden
+                />
+              </span>
+            )}
+            <div className="coupon-main min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-3xl font-black md:text-4xl">{category.title}</h1>
+                <h1 className="text-3xl md:text-4xl" style={{ fontFamily: "var(--font-hand)", fontWeight: 400 }}>
+                  {category.title}
+                </h1>
                 {category.status !== "active" && (
-                  <span className="chip bg-red-100 text-red-700" title="מוצג רק למנהלת">
+                  <span className="gate-badge" title="מוצג רק למנהלת">
                     {category.status === "suspended" ? "מושהה" : "טיוטה"} · מוסתר מהמשתמשות
                   </span>
                 )}
-                {category.questionnaireCode && (
-                  <span className="chip bg-oak-soft text-oak-deep">
-                    סמל שאלון {category.questionnaireCode}
-                  </span>
+                {category.questionnaireCode && !categoryExplainer && (
+                  <span className="gate-badge">סמל שאלון {category.questionnaireCode}</span>
                 )}
               </div>
-              {category.description && (
-                <p className="mt-2 max-w-3xl leading-relaxed text-muted">{category.description}</p>
-              )}
               {category.contentModule !== "sichot" && (
-                <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted">
-                  <span className="chip bg-blue-soft text-blue-deep">
-                    <FolderOpen className="h-3.5 w-3.5" aria-hidden /> {children.length} תיקיות
-                  </span>
-                  <span className="chip bg-pink-soft text-[#9d4a2a]">{mats.length} חומרים כאן</span>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {children.length > 0 && (
+                    <span className="gate-badge">
+                      <FolderOpen className="inline h-3.5 w-3.5" aria-hidden /> {children.length} תיקיות
+                    </span>
+                  )}
+                  {(mats.length > 0 || children.length === 0) && (
+                    <span className="gate-badge">
+                      {mats.length} חומרים{children.length > 0 ? " כאן" : ""}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
+            {/* ההסבר (כמו בחלונית התרשים) בצד שמאל של המלבן, בתוך מסגרת */}
+            {categoryExplainer && (
+              <div className="coupon-explain folder-explain-header">
+                {category.questionnaireCode && (
+                  <span className="gate-badge mb-1.5">סמל שאלון {category.questionnaireCode}</span>
+                )}
+                <ExplainInline explainer={categoryExplainer} showTitle={false} />
+              </div>
+            )}
             {category.bundlePrice !== null && (
-              <Link
-                href={`/checkout?bundle=${category.id}`}
-                className="btn btn-oak shrink-0 self-start md:self-center"
-              >
-                <Package className="h-5 w-5" aria-hidden />
-                הורידי את כל התיקייה · {formatPrice(category.bundlePrice)}
-              </Link>
+              <div className="coupon-stub">
+                <Link href={`/checkout?bundle=${category.id}`} className="btn btn-gold btn-gate py-2">
+                  <Package className="h-5 w-5" aria-hidden />
+                  הורידי את כל התיקייה · {formatPrice(category.bundlePrice)}
+                </Link>
+              </div>
+            )}
+            {/* אורחת: במקום "התחברי כדי להוריד קבצים" – "הורידי את כל החומרים"; בעמידה עליו נפתחות ההורדה והשליחה למייל (שתיהן מובילות להתחברות) */}
+            {showGuestLogin && isUnit && (
+              <div className="chapter-login">
+                <FolderAllActions categoryId={category.id} loggedIn={false} here={here} variant="header" />
+              </div>
             )}
           </div>
         </div>
@@ -247,7 +306,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 title={c.title}
                 slug={c.slug}
                 rootSlug={root.slug}
-                description={c.description}
                 questionnaireCode={c.questionnaireCode}
                 count={childCounts[i]}
                 color={c.color || accent}
@@ -263,17 +321,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       {mats.length > 0 && (
         <section className="mt-12" aria-labelledby="materials-h">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="materials-h" className="font-display text-2xl font-bold">
+            <h2 id="materials-h" className="sr-only">
               החומרים בפרק
             </h2>
-            {!user && (
-              <span className="text-sm text-muted">
-                <Link href={`/login?next=${encodeURIComponent(here)}`} className="text-blue-deep underline">
-                  התחברי
-                </Link>{" "}
-                כדי להוריד קבצים
-              </span>
-            )}
           </div>
 
           <p className="relative mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-soft/60 px-4 py-3 text-sm leading-relaxed text-blue-deep">
@@ -282,12 +332,17 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             <WatermarkText />
           </p>
 
-          {showBundle && (
+          {showAllActions && !!user && (
+            <div className="mt-6">
+              <FolderAllActions categoryId={category.id} loggedIn={!!user} here={here} />
+            </div>
+          )}
+          {showBundle && !ownsAll && (
             <div className="mt-6">
               <FolderBundleBanner categoryId={category.id} price={bundlePrice} owned={ownsAll} />
             </div>
           )}
-          {showBundle && ownsAll && dlall === "1" && <AutoFolderDownload href={`/api/download-folder/${category.id}`} />}
+          {showAllActions && !!user && dlall === "1" && <AutoFolderDownload href={`/api/download-folder/${category.id}`} />}
 
           {cardRows.length > 0 && (
             <div className="mtc-grid mt-8">
@@ -318,25 +373,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 ),
               )}
               {isUnit && <ForumCard folderTitle={category.title} />}
-            </div>
-          )}
-
-          {generic.length > 0 && (
-            <div className="mt-10">
-              <h3 className="mb-4 text-lg font-bold">חומרים נוספים</h3>
-              <AnimatedGrid className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {generic.map(({ m, ent }) => (
-                  <MaterialCard
-                    key={m.id}
-                    material={m}
-                    entitlement={ent}
-                    loggedIn={!!user}
-                    currentPath={here}
-                    myDownloadCount={downloadCounts.get(m.id) ?? 0}
-                    freeTrial={freeTrial}
-                  />
-                ))}
-              </AnimatedGrid>
             </div>
           )}
         </section>

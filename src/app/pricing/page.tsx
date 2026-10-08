@@ -8,6 +8,7 @@ import {
   Crown,
   FileDown,
   Gift,
+  Mail,
   Phone,
   Plus,
   ShieldCheck,
@@ -247,6 +248,9 @@ export default async function PricingPage() {
                   {check} מקצוע אחד – המסלול אינו ניתן להרחבה למקצועות נוספים
                 </li>
                 <li className="flex gap-2">
+                  {check} עד {PLANS.substitute_3m.downloadsLimit} הורדות או צפיות
+                </li>
+                <li className="flex gap-2">
                   {check} שלושת החודשים מתחילים מההורדה הראשונה
                 </li>
                 <li className="flex gap-2">
@@ -350,9 +354,14 @@ export default async function PricingPage() {
       <section className="gate-panel mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <span className="gold-ring" aria-hidden="true" />
         <p className="text-2xl">רוצה לדבר עם מישהי?</p>
-        <a href="tel:0556799588" className="btn btn-gold btn-gate py-2" dir="ltr">
-          <Phone className="h-4 w-4" aria-hidden /> 055-679-9588
-        </a>
+        <div className="flex flex-wrap items-center gap-3">
+          <a href="tel:0556799588" className="btn btn-gold btn-gate py-2" dir="ltr">
+            <Phone className="h-4 w-4" aria-hidden /> 055-679-9588
+          </a>
+          <Link href="/contact" className="btn btn-gold btn-gate py-2">
+            <Mail className="h-4 w-4" aria-hidden /> שלחי לנו מייל
+          </Link>
+        </div>
       </section>
     </div>
   );

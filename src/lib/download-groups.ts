@@ -61,6 +61,13 @@ export const TYPE_ORDER: (CardType | "forum" | "other")[] = [
   "skills",
   "prep",
   "presentation",
+  "events",
+  "characters",
+  "places",
+  "alternative",
+  "reflection",
+  "workbook",
+  "test",
   "forum",
   "other",
 ];

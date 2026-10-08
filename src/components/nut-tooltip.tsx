@@ -98,8 +98,7 @@ export function NutTooltip() {
       delete tip!.dataset.on;
     }
 
-    // אלמנטים עם .flow-tip (מפת הבגרויות) מציגים טולטיפ משלהם ב-CSS – לא מציירים עליהם עוד אחד
-    const SEL = "[data-tip]:not(.flow-tip)";
+    const SEL = "[data-tip]";
     const onOver = (e: Event) => {
       const el = (e.target as Element | null)?.closest?.(SEL);
       if (el && el !== current) show(el);
