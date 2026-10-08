@@ -11,13 +11,13 @@ import { SearchTriggerButton, SiteSearchOverlay } from "@/components/site-search
 type HeaderUser = { name: string; role: "user" | "admin" } | null;
 
 const NAV = [
-  { href: "/", label: "בית" },
-  { href: "/subjects", label: "המקצועות" },
-  { href: "/map", label: "מפת הבגרות" },
-  { href: "/pricing", label: "מסלולים" },
-  { href: "/coupons", label: "קופונים זמינים" },
-  { href: "/account", label: "אזור אישי" },
-  { href: "/account/downloads/calendar", label: "ההורדות שלי" },
+  { href: "/", label: "בית", tip: "מפרט האתר ועדכונים שותפים" },
+  { href: "/subjects", label: "המקצועות", tip: "כניסה לחומרים דרך שם המקצוע" },
+  { href: "/map", label: "מפת הבגרות", tip: "תרשים על חומר הבגרויות והסברים עליו\nתוכלי דרכו להיכנס למקצוע" },
+  { href: "/pricing", label: "מסלולים", tip: "אופציות רכישה מגוונות" },
+  { href: "/coupons", label: "קופונים זמינים", tip: "קופונים להוזלת הרכישה\nמשתנים מעט לעת או נגמרים" },
+  { href: "/account", label: "אזור אישי", tip: "פרטים והודעות שמיועדים דווקא לך" },
+  { href: "/account/downloads/calendar", label: "ההורדות שלי", tip: "לוח שנה עם כל ההורדות שלך" },
 ];
 
 /** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */
@@ -57,6 +57,8 @@ export function Header({ user }: { user: HeaderUser }) {
               <Link
                 key={n.href}
                 href={n.href}
+                data-tip={n.tip}
+                data-tip-side="below"
                 aria-current={active ? "page" : undefined}
                 className="nav-btn !px-3.5 2xl:!px-[1.05rem] hover:-translate-y-0.5"
               >

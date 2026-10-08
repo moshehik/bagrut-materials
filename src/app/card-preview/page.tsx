@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
-import { CARD_ROWS, type CardType } from "@/lib/material-card-types";
+import { CARD_ROWS, EXTRA_TYPES, type CardType } from "@/lib/material-card-types";
 import { MaterialTypeCard } from "@/components/material-type-card";
 import { ForumCard } from "@/components/forum-card";
 import { FolderBundleBanner } from "@/components/folder-bundle-banner";
@@ -81,6 +81,21 @@ export default function CardPreviewPage() {
           ),
         )}
         <ForumCard folderTitle={folder} />
+      </div>
+
+      <h2 className="mt-14 text-xl font-bold">סוגים נוספים (אירועים, דמויות, מקומות, הערכה חלופית ועוד)</h2>
+      <div className="mt-8 mtc-grid">
+        {EXTRA_TYPES.map((t, i) => (
+          <MaterialTypeCard
+            key={t}
+            material={fake(500 + i, t === "generic" ? "דף עזר לסימן נב (1)" : t === "test" ? "מבחן מחצית א בדינים" : t === "alternative" ? "הערכה חלופית - מגילת אסתר פרק ב" : t === "workbook" ? "מגילת רות - חוברת עבודה מלאה (פרקים א-ד + רפלקציה)" : t === "reflection" ? "רפלקציה מסכמת - מגילת אסתר" : `${t === "events" ? "אירועים" : t === "characters" ? "דמויות" : "מקומות"} - שמואל ב`)}
+            entitlement={buyer}
+            bundleHref="/checkout?bundle=1"
+            type={t}
+            folderTitle={folder}
+            currentPath="/card-preview"
+          />
+        ))}
       </div>
 
       <h2 className="mt-14 text-xl font-bold">כך רואה מי שיש לה מנוי או שכבר רכשה את התיקייה</h2>

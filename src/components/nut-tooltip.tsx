@@ -63,6 +63,15 @@ export function NutTooltip() {
         above: { left: midX, top: t.top - GAP - h },
         below: { left: midX, top: t.bottom + GAP },
       };
+      // data-tip-side="below": תמיד מתחת לאלמנט (וגם מתחת לסרגל שהוא יושב בו), כדי לא להסתיר את הסרגל
+      if (target.getAttribute("data-tip-side") === "below") {
+        const bar = target.closest("header")?.getBoundingClientRect();
+        const top = Math.max(t.bottom + GAP, bar ? bar.bottom + 6 : 0);
+        const left = Math.min(Math.max(midX, EDGE), vw - w - EDGE);
+        tip!.style.left = `${Math.round(left)}px`;
+        tip!.style.top = `${Math.round(top)}px`;
+        return;
+      }
       let best: { side: Side; left: number; top: number; score: number } | null = null;
       (["left", "right", "above", "below"] as Side[]).forEach((side, order) => {
         const c = cands[side];

@@ -23,7 +23,7 @@ export type HomePopupData = {
 type Seg = { text: string; cls: string; nut?: boolean };
 
 function buildSegments(d: HomePopupData): Seg[] {
-  const segs: Seg[] = [{ text: d.title || "יש חדש באתר!", cls: "hp-title" }];
+  const segs: Seg[] = [{ text: d.title || "יש חדש!", cls: "hp-title" }];
   const many = d.items.length > 1;
   for (const item of d.items) {
     const [head, ...rest] = item.split("\n");

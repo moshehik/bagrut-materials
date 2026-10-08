@@ -4042,7 +4042,7 @@ button.underline {
   55% { transform: rotate(10deg) translateY(-1px); }
   80% { transform: rotate(-5deg); }
 }
-/* הכותרת "יש חדש באתר!": הופעה רכה פעם אחת, ואז נשארת במקום */
+/* הכותרת "יש חדש!": הופעה רכה פעם אחת, ואז נשארת במקום */
 .hp-title {
   display: block;
   transform-origin: 100% 50%;

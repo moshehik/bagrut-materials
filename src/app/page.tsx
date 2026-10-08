@@ -196,9 +196,7 @@ export default async function HomePage({
         {/* ================= STEPS ================= */}
         <Reveal>
           <h2 className="sec-h">איך זה עובד</h2>
-          <p className="sec-sub" style={{ marginBottom: 46 }}>
-            שלושה צעדים — והשיעור של מחר מוכן.
-          </p>
+          <div style={{ marginBottom: 46 }} />
         </Reveal>
         <AnimatedGrid className={s.steps}>
           <div className={s.step}>
@@ -208,16 +206,14 @@ export default async function HomePage({
             <h4>
               <img src="/images/marker-1.png" alt="" className={s.stepMarker} />
               <mark className={s.highlight}>בוחרים מקצוע</mark>
-            </h4>
-            <p>תורה, נביא, כתובים, לשון, ספרות, אנגלית, מחשבת ישראל, מתמטיקה, דינים, היסטוריה ועוד.</p>
-          </div>
+            </h4>          </div>
           <div className={s.step}>
             <div className={s.n}>
               <span>2</span>
             </div>
             <h4>
               <img src="/images/marker-2.png" alt="" className={s.stepMarker} />
-              <mark className={s.highlight}>יורדים עד לפרק</mark>
+              <mark className={s.highlight}>מגיעים לפרק הרצוי</mark>
             </h4>
             <p>יחידות ← פנימי/חיצוני ← נושא ← פרשה/פרק. כל תיקייה עם סמל שאלון ותיאור קצר.</p>
           </div>
