@@ -89,11 +89,11 @@ export function Header({ user }: { user: HeaderUser }) {
               <Link
                 href="/register"
                 data-tip={"פעם ראשונה באתר?\nפותחים חשבון חדש"}
-                className="text-[15px] font-semibold text-white/90 hover:text-sun px-2 transition-transform hover:-translate-y-0.5"
+                className="btn btn-line-white header-auth"
               >
                 הצטרפות
               </Link>
-              <Link href="/login" data-tip={"כבר יש לך חשבון?\nנכנסים עם המייל והסיסמה"} className="btn btn-gold text-sm py-2.5">
+              <Link href="/login" data-tip={"כבר יש לך חשבון?\nנכנסים עם המייל והסיסמה"} className="btn btn-gold header-auth">
                 <LogIn className="h-4 w-4" /> כניסה
               </Link>
             </>

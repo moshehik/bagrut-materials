@@ -8,6 +8,7 @@ import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { SubjectCard } from "@/components/subject-card";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { EmptySheet } from "@/components/empty-sheet";
 export const metadata: Metadata = { title: "המקצועות" };
 export const dynamic = "force-dynamic";
 
@@ -80,11 +81,7 @@ export default async function SubjectsPage({
       </div>
 
       {rows.length === 0 ? (
-        <div className="card mt-10 p-12 text-center">
-          <div className="text-6xl animate-float">🗂️</div>
-          <h2 className="mt-4 text-2xl font-bold">עדיין אין מקצועות במאגר</h2>
-          <p className="mt-2 text-muted">התיקיות הראשונות בדרך. חזרי בקרוב!</p>
-        </div>
+        <EmptySheet />
       ) : (
         <AnimatedGrid className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {rows.map(({ subject: s, count }) => (

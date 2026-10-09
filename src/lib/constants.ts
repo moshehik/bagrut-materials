@@ -203,7 +203,7 @@ export const SUBJECT_HOUSE_COLORS: Record<string, string> = {
   dinim: "#7d8fa3",
   history: "#a68a5c",
   ezrachut: "#6f8faa",
-  sicha: "#6fb8a8",
+  sicha: "#e0a48e",
   chevra: "#d99a5c",
   math: "#7a8a89",
   teacher: "#b0729a",

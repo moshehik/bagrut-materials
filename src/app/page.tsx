@@ -100,7 +100,7 @@ export default async function HomePage({
               <HeroTitle name={greetName} />
               <TypewriterLead
                 className={s.lead}
-                text={'כאן תקבלי את המעטפת המושלמת לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור!'}
+                text={'כאן תקבלי את המעטפת המלאה לשיעור מעולה, כזה שמכין את התלמידות שלך למבחני הבגרות בצורה יסודית, מעשירה וחוויתית בלחיצת כפתור!'}
               />
               <div className={s.acts}>
                 <Link href={personal ? "/subjects?mine=1" : "/subjects"} className="btn btn-gold btn-gate">

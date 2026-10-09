@@ -21,11 +21,10 @@
 }
 .heroBg {
   position: absolute;
-  inset: 1.4%;
+  inset: 0;
   z-index: 0;
   /* הרקע: הרים ולוח שנה, והלוגו בלי מחוגים — המחוגים החיים הם שכבה נפרדת (heroClock) */
   background: url("/images/hero-intro-noclockhands.webp") center / cover no-repeat;
-  border-radius: 22px;
 }
 /* העט שמצייר את הקו מתחת לסלוגן – קצה הפן (הפינה השמאלית-תחתונה של התמונה) יושב בדיוק על נקודת הציור (left/top נקבעים ב-hero-title.tsx) */
 .drawPen {
@@ -209,9 +208,9 @@
 .swoosh {
   position: relative;
   display: block;
-  /* מרווח בצד ימין (תחילת הקו בעברית) בגודל העט, כדי שגוף העט לא ייחתך בקצה האזור כשהוא מתחיל לצייר */
-  margin-inline-start: 72px;
-  width: min(360px, calc(88% - 72px));
+  /* הקו יושב בדיוק מתחת ל"הבית לחומרי הבגרות!": מתחיל בקצה הימני של הטקסט (תחילת הכתיבה בעברית) ומתפרס לרוחב הטקסט (≈5.05em של ה-h1); גוף העט בולט ימינה מעבר לקצה והוא לא נחתך כי ה-hero מרופד */
+  margin-inline-start: 0;
+  width: min(5.05em, 100%);
   margin-top: 10px;
 }
 .swoosh svg {
@@ -227,7 +226,7 @@
   stroke-linecap: round;
 }
 .lead {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
   margin: 0 0 20px;
   color: var(--ink);
