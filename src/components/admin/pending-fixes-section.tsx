@@ -13,6 +13,9 @@ export async function PendingFixesSection({ title = "ממתינות לטיפול
       requestText: materialFixes.requestText,
       quoteText: materialFixes.quoteText,
       createdAt: materialFixes.createdAt,
+      suggestedOriginal: materialFixes.originalText,
+      suggestedCorrected: materialFixes.correctedText,
+      adminNote: materialFixes.adminNote,
       materialTitle: materials.title,
       fileName: materials.fileName,
       userName: users.name,
@@ -52,8 +55,18 @@ export async function PendingFixesSection({ title = "ממתינות לטיפול
               ) : (
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{r.requestText}</p>
               )}
+              {r.suggestedOriginal && (
+                <p className="mt-2 rounded bg-[#eef3ee] px-2 py-1 text-xs">
+                  🤖 הסוכן הכין הצעה מאומתת מול הקובץ (הטפסים למטה ממולאים בה) – בדקי ופרסמי.
+                  {r.adminNote ? ` ${r.adminNote}` : ""}
+                </p>
+              )}
               {/\.docx$/i.test(r.fileName) ? (
-                <FixPublishForm id={r.id} defaultOriginal={r.quoteText ?? ""} defaultCorrected={r.quoteText ? r.requestText : ""} />
+                <FixPublishForm
+                  id={r.id}
+                  defaultOriginal={r.suggestedOriginal ?? r.quoteText ?? ""}
+                  defaultCorrected={r.suggestedCorrected ?? (r.quoteText ? r.requestText : "")}
+                />
               ) : (
                 <p className="mt-3 text-sm text-red-700">
                   הקובץ אינו Word – תיקון מסומן נתמך רק ב-docx. את השינוי יש לבצע ידנית בקובץ.

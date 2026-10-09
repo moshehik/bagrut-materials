@@ -8,6 +8,7 @@ import { materialFixes, materials } from "@/db/schema";
 import { getCurrentUser, requireAdmin } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
+import { createReport } from "@/lib/errorReports";
 import { fetchFile } from "@/lib/file-source";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 
@@ -67,14 +68,32 @@ export async function submitFixRequests(input: {
     return { error: "יש כבר כמה בקשות שממתינות לטיפול בקובץ הזה – נחכה שנטפל בהן" };
   }
 
-  await db.insert(materialFixes).values(
-    items.map((it) => ({
-      materialId,
-      userId: user.id,
-      requestText: it.correction,
-      quoteText: it.quote,
-    })),
-  );
+  const inserted = await db
+    .insert(materialFixes)
+    .values(
+      items.map((it) => ({
+        materialId,
+        userId: user.id,
+        requestText: it.correction,
+        quoteText: it.quote,
+      })),
+    )
+    .returning({ id: materialFixes.id });
+
+  // מעירה את הסוכן האוטומטי: דיווח במערכת התמיכה שמפנה לבקשות (הסוכן מכין הצעת תיקון מאומתת, המנהלת מפרסמת)
+  try {
+    const lines = items.map((it, i) => `בקשה #${inserted[i]?.id}: סומן «${it.quote}» ← תיקון מבוקש: «${it.correction}»`);
+    await createReport({
+      title: "בקשת שינוי בקובץ",
+      url: "/admin/fixes",
+      userText:
+        `[material-fixes] מורה ביקשה שינוי בקובץ «${material.title}» (חומר #${materialId}, ${material.fileName}).\n` +
+        `${lines.join("\n")}\n` +
+        `לטיפול לפי הסעיף "בקשות שינוי בקובץ (material_fixes)" ב-fix-reports.md: scripts/agent-fix-suggest.ts. אל תפרסמי ואל תחליפי קובץ חי.`,
+    });
+  } catch (e) {
+    console.error("submitFixRequests: agent report failed", e); // הבקשה עצמה כבר נשמרה – ממשיכים
+  }
   await logAudit({
     actorId: user.id,
     action: "fix.request",

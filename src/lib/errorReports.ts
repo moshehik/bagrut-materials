@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { after } from "next/server";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { errorReports as errorReportsTable, errorReportNotes as errorReportNotesTable } from "@/db/schema";
@@ -112,7 +113,13 @@ export async function createReport(input: CreateReportInput): Promise<ErrorRepor
     })
     .returning();
 
-  void dispatchFixReportsAgent(); // לא ממתינים — אם זה נכשל/לא מוגדר, יצירת הדיווח לא נפגעת
+  // לא חוסמים את התשובה — אם זה נכשל/לא מוגדר, יצירת הדיווח לא נפגעת. after() מבטיח שהקריאה לגיטהאב תסתיים
+  // גם אחרי שהתשובה נשלחה (ב-Vercel הבטחה "שנשכחה" עלולה להיחתך). מחוץ להקשר בקשה (סקריפט) – נופלים ל-void.
+  try {
+    after(() => dispatchFixReportsAgent());
+  } catch {
+    void dispatchFixReportsAgent();
+  }
   await logAgentEvent({
     source: "site",
     kind: "report.create",
