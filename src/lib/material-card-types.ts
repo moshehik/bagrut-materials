@@ -123,7 +123,7 @@ export function cardHeading(
   if (type === "generic" || type === "test") return { label: title, suffix: null, full: title };
   if (!s.extra) return { label: s.label, suffix: folderTitle, full: `${s.label} - ${folderTitle}` };
   // "אירועים - יהושע" / "הערכה חלופית - מגילת אסתר פרק ב" / "מגילת רות - חוברת עבודה מלאה (...)": ההמשך הוא החלק שאינו שם הסוג
-  const parts = title.split(/s+[-–]s+/);
+  const parts = title.split(/\s+[-–]\s+/);
   const keyword = s.label.split(" ")[0];
   const rest = parts.filter((p) => !p.includes(keyword)).join(" - ").trim();
   const suffix = rest || folderTitle;
@@ -146,9 +146,9 @@ export function classifyMaterial(m: Pick<Material, "title" | "kind">): CardType 
   // "דף להרחבת השיעור" (תהלים/עזרא-נחמיה: שיח עמוק + משחקים) = כרטיס "דיונים ופעילויות"
   if (/פעילות|דיונים|הרחבת השיעור/.test(t)) return "discussions";
   if (/מצגת/.test(t) || m.kind === "presentation") return "presentation";
-  if (/^אירועים/.test(t)) return "events";
-  if (/^דמויות/.test(t)) return "characters";
-  if (/^מקומות/.test(t)) return "places";
+  if (/^אירועים/.test(t)) return "events";
+  if (/^דמויות/.test(t)) return "characters";
+  if (/^מקומות/.test(t)) return "places";
   if (/הערכה חלופית/.test(t)) return "alternative";
   if (/רפלקציה/.test(t)) return "reflection";
   if (/חוברת עבודה/.test(t)) return "workbook";

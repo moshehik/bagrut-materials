@@ -5160,3 +5160,32 @@ button.underline {
   text-decoration-thickness: 1.5px;
   text-underline-offset: 5px;
 }
+
+/* הסבר לפני הכרטיסים בתיקיות שאינן חומר רגיל (src/lib/folder-intros.ts) */
+.folder-intro {
+  max-width: 52rem;
+  padding: 1rem 1.3rem;
+  border: 2px dashed var(--gold);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--gold-soft) 55%, transparent);
+  color: var(--ink);
+  line-height: 1.75;
+}
+.folder-intro p { margin-top: 0.4rem; }
+.folder-intro-title {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.folder-intro-steps {
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.2rem;
+  list-style: disc;
+}
+.folder-intro-note {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--gold);
+  font-weight: 600;
+}

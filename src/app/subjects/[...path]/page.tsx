@@ -35,6 +35,7 @@ import Image from "next/image";
 import { nutForLevel } from "@/lib/nut-images";
 import { SUBJECT_HOUSES } from "@/lib/constants";
 import { folderExplainer } from "@/lib/folder-explainer";
+import { FOLDER_INTROS } from "@/lib/folder-intros";
 import { ExplainInline } from "@/components/folder-explain-button";
 
 export const dynamic = "force-dynamic";
@@ -149,12 +150,27 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const item = { m, ent: entitlements[i] };
     byType.set(t, [...(byType.get(t) ?? []), item]);
   });
+  // אירועים / דמויות / מקומות: מקובצים לפי ספר (בסדר הספרים), ובכל ספר – אירועים מימין, דמויות משמאלו, ומקומות בשורה הבאה
+  const BOOK_ORDER = ["יהושע", "שופטים", "שמואל א", "שמואל ב"];
+  const bookOf = (m: Material) => m.title.split(/\s+[-–]\s+/).slice(1).join(" - ").replace(/["'״׳]/g, "").trim();
+  const bookRank = (b: string) => { const i = BOOK_ORDER.indexOf(b); return i < 0 ? BOOK_ORDER.length : i; };
+  const bookTypes: CardType[] = ["events", "characters", "places"];
+  const books = [...new Set(bookTypes.flatMap((t) => (byType.get(t) ?? []).map((it) => bookOf(it.m))))].sort(
+    (a, b) => bookRank(a) - bookRank(b) || a.localeCompare(b, "he"),
+  );
+  const pick = (t: CardType, book: string) => byType.get(t)?.find((it) => bookOf(it.m) === book) ?? null;
+  const bookRows = books.flatMap((book) => [
+    [{ type: "events" as CardType, item: pick("events", book) }, { type: "characters" as CardType, item: pick("characters", book) }],
+    [{ type: "places" as CardType, item: pick("places", book) }],
+  ].filter((row) => row.some((c) => c.item)));
   const cardRows = [...CARD_ROWS, ...EXTRA_ROWS].flatMap((types) => {
+    if (types.some((t) => bookTypes.includes(t))) return types[0] === "events" ? bookRows : [];
     const n = Math.max(0, ...types.map((t) => byType.get(t)?.length ?? 0));
     return Array.from({ length: n }, (_, i) =>
       types.map((t) => ({ type: t, item: byType.get(t)?.[i] ?? null })),
     );
   });
+  const folderIntro = FOLDER_INTROS[chain.map((c) => c.slug).join("/")];
 
   // יחידה (תיקייה בלי תתי-תיקיות) עם חומרים בתשלום: רכישה חד-פעמית של כל הקבצים
   const isUnit = children.length === 0 && category.contentModule !== "sichot";
@@ -325,6 +341,25 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               החומרים בפרק
             </h2>
           </div>
+
+          {folderIntro && (
+            <aside className="folder-intro mt-4" aria-labelledby="folder-intro-h">
+              <h3 id="folder-intro-h" className="folder-intro-title">{folderIntro.title}</h3>
+              {folderIntro.paragraphs.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+              {folderIntro.steps && (
+                <ul className="folder-intro-steps">
+                  {folderIntro.steps.map((s) => (
+                    <li key={s.head}>
+                      <b>{s.head}:</b> {s.text}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {folderIntro.note && <p className="folder-intro-note">{folderIntro.note}</p>}
+            </aside>
+          )}
 
           <p className="relative mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-soft/60 px-4 py-3 text-sm leading-relaxed text-blue-deep">
             <span className="gold-ring" aria-hidden="true" />
