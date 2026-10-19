@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2, Scissors, Check, Link2 } from "lucide-react";
+import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2 } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
 import { getExplainer, codesOf, buildGenericExplainer, GENERIC_TEXT } from "@/lib/bagrut-explainers";
 import { WINDOW_TEXT } from "@/lib/bagrut-window-texts";
@@ -134,6 +134,8 @@ function NodeBox({
   const excluded = node.cat.excluded;
   const ready = node.cat.ready;
   const [explainOpen, setExplainOpen] = useState(false);
+  const meforshim = meforshimOf(node);
+  const [meforshimOpen, setMeforshimOpen] = useState(false);
   // כפתור הסבר רק בחלון המפורט ביותר: אם לצאצא יש הסבר משלו — לא מכפילים אותו כאן
   // הסבר בגרות מפורט רק בחלון העמוק ביותר; בכל צומת אחר עם תיאור — הסבר כללי (במקום מלל מתחת לריבוע)
   const custom = hasDeeperExplainer(node) ? undefined : getExplainer(node.chain.map((c) => c.slug));
@@ -214,6 +216,22 @@ function NodeBox({
           <Scissors className="h-3.5 w-3.5" aria-hidden />
         </span>
       )}
+      {meforshim && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMeforshimOpen((v) => !v);
+          }}
+          aria-expanded={meforshimOpen}
+          className="shrink-0 cursor-pointer rounded-full p-0.5"
+          style={{ color: accent }}
+          data-tip="קטעי מפרשים בפרק זה"
+          aria-label={`קטעי מפרשים – ${node.cat.title}`}
+        >
+          <Feather className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      )}
       {windowCode && (
         <span
           className="q-code-tag flow-code-window px-2 py-px text-sm"
@@ -248,6 +266,19 @@ function NodeBox({
       </Link>
     </div>
     </div>
+    {meforshim && meforshimOpen && (
+      <div className="flow-ellipse text-ink" style={style}>
+        <span className="mb-0.5 flex items-center justify-center gap-1 text-xs opacity-70">
+          <Feather className="h-3 w-3" aria-hidden />
+          מפרשים
+        </span>
+        {meforshim.map((line, i) => (
+          <span key={i} className="block leading-snug">
+            {line}
+          </span>
+        ))}
+      </div>
+    )}
     {explainer && explainOpen && (
       <BagrutExplainDialog
         explainer={explainer}
