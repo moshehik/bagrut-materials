@@ -33,6 +33,22 @@ const ZOOM_STEP = 0.25;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
 
+/**
+ * האם פריט טקסט הוא חלק מסימן המים של האתר (ר' stampPdf ב-src/lib/watermark.ts):
+ * שורות אלכסוניות (32°), הודעת ה-AI בגופן 5.5, שורות הכותרת התחתונה (גופן 8, צמוד לתחתית העמוד)
+ * והמספר האישי הקטן בראש העמוד (#קוד, גופן 7).
+ */
+function isWatermarkItem(it: any, pageBottom: number, pageTop: number): boolean {
+  if (typeof it.str !== "string" || !Array.isArray(it.transform)) return false;
+  const [a, b, , , , f] = it.transform as number[];
+  const size = Math.hypot(a, b);
+  if (Math.abs(b) > 0.05 * size) return true; // אלכסוני
+  if (Math.abs(size - 5.5) < 0.2) return true; // הודעת זכויות יוצרים ל-AI
+  if (Math.abs(size - 8) < 0.2 && f - pageBottom < 36) return true; // שורות תחתונות
+  if (Math.abs(size - 7) < 0.2 && it.str.startsWith("#") && pageTop - f < 22) return true; // מספר אישי עליון
+  return false;
+}
+
 /** מלבן בשברי העמוד (0-1), כך שהסימון נשאר במקומו בכל זום */
 export type MarkRect = { x: number; y: number; w: number; h: number };
 export type PdfMark = { id: number; page: number; rects: MarkRect[]; text: string };
@@ -158,8 +174,12 @@ export function PdfViewer({
         textDiv.style.setProperty("--scale-factor", String(cssScale));
         wrap.appendChild(textDiv);
         try {
+          // סימן המים (שקוף) הוא טקסט אמיתי בקובץ – בלי סינון הוא נבחר יחד עם הטקסט הרגיל בסימון
+          const textContent = await page.getTextContent();
+          const [, vy0, , vy1] = page.view as number[];
+          textContent.items = textContent.items.filter((it: any) => !isWatermarkItem(it, vy0, vy1));
           const layer = new pdfjs.TextLayer({
-            textContentSource: page.streamTextContent(),
+            textContentSource: textContent,
             container: textDiv,
             viewport: cssViewport,
           });
