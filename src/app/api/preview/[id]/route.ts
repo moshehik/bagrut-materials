@@ -10,7 +10,7 @@ import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl } from "@/lib/driveBridge";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
-import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
+import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
 
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const wantFixes = fullView ? parseFixesParam(req.nextUrl.searchParams.get("fixes")) : null;
   if (wantFixes && isDocxName(material.fileName)) {
     try {
-      const published = (await getPublishedFixes([material.id])).get(material.id) ?? [];
+      const published = (await getFixesForViewer([material.id], user?.id)).get(material.id) ?? [];
       const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
       if (chosen.length > 0) {
         const r = await applyDocxFixes(

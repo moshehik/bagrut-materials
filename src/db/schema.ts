@@ -198,7 +198,11 @@ export const materialFixes = pgTable(
     userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
     requestText: text("request_text").notNull(),
     quoteText: text("quote_text"),
-    /** pending = ממתינה למנהלת, published = תיקון מפורסם, merged = שולב בקובץ המקורי (לא מוצג יותר), rejected = נדחתה */
+    /**
+     * pending = ממתינה לבדיקה, published = תיקון מפורסם (מוצג לכל מי שיש לה גישה לקובץ),
+     * merged = שולב בקובץ המקורי (לא מוצג יותר), rejected = נדחתה,
+     * private = הסוכן בדק ולא שילב בקובץ המקורי – התיקון מוצג רק למבקרת (userId)
+     */
     status: varchar("status", { length: 12 }).notNull().default("pending"),
     fixNumber: integer("fix_number"),
     originalText: text("original_text"),

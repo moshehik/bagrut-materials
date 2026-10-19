@@ -26,7 +26,7 @@ import { BackRowEnd } from "@/components/back-row-end";
 import { AutoFolderDownload } from "@/components/auto-folder-download";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
-import { getPublishedFixes } from "@/lib/fixes";
+import { getFixesForViewer } from "@/lib/fixes";
 import { getFreeTrialState } from "@/lib/free-trial";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
@@ -138,7 +138,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     ? await getUserDownloadCounts(user.id, mats.map((m) => m.id))
     : new Map<number, number>();
 
-  const fixesByMaterial = await getPublishedFixes(mats.map((m) => m.id));
+  const fixesByMaterial = await getFixesForViewer(
+    mats.map((m) => m.id),
+    user?.id,
+  );
   const freeTrial = await getFreeTrialState(user).catch(() => "off" as const);
 
   // כל חומר מסווג לסוג כרטיסייה לפי שמו; מה ששייך לאותה שורה בעיצוב מוצג יחד

@@ -11,7 +11,7 @@ import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigur
 import { contentDisposition, fileRouteError } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
-import { getPublishedFixes, parseFixesParam } from "@/lib/fixes";
+import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
 import { sendMail, templates } from "@/lib/mail";
@@ -259,7 +259,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
       const wantFixes = parseFixesParam(req.nextUrl.searchParams.get("fixes"));
       if (wantFixes && isDocxName(material.fileName)) {
         try {
-          const published = (await getPublishedFixes([material.id])).get(material.id) ?? [];
+          const published = (await getFixesForViewer([material.id], u.id)).get(material.id) ?? [];
           const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
           if (chosen.length > 0) {
             const r = await applyDocxFixes(

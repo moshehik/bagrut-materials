@@ -18,6 +18,7 @@ export default async function AdminFixesPage() {
       quoteText: materialFixes.quoteText,
       originalText: materialFixes.originalText,
       correctedText: materialFixes.correctedText,
+      adminNote: materialFixes.adminNote,
       createdAt: materialFixes.createdAt,
       materialId: materialFixes.materialId,
       materialTitle: materials.title,
@@ -33,6 +34,7 @@ export default async function AdminFixesPage() {
   const published = rows.filter((r) => r.status === "published");
   const rejected = rows.filter((r) => r.status === "rejected");
   const merged = rows.filter((r) => r.status === "merged");
+  const priv = rows.filter((r) => r.status === "private");
 
   return (
     <div className="space-y-6">
@@ -77,10 +79,31 @@ export default async function AdminFixesPage() {
       {merged.length > 0 && (
         <details className="card p-4">
           <summary className="cursor-pointer font-bold">שולבו בקובץ המקורי ({merged.length})</summary>
+          <p className="mt-2 text-xs text-muted">
+            הסוכן שילב בעצמו – הגרסה הקודמת של הקובץ שמורה בדרייב ב-_ארכיון/גרסאות ישנות (מזהה הגיבוי בהערה).
+          </p>
           <ul className="mt-2 space-y-2 text-sm text-muted">
             {merged.map((r) => (
               <li key={r.id}>
                 {r.materialTitle}: {r.originalText} ← {r.correctedText}
+                {r.adminNote && <div className="text-xs">{r.adminNote}</div>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {priv.length > 0 && (
+        <details className="card p-4">
+          <summary className="cursor-pointer font-bold">תיקונים פרטיים – נשארו רק אצל המבקשת ({priv.length})</summary>
+          <p className="mt-2 text-xs text-muted">
+            הסוכן בדק ולא שילב בקובץ המקורי, ולכן התיקון מוצג רק למורה שביקשה אותו.
+          </p>
+          <ul className="mt-2 space-y-2 text-sm text-muted">
+            {priv.map((r) => (
+              <li key={r.id}>
+                {r.materialTitle} ({r.userName ?? "—"}): {r.originalText} ← {r.correctedText}
+                {r.adminNote && <div className="text-xs">{r.adminNote}</div>}
               </li>
             ))}
           </ul>
@@ -94,6 +117,7 @@ export default async function AdminFixesPage() {
             {rejected.map((r) => (
               <li key={r.id}>
                 {r.materialTitle}: {r.requestText}
+                {r.adminNote && <div className="text-xs">{r.adminNote}</div>}
               </li>
             ))}
           </ul>
