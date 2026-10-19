@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/db";
 import { emailLogs } from "@/db/schema";
-import { SITE_NAME } from "./constants";
+import { SITE_MOTTO, SITE_NAME } from "./constants";
 
 /**
  * מערכת המייל – לפי המודל של מערכת הגמ"ח:
@@ -138,24 +138,57 @@ export function sendMailInBackground(input: SendMailInput) {
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/**
+ * עיצוב המייל – בסגנון האתר ("פנקס המורה"): נייר קרמי, כותרת בדיו כחול-נייבי, קו שוליים אדום,
+ * קו מכחול אדום מתחת לכותרת (public/images/mail-underline.png), ובסוף – הלוגו של האתר (public/images/mail-logo.png, גרסה קלה של הלוגו).
+ * הכול inline + טבלאות, כדי שיוצג נכון ב-Gmail/Outlook.
+ */
+const MAIL = {
+  navy: "#33456e",
+  navyDeep: "#212f4d",
+  paper: "#fbf9f5",
+  red: "#b23a2e",
+  mustard: "#d9a441",
+  ink: "#2e2a20",
+  muted: "#756b57",
+  line: "#e6dfd0",
+};
+
 export function layoutHtml(title: string, bodyHtml: string, cta?: { label: string; href: string }) {
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#faf6ef;font-family:Arial,Assistant,sans-serif;color:#1f2d33">
-<div style="max-width:600px;margin:0 auto;padding:24px">
-  <div style="background:linear-gradient(135deg,#1aa6b7,#0e7f8f);color:#fff;border-radius:18px 18px 0 0;padding:22px 26px">
-    <div style="font-size:22px;font-weight:800">${esc(SITE_NAME)}</div>
-    <div style="font-size:12px;opacity:.85">מתמקדים בעיקר · שיעורים מוכנים</div>
-  </div>
-  <div style="background:#fff;border:1px solid #e6e9f2;border-top:0;padding:26px;border-radius:0 0 18px 18px;line-height:1.7;font-size:15px">
-    <h2 style="margin:0 0 12px;color:#0e7f8f;font-size:20px">${esc(title)}</h2>
+  const site = siteUrl();
+  // אותם פונטים כמו באתר (Assistant לגוף, גברת לוין לכותרות). נטענים מ-Google Fonts בלקוחות שתומכים (Apple Mail, Outlook חדש, אפליקציות מובייל);
+  // ב-Gmail הם נחסמים, ולכן יש גיבוי ל-Arial/Segoe UI.
+  const font = "Assistant,'Segoe UI',Arial,sans-serif";
+  const hand = "'Gveret Levin',Assistant,'Segoe UI',Arial,sans-serif";
+  return `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Gveret+Levin&display=swap" rel="stylesheet"><style>@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Gveret+Levin&display=swap');</style></head>
+<body style="margin:0;padding:0;background:${MAIL.paper};font-family:${font};color:${MAIL.ink}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${MAIL.paper}"><tr><td align="center" style="padding:28px 14px">
+ <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px">
+  <tr><td style="background:${MAIL.navy};border-radius:16px 16px 0 0;padding:20px 28px;border-bottom:4px solid ${MAIL.mustard}">
+    <div style="font-family:${hand};font-size:28px;font-weight:400;color:#ffffff">${esc(SITE_NAME)}</div>
+    <div style="font-size:13px;color:#dbe1ee;margin-top:2px">בית לחומרי הבגרות</div>
+  </td></tr>
+  <tr><td style="background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};padding:30px 30px 8px;line-height:1.75;font-size:17px;color:${MAIL.ink}">
+    <h2 style="margin:0 0 16px;font-family:${hand};color:${MAIL.navy};font-size:26px;line-height:1.35;font-weight:400">
+      <span style="display:inline-block">${esc(title.replace(/[!?.]+$/, ""))}<span style="color:${MAIL.red}">!</span><img src="${site}/images/mail-underline.png" width="100%" height="12" alt="" style="display:block;width:100%;height:12px;margin-top:3px;border:0"></span>
+    </h2>
     ${bodyHtml}
     ${
       cta
-        ? `<p style="margin:22px 0 6px"><a href="${cta.href}" style="display:inline-block;background:#f5c542;color:#1f2d33;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:999px">${esc(cta.label)}</a></p>`
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 10px"><tr><td style="background:${MAIL.navy};border-radius:999px;border-bottom:3px solid ${MAIL.mustard}"><a href="${cta.href}" style="display:inline-block;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:12px 30px">${esc(cta.label)}</a></td></tr></table>`
         : ""
     }
-  </div>
-  <p style="text-align:center;color:#0e7f8f;font-size:11px;margin-top:14px">© ${esc(SITE_NAME)} · כל הזכויות שמורות · כל קובץ מוטבע במספר אישי של המורידה</p>
-</div></body></html>`;
+  </td></tr>
+  <tr><td style="background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};border-radius:0 0 16px 16px;padding:8px 30px 26px" align="center">
+    <div style="border-top:1px dashed ${MAIL.line};margin:0 0 18px"></div>
+    <a href="${site}" style="text-decoration:none"><img src="${site}/images/mail-logo.png" width="220" alt="${esc(SITE_NAME)} – בית לחומרי הבגרות" style="display:block;margin:0 auto;width:220px;max-width:100%;height:auto;border:0"></a>
+    <div style="font-size:13px;color:${MAIL.navy};font-weight:700;margin-top:10px">${esc(SITE_MOTTO)}</div>
+  </td></tr>
+  <tr><td align="center" style="padding:16px 10px 0;color:${MAIL.muted};font-size:11.5px;line-height:1.6">
+    © ${esc(SITE_NAME)} · כל הזכויות שמורות<br>כל קובץ מוטבע במספר אישי של המורידה
+  </td></tr>
+ </table>
+</td></tr></table></body></html>`;
 }
 
 export const templates = {
@@ -167,8 +200,8 @@ export const templates = {
       html: layoutHtml(
         `שלום ${esc(name)}, ברוכה הבאה!`,
         `<p>נרשמת בהצלחה לאתר <b>${esc(SITE_NAME)}</b>.</p>
-         <p>המספר האישי שלך: <b style="font-size:18px;letter-spacing:1px;color:#0e7f8f">${esc(personalCode)}</b><br>
-         <span style="color:#64748b;font-size:13px">מספר זה מוטבע על כל קובץ שאת מורידה – שמרי עליו ואל תעבירי קבצים הלאה.</span></p>`,
+         <p>המספר האישי שלך: <b style="font-size:18px;letter-spacing:1px;color:#33456e">${esc(personalCode)}</b><br>
+         <span style="color:#756b57;font-size:13px">מספר זה מוטבע על כל קובץ שאת מורידה – שמרי עליו ואל תעבירי קבצים הלאה.</span></p>`,
         { label: "לאזור האישי", href: `${url}/account` },
       ),
     };
@@ -264,7 +297,7 @@ export const templates = {
       html: layoutHtml(
         "איפוס סיסמה",
         `<p>שלום ${esc(name)},</p><p>קיבלנו בקשה לאיפוס הסיסמה שלך. לחצי על הכפתור לבחירת סיסמה חדשה. הקישור בתוקף <b>לשעה אחת</b>.</p>
-         <p style="color:#64748b;font-size:13px">אם לא ביקשת איפוס – אפשר להתעלם מהודעה זו, הסיסמה שלך נשארת ללא שינוי.</p>`,
+         <p style="color:#756b57;font-size:13px">אם לא ביקשת איפוס – אפשר להתעלם מהודעה זו, הסיסמה שלך נשארת ללא שינוי.</p>`,
         { label: "לבחירת סיסמה חדשה", href: url },
       ),
     };
@@ -276,7 +309,7 @@ export const templates = {
       html: layoutHtml(
         "אימות כתובת מייל חדשה",
         `<p>שלום ${esc(name)},</p><p>ביקשת לשנות את כתובת המייל שלך לכתובת <b dir="ltr">${esc(newEmail)}</b>. לחצי על הכפתור כדי לאשר. הקישור בתוקף ל-24 שעות.</p>
-         <p style="color:#64748b;font-size:13px">אם לא ביקשת זאת – אפשר להתעלם מהודעה זו, כתובת המייל שלך לא תשתנה.</p>`,
+         <p style="color:#756b57;font-size:13px">אם לא ביקשת זאת – אפשר להתעלם מהודעה זו, כתובת המייל שלך לא תשתנה.</p>`,
         { label: "אישור כתובת המייל החדשה", href: url },
       ),
     };
