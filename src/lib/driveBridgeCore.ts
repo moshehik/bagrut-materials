@@ -14,6 +14,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { isDocxForBlankLines, relaxJustifiedBlankLines } from "./docx-blank-lines";
 
 const BRIDGE_TIMEOUT_MS = 55000; // מתחת ל-60s של Vercel
 
@@ -635,18 +636,32 @@ async function convertWithBudget(args: ConvertArgs, budget: Budget): Promise<Uin
   return convertOfficeToPdfViaDrive(args, budget);
 }
 
+/**
+ * תיקוני-תוכן שרצים על כל docx לפני ההמרה (לא על pptx/doc): כרגע רק שחרור יישור-לשני-הצדדים
+ * מפסקאות קווי-מילוי (ר' docx-blank-lines.ts). קובץ שאין בו מה לתקן חוזר כאותם בייטים בדיוק.
+ * חייב לרוץ *לפני* חישוב מפתח המטמון (md5) ב-convertOfficeToPdfCached - ר' ההערה שם.
+ */
+async function prepareOfficeForConvert(args: ConvertArgs): Promise<ConvertArgs> {
+  if (!isDocxForBlankLines(args.mimeType, args.name)) return args;
+  const bytes = await relaxJustifiedBlankLines(args.bytes);
+  return bytes === args.bytes ? args : { ...args, bytes };
+}
+
 /** המרה "לפי דרישה" בלי מטמון — ההתנהגות המקורית. כל המסלול (Oracle ← Drive) בתוך CONVERT_TOTAL_BUDGET_MS. */
 export async function convertOfficeToPdf(args: ConvertArgs): Promise<Uint8Array> {
-  return convertWithBudget(args, budgetClock(CONVERT_TOTAL_BUDGET_MS));
+  return convertWithBudget(await prepareOfficeForConvert(args), budgetClock(CONVERT_TOTAL_BUDGET_MS));
 }
 
 // --- מטמון ה-PDF המומר (לא מוטבע) בדרייב ---
 // כל הורדה/תצוגה מקדימה של docx המירה מחדש (10-20 שניות). עכשיו: ה-PDF המומר, *לפני* הטבעת סימן
 // המים, נשמר כקובץ בתיקיית `_pdf-cache` תחת שורש הארכיון, מתויג ב-appProperties:
 //   pdfOf = fileId של המקור,  md5 = md5 של הבייטים שהומרו,  pdfCache = "1"
-// המפתח הוא תוכן ולא גרסה: md5 מחושב מקומית על הבייטים שמגיעים להמרה — לקובץ שלא שונה הוא זהה
-// ל-md5Checksum של הדרייב (אין צורך בקריאת מטא-דאטה נוספת), ולקובץ שעבר "תיקונים" (applyDocxFixes)
-// הוא שונה, ולכן מקבל רשומת מטמון נפרדת ולעולם לא מוגש PDF של תוכן אחר. ההרשאה והטבעת
+// המפתח הוא תוכן ולא גרסה: md5 מחושב מקומית על הבייטים שמגיעים להמרה *אחרי* תיקוני-ההגשה
+// (prepareOfficeForConvert) — לקובץ שלא שונה ושאין בו מה לתקן הוא זהה ל-md5Checksum של הדרייב,
+// ולקובץ שעבר "תיקונים" (applyDocxFixes) או תיקון-הגשה (docx-blank-lines) הוא שונה, ולכן מקבל
+// רשומת מטמון נפרדת ולעולם לא מוגש PDF של תוכן אחר. כך גם רשומות ישנות (md5 של המקור הגולמי) לא
+// מוגשות אחרי שנוסף תיקון-הגשה: הן פשוט לא נמצאות יותר, ונזרקות בגיזום הרגיל (3 חדשות לכל מקור);
+// ואילו קבצים שהתיקון לא נוגע בהם (למשל דפי מורה) ממשיכים לפגוע במטמון הקיים בלי המרה מחדש. ההרשאה והטבעת
 // הקוד האישי נשארות ב-route לכל בקשה — המטמון מכיל רק את מה שכל מורשית הייתה מקבלת ממילא.
 // כתיבה למטמון = best-effort: אף פעם לא מפילה בקשה; מומלץ להריץ אותה אחרי התשובה (defer=after).
 export const PDF_CACHE_FOLDER_NAME = "_pdf-cache";
@@ -751,8 +766,10 @@ async function storeCachedPdf(fileId: string, md5: string, name: string, pdf: Ui
 export async function convertOfficeToPdfCached(
   args: ConvertArgs & { fileId?: string | null; defer?: (task: () => Promise<void>) => void },
 ): Promise<Uint8Array> {
-  const { fileId, defer, ...rest } = args;
+  const { fileId, defer, ...raw } = args;
   const budget = budgetClock(CONVERT_TOTAL_BUDGET_MS);
+  // תיקוני-הגשה לפני המפתח: ה-md5 חייב לשקף את מה שמומר בפועל (ר' ההערה על המטמון למעלה)
+  const rest = await prepareOfficeForConvert(raw);
   const key = fileId && isValidDriveId(fileId) ? { fileId, md5: md5Hex(rest.bytes) } : null;
   if (key) {
     try {
