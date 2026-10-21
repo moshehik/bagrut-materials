@@ -24,6 +24,7 @@ import {
   Bot,
   Inbox,
   Ticket,
+  Banknote,
 } from "lucide-react";
 
 const ITEMS = [
@@ -47,6 +48,7 @@ const ITEMS = [
   { href: "/admin/agent", label: "סוכן קלוד", icon: Bot },
   { href: "/admin/finance", label: "כספים", icon: Wallet },
   { href: "/admin/subscriptions", label: "מנויים", icon: CreditCard },
+  { href: "/admin/payments", label: "תשלומים (נדרים)", icon: Banknote },
   { href: "/admin/settings", label: "הגדרות", icon: Settings },
 ];
 

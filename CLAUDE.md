@@ -26,6 +26,10 @@ All mail goes `sendMail()` ([mail.ts](src/lib/mail.ts)) → POST to `MAIL_SCRIPT
 - The Drive bridge (`DRIVE_BRIDGE_URL`, ending `…JTfa`) is a completely different script — don't touch it when changing mail.
 - Repo is public: never commit a full `/exec` URL (anyone holding it can send mail from the account).
 
+## Payments — Nedarim Plus (details: [docs/nedarim-payments.md](docs/nedarim-payments.md))
+
+`/pay` (login required) sells the subscription plans through Nedarim Plus's secure iframe (`matara.pro`); `/checkout?plan=…` redirects there while the `nedarim_enabled` setting is on, otherwise the old mock checkout runs. Card data never touches our server. Flow: `POST /api/pay/intent` (row in `nedarim_payments`, reference `NP-…` sent as `Param1`) → iframe `FinishTransaction2` → `POST /api/pay/complete` (browser) + `/api/pay/callback?key=…` (Nedarim webhook) → `verifyAndSettle` in [store.ts](src/lib/nedarim/store.ts): verified against `GetHistoryJson` (`NEDARIM_API_PASSWORD`, `npk_`) or manually approved in `/admin/payments`, then it inserts the **same `purchases` rows the mock checkout creates** (`buildPurchaseRows`). All Nedarim secrets are env-only (`NEDARIM_MOSAD_ID`, `NEDARIM_API_VALID`, `NEDARIM_API_PASSWORD`, `NEDARIM_CALLBACK_SECRET`; `NEDARIM_SIMULATE=1` = dev-only fake payment). The iframe is a third-party domain, so Netfree users may see it fail silently — the page has a 12s watchdog and a "complete via the admin" fallback (`/api/pay/assist`). Tables are created with `scripts/create-nedarim-tables.ts --apply` (dry-run by default) — must exist in Neon before pushing.
+
 ## Netfree — all file transfer must go through our own domain
 
 Many students/teachers browse through Netfree (a content-filtering proxy common in the Charedi sector) which only lets the browser talk to the site's own domain — a direct request to a third-party host (`drive.google.com`, etc.) is blocked outright. This is a hard constraint on the whole file-transfer design, not an edge case:

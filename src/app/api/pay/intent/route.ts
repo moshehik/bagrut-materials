@@ -1,0 +1,169 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import { db } from "@/db";
+import { categories, users } from "@/db/schema";
+import { getCurrentUser } from "@/lib/session";
+import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
+import { requestMeta, logAudit } from "@/lib/audit";
+import { getPlanPrices } from "@/lib/pricing";
+import { getBestPercentCoupon } from "@/lib/private-coupons";
+import { PLANS, SITE_NAME, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
+import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
+import { callbackUrl, loadNedarimConfig } from "@/lib/nedarim/config";
+import { MAX_BODY_BYTES, PAYABLE_PLANS, buildFinishTransactionValue, buildTransactionComment } from "@/lib/nedarim/logic";
+import { createIntent } from "@/lib/nedarim/store";
+
+/*
+ * POST /api/pay/intent – עמוד התשלום (/pay, מחוברות בלבד): יוצר בקשת תשלום 'pending' עם מזהה ייחודי לפני שהמורה מקלידה כרטיס
+ * ב-iframe של נדרים פלוס, ומחזיר לדפדפן את ערך ההודעה FinishTransaction2 (קוד מוסד + ApiValid + פרטים + CallBack).
+ * הסכום נקבע כאן מההגדרות (getPlanPrices) ומהקופון של המשתמשת – לעולם לא מהדפדפן. מספר הכרטיס לא מגיע לכאן אף פעם.
+ * docs/nedarim-payments.md
+ */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+
+const idNum = z.number().int().positive();
+const bodySchema = z.object({
+  plan: z.enum(PAYABLE_PLANS),
+  categoryIds: z.array(idNum).max(YEARLY_INCLUDED_SUBJECTS).default([]),
+  skipSubjects: z.boolean().optional(),
+  /** פרטי פרופיל חסרים (טלפון / עיר / תיכון) – נשמרים על המשתמשת, כמו ברכישה הראשונה בקופה */
+  phone: z.string().max(30).optional(),
+  city: z.string().max(80).optional(),
+  school: z.string().max(120).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return json({ error: "יש להתחבר כדי לשלם" }, 401);
+  if (user.suspended) return json({ error: "החשבון מושהה – לא ניתן לבצע רכישות" }, 403);
+
+  const rl = await rateLimit({ key: limitKey("pay-intent", "user", user.id), limit: 10, windowSec: 600 });
+  if (!rl.ok) return json({ error: TOO_MANY_MESSAGE }, 429);
+
+  const cfg = await loadNedarimConfig();
+  if (!cfg.enabled) return json({ error: "התשלום באתר אינו פעיל כרגע" }, 404);
+  if (!cfg.ready) return json({ error: "התשלום באתר עדיין לא הוגדר במלואו. אפשר לפנות אלינו דרך «צור קשר»." }, 503);
+
+  const raw = await req.text();
+  if (raw.length > MAX_BODY_BYTES) return json({ error: "הבקשה גדולה מדי" }, 413);
+  let body: unknown;
+  try {
+    body = JSON.parse(raw || "{}");
+  } catch {
+    return json({ error: "בקשה לא תקינה" }, 400);
+  }
+  const parsed = bodySchema.safeParse(body);
+  if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "נתוני הזמנה לא תקינים" }, 400);
+  const input = parsed.data;
+
+  const denied = async (reason: string, error: string, status = 400) => {
+    await logAudit({ actorId: user.id, action: "purchase.denied", details: { reason, via: "nedarim", plan: input.plan } });
+    return json({ error }, status);
+  };
+
+  // --- מקצועות: אותם כללים כמו purchaseAction ---
+  const uniq = [...new Set(input.categoryIds)];
+  let subjectsPending = false;
+  if (input.plan === "substitute_daily") {
+    uniq.length = 0;
+  } else if (input.plan === "yearly" && input.skipSubjects) {
+    subjectsPending = true;
+    uniq.length = 0;
+  } else {
+    if (uniq.length < 1) return denied("no_subjects", "יש לבחור לפחות מקצוע אחד");
+    if (input.plan === "substitute_3m" && uniq.length > 1) return denied("sub3_too_many", "ממלאת מקום כוללת מקצוע אחד בלבד");
+    if (input.plan === "yearly" && uniq.length > YEARLY_INCLUDED_SUBJECTS) {
+      return denied("yearly_too_many_subjects", `המנוי כולל עד ${YEARLY_INCLUDED_SUBJECTS} מקצועות`);
+    }
+    const roots = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(inArray(categories.id, uniq), isNull(categories.parentId), eq(categories.status, "active")));
+    if (roots.length !== uniq.length) return denied("not_root_subject", "יש לבחור מקצועות ראשיים בלבד");
+  }
+
+  // --- פרטי פרופיל חסרים: טלפון (מוטבע בסימן המים + נשלח לנדרים), עיר ותיכון (רכישה ראשונה) ---
+  const profile: Partial<{ phone: string; city: string; school: string }> = {};
+  if (!user.phone) {
+    const p = phoneSchema.safeParse(input.phone ?? "");
+    if (!p.success || !p.data) return denied("invalid_phone", p.success ? "יש להזין מספר טלפון" : p.error.issues[0]?.message ?? "טלפון לא תקין");
+    profile.phone = p.data;
+  }
+  if (!user.city || !user.school) {
+    const loc = z.object({ city: citySchema, school: schoolSchema }).safeParse({ city: input.city ?? "", school: input.school ?? "" });
+    if (!loc.success) return denied("invalid_location", loc.error.issues[0]?.message ?? "יש להשלים עיר ותיכון");
+    profile.city = loc.data.city;
+    profile.school = loc.data.school;
+  }
+
+  // --- סכום: מההגדרות + קופון הנחה פרטי (ייתפס רק בהשלמה) ---
+  const prices = await getPlanPrices();
+  const listAmount = prices.plans[input.plan];
+  if (!(listAmount > 0)) return denied("no_price", "למסלול הזה אין מחיר מוגדר", 500);
+  const coupon = await getBestPercentCoupon(user);
+  const pct = coupon?.percent ?? 0;
+  const amount = pct > 0 ? Math.round((listAmount * (100 - pct)) / 100) : listAmount;
+  if (!(amount > 0)) return denied("zero_amount", "הסכום לתשלום הוא 0 – פני אלינו להפעלה ידנית", 400);
+
+  if (Object.keys(profile).length) {
+    await db.update(users).set(profile).where(eq(users.id, user.id));
+    await logAudit({ actorId: user.id, action: "profile.complete", entityType: "user", entityId: user.id, details: profile });
+  }
+
+  const phone = user.phone ?? profile.phone ?? "";
+  const nameParts = user.name.trim().split(/\s+/);
+  const firstName = user.firstName ?? nameParts[0] ?? "";
+  const lastName = user.lastName ?? nameParts.slice(1).join(" ");
+  const { ip, userAgent } = await requestMeta();
+
+  try {
+    const row = await createIntent({
+      userId: user.id,
+      plan: input.plan,
+      categoryIds: uniq,
+      subjectsPending,
+      listAmount,
+      amount,
+      coupon: coupon && pct > 0 ? { id: coupon.id, percent: pct } : null,
+      firstName,
+      lastName,
+      phone,
+      email: user.email,
+      mosadId: cfg.mosadId,
+      ip,
+      userAgent,
+    });
+    const cb = callbackUrl(cfg);
+    const finish = buildFinishTransactionValue({
+      mosad: cfg.mosadId,
+      apiValid: cfg.apiValid,
+      reference: row.reference,
+      amountAgorot: row.amount,
+      firstName,
+      lastName,
+      phone,
+      email: user.email,
+      city: user.city ?? profile.city ?? "",
+      comment: buildTransactionComment(SITE_NAME, PLANS[input.plan].label, row.reference),
+      callbackUrl: cb,
+      param2: input.plan,
+    });
+    return json({
+      ok: true,
+      reference: row.reference,
+      amount: row.amount,
+      listAmount: row.listAmount,
+      couponPercent: row.couponPercent,
+      finish,
+      callbackConfigured: !!cb,
+      simulate: cfg.simulate,
+    });
+  } catch (e) {
+    console.error("[pay intent] create failed", e);
+    return json({ error: "לא הצלחנו ליצור את בקשת התשלום. נסי שוב בעוד רגע." }, 500);
+  }
+}

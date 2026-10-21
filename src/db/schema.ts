@@ -722,6 +722,87 @@ export const driveEvents = pgTable(
   ],
 );
 
+/**
+ * בקשת תשלום דרך נדרים פלוס (ר' src/lib/nedarim/, docs/nedarim-payments.md): שורה לכל ניסיון תשלום, נוצרת לפני שהמורה
+ * מקלידה כרטיס ב-iframe של נדרים (reference = NP-XXXXXXXX, נשלח כ-Param1 וחוזר ב-CallBack). מספר הכרטיס לעולם לא מגיע לכאן.
+ * status: pending (נוצרה) → processing (דווח הצלחה, עדיין לא אומת) → paid (אומת/אושר – נוצרו שורות purchases) ; failed / cancelled / expired.
+ * ההשלמה אידמפוטנטית: UPDATE מותנה על הסטטוס, ורק הזוכה מכניס את שורות הרכישה (purchase_id = השורה הראשונה).
+ * נוצר ב-SQL גולמי (scripts/create-nedarim-tables.ts) — db:push שבור כאן.
+ */
+export const nedarimPayments = pgTable(
+  "nedarim_payments",
+  {
+    id: serial("id").primaryKey(),
+    reference: varchar("reference", { length: 16 }).notNull(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 12 }).notNull().default("pending"),
+    plan: planEnum("plan").notNull(),
+    /** JSON של מזהי המקצועות הראשיים שנבחרו (מנוי שנתי / ממלאת מקום 3 חודשים); "[]" = בלי */
+    categoryIds: text("category_ids").notNull().default("[]"),
+    /** מנוי שנתי עם "דלג" – המקצועות ייבחרו אחר כך (purchases.subjects_pending) */
+    subjectsPending: boolean("subjects_pending").notNull().default(false),
+    /** הסכום לחיוב באגורות (אחרי קופון) */
+    amount: integer("amount").notNull(),
+    /** מחיר המסלול לפני קופון (באגורות) */
+    listAmount: integer("list_amount").notNull(),
+    couponId: integer("coupon_id").references(() => privateCoupons.id, { onDelete: "set null" }),
+    couponPercent: integer("coupon_percent"),
+    /** הפרטים שנשלחו ל-iframe (תמונת מצב בזמן יצירת הבקשה) */
+    firstName: varchar("first_name", { length: 60 }),
+    lastName: varchar("last_name", { length: 60 }),
+    phone: varchar("phone", { length: 20 }),
+    email: varchar("email", { length: 255 }),
+    mosadId: varchar("mosad_id", { length: 20 }),
+    /** מזהי העסקה אצל נדרים פלוס (מהדפדפן / CallBack / היסטוריית ה-API) */
+    transactionId: varchar("transaction_id", { length: 40 }),
+    confirmation: varchar("confirmation", { length: 40 }),
+    cardLast4: varchar("card_last4", { length: 4 }),
+    /** אומת מול נדרים פלוס (api) או אושר ידנית (manual); callback/simulated = לא אומת באמת */
+    verified: boolean("verified").notNull().default(false),
+    verifyMethod: varchar("verify_method", { length: 12 }),
+    /** TransactionResponse שהדפדפן קיבל מה-iframe (JSON) */
+    clientResponse: text("client_response"),
+    /** גוף ה-CallBack הגולמי של נדרים (השדות אינם מתועדים – נשמר כמו שהוא) */
+    callbackBody: text("callback_body"),
+    errorMessage: text("error_message"),
+    /** המורה ביקשה להשלים את התשלום דרך המנהלת (טופס נדרים לא נטען – למשל נטפרי) */
+    assistRequestedAt: timestamp("assist_requested_at"),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: text("user_agent"),
+    paidAt: timestamp("paid_at"),
+    /** שורת ה-purchases הראשונה שנוצרה מהתשלום (purchases.payment_ref = reference לכולן) */
+    purchaseId: integer("purchase_id").references(() => purchases.id, { onDelete: "set null" }),
+    /** המנהלת שאישרה ידנית / ביטלה */
+    settledById: integer("settled_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("nedarim_payments_reference_idx").on(t.reference),
+    index("nedarim_payments_user_idx").on(t.userId),
+    index("nedarim_payments_status_idx").on(t.status, t.createdAt),
+    index("nedarim_payments_tx_idx").on(t.transactionId),
+  ],
+);
+
+/** יומן של בקשת תשלום בנדרים: created / client_response / callback / verify_ok / verify_failed / settled / manual_settle / cancelled / assist / error */
+export const nedarimPaymentEvents = pgTable(
+  "nedarim_payment_events",
+  {
+    id: serial("id").primaryKey(),
+    paymentId: integer("payment_id")
+      .notNull()
+      .references(() => nedarimPayments.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 30 }).notNull(),
+    message: text("message"),
+    detail: text("detail"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("nedarim_payment_events_payment_idx").on(t.paymentId, t.createdAt)],
+);
+
 export const categoriesRelations =relations(categories, ({ one, many }) => ({
   parent: one(categories, {
     fields: [categories.parentId],
@@ -798,4 +879,6 @@ export type SichaUsage = typeof sichaUsages.$inferSelect;
 export type SichaIdea = typeof sichaIdeas.$inferSelect;
 export type SichaTeacherStatus = typeof sichaTeacherStatus.$inferSelect;
 export type SichaSeminar = (typeof sichaSeminarEnum.enumValues)[number];
+export type NedarimPayment = typeof nedarimPayments.$inferSelect;
+export type NedarimPaymentEvent = typeof nedarimPaymentEvents.$inferSelect;
 export type CategoryModule = (typeof categoryModuleEnum.enumValues)[number];
