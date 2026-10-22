@@ -113,6 +113,32 @@
 `Confirmation` בלבד). `extractReference` מוצא את `NP-XXXXXXXX` בכל מקום ב-`Comments` (גם עם `" | טקסט"` אחריו). fixture
 מנוטרל-PII באותו מבנה: `realistic GetHistoryJson row from a site link` ב-`logic.test.ts`.
 
+### קטגוריות (Groupe) בנדרים – ניהול מהאתר
+
+במוסד נוצרו 3 קטגוריות בשמות המסלולים (`PLAN_GROUPE_NAMES`: "מנוי שנתי", "ממלאת מקום 3 חודשים", "ממלאת מקום יומית") והקישור
+מעביר את השם ב-`groupe`. כרטיס "קטגוריות בנדרים פלוס" ב-`/admin/payments` (`src/lib/nedarim/groupe-logic.ts` – לוגיקה + לקוח API
+עם fetch מוזרק, נבדק ב-`groupe.test.ts`; `groupe.ts` – עטיפת שרת; actions ב-`nedarim-admin.ts`):
+- **API** (Manage3.aspx, POST body, אומת בפועל): `GetNewGroupe` → מערך `{id, Name, Amount, PhoneGroupe, TamalType, GoToMosad,
+  GoToMosadGroupe, GoToTofes, Goal, Cumule}` (ריק = `[]`); `SaveEditGroupe` – Id ריק = יצירה (`{"Status":"OK","Id":N}`), Id קיים =
+  עדכון; **תמיד נשלחים כל השדות** (`buildSaveParams` ממזג את הקטגוריה הקיימת – נדרים שומרים רק מה שנשלח); שם שמתחיל ב-* =
+  מוסתרת; שם כפול → `Status:Error`; `DeleteEditGroupe` (מחיקה רכה). שגיאות `Status`/`Result:"Error"` + `Message` → עברית
+  (`friendlyGroupeError`: "שם כפול", "אין הרשאה למפתח"…).
+- **הכרטיס**: טבלה (שם, סכום מינימלי, יעד, עד כה נתרם), "רענון" (router.refresh – הרשימה נקראת פעם אחת עם טעינת הדף, אין
+  polling), הוספה, עריכה inline, מחיקה עם אישור. ולידציה (zod): שם 1–100 תווים בלי תווי בקרה; סכום/יעד ≥0 עם עד 2 ספרות
+  (נקודה; פסיק נדחה כדו-משמעי) או ריק. אדמין בלבד, rate-limit 30/10 דק', `logAudit` (`nedarim.groupe_save/delete/sync`).
+- **"סנכרן סכומים עם מחירי האתר"** (רק בלחיצה): לכל מסלול – הקטגוריה לפי שם (נוצרת אם חסרה), `Amount` = המחיר הנוכחי של
+  המסלול **מאותה פונקציה שבונה את הסכום הנגבה** ב-`/api/pay/intent` (`getPlanPrices().plans[plan]` – מחיר השקה/הגדרות). **אזהרת
+  קופון:** `Amount` הוא *מינימום תרומה* בדף של נדרים; קופון פרטי מוריד את הסכום הנגבה (`round(list × (100−pct)/100)`) מתחת למחיר –
+  ומינימום גבוה ממנו יחסום את התשלום המוזל. לכן ברירת המחדל: מינימום = המחיר אחרי הנחת הקופון הפעיל הגבוהה ביותר
+  (`getMaxActiveCouponPercent`, אותה נוסחת עיגול – `minimumAmountAgorot`); חלופות: אחוז מקסימלי ידני, או המחיר המלא (קופונים
+  ייחסמו). הטבלה מציגה לכל מסלול: מחיר באתר, מינימום יעד, מה מוגדר בנדרים, ו"לא מסונכרן" כשנבדלים.
+- עם ברירות המחדל בקוד (בלי הגדרות ב-DB) הסכומים: מנוי שנתי ₪588, ממלאת מקום 3 חודשים ₪390 (3×130), ממלאת מקום יומית ₪160;
+  עם קופון 10% – 529.2 / 351 / 144. בפועל נקראים מההגדרות (`price_yearly` וכו').
+- **הנחות/סיכונים:** `Amount` מינימלי – המשלמת יכולה לשלם *יותר* (ההתאמה דורשת סכום זהה בדיוק, אז תשלום גבוה מהמחיר ילך
+  לאישור ידני); הקטגוריה מזוהה לפי שם – שינוי שם בנדרים/ב-`PLAN_GROUPE_NAMES` ינתק אותה (הסנכרון ייצור חדשה); הערכים
+  `Cumule`/`PhoneGroupe`/`TamalType`/`GoTo*` לא נערכים מהאתר אבל נשלחים חזרה כפי שהם; קופון שייווצר *אחרי* הסנכרון באחוז גבוה
+  יותר דורש סנכרון מחדש (אין אוטומציה – בכוונה).
+
 ### GetHistoryJson – מה הונח
 
 `POST https://matara.pro/nedarimplus/Reports/Manage3.aspx` עם `Action=GetHistoryJson, ApiPassword, MosadId, LastId (exclusive),

@@ -11,6 +11,10 @@ import { HOURLY_CALL_CAP, MAX_ROWS, SYNC_MIN_INTERVAL_SEC, countTxWithoutDate, c
 import { NedarimPaymentRow, type NedarimPaymentRowData } from "@/components/admin/nedarim-payment-row";
 import { NedarimSecretsCard } from "@/components/admin/nedarim-secrets-card";
 import { NedarimSyncCard } from "@/components/admin/nedarim-sync-card";
+import { NedarimCategoriesCard } from "@/components/admin/nedarim-categories-card";
+import { getMaxActiveCouponPercent, listCategories, planSyncStatus } from "@/lib/nedarim/groupe";
+import { redactNedarim } from "@/lib/nedarim/secrets";
+import type { NedarimCategory } from "@/lib/nedarim/groupe-logic";
 
 /** מסך "תשלומים (נדרים)": מצב החיבור, שער הקריאה, סודות, כל בקשות התשלום, אישור ידני / ביטול. docs/nedarim-payments.md */
 export const dynamic = "force-dynamic";
@@ -43,6 +47,21 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
     tablesReady = false;
     console.error("[admin payments] nedarim tables missing?", e instanceof Error ? e.message : e);
   }
+
+  // קטגוריות בנדרים – קריאה אחת עם טעינת הדף (בלי polling); כישלון לא מפיל את המסך
+  let nedarimCategories: NedarimCategory[] = [];
+  let categoriesError: string | null = null;
+  const maxCoupon = await getMaxActiveCouponPercent();
+  if (cfg.hasApiPassword && cfg.mosadId) {
+    try {
+      nedarimCategories = await listCategories();
+    } catch (e) {
+      categoriesError = redactNedarim(e instanceof Error ? e.message : "error").slice(0, 200);
+    }
+  } else {
+    categoriesError = "אין מפתח API / קוד מוסד";
+  }
+  const syncRows = await planSyncStatus(nedarimCategories, maxCoupon);
 
   const conds: SQL[] = [];
   if (status) conds.push(eq(nedarimPayments.status, status));
@@ -175,6 +194,8 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
       />
 
       <NedarimSecretsCard statuses={secretStatuses} />
+
+      <NedarimCategoriesCard categories={nedarimCategories} loadError={categoriesError} sync={syncRows} maxCouponPercent={maxCoupon} />
 
       <div className="card p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2 text-sm">
