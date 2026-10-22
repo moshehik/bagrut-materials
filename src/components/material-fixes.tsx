@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Download, Plus, Send, X } from "lucide-react";
 import { submitFixRequests, type FixState } from "@/lib/actions/fixes";
 import { PdfViewer, type PdfMark } from "@/components/pdf-viewer";
 
-export type CardFix = { number: number; originalText: string; correctedText: string };
+/** own = התיקון של המורה עצמה: חל אצלה מיד (מסומן מראש), בלי תלות בהחלטה על שאר המורות */
+export type CardFix = { number: number; originalText: string; correctedText: string; own?: boolean };
 
 /** נוסחי הטולטיפ של שלושת אגוזי התיקונים (כתב גברת לוין, מוצג במעבר עכבר / מיקוד) */
 export const FIX_TIPS = {
@@ -102,6 +104,7 @@ export function FixRequestButton({
   const [activeId, setActiveId] = useState<number>(() => edits[0].id);
   const [result, setResult] = useState<FixState>(undefined);
   const [pending, startSend] = useTransition();
+  const router = useRouter();
   // אחרי שליחה מוצלחת מאפסים את החלון (אחרת הוא נשאר על "הבקשה נשלחה" ואי אפשר להוסיף תיקונים נוספים)
   const resetAfterSend = () => {
     const e = newEdit();
@@ -156,6 +159,8 @@ export function FixRequestButton({
         items: ready.map((e) => ({ quote: e.quote.trim(), correction: e.correction.trim() })),
       });
       setResult(res);
+      // התיקון חל אצלה מיד – מרעננים כדי ש"לצפייה בשינויים"/"להורדת הקובץ המתוקן" יופיעו בכרטיסייה
+      if (res?.ok) router.refresh();
     });
   };
   const viewSrc = viewSrcOverride ?? `/api/preview/${materialId}`;
@@ -205,8 +210,8 @@ export function FixRequestButton({
           ) : result?.ok ? (
             <div className="fix-inner fix-done">
               <p>
-                הבקשה נשלחה. כשהשינוי יתווסף לקובץ יופיעו בכרטיסייה האפשרויות &quot;לצפייה בשינויים שכבר נעשו&quot; ו
-                &quot;להורדת הקובץ המתוקן&quot;.
+                התיקון כבר חל אצלך! בכרטיסייה מופיעות עכשיו האפשרויות &quot;לצפייה בשינויים שכבר נעשו&quot; ו
+                &quot;להורדת הקובץ המתוקן&quot;. בנפרד, נבדוק אם לעדכן את הקובץ גם אצל שאר המורות.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn btn-gold text-sm py-2" onClick={resetAfterSend}>
@@ -352,7 +357,8 @@ export function FixViewer({
 }) {
   const [open, setOpen] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
-  const [picked, setPicked] = useState<Set<number>>(new Set());
+  // התיקונים של המורה עצמה מסומנים מראש (חלים אצלה מיד); של אחרות – היא בוחרת
+  const [picked, setPicked] = useState<Set<number>>(() => new Set(fixes.filter((f) => f.own).map((f) => f.number)));
   const close = () => {
     setOpen(false);
     setAcknowledged(false);

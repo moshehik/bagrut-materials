@@ -3,7 +3,8 @@ import { and, asc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/db";
 import { materialFixes } from "@/db/schema";
 
-export type PublicFix = { id: number; number: number; originalText: string; correctedText: string };
+/** own = התיקון של המורה עצמה (בקשה שהגישה) – חל אצלה מיד, בלי תלות בהחלטת הסוכן על שאר המורות */
+export type PublicFix = { id: number; number: number; originalText: string; correctedText: string; own: boolean };
 
 /**
  * התיקונים שמוצגים למבקרת: המפורסמים (לכולן) + התיקונים ה"פרטיים" שלה עצמה (status "private" –
@@ -56,7 +57,7 @@ export async function getFixesForViewer(
       }
       if (number == null || !original || !corrected) continue;
       const list = out.get(r.materialId) ?? [];
-      list.push({ id: r.id, number, originalText: original, correctedText: corrected });
+      list.push({ id: r.id, number, originalText: original, correctedText: corrected, own: r.status !== "published" });
       out.set(r.materialId, list);
     }
   } catch (e) {

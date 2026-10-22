@@ -402,6 +402,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                           number: f.number,
                           originalText: f.originalText,
                           correctedText: f.correctedText,
+                          own: f.own,
                         }))}
                       />
                     </Reveal>

@@ -53,6 +53,45 @@ function isWatermarkItem(it: any, pageBottom: number, pageTop: number): boolean 
 export type MarkRect = { x: number; y: number; w: number; h: number };
 export type PdfMark = { id: number; page: number; rects: MarkRect[]; text: string };
 
+/**
+ * הטקסט שנבחר משכבת הטקסט של ה-PDF. לכל מילה/קטע יש שם `<span>` נפרד בלי תו רווח ביניהם, ולכן
+ * `selection.toString()` מדביק מילים ("כוונהלמשפחת"). כאן עוברים על ה-spans שבתוך הבחירה (בסדר המסמך) ומחברים
+ * ברווח; בתוך span חלקי (תחילת/סוף הבחירה) חותכים לפי נקודות הבחירה. אם משהו נכשל – נופלים לטקסט הרגיל.
+ */
+function selectedTextWithSpaces(range: Range, fallback: string): string {
+  const plain = fallback.replace(/\s+/g, " ").trim();
+  try {
+    const root = range.commonAncestorContainer;
+    const scope = root.nodeType === 1 ? (root as Element) : root.parentElement;
+    if (!scope) return plain;
+    const spans = Array.from(scope.querySelectorAll(".textLayer span")).filter(
+      (s) => s.childNodes.length > 0 && range.intersectsNode(s),
+    );
+    if (spans.length === 0) return plain;
+    const parts: string[] = [];
+    for (const s of spans) {
+      const text = s.textContent ?? "";
+      if (!text) continue;
+      const r = document.createRange();
+      r.selectNodeContents(s);
+      let from = 0;
+      let to = text.length;
+      const textNode = s.firstChild;
+      if (textNode && textNode.nodeType === 3) {
+        if (range.compareBoundaryPoints(Range.START_TO_START, r) > 0 && range.startContainer === textNode) from = range.startOffset;
+        if (range.compareBoundaryPoints(Range.END_TO_END, r) < 0 && range.endContainer === textNode) to = range.endOffset;
+      }
+      const piece = text.slice(from, to);
+      if (piece.trim()) parts.push(piece.trim());
+    }
+    const joined = parts.join(" ").replace(/\s+/g, " ").trim();
+    // אם החיבור יצא קצר בהרבה/ריק – משאירים את הטקסט הרגיל
+    return joined.length >= plain.length * 0.8 ? joined : plain;
+  } catch {
+    return plain;
+  }
+}
+
 type PendingSelection = { text: string; page: number; rects: MarkRect[]; left: number; top: number };
 
 export function PdfViewer({
@@ -241,7 +280,7 @@ export function PdfViewer({
       setPending(null);
       return;
     }
-    const text = sel.toString().replace(/\s+/g, " ").trim();
+    const text = selectedTextWithSpaces(range, sel.toString());
     if (text.length < 2) {
       setPending(null);
       return;
