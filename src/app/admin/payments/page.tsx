@@ -4,10 +4,10 @@ import { requireAdminPage } from "@/lib/session";
 import { db } from "@/db";
 import { categories, nedarimPaymentEvents, nedarimPayments, nedarimTransactions, users } from "@/db/schema";
 import { callbackUrl, loadNedarimConfig } from "@/lib/nedarim/config";
-import { NEDARIM_STATUSES, STATUS_LABEL_HE, isNedarimStatus } from "@/lib/nedarim/logic";
+import { NEDARIM_STATUSES, STATUS_LABEL_HE, isNedarimStatus, isStaleProcessing } from "@/lib/nedarim/logic";
 import { expireStale, parseCategoryIds } from "@/lib/nedarim/store";
 import { SECRET_NAMES, getSecretStatus } from "@/lib/nedarim/secrets";
-import { HOURLY_CALL_CAP, SYNC_MIN_INTERVAL_SEC, currentHourCalls, getSyncState, listUnmatchedTransactions, nextAllowedAt } from "@/lib/nedarim/sync";
+import { HOURLY_CALL_CAP, MAX_ROWS, SYNC_MIN_INTERVAL_SEC, countTxWithoutDate, currentHourCalls, getSyncState, listUnmatchedTransactions, nextAllowedAt } from "@/lib/nedarim/sync";
 import { NedarimPaymentRow, type NedarimPaymentRowData } from "@/components/admin/nedarim-payment-row";
 import { NedarimSecretsCard } from "@/components/admin/nedarim-secrets-card";
 import { NedarimSyncCard } from "@/components/admin/nedarim-sync-card";
@@ -24,17 +24,19 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
   const userId = sp.user && Number.isInteger(Number(sp.user)) ? Number(sp.user) : undefined;
   const ref = sp.ref?.trim().toUpperCase();
 
-  const [cfg, secretStatuses, syncState, unmatched] = await Promise.all([
+  const [cfg, secretStatuses, syncState, unmatched, withoutDate] = await Promise.all([
     loadNedarimConfig(),
     Promise.all(SECRET_NAMES.map(getSecretStatus)),
     getSyncState(),
     listUnmatchedTransactions(30),
+    countTxWithoutDate(),
   ]);
   let tablesReady = true;
   let expired = 0;
   let cachedTx = 0;
+  const pageNow = new Date();
   try {
-    expired = await expireStale();
+    expired = await expireStale(pageNow);
     const [c] = await db.select({ n: sql<number>`count(*)::int` }).from(nedarimTransactions);
     cachedTx = Number(c?.n ?? 0);
   } catch (e) {
@@ -92,12 +94,15 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
     purchaseId: p.purchaseId,
     paidAt: p.paidAt,
     createdAt: p.createdAt,
+    stale: isStaleProcessing(p.status, p.createdAt, pageNow),
     events: (evByPayment.get(p.id) ?? []).map((e) => ({ id: e.id, kind: e.kind, message: e.message, detail: e.detail, createdAt: e.createdAt })),
   }));
 
   const counts = {
     open: data.filter((d) => d.status === "pending" || d.status === "processing").length,
     manual: data.filter((d) => d.status === "processing" || (d.assistRequestedAt && d.status === "pending")).length,
+    stale: data.filter((d) => d.stale).length,
+    noPurchase: data.filter((d) => d.status === "paid" && !d.purchaseId).length,
   };
 
   const link = (patch: Partial<SP>) => {
@@ -116,6 +121,8 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
         <h2 className="font-display text-2xl font-bold">תשלומים דרך נדרים פלוס</h2>
         <span className="chip bg-yellow-100 text-yellow-800">{counts.open} פתוחים</span>
         {counts.manual > 0 && <span className="chip bg-red-100 text-red-800">{counts.manual} ממתינים לאישור ידני</span>}
+        {counts.stale > 0 && <span className="chip bg-red-100 text-red-800">{counts.stale} מעל 48 שעות</span>}
+        {counts.noPurchase > 0 && <span className="chip bg-red-100 text-red-800">{counts.noPurchase} שולמו בלי מנוי</span>}
         <span className="chip bg-blue-soft text-blue-deep">{data.length} מוצגים</span>
         {expired > 0 && <span className="chip bg-gray-100 text-gray-700">{expired} פגו עכשיו</span>}
       </div>
@@ -161,6 +168,8 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
           hourCalls: currentHourCalls(syncState),
           hourCap: HOURLY_CALL_CAP,
           cachedTransactions: cachedTx,
+          withoutDate,
+          maxRows: MAX_ROWS,
           unmatched: unmatched.map((t) => ({ transactionId: t.transactionId, amount: t.amount, phone: t.phone, email: t.email, comments: t.comments, transactionAt: t.transactionAt, fetchedAt: t.fetchedAt, approved: t.approved })),
         }}
       />

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
-import { refreshNedarimNow } from "@/lib/actions/nedarim-admin";
+import { refreshNedarimNow, setNedarimStartId, type NedarimAdminState } from "@/lib/actions/nedarim-admin";
 
 export type SyncCardData = {
   lastSuccessAt: Date | null;
@@ -16,6 +16,9 @@ export type SyncCardData = {
   hourCalls: number;
   hourCap: number;
   cachedTransactions: number;
+  /** עסקאות במטמון בלי מועד מפוענח (N4) – סימן לפורמט תאריך לא מוכר */
+  withoutDate: number;
+  maxRows: number;
   unmatched: { transactionId: string; amount: number; phone: string | null; email: string | null; comments: string | null; transactionAt: Date | null; fetchedAt: Date; approved: boolean }[];
 };
 
@@ -25,6 +28,7 @@ const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { dateStyle: "sho
 export function NedarimSyncCard({ data, hasApi, minIntervalMin }: { data: SyncCardData; hasApi: boolean; minIntervalMin: number }) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ error?: string; ok?: string } | null>(null);
+  const [startState, startAction, startPending] = useActionState<NedarimAdminState, FormData>(setNedarimStartId, {});
   return (
     <div className="card p-4 space-y-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
@@ -59,11 +63,25 @@ export function NedarimSyncCard({ data, hasApi, minIntervalMin }: { data: SyncCa
         <div>ניסיון אחרון: {fmt(data.lastFetchAt)}</div>
         <div>LastId: <code dir="ltr">{data.lastTransactionId ?? "—"}</code></div>
         <div>הקריאה הבאה מותרת: {fmt(data.nextAllowedAt)}</div>
-        <div>עסקאות במטמון: {data.cachedTransactions}</div>
-        <div>קריאות בשעה הנוכחית: {data.hourCalls} / {data.hourCap}</div>
+        <div>עסקאות במטמון: {data.cachedTransactions}{data.withoutDate > 0 && <span className="text-red-700"> · {data.withoutDate} בלי מועד מפוענח (פורמט תאריך לא מוכר – לבדוק raw)</span>}</div>
+        <div>קריאות בשעה הנוכחית: {data.hourCalls} / {data.hourCap} · {data.maxRows} שורות לקריאה</div>
         <div>מועד חיתוך (עסקאות ישנות יותר לא מתאימות): {fmt(data.cutoffAt)}</div>
         {data.lastError && <div className="sm:col-span-2 text-red-700">שגיאה אחרונה: {data.lastError}</div>}
       </div>
+      <form action={startAction} className="flex flex-wrap items-end gap-2 rounded-xl border border-foreground/10 p-3 text-xs">
+        <label className="min-w-[220px]">
+          <span className="block text-muted mb-1">נקודת התחלה – מספר העסקה האחרון בפורטל נדרים (לפני ההדלקה הראשונה, כדי לא לסרוק שנים של היסטוריה)</span>
+          <input name="lastId" type="text" inputMode="numeric" pattern="[0-9]*" className="input py-1 text-xs" dir="ltr" placeholder={data.lastTransactionId ? String(data.lastTransactionId) : "למשל 123456"} />
+        </label>
+        <label className="flex items-center gap-1 text-muted">
+          <input type="checkbox" name="force" value="1" /> לאפשר גם הורדה (קריאה חוזרת)
+        </label>
+        <button type="submit" className="btn btn-ghost text-xs py-1.5 px-3" disabled={startPending}>
+          {startPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} קביעת נקודת התחלה
+        </button>
+        {startState?.error && <span className="text-red-600">{startState.error}</span>}
+        {startState?.ok && <span className="text-green-700">{startState.reason}</span>}
+      </form>
       {msg?.error && <p className="text-xs text-red-600">{msg.error}</p>}
       {msg?.ok && <p className="text-xs text-green-700">{msg.ok}</p>}
       {data.unmatched.length > 0 && (

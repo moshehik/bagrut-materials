@@ -32,6 +32,8 @@ export type NedarimPaymentRowData = {
   purchaseId: number | null;
   paidAt: Date | null;
   createdAt: Date;
+  /** processing מעל 48 שעות (N10) */
+  stale: boolean;
   events: { id: number; kind: string; message: string | null; detail: string | null; createdAt: Date }[];
 };
 
@@ -100,6 +102,10 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
               {p.verifyMethod ? VERIFY_LABEL_HE[p.verifyMethod as VerifyMethod] ?? p.verifyMethod : ""} · {fmt(p.paidAt)}
             </div>
           )}
+          {p.status === "paid" && !p.purchaseId && (
+            <div className="mt-1 text-xs font-semibold text-red-700">שולם אבל אין מנוי מקושר – «תקן מנוי» יוצר אותו</div>
+          )}
+          {p.stale && <div className="mt-1 text-xs font-semibold text-red-700">ממתין לאישור ידני מעל 48 שעות – דורש טיפול</div>}
           {p.errorMessage && p.status !== "paid" && <div className="mt-1 text-xs text-red-700">{p.errorMessage}</div>}
         </td>
         <td className="py-2 pe-3 text-xs" dir="ltr">
@@ -145,6 +151,18 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
               <Link href={`/admin/subscriptions?user=${p.userId}`} className="btn btn-ghost text-xs py-1 px-2">
                 למנוי #{p.purchaseId}
               </Link>
+            )}
+            {p.status === "paid" && !p.purchaseId && (
+              <button
+                type="button"
+                className="btn btn-oak text-xs py-1 px-2"
+                disabled={pending}
+                onClick={() => {
+                  if (confirm(`ליצור את המנוי החסר לבקשה ${p.reference}? (אם כבר קיים לפי מזהה הבקשה – רק יקושר)`)) run(() => manualSettleNedarimPayment(p.id));
+                }}
+              >
+                <BadgeCheck className="h-3.5 w-3.5" /> תקן מנוי
+              </button>
             )}
             <button type="button" className="btn btn-ghost text-xs py-1 px-2" onClick={() => setShowEvents((v) => !v)}>
               <History className="h-3.5 w-3.5" /> יומן ({p.events.length})

@@ -12,8 +12,8 @@ import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
-import { MAX_BODY_BYTES, PAYABLE_PLANS } from "@/lib/nedarim/logic";
-import { createIntent, findOpenWithCoupon } from "@/lib/nedarim/store";
+import { MAX_BODY_BYTES, PAYABLE_PLANS, sameIntentParams } from "@/lib/nedarim/logic";
+import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
 
@@ -118,10 +118,14 @@ export async function POST(req: NextRequest) {
     await logAudit({ actorId: user.id, action: "profile.complete", entityType: "user", entityId: user.id, details: profile });
   }
 
-  // M2: בקשה פתוחה עם אותו קופון – לא יוצרים שנייה (הקופון חד-פעמי); מחזירים את הקיימת
+  // M2/N2: בקשה פתוחה עם אותו קופון – לא יוצרים שנייה (הקופון חד-פעמי): אם אותה הזמנה בדיוק – מחזירים אותה; אחרת מבטלים
+  // את הישנה ("replaced") ויוצרים חדשה (עסקה שתשולם על הישנה תישאר לא-משויכת וגלויה למנהלת)
+  let replaced: { id: number } | null = null;
   if (coupon && pct > 0) {
     const existing = await findOpenWithCoupon(user.id, coupon.id);
-    if (existing) {
+    if (existing && !sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount }, { plan: input.plan, categoryIds: uniq, subjectsPending, amount })) {
+      if (await cancelReplaced(existing, "(חדשה)")) replaced = { id: existing.id };
+    } else if (existing) {
       return json({
         ok: true,
         reused: true,
@@ -158,6 +162,7 @@ export async function POST(req: NextRequest) {
       ip,
       userAgent,
     });
+    if (replaced) await appendEvent(replaced.id, "replaced_by", `הבקשה החדשה: ${row.reference}`, { newReference: row.reference });
     return json({
       ok: true,
       reference: row.reference,

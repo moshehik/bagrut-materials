@@ -6,9 +6,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  advanceLastId,
   agorotToAmountString,
   checkManualTransaction,
+  chunk,
+  customerStatusText,
   decideAutoMatches,
+  isStaleProcessing,
+  needsPurchaseRepair,
+  normalizeConfirmation,
+  sameIntentParams,
   extractCallbackFields,
   extractReference,
   findCandidates,
@@ -52,20 +59,21 @@ test("amount / phone conversions", () => {
 });
 
 test("M4: dates without offset are Asia/Jerusalem regardless of server TZ (DST aware)", () => {
+  const ref = new Date("2026-11-01T00:00:00Z"); // "עכשיו" קבוע – כל התאריכים בבדיקה בעבר ביחס אליו
   // 22.10.2026 – שעון קיץ (IDT, UTC+3; מסתיים 25.10.2026)
-  assert.equal(parseNedarimDate("22/10/2026 14:05")?.toISOString(), "2026-10-22T11:05:00.000Z");
+  assert.equal(parseNedarimDate("22/10/2026 14:05", ref)?.toISOString(), "2026-10-22T11:05:00.000Z");
   // 22.01.2026 – שעון חורף (IST, UTC+2)
-  assert.equal(parseNedarimDate("22/01/2026 14:05:30")?.toISOString(), "2026-01-22T12:05:30.000Z");
+  assert.equal(parseNedarimDate("22/01/2026 14:05:30", ref)?.toISOString(), "2026-01-22T12:05:30.000Z");
   // ISO בלי offset – גם שעת ירושלים
-  assert.equal(parseNedarimDate("2026-10-22T14:05:00")?.toISOString(), "2026-10-22T11:05:00.000Z");
-  assert.equal(parseNedarimDate("2026-01-22 14:05")?.toISOString(), "2026-01-22T12:05:00.000Z");
+  assert.equal(parseNedarimDate("2026-10-22T14:05:00", ref)?.toISOString(), "2026-10-22T11:05:00.000Z");
+  assert.equal(parseNedarimDate("2026-01-22 14:05", ref)?.toISOString(), "2026-01-22T12:05:00.000Z");
   // ISO עם Z – כפי שהוא
-  assert.equal(parseNedarimDate("2026-10-22T11:05:00Z")?.toISOString(), "2026-10-22T11:05:00.000Z");
+  assert.equal(parseNedarimDate("2026-10-22T11:05:00Z", ref)?.toISOString(), "2026-10-22T11:05:00.000Z");
   // גבול DST (25.10.2026 02:00 → 01:00): 00:30 עדיין UTC+3; 03:30 כבר UTC+2 (השעה 01:00–02:00 כפולה – לא נבדקת)
-  assert.equal(parseNedarimDate("25/10/2026 00:30")?.toISOString(), "2026-10-24T21:30:00.000Z");
-  assert.equal(parseNedarimDate("25/10/2026 03:30")?.toISOString(), "2026-10-25T01:30:00.000Z");
-  assert.equal(parseNedarimDate("garbage"), null);
-  assert.equal(parseNedarimDate(""), null);
+  assert.equal(parseNedarimDate("25/10/2026 00:30", ref)?.toISOString(), "2026-10-24T21:30:00.000Z");
+  assert.equal(parseNedarimDate("25/10/2026 03:30", ref)?.toISOString(), "2026-10-25T01:30:00.000Z");
+  assert.equal(parseNedarimDate("garbage", ref), null);
+  assert.equal(parseNedarimDate("", ref), null);
 });
 
 test("hosted payment URL uses only the documented/verified parameters", () => {
@@ -210,6 +218,75 @@ test("M2/M5: settlement plan – coupon must be claimed first; existing purchase
   assert.equal(settlementPlan({ hasCoupon: true, couponClaimed: true, existingPurchaseId: 42 }), "skip_insert");
   // שחזור אחרי כשל מאוחר: קופון כבר נתפס לבקשה הזו + purchases קיימים → רק סימון paid
   assert.equal(settlementPlan({ hasCoupon: true, couponClaimed: true, existingPurchaseId: 7 }), "skip_insert");
+});
+
+test("N3: confirmation normalization – every 'empty' spelling is not approved", () => {
+  for (const v of [undefined, null, false, "", "   ", "0", "00", "000", "false", "null", "undefined", "N/A", "n/a", "na", "none", "-", "--", "—", "–"]) {
+    assert.equal(normalizeConfirmation(v), null, `value ${JSON.stringify(v)}`);
+    assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: v })!.approved, false, `approved for ${JSON.stringify(v)}`);
+  }
+  assert.equal(normalizeConfirmation(" 0012345 "), "0012345");
+  assert.equal(normalizeConfirmation("AB12"), "AB12");
+  assert.equal(normalizeConfirmation("x".repeat(60))!.length, 40);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: 7 })!.approved, true);
+});
+
+test("N4: date ranges, round-trip, no MM/dd guessing, future rejection, ASP.NET /Date()/", () => {
+  const now = new Date("2026-10-22T12:00:00Z");
+  assert.equal(parseNedarimDate("31/02/2026 10:00", now), null, "round-trip fails");
+  assert.equal(parseNedarimDate("00/10/2026 10:00", now), null);
+  assert.equal(parseNedarimDate("22/13/2026 10:00", now), null, "month 13");
+  assert.equal(parseNedarimDate("22/10/2026 24:00", now), null, "hour 24");
+  assert.equal(parseNedarimDate("22/10/2026 10:60", now), null, "minute 60");
+  assert.equal(parseNedarimDate("10/22/2026 10:00", now), null, "MM/dd is not guessed");
+  assert.equal(parseNedarimDate("2026-02-31 10:00", now), null);
+  assert.equal(parseNedarimDate("05/10/2026 10:00", now)?.toISOString(), "2026-10-05T07:00:00.000Z", "valid dd/MM stays dd/MM");
+  assert.equal(parseNedarimDate("24/10/2026 10:00", now), null, "more than a day in the future");
+  assert.equal(parseNedarimDate("23/10/2026 10:00", now)?.toISOString(), "2026-10-23T07:00:00.000Z", "within a day ahead is fine");
+  const epoch = Date.UTC(2026, 9, 22, 11, 5, 0); // 2026-10-22T11:05:00Z
+  assert.equal(parseNedarimDate(`/Date(${epoch})/`, now)?.toISOString(), "2026-10-22T11:05:00.000Z");
+  assert.equal(parseNedarimDate(`/Date(${epoch}+0300)/`, now)?.toISOString(), "2026-10-22T11:05:00.000Z");
+  assert.equal(parseNedarimDate("/Date(1900000000000)/", now), null, "future epoch");
+  assert.equal(parseNedarimDate("01/01/1999 10:00", now), null, "before 2000");
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "1", TransactionTime: "10/22/2026 10:00" }, now)!.transactionAt, null);
+});
+
+test("N5: values are clamped to column widths; N1: chunking and lastId never advances past a failed row", () => {
+  const t = parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "1", Mail: "a".repeat(300) + "@x.com", Currency: "ILS-NIS", ClientName: "x".repeat(200), Status: "y".repeat(50) })!;
+  assert.equal(t.email.length, 255);
+  assert.equal(t.currency!.length, 4);
+  assert.equal(t.clientName!.length, 120);
+  assert.equal(t.status!.length, 30);
+  assert.deepEqual(chunk([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
+  assert.deepEqual(chunk([], 2), []);
+  const ids = ["101", "102", "103", "104"];
+  assert.equal(advanceLastId(ids, -1, 100), 104, "all saved");
+  assert.equal(advanceLastId(ids, 2, 100), 102, "row index 2 failed → stop at 102");
+  assert.equal(advanceLastId(ids, 0, 100), 100, "first row failed → no advance");
+  assert.equal(advanceLastId(ids, 0, null), null);
+  assert.equal(advanceLastId(["5", "x", "7"], -1, null), 7, "non-numeric ids ignored");
+  assert.equal(advanceLastId(["3"], -1, 10), 10, "never goes backwards");
+});
+
+test("N2: same coupon reuses only an identical order", () => {
+  const a = { plan: "yearly", categoryIds: [3, 1], subjectsPending: false, amount: 50000 };
+  assert.equal(sameIntentParams(a, { plan: "yearly", categoryIds: [1, 3, 3], subjectsPending: false, amount: 50000 }), true, "order/dupes ignored");
+  assert.equal(sameIntentParams(a, { ...a, categoryIds: [1] }), false);
+  assert.equal(sameIntentParams(a, { ...a, plan: "substitute_3m" }), false);
+  assert.equal(sameIntentParams(a, { ...a, amount: 49900 }), false);
+  assert.equal(sameIntentParams(a, { ...a, subjectsPending: true }), false);
+});
+
+test("N7/N10: repair detection and stale processing", () => {
+  assert.equal(needsPurchaseRepair("paid", null, false), true);
+  assert.equal(needsPurchaseRepair("paid", 5, false), false);
+  assert.equal(needsPurchaseRepair("paid", null, true), false, "exists by payment_ref");
+  assert.equal(needsPurchaseRepair("processing", null, false), false);
+  const now = new Date("2026-10-22T12:00:00Z");
+  assert.equal(isStaleProcessing("processing", new Date("2026-10-20T11:00:00Z"), now), true);
+  assert.equal(isStaleProcessing("processing", new Date("2026-10-21T13:00:00Z"), now), false);
+  assert.equal(isStaleProcessing("pending", new Date("2026-10-01T00:00:00Z"), now), false);
+  assert.ok(customerStatusText("processing", false, true).includes("יותר מיומיים"));
 });
 
 test("callback body parsing (optional webhook)", () => {

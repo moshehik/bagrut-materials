@@ -25,6 +25,7 @@ import {
   checkManualTransaction,
   extractCallbackFields,
   generateReference,
+  needsPurchaseRepair,
   settlementPlan,
   type PayablePlan,
   type TxForMatch,
@@ -380,18 +381,65 @@ export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMat
 }
 
 /**
+ * תיקון (N7): בקשה paid בלי מנוי (purchase_id ריק ואין purchases לפי payment_ref – כשל אחרי התפיסה בעבר) → יצירת שורות
+ * ה-purchases + תנועה כספית, אידמפוטנטית. בקשה paid שכבר יש לה מנוי – מחזיר אותו בלי שינוי.
+ */
+export async function ensurePurchasesForPaid(intent: NedarimPayment, adminId: number | null): Promise<SettleResult> {
+  if (intent.status !== "paid") return { ok: false, error: "הבקשה אינה במצב שולם" };
+  let purchaseId = intent.purchaseId ?? null;
+  if (!purchaseId) {
+    const [p] = await db.select({ id: purchases.id }).from(purchases).where(eq(purchases.paymentRef, intent.reference)).limit(1);
+    purchaseId = p?.id ?? null;
+  }
+  if (!needsPurchaseRepair(intent.status, intent.purchaseId, !!purchaseId)) {
+    if (!intent.purchaseId && purchaseId) await touchPayment(intent.id, { purchaseId });
+    return { ok: true, status: "paid", verified: intent.verified, reason: "כבר יש מנוי", purchaseId, claimed: false };
+  }
+  try {
+    const prices = await getPlanPrices();
+    const rows = buildPurchaseRows(intent, prices);
+    const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
+    purchaseId = inserted[0]?.id ?? null;
+    await touchPayment(intent.id, { purchaseId });
+    try {
+      await db.insert(transactions).values({
+        userId: intent.userId,
+        purchaseId,
+        type: "charge",
+        amount: intent.amount,
+        method: "nedarim",
+        reference: intent.reference,
+        note: `תשלום דרך נדרים פלוס ${intent.reference} | ${describeIntent(intent)} | תיקון מנוי חסר`.slice(0, 500),
+        createdById: adminId,
+      });
+    } catch (e) {
+      await appendEvent(intent.id, "error", `תנועה כספית בתיקון נכשלה: ${errText(e)}`);
+    }
+    await appendEvent(intent.id, "repaired", `נוצר המנוי החסר לבקשה ששולמה (#${purchaseId})`, { purchaseId, rows: rows.length, adminId });
+    await logAudit({ actorId: adminId ?? intent.userId, action: "purchase.nedarim_repair", entityType: "purchase", entityId: purchaseId, details: { reference: intent.reference, plan: intent.plan, amount: intent.amount } });
+    return { ok: true, status: "paid", verified: intent.verified, reason: "המנוי החסר נוצר", purchaseId, claimed: false };
+  } catch (e) {
+    const msg = errText(e);
+    await appendEvent(intent.id, "error", `תיקון המנוי נכשל: ${msg}`);
+    return { ok: false, error: `תיקון המנוי נכשל: ${msg}` };
+  }
+}
+
+/**
  * אישור ידני ממסך הניהול. transactionId אופציונלי: אם העסקה קיימת במטמון – נבדקת (M1: מאושרת, סכום זהה, חיובית, ש"ח) ונתפסת;
  * סטייה → סירוב, אלא אם force (אישור חריג מפורש – המנהלת מקבלת את הסכומים ומאשרת; הקורא רושם אודיט).
+ * על בקשה paid בלי מנוי – מתקן (N7). העסקה משוחררת רק אם הקריאה הזו תפסה אותה (N6).
  */
 export async function manualSettle(id: number, adminId: number, transactionId?: string | null, force = false): Promise<SettleResult & { mismatch?: string }> {
   const intent = await getById(id);
   if (!intent) return { ok: false, error: "בקשה לא נמצאה" };
-  if (intent.status === "paid") return { ok: true, status: "paid", verified: intent.verified, reason: "כבר הושלם", purchaseId: intent.purchaseId, claimed: false };
+  if (intent.status === "paid") return ensurePurchasesForPaid(intent, adminId);
   if (!OPEN_STATUSES.includes(intent.status as (typeof OPEN_STATUSES)[number])) return { ok: false, error: "בקשה שבוטלה/פגה – ליצור בקשה חדשה או מנוי ידני ב«מנויים»" };
   const tid = transactionId?.trim() || null;
   let reason = "אישור ידני";
   let txConfirmation: string | null = null;
   let txLast4: string | null = null;
+  let claimedHere = false;
   if (tid) {
     const [cached] = await db.select().from(nedarimTransactions).where(eq(nedarimTransactions.transactionId, tid)).limit(1);
     if (cached) {
@@ -408,6 +456,7 @@ export async function manualSettle(id: number, adminId: number, transactionId?: 
         .where(and(eq(nedarimTransactions.transactionId, tid), isNull(nedarimTransactions.matchedPaymentId)))
         .returning({ id: nedarimTransactions.transactionId });
       if (!claimedTx.length && cached.matchedPaymentId !== intent.id) return { ok: false, error: `עסקה ${tid} נתפסה בינתיים לבקשה אחרת` };
+      claimedHere = claimedTx.length > 0;
       txConfirmation = cached.confirmation;
       txLast4 = cached.last4;
     } else {
@@ -416,8 +465,19 @@ export async function manualSettle(id: number, adminId: number, transactionId?: 
     }
   }
   const r = await settle(intent, { method: "manual", verified: !!tid && !!txConfirmation, reason, transactionId: tid, confirmation: txConfirmation, last4: txLast4, byId: adminId });
-  if (tid && (!r.ok || r.status !== "paid" || !r.claimed)) await releaseTx(tid, intent.id);
+  if (tid && claimedHere && (!r.ok || r.status !== "paid" || !r.claimed)) await releaseTx(tid, intent.id);
   return r;
+}
+
+/** ביטול בקשה פתוחה שהוחלפה בבקשה חדשה של אותה משתמשת עם אותו קופון אבל פרמטרים אחרים (N2) */
+export async function cancelReplaced(old: NedarimPayment, newReference: string) {
+  const r = await db
+    .update(nedarimPayments)
+    .set({ status: "cancelled", errorMessage: `הוחלפה בבקשה ${newReference} (שינוי מסלול/מקצועות/סכום)`, updatedAt: new Date() })
+    .where(and(eq(nedarimPayments.id, old.id), inArray(nedarimPayments.status, [...OPEN_STATUSES])))
+    .returning({ id: nedarimPayments.id });
+  if (r.length) await appendEvent(old.id, "replaced", `בוטלה – הוחלפה בבקשה ${newReference}. עסקה שתשולם עליה תישאר לא-משויכת (לאישור ידני)`, { newReference });
+  return r.length > 0;
 }
 
 /** מצב דמה (פיתוח מקומי בלבד – הקורא בודק simulateAllowed) */
@@ -439,7 +499,18 @@ export async function recordCallback(body: Record<string, unknown>, raw: string)
   const f = extractCallbackFields(body);
   const row = f.reference ? await getByReference(f.reference) : null;
   if (!row) return { matched: false, paymentId: null };
-  await touchPayment(row.id, { callbackBody: raw.slice(0, 20000), ...(f.transactionId && !row.transactionId ? { transactionId: f.transactionId } : {}) });
+  // N8: מזהה עסקה שכבר פתח מנוי על בקשה paid אחרת לא נכתב על הבקשה הזו (רק ביומן)
+  let txToWrite: string | null = null;
+  if (f.transactionId && !row.transactionId) {
+    const [other] = await db
+      .select({ id: nedarimPayments.id })
+      .from(nedarimPayments)
+      .where(and(eq(nedarimPayments.transactionId, f.transactionId), eq(nedarimPayments.status, "paid")))
+      .limit(1);
+    if (other && other.id !== row.id) await appendEvent(row.id, "callback_conflict", `CallBack עם עסקה ${f.transactionId} ששייכת כבר לבקשה אחרת – לא נרשמה`, { transactionId: f.transactionId, otherPaymentId: other.id });
+    else txToWrite = f.transactionId;
+  }
+  await touchPayment(row.id, { callbackBody: raw.slice(0, 20000), ...(txToWrite ? { transactionId: txToWrite } : {}) });
   await appendEvent(row.id, "callback", "התקבל CallBack מנדרים פלוס – מפעיל רענון היסטוריה", { transactionId: f.transactionId, amount: f.amount });
   return { matched: true, paymentId: row.id };
 }

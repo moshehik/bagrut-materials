@@ -163,25 +163,60 @@ export function jerusalemWallTimeToUtc(y: number, mo: number, d: number, h = 0, 
   return new Date(utc);
 }
 
+/** בדיקת טווחים + round-trip (31.02 → null) לשעת קיר */
+function validWallTime(y: number, mo: number, d: number, h: number, mi: number, s: number): boolean {
+  if (!(y >= 2000 && y <= 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && h >= 0 && h <= 23 && mi >= 0 && mi <= 59 && s >= 0 && s <= 59)) return false;
+  const probe = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+  return probe.getUTCFullYear() === y && probe.getUTCMonth() === mo - 1 && probe.getUTCDate() === d;
+}
+
+/** עסקה "מהעתיד" (מעבר ליום) = תאריך שגוי → null (N4) */
+export const MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
+
 /**
  * תאריך כפי שנדרים מחזירים (TransactionTime): dd/MM/yyyy HH:mm[:ss] או ISO בלי offset – שעת ירושלים (Asia/Jerusalem, בלי תלות
- * ב-TZ של השרת); ISO עם Z/offset – כפי שהוא. null אם לא ניתן לפענח.
+ * ב-TZ של השרת); ISO עם Z/offset – כפי שהוא; `/Date(ms[+zzzz])/` של ASP.NET – ms מאז epoch (UTC). אימות טווחים + round-trip;
+ * dd/MM שאינו תקף (למשל 10/22/2026) **לא** מנוחש כ-MM/dd → null; תאריך עתידי מעבר ליום → null. `now` לבדיקות.
  */
-export function parseNedarimDate(v: unknown): Date | null {
+export function parseNedarimDate(v: unknown, now: Date = new Date()): Date | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
+  let d: Date | null = null;
+  const asp = s.match(/^\/?Date\((-?\d{1,16})(?:[+-]\d{4})?\)\/?$/);
   const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-  if (m) {
-    const d = jerusalemWallTimeToUtc(Number(m[3]), Number(m[2]), Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0));
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
-  if (iso) {
-    const d = jerusalemWallTimeToUtc(Number(iso[1]), Number(iso[2]), Number(iso[3]), Number(iso[4]), Number(iso[5]), Number(iso[6] ?? 0));
-    return Number.isNaN(d.getTime()) ? null : d;
+  if (asp) {
+    d = new Date(Number(asp[1]));
+  } else if (m) {
+    const [y, mo, day, h, mi, sec] = [Number(m[3]), Number(m[2]), Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0)];
+    if (!validWallTime(y, mo, day, h, mi, sec)) return null; // גם כשהיה "תקף" כ-MM/dd – לא מנחשים
+    d = jerusalemWallTimeToUtc(y, mo, day, h, mi, sec);
+  } else if (iso) {
+    const [y, mo, day, h, mi, sec] = [Number(iso[1]), Number(iso[2]), Number(iso[3]), Number(iso[4]), Number(iso[5]), Number(iso[6] ?? 0)];
+    if (!validWallTime(y, mo, day, h, mi, sec)) return null;
+    d = jerusalemWallTimeToUtc(y, mo, day, h, mi, sec);
+  } else {
+    const t = Date.parse(s);
+    d = Number.isNaN(t) ? null : new Date(t);
   }
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? null : new Date(t);
+  if (!d || Number.isNaN(d.getTime())) return null;
+  if (d.getTime() > now.getTime() + MAX_FUTURE_MS) return null;
+  if (d.getUTCFullYear() < 2000) return null;
+  return d;
+}
+
+/**
+ * מספר אישור (N3): נרמול + רשימת ערכי "אין": ריק/רווחים, 0 / 00…, false, null, undefined, n/a, na, none, -, —. חייב להכיל
+ * לפחות ספרה או אות. מחזיר את הערך המנורמל (≤40) או null.
+ */
+export function normalizeConfirmation(v: unknown): string | null {
+  if (v === null || v === undefined || v === false) return null;
+  const s = String(v).trim().slice(0, 40);
+  if (!s) return null;
+  const low = s.toLowerCase();
+  if (/^(0+|false|null|undefined|n\/a|na|none|nil|-+|—+|–+)$/.test(low)) return null;
+  if (!/[\p{L}\p{N}]/u.test(s)) return null;
+  return s;
 }
 
 /**
@@ -196,9 +231,9 @@ export function transactionStatusOk(status: string | null | undefined): boolean 
   return false;
 }
 
-/** עסקה "מאושרת" = יש מספר אישור (Confirmation) לא ריק, ואם יש שדה סטטוס – הוא הצלחה. רק כאלה מתאימות אוטומטית. */
+/** עסקה "מאושרת" = יש מספר אישור אמיתי (normalizeConfirmation), ואם יש שדה סטטוס – הוא הצלחה. רק כאלה מתאימות אוטומטית. */
 export function isApprovedTx(t: Pick<NormalizedTx, "confirmation" | "status">): boolean {
-  if (!t.confirmation || !t.confirmation.trim()) return false;
+  if (!normalizeConfirmation(t.confirmation)) return false;
   const st = transactionStatusOk(t.status);
   return st === null || st === true;
 }
@@ -237,29 +272,86 @@ export function pickRawFields(row: unknown): Record<string, string> {
  * שורה מ-GetHistoryJson → מבנה מנורמל. שמות השדות לפי תיעוד ה-API של נדרים (TransactionId, Amount, Currency, Phone, Mail,
  * Comments, TransactionTime, ClientName, Confirmation, LastNum) עם סובלנות לשמות קרובים. null = אין מזהה עסקה.
  */
-export function parseHistoryRow(row: unknown): NormalizedTx | null {
+export function parseHistoryRow(row: unknown, now: Date = new Date()): NormalizedTx | null {
   const id = pick(row, ["TransactionId", "TransactionID", "Id"]);
   if (!id || !/^\d{1,30}$/.test(id.trim())) return null;
   const amount = shekelsToAgorot(pick(row, ["Amount", "Sum", "Schum"]));
-  if (amount === null) return null;
-  const confirmation = pick(row, ["Confirmation", "ConfirmationNumber", "AuthorisationNumber"])?.trim().slice(0, 40) ?? null;
-  const status = pick(row, ["Status", "Result", "TransactionStatus", "StatusDesc"])?.slice(0, 30) ?? null;
-  const t: NormalizedTx = {
+  if (amount === null || !Number.isSafeInteger(amount)) return null;
+  const t: NormalizedTx = clampTx({
     transactionId: id.trim(),
     amount,
     currency: pick(row, ["Currency"]) ?? null,
     phone: phoneDigits(pick(row, ["Phone", "Cellular", "Phone1", "Tel"])),
     email: emailKey(pick(row, ["Mail", "Email"])),
-    clientName: pick(row, ["ClientName", "Name", "FullName"])?.slice(0, 120) ?? null,
-    comments: pick(row, ["Comments", "Comment", "Avour", "Param1"])?.slice(0, 500) ?? null,
-    confirmation: confirmation || null,
+    clientName: pick(row, ["ClientName", "Name", "FullName"]) ?? null,
+    comments: pick(row, ["Comments", "Comment", "Avour", "Param1"]) ?? null,
+    confirmation: normalizeConfirmation(pick(row, ["Confirmation", "ConfirmationNumber", "AuthorisationNumber"])),
     last4: (pick(row, ["LastNum", "Last4", "CardLast4"]) ?? "").replace(/\D/g, "").slice(-4) || null,
-    status,
+    status: pick(row, ["Status", "Result", "TransactionStatus", "StatusDesc"]) ?? null,
     approved: false,
-    transactionAt: parseNedarimDate(pick(row, ["TransactionTime", "Date", "CreateDate", "Time"])),
-  };
+    transactionAt: parseNedarimDate(pick(row, ["TransactionTime", "Date", "CreateDate", "Time"]), now),
+  });
   t.approved = isApprovedTx(t);
   return t;
+}
+
+/** אורכי העמודות של nedarim_transactions (N5) – חיתוך לפני insert, כדי ששורה ארוכה לא תפיל את הקריאה */
+export const TX_COLUMN_LIMITS = { transactionId: 40, currency: 4, phone: 30, email: 255, clientName: 120, confirmation: 40, last4: 4, status: 30, comments: 2000 } as const;
+export function clampTx<T extends NormalizedTx>(t: T): T {
+  const cut = (v: string | null, n: number) => (v === null ? null : v.slice(0, n));
+  return {
+    ...t,
+    transactionId: t.transactionId.slice(0, TX_COLUMN_LIMITS.transactionId),
+    currency: cut(t.currency, TX_COLUMN_LIMITS.currency),
+    phone: t.phone.slice(0, TX_COLUMN_LIMITS.phone),
+    email: t.email.slice(0, TX_COLUMN_LIMITS.email),
+    clientName: cut(t.clientName, TX_COLUMN_LIMITS.clientName),
+    comments: cut(t.comments, TX_COLUMN_LIMITS.comments),
+    confirmation: cut(t.confirmation, TX_COLUMN_LIMITS.confirmation),
+    last4: cut(t.last4, TX_COLUMN_LIMITS.last4),
+    status: cut(t.status, TX_COLUMN_LIMITS.status),
+  };
+}
+
+/** חלוקה ל-chunks ל-insert ב-batch (N1) */
+export function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+/**
+ * עד איזה TransactionId מותר לקדם את last_transaction_id (N1/N5): המזהה הגבוה ביותר מבין השורות שנשמרו בהצלחה, ולעולם לא מעבר
+ * לשורה שנכשלה (failedIndex = האינדקס הראשון שנכשל, או -1). ההיסטוריה עולה לפי מזהה, אז זה "עד השורה שלפני הכישלון".
+ */
+export function advanceLastId(ids: string[], failedIndex: number, current: number | null): number | null {
+  let max = current ?? 0;
+  const upto = failedIndex >= 0 ? failedIndex : ids.length;
+  for (let i = 0; i < upto; i++) {
+    const n = Number(ids[i]);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max || null;
+}
+
+/** האם שתי בקשות "אותה הזמנה" (N2) – מסלול, מקצועות (ללא סדר), דלג, סכום */
+export function sameIntentParams(
+  a: { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number },
+  b: { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number },
+): boolean {
+  const sa = [...new Set(a.categoryIds)].sort((x, y) => x - y).join(",");
+  const sb = [...new Set(b.categoryIds)].sort((x, y) => x - y).join(",");
+  return a.plan === b.plan && a.subjectsPending === b.subjectsPending && a.amount === b.amount && sa === sb;
+}
+
+/** בקשה "תקועה": processing (אישור ידני) מעבר ל-INTENT_TTL_HOURS – דורשת טיפול (N10) */
+export function isStaleProcessing(status: string, createdAt: Date, now: Date = new Date()): boolean {
+  return status === "processing" && createdAt.getTime() < now.getTime() - INTENT_TTL_HOURS * 3600_000;
+}
+
+/** בקשה paid שאין לה מנוי (N7) – צריך תיקון */
+export function needsPurchaseRepair(status: string, purchaseId: number | null, existsByRef: boolean): boolean {
+  return status === "paid" && !purchaseId && !existsByRef;
 }
 
 export const isIls = (currency: string | null) =>
@@ -400,12 +492,13 @@ export function extractCallbackFields(obj: unknown): { reference: string | null;
 
 // ---------------------------------------------------------------------------------------------------------------- טקסטים
 
-/** הטקסט שהמורה רואה לפי הסטטוס – פנייה בלשון נוכחת */
-export function customerStatusText(status: string, assistRequested = false): string {
+/** הטקסט שהמורה רואה לפי הסטטוס – פנייה בלשון נוכחת. stale = processing מעל 48 שעות (N10) */
+export function customerStatusText(status: string, assistRequested = false, stale = false): string {
   switch (status) {
     case "paid":
       return "התשלום זוהה והמנוי שלך פעיל. תודה!";
     case "processing":
+      if (stale) return "הבקשה ממתינה לטיפול המנהלת כבר יותר מיומיים. אם שילמת – אין צורך לשלם שוב; כתבי לנו ונסדיר את זה.";
       return assistRequested
         ? "הבקשה שלך הועברה למנהלת האתר – היא תיצור איתך קשר להשלמת התשלום. אין צורך לשלם שוב."
         : "התשלום התקבל אצל נדרים פלוס אבל לא הצלחנו לשייך אותו אוטומטית – מנהלת האתר תאשר אותו ידנית. אין צורך לשלם שוב.";

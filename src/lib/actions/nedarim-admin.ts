@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { SECRET_DEFS, deleteSecret, getNedarimApiPassword, isSecretName, redactNedarim, setSecret } from "@/lib/nedarim/secrets";
 import { cancelIntent, getById, manualSettle } from "@/lib/nedarim/store";
-import { matchPendingPayments, refreshHistory } from "@/lib/nedarim/sync";
+import { matchPendingPayments, refreshHistory, setStartId } from "@/lib/nedarim/sync";
 
 /**
  * פעולות המנהלת על התשלומים בנדרים (/admin/payments). כל פעולה: אדמין בלבד (admin()), הבדיקה המובנית של Next ל-server actions
@@ -38,6 +38,19 @@ export async function refreshNedarimNow(): Promise<NedarimAdminState> {
     return { ok: true, reason: `${r.reason}. בוצעה התאמה מול המטמון (${m.settled.length} שודרגו).` };
   }
   await logAudit({ actorId: me.id, action: "nedarim.refresh", details: { ran: true, ok: r.ok, reason: r.reason, fetched: r.fetched } });
+  revalidate();
+  return r.ok ? { ok: true, reason: r.reason } : { error: r.reason };
+}
+
+/** נקודת התחלה (N1): מספר העסקה האחרון מפורטל נדרים – הקריאה הבאה תתחיל אחריו */
+export async function setNedarimStartId(_prev: NedarimAdminState, form: FormData): Promise<NedarimAdminState> {
+  const me = await admin();
+  if (!me) return { error: "אין הרשאה" };
+  const raw = String(form.get("lastId") ?? "").trim();
+  if (!/^\d{1,15}$/.test(raw)) return { error: "יש להזין מספר עסקה (ספרות בלבד)" };
+  const force = form.get("force") === "1";
+  const r = await setStartId(Number(raw), force);
+  await logAudit({ actorId: me.id, action: "nedarim.set_start_id", details: { lastId: Number(raw), force, ok: r.ok, reason: r.reason } });
   revalidate();
   return r.ok ? { ok: true, reason: r.reason } : { error: r.reason };
 }

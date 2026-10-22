@@ -8,6 +8,8 @@ import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
   TX_RETENTION_DAYS,
+  advanceLastId,
+  chunk,
   decideAutoMatches,
   parseHistoryRow,
   pickRawFields,
@@ -33,7 +35,9 @@ export const SYNC_USER_FLOOR_SEC = 180;
 export const SYNC_ADMIN_FLOOR_SEC = 60;
 export const HOURLY_CALL_CAP = 18;
 const LOCK_SEC = 90;
-const MAX_ROWS = 2000;
+/** שורות לקריאה (N1): קטן, כדי שהסבב יסתיים בתוך 60 שנ' של ה-route גם עם שמירה ל-DB */
+export const MAX_ROWS = 500;
+const INSERT_CHUNK = 150;
 const MAX_BACKOFF_SEC = 60 * 60;
 
 export type SyncReason = "poll" | "user" | "admin" | "callback" | "test";
@@ -147,47 +151,75 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
         ? (json as { Data: unknown[] }).Data
         : null;
     if (!rows) return fail("תשובה לא צפויה מנדרים פלוס (לא רשימת עסקאות) – מפתח/קוד מוסד שגויים?");
-    rawRows = rows;
-    parsed = rows.map(parseHistoryRow);
+    rawRows = rows.slice(0, MAX_ROWS);
+    parsed = rawRows.map((r) => parseHistoryRow(r));
   } catch (e) {
     return fail(`שגיאת רשת: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // שמירה במטמון העסקאות (upsert – עסקה שכבר קיימת לא משתנה, כדי לא לדרוס שיוך)
-  let maxId = claimed.lastTransactionId ?? 0;
+  // שמירה במטמון (N1/N5): insert ב-batch, upsert (עסקה קיימת לא משתנה – לא דורסים שיוך); last_transaction_id מתקדם אחרי כל chunk
+  // שנשמר, ולעולם לא מעבר לשורה שנכשלה – כישלון עוצר את הסבב (lastError), והסבב הבא ממשיך מאותה נקודה. אין לולאה בלי התקדמות:
+  // כל chunk שהצליח מקדם את המצב מיד, גם אם ה-route ייהרג אחר כך.
   const fetchedAt = new Date();
-  for (let i = 0; i < parsed.length; i++) {
-    const t = parsed[i];
-    if (!t) continue;
-    const idNum = Number(t.transactionId);
-    if (Number.isFinite(idNum) && idNum > maxId) maxId = idNum;
+  const items = parsed
+    .map((t, i) => (t ? { t, raw: rawRows[i] } : null))
+    .filter((x): x is { t: NonNullable<(typeof parsed)[number]>; raw: unknown } => !!x);
+  const toRow = (x: { t: NonNullable<(typeof parsed)[number]>; raw: unknown }) => ({
+    transactionId: x.t.transactionId,
+    amount: x.t.amount,
+    currency: x.t.currency,
+    phone: x.t.phone || null,
+    email: x.t.email || null,
+    clientName: x.t.clientName,
+    comments: x.t.comments ? redactNedarim(x.t.comments).slice(0, 2000) : null,
+    confirmation: x.t.confirmation,
+    last4: x.t.last4,
+    status: x.t.status,
+    approved: x.t.approved,
+    transactionAt: x.t.transactionAt,
+    raw: redactNedarim(JSON.stringify(pickRawFields(x.raw))).slice(0, 2000),
+    fetchedAt,
+  });
+  let lastId = claimed.lastTransactionId ?? null;
+  let saved = 0;
+  let insertError: string | null = null;
+  const ids = items.map((x) => x.t.transactionId);
+  outer: for (const part of chunk(items, INSERT_CHUNK)) {
     try {
-      await db
-        .insert(nedarimTransactions)
-        .values({
-          transactionId: t.transactionId,
-          amount: t.amount,
-          currency: t.currency,
-          phone: t.phone || null,
-          email: t.email || null,
-          clientName: t.clientName,
-          comments: t.comments ? redactNedarim(t.comments) : null,
-          confirmation: t.confirmation,
-          last4: t.last4,
-          status: t.status,
-          approved: t.approved,
-          transactionAt: t.transactionAt,
-          raw: redactNedarim(JSON.stringify(pickRawFields(rawRows[i]))).slice(0, 2000),
-          fetchedAt,
-        })
-        .onConflictDoNothing();
+      await db.insert(nedarimTransactions).values(part.map(toRow)).onConflictDoNothing();
+      saved += part.length;
     } catch (e) {
-      console.error("[nedarim sync] tx insert failed", redactNedarim(e instanceof Error ? e.message : "error").slice(0, 200));
+      // ה-chunk נכשל – שורה-שורה כדי לשמור מה שאפשר ולעצור בדיוק בשורה הבעייתית
+      for (const x of part) {
+        try {
+          await db.insert(nedarimTransactions).values(toRow(x)).onConflictDoNothing();
+          saved += 1;
+        } catch (e2) {
+          insertError = `שמירת עסקה ${x.t.transactionId} נכשלה: ${redactNedarim(e2 instanceof Error ? e2.message : String(e2)).slice(0, 200)}`;
+          break outer;
+        }
+      }
+      void e;
     }
+    lastId = advanceLastId(ids, insertError ? saved : -1, lastId);
+    await db.update(nedarimSyncState).set({ lastTransactionId: lastId, updatedAt: new Date() }).where(eq(nedarimSyncState.id, 1));
   }
+  lastId = advanceLastId(ids, insertError ? saved : -1, lastId);
+  // שורות שלא פוענחו (בלי מזהה/סכום) לא נשמרות אבל כן מקדמות את המצב – אחרת ייקראו שוב לנצח
+  if (!insertError) lastId = advanceLastId(rawRows.map((r) => String((r as Record<string, unknown> | null)?.TransactionId ?? "")), -1, lastId);
   await db
     .update(nedarimSyncState)
-    .set({ lastTransactionId: maxId || null, lastFetchAt: fetchedAt, lastSuccessAt: fetchedAt, lockUntil: null, consecutiveErrors: 0, lastError: null, nextAllowedAt: null, lastFetchCount: parsed.length, updatedAt: fetchedAt })
+    .set({
+      lastTransactionId: lastId,
+      lastFetchAt: fetchedAt,
+      lastSuccessAt: fetchedAt,
+      lockUntil: null,
+      consecutiveErrors: 0,
+      lastError: insertError,
+      nextAllowedAt: null,
+      lastFetchCount: saved,
+      updatedAt: fetchedAt,
+    })
     .where(eq(nedarimSyncState.id, 1));
 
   // ניקוי (M6): עסקאות לא-משויכות ישנות מ-TX_RETENTION_DAYS
@@ -204,7 +236,32 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
   } catch (e) {
     console.error("[nedarim sync] match failed", redactNedarim(e instanceof Error ? e.message : "error").slice(0, 200));
   }
-  return { ran: true, ok: true, reason: `נקראו ${parsed.length} עסקאות`, fetched: parsed.length, state: await getSyncState() };
+  return { ran: true, ok: !insertError, reason: insertError ? `נקראו ${parsed.length}, נשמרו ${saved}; ${insertError}` : `נקראו ${parsed.length} עסקאות`, fetched: saved, state: await getSyncState() };
+}
+
+/**
+ * נקודת התחלה ידנית (N1): המנהלת מזינה את מספר העסקה האחרון מהפורטל של נדרים, כדי שהקריאה הבאה תתחיל אחריו ולא תסרוק
+ * שנים של היסטוריה (500 שורות לקריאה, ≤18 בשעה). מותר רק להעלות (או כשאין ערך) – כדי לא לדלג אחורה על עסקאות שכבר נקראו.
+ */
+export async function setStartId(lastId: number, force = false): Promise<{ ok: boolean; reason: string }> {
+  if (!Number.isInteger(lastId) || lastId < 0) return { ok: false, reason: "מספר עסקה לא תקין" };
+  await db.insert(nedarimSyncState).values({ id: 1, cutoffAt: new Date() }).onConflictDoNothing();
+  const state = await getSyncState();
+  if (state?.lastTransactionId && lastId < state.lastTransactionId && !force) {
+    return { ok: false, reason: `נקודת ההתחלה הנוכחית (${state.lastTransactionId}) גבוהה יותר – הורדה תגרום לקריאה חוזרת של עסקאות (אפשר לכפות)` };
+  }
+  await db.update(nedarimSyncState).set({ lastTransactionId: lastId || null, updatedAt: new Date() }).where(eq(nedarimSyncState.id, 1));
+  return { ok: true, reason: `הקריאה הבאה תתחיל אחרי עסקה ${lastId}` };
+}
+
+/** כמה עסקאות במטמון בלי מועד מפוענח (N4) – מוצג באדמין כדי לזהות פורמט תאריך לא מוכר */
+export async function countTxWithoutDate(): Promise<number> {
+  try {
+    const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(nedarimTransactions).where(isNull(nedarimTransactions.transactionAt));
+    return Number(r?.n ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 /**
