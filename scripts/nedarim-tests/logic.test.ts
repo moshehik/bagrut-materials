@@ -76,7 +76,7 @@ test("M4: dates without offset are Asia/Jerusalem regardless of server TZ (DST a
   assert.equal(parseNedarimDate("", ref), null);
 });
 
-test("hosted payment URL uses only the documented/verified parameters", () => {
+test("hosted payment URL uses only the parameters verified in practice (Analytic = reference, no 'comment')", () => {
   const url = hostedPaymentUrl({
     mosadId: "7019454",
     amountAgorot: 58800,
@@ -84,19 +84,61 @@ test("hosted payment URL uses only the documented/verified parameters", () => {
     clientName: "רחל כהן",
     phone: "0501234567",
     email: "r@example.com",
-    comment: "לו״ז העניין - מנוי שנתי - NP-ABCDEFGH",
+    planKey: "yearly",
+    description: "לו״ז העניין - מנוי שנתי",
     redirectUrl: "https://example.com/pay?ref=NP-ABCDEFGH",
   });
   const u = new URL(url);
   assert.equal(u.origin + u.pathname, "https://www.matara.pro/nedarimplus/online/");
-  assert.deepEqual([...u.searchParams.keys()].sort(), ["Amount", "AmountLock", "Analytic", "ClientName", "Email", "HideParameters", "OnlyNormal", "OnlyShekel", "Payment", "PaymentLock", "Phone", "Redirect", "comment", "mosad"].sort());
+  assert.deepEqual([...u.searchParams.keys()].sort(), ["Amount", "AmountLock", "Analytic", "ClientName", "Email", "HideParameters", "OnlyNormal", "OnlyShekel", "Payment", "PaymentLock", "Phone", "Redirect", "avour", "groupe", "mosad"].sort());
+  assert.equal(u.searchParams.has("comment"), false, "'comment' is not stored by Nedarim – never sent");
   assert.equal(u.searchParams.get("mosad"), "7019454");
   assert.equal(u.searchParams.get("Amount"), "588");
   assert.equal(u.searchParams.get("AmountLock"), "1");
   assert.equal(u.searchParams.get("Payment"), "1");
-  assert.equal(u.searchParams.get("Analytic"), "NP-ABCDEFGH");
-  assert.ok(u.searchParams.get("comment")!.includes("NP-ABCDEFGH"));
+  assert.equal(u.searchParams.get("Analytic"), "NP-ABCDEFGH", "the reliable identifier");
+  assert.equal(u.searchParams.get("groupe"), "yearly");
+  assert.ok(!u.searchParams.get("avour")!.includes("רחל"), "no PII in avour");
   assert.equal(u.searchParams.get("Redirect"), "https://example.com/pay?ref=NP-ABCDEFGH");
+  // ה-Comments שנדרים יוצרים: "<Analytic> | <avour>" – המזהה מחולץ גם עם טקסט אחריו
+  assert.equal(extractReference("NP-ABCDEFGH | לו״ז העניין - מנוי שנתי"), "NP-ABCDEFGH");
+  assert.equal(extractReference("משהו לפני NP-ABCDEFGH ואחרי"), "NP-ABCDEFGH");
+});
+
+test("realistic GetHistoryJson row from a site link (PII neutralized): Comments '<ref> | text', Groupe, no status", () => {
+  // מבנה השדות כפי שאומת מול ההיסטוריה האמיתית (22.10.2026); הערכים מומצאים. המזהה בפורמט שלנו (בלי 0/1/I/O).
+  const now = new Date("2026-10-22T15:00:00Z");
+  const row = {
+    Shovar: "1", Zeout: "000000000", ClientName: "פלונית אלמונית", Adresse: "רחוב 0", MisparIchi: "", Phone: "0500000001", Mail: "zz-test@example.com",
+    Amount: "1", Currency: "1", TransactionTime: "22/10/2026 04:37:02", Confirmation: " 064756", LastNum: "0000", TransactionType: "רגיל",
+    Groupe: "yearly", Comments: "NP-ABCD2345 | לו״ז העניין - מנוי שנתי", Tashloumim: "1", TransactionId: "9900001",
+  };
+  const t = parseHistoryRow(row, now)!;
+  assert.ok(t);
+  assert.equal(t.amount, 100, 'Amount "1" → 100 agorot');
+  assert.equal(t.currency, "1");
+  assert.equal(t.confirmation, "064756", "leading space trimmed");
+  assert.equal(t.status, null, "no status field at all");
+  assert.equal(t.approved, true);
+  assert.equal(t.transactionAt?.toISOString(), "2026-10-22T01:37:02.000Z", "dd/MM/yyyy HH:mm:ss, Jerusalem summer time");
+  assert.equal(extractReference(t.comments), "NP-ABCD2345", "reference found at the start of '<ref> | text'");
+  assert.equal(pickRawFields(row).Groupe, "yearly");
+  assert.ok(!("Zeout" in pickRawFields(row)) && !("MisparIchi" in pickRawFields(row)) && !("Adresse" in pickRawFields(row)));
+  const tx = { ...t, fetchedAt: now, matchedPaymentId: null };
+  // strong: מזהה בהערה – גם כשהטלפון/המייל בעסקה שונים (המשלמת הקלידה אחרים)
+  const p = mkPayment({ reference: "NP-ABCD2345", amount: 100, phone: "0529999999", email: "other@example.com", createdAt: new Date("2026-10-22T01:30:00Z") });
+  const strong = decideAutoMatches([p], [tx]);
+  assert.equal(strong.matches.length, 1);
+  assert.equal(strong.matches[0].kind, "strong");
+  // weak: בלי מזהה בהערה (נכנסה מהקישור הרגיל) – לפי הטלפון שהקלידה
+  const plain = { ...tx, transactionId: "9900002", comments: null };
+  const p2 = mkPayment({ id: 2, reference: "NP-ZZZZZZZZ", amount: 100, phone: "050-0000001", email: "other@example.com", createdAt: new Date("2026-10-22T01:30:00Z") });
+  const weak = decideAutoMatches([p2], [plain]);
+  assert.equal(weak.matches.length, 1);
+  assert.equal(weak.matches[0].kind, "weak");
+  // ובלי טלפון/מייל תואמים ובלי מזהה – שום דבר
+  const p3 = mkPayment({ id: 3, reference: "NP-YYYYYYYY", amount: 100, phone: "0529999999", email: "other@example.com", createdAt: new Date("2026-10-22T01:30:00Z") });
+  assert.equal(decideAutoMatches([p3], [plain]).matches.length, 0);
 });
 
 test("history row parsing: documented field names, approval, raw whitelist (M6)", () => {

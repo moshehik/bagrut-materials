@@ -84,12 +84,13 @@ export const emailKey = (v: unknown) => String(v ?? "").trim().toLowerCase();
 // ---------------------------------------------------------------------------------------------------------------- דף התשלום המתארח
 
 /**
- * הקישור לדף התשלום המתארח של נדרים פלוס. רק פרמטרים שאומתו מול הקוד של הדף (JavaScript5.js, GetURLParameter/DecodeParam):
- *   mosad (חובה), Amount + AmountLock=1 (סכום נעול), Payment=1 + PaymentLock=1 (תשלום אחד), OnlyNormal=1 (חיוב רגיל בלבד –
- *   בלי הו"ק/ביט/העברה), OnlyShekel=1, ClientName / Phone / Email (ממולאים ונעולים), comment (הערה ממולאת ונעולה – הדף
- *   עצמו מנטרל את השדה), Analytic (מצורף לתחילת הערת העסקה: "NP-… | …" – ערוץ שני למזהה), Redirect (חזרה לאתר אחרי
- *   תשלום מוצלח), HideParameters=1 (הדף מסיר את הפרמטרים משורת הכתובת אחרי הטעינה – הטלפון/המייל לא נשארים בהיסטוריה).
- * אין בדף פרמטר CallBack ואין Param1/Param2 – ולכן הזיהוי הוא דרך ההערה (ראו findCandidates).
+ * הקישור לדף התשלום המתארח של נדרים פלוס – לפי מה שנבדק **בפועל** מול הדף ומול GetHistoryJson (22.10.2026):
+ *   mosad (חובה); Amount + AmountLock=1 – נשמר (Amount "1" הגיע כ-"1"); **Analytic=<NP-…> – הזיהוי המהימן**: נכנס לתחילת
+ *   `Comments` של העסקה; avour – נכנס ל-`Comments` אחרי ה-Analytic, מופרד ב-" | " (תיאור קצר, בלי PII); groupe – נכנס לשדה
+ *   `Groupe` כפי שהוא (מפתח המסלול לדוחות, לא לזיהוי); Payment/PaymentLock, OnlyNormal, OnlyShekel, Redirect, HideParameters –
+ *   לפי קוד הדף. **`comment` לא נכנס לשום שדה – לא נשלח.** ClientName/Phone/Email ממולאים מראש **לא נשמרים בעסקה** – נשמרים
+ *   רק הפרטים שהמשלמת עצמה הזינה בטופס; נשלחים בכל זאת (לא מזיק, אולי ממלאים את הטופס), אבל שום דבר לא נשען עליהם.
+ * אין בדף פרמטר CallBack ואין Param1/Param2.
  */
 export function hostedPaymentUrl(input: {
   mosadId: string;
@@ -98,7 +99,10 @@ export function hostedPaymentUrl(input: {
   clientName: string;
   phone: string;
   email: string;
-  comment: string;
+  /** מפתח המסלול (yearly / substitute_3m / substitute_daily) – לשדה Groupe בדוחות נדרים */
+  planKey: string;
+  /** תיאור קצר (בלי PII) – נכנס ל-Comments אחרי המזהה */
+  description: string;
   redirectUrl: string;
 }): string {
   const q = new URLSearchParams();
@@ -112,16 +116,17 @@ export function hostedPaymentUrl(input: {
   if (input.clientName) q.set("ClientName", input.clientName.slice(0, 60));
   if (input.phone) q.set("Phone", input.phone.slice(0, 20));
   if (input.email) q.set("Email", input.email.slice(0, 120));
-  q.set("comment", input.comment.slice(0, 150));
   q.set("Analytic", input.reference);
+  if (input.description) q.set("avour", input.description.slice(0, 100));
+  if (input.planKey) q.set("groupe", input.planKey.slice(0, 40));
   if (input.redirectUrl) q.set("Redirect", input.redirectUrl);
   q.set("HideParameters", "1");
   return `${NEDARIM_HOSTED_BASE}?${q.toString()}`;
 }
 
-/** הערת העסקה שרואים בפורטל של נדרים ובהיסטוריה: שם האתר + המסלול + מזהה הבקשה */
-export function buildTransactionComment(siteName: string, planLabel: string, reference: string): string {
-  return [siteName.trim(), planLabel.trim(), reference].filter(Boolean).join(" - ").slice(0, 150);
+/** התיאור הקצר שנכנס ל-Comments אחרי המזהה (avour): שם האתר + המסלול – בלי PII */
+export function buildTransactionComment(siteName: string, planLabel: string): string {
+  return [siteName.trim(), planLabel.trim()].filter(Boolean).join(" - ").slice(0, 100);
 }
 
 // ---------------------------------------------------------------------------------------------------------------- היסטוריית העסקאות (GetHistoryJson)

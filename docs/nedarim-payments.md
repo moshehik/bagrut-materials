@@ -30,7 +30,7 @@
        |  1. מסלול → מקצועות (שנתי 1–3 / 3 חודשים 1 / יומית בלי) + טלפון/עיר/תיכון אם חסרים
        |     ---> POST /api/pay/intent → שורת nedarim_payments status=pending, reference=NP-XXXXXXXX (אקראי קריפטוגרפי)
        |     <--- { reference, amount, hostedUrl }   (הכתובת הופכת ל-/pay?ref=NP-…)
-       |  2. לשונית חדשה: דף התשלום של נדרים (Amount נעול, ClientName/Phone/Email ממולאים, comment+Analytic = מזהה הבקשה,
+       |  2. לשונית חדשה: דף התשלום של נדרים (Amount נעול, Analytic = מזהה הבקשה → Comments, groupe = מסלול; המשלמת מזינה שם/טלפון/מייל בעצמה,
        |     Redirect חזרה ל-/pay?ref=…). ההקלדה של הכרטיס – שם בלבד.
        |  3. דף ההמתנה: polling GET /api/pay/status כל 30 שנ' (מפעיל את השער – קריאה אמיתית לכל היותר פעם ב-4 דק'),
        |     כפתור "שילמתי – בדקי עכשיו" (POST /api/pay/check – רצפה 3 דק'), "לפתוח שוב את דף התשלום", פנייה למנהלת (assist).
@@ -44,7 +44,7 @@
 **סכום זהה בדיוק** (אגורות), ש"ח, עסקה שלא שויכה, **עם מועד עסקה מפוענח** (`TransactionTime`, שעת ירושלים; בלי מועד – לא
 מועמדת – M3), שאינו לפני יצירת הבקשה פחות 15 דק' ואינו לפני **מועד החיתוך** (`nedarim_sync_state.cutoff_at` = רגע ההדלקה;
 עסקאות היסטוריות לעולם לא מתאימות). בקשות ישנות מ-48 שעות לא נבדקות (פגות).
-- **strong** – מזהה הבקשה `NP-…` מופיע בהערת העסקה (`Comments`; נשלח גם ב-`comment` וגם ב-`Analytic`). **בדיוק אחת, שלא
+- **strong** – מזהה הבקשה `NP-…` מופיע בהערת העסקה (`Comments`; נשלח ב-`Analytic`, שנדרים מכניסים לתחילת ההערה). **בדיוק אחת, שלא
   מתאימה לבקשה אחרת → מנוי.** יותר → אישור ידני.
 - **weak** – טלפון מנורמל זהה (ספרות בלבד, 972→0, בלי מקפים) **או** מייל זהה (lowercase), בלי מזהה בהערה (למשל פתחה את דף נדרים
   בלי הקישור שלנו – ובפועל `Comments` ריק כשנכנסים מהקישור הרגיל של המוסד). **החלטת הבעלים (22.10.2026): משדרג אוטומטית, אבל רק
@@ -87,19 +87,31 @@
   פענוח תאריכים: טווחים + round-trip (31/02 → null), `dd/MM` לא תקף **לא** מנוחש כ-`MM/dd` (→ null), עתידי מעבר ליום → null,
   `/Date(ms[+zzzz])/` של ASP.NET נתמך.
 
-### פרמטרי דף התשלום המתארח – מה נמצא
+### פרמטרי דף התשלום המתארח – מה נבדק **בפועל** (22.10.2026, מוסד 7019454)
 
-אין תיעוד רשמי פומבי לדף. הפרמטרים אומתו ב-**קוד הדף עצמו** (`/nedarimplus/online/Files/JavaScript5.js`, הפונקציות
-`GetURLParameter`/`DecodeParam`) ותואמים לתיעוד ה-API שנדרים מוסרים למפתחים (עותק ציבורי: `seedlinggary/kty-frontend`,
-`NedarimPlus-API.md`):
-`mosad` (חובה), `Amount`, `AmountLock`, `Payment`, `PaymentLock`/`tashlumlock`, `Day`, `ClientName`, `Phone`, `Email`, `Street`,
-`City`, `Zeout`, `Bank`/`Snif`/`Account`, `groupe`, `groupelock`, `comment` (ממלא **ונועל** את ההערה), `avour` (ממלא) + `avourlock`,
-`CustomAvour`, `CustomKoteret`, `Analytic` (מצורף לתחילת הערת העסקה עם " | "), `Redirect` (אחרי תשלום מוצלח), `TakanonChecked`,
-`logo`, `HideParameters`, `currency`, `OnlyShekel`/`OnlyDollar`/`ForceDollar`, `Language`/`lang`, `NormalDefault`/`KevaDefault`,
-`OnlyNormal`/`onlykeva`/`onlymasav`/`OnlyBit`/`OnlyDigitalTransfer`/`OnlyCrypto`, `CRM`, `S`, `MatrimId`, `device`.
-**אין** פרמטר CallBack ואין Param1/Param2 בדף – לכן הזיהוי דרך ההערה. מה שאנחנו שולחים (`hostedPaymentUrl`): `mosad`, `Amount`,
-`AmountLock=1`, `Payment=1`, `PaymentLock=1`, `OnlyNormal=1`, `OnlyShekel=1`, `ClientName`, `Phone`, `Email`, `comment`, `Analytic`,
-`Redirect`, `HideParameters=1`. לא שולחים: Groupe, Street/City, Zeout, TakanonChecked (המורה מאשרת תקנון בעצמה).
+נבדק עם קישור אמיתי שהכיל `comment`, `Analytic`, `groupe`, `avour`, `ClientName`, `Phone`, `Email`, `Amount=1&AmountLock=1`, ואז נקראה
+העסקה ב-`GetHistoryJson`:
+
+| פרמטר בקישור | מה קרה בעסקה שנרשמה | שימוש שלנו |
+|---|---|---|
+| `Amount` + `AmountLock=1` | נשמר (`Amount` `"1"`) | הסכום המדויק, נעול |
+| **`Analytic`** | נכנס **לתחילת `Comments`** | **הזיהוי המהימן** – `Analytic=<NP-…>` תמיד |
+| `avour` | נכנס ל-`Comments` **אחרי** ה-Analytic, מופרד ב-`" | "` (תוצאה: `"<Analytic> | <avour>"`) | תיאור קצר בלי PII ("לו״ז העניין - מנוי שנתי") |
+| `groupe` | נכנס לשדה `Groupe` כפי שהוא | מפתח המסלול (`yearly`/…) – לדוחות בלבד, לא לזיהוי |
+| `comment` | **לא נכנס לשום שדה** | **לא נשלח** |
+| `ClientName` / `Phone` / `Email` | **לא נשמרו** – נשמרים רק הפרטים שהמשלמת (או הכרטיס שלה) הזינה בטופס | נשלחים כנוחות, שום דבר לא נשען עליהם; המורה מתבקשת בדף ההמתנה להזין את אותו טלפון/מייל כמו באתר |
+| `Payment=1`/`PaymentLock=1`, `OnlyNormal=1`, `OnlyShekel=1`, `Redirect`, `HideParameters=1` | לפי קוד הדף (`JavaScript5.js`) | כמו קודם |
+
+**אין** פרמטר CallBack ואין Param1/Param2 בדף. פרמטרים נוספים שקיימים בקוד הדף ולא בשימוש: `Street`/`City`/`Zeout`, `Day`,
+`Bank`/`Snif`/`Account`, `groupelock`/`avourlock`, `CustomAvour`/`CustomKoteret`, `TakanonChecked`, `logo`, `currency`, `OnlyDollar`/
+`ForceDollar`, `Language`/`lang`, `NormalDefault`/`KevaDefault`, `onlykeva`/`onlymasav`/`OnlyBit`/`OnlyDigitalTransfer`/`OnlyCrypto`,
+`CRM`, `S`, `MatrimId`, `device`.
+
+**שדות `GetHistoryJson` שאומתו:** `Shovar`, `Zeout`, `ClientName`, `Adresse`, `MisparIchi`, `Phone`, `Mail`, `Amount` (מחרוזת),
+`Currency` (`"1"`), `TransactionTime` (`"22/10/2026 04:37:02"` – `dd/MM/yyyy HH:mm:ss`, שעת ירושלים), `Confirmation` (עם רווח מוביל),
+`LastNum`, `TransactionType` (`"רגיל"`), `Groupe`, `Comments`, `Tashloumim`, `TransactionId` ועוד – **ואין שדה סטטוס כלל** (אישור =
+`Confirmation` בלבד). `extractReference` מוצא את `NP-XXXXXXXX` בכל מקום ב-`Comments` (גם עם `" | טקסט"` אחריו). fixture
+מנוטרל-PII באותו מבנה: `realistic GetHistoryJson row from a site link` ב-`logic.test.ts`.
 
 ### GetHistoryJson – מה הונח
 
