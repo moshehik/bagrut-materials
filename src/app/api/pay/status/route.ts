@@ -1,12 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
-import { customerStatusText, isValidReference } from "@/lib/nedarim/logic";
+import { loadNedarimConfig } from "@/lib/nedarim/config";
+import { customerStatusText, isValidReference, OPEN_STATUSES } from "@/lib/nedarim/logic";
 import { getByReference } from "@/lib/nedarim/store";
+import { hostedUrlFor } from "@/lib/nedarim/hosted";
+import { SYNC_MIN_INTERVAL_SEC, getSyncState, nextAllowedAt, refreshHistory } from "@/lib/nedarim/sync";
 
-/** GET /api/pay/status?ref=NP-… – סטטוס בקשת התשלום של המשתמשת המחוברת (לדף הסיום אחרי רענון / בזמן ההמתנה לאימות) */
+/**
+ * GET /api/pay/status?ref=NP-… – סטטוס בקשת התשלום של המשתמשת המחוברת (polling מדף ההמתנה / אחרי חזרה מנדרים).
+ * ה-polling לא קורא ל-API של נדרים ישירות: הוא מפעיל את השער (refreshHistory "poll"), שקורא רק אם עברו ≥4 דק' מהקריאה
+ * הקודמת – אחרת מחזיר את המצב מה-DB. בקשה שכבר הוכרעה לא מפעילה כלום.
+ */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -17,13 +25,26 @@ export async function GET(req: NextRequest) {
   if (!rl.ok) return json({ error: TOO_MANY_MESSAGE }, 429);
   const ref = req.nextUrl.searchParams.get("ref");
   if (!isValidReference(ref)) return json({ error: "מזהה בקשה לא תקין" }, 400);
-  const row = await getByReference(ref);
+  let row = await getByReference(ref);
   if (!row || row.userId !== user.id) return json({ error: "בקשה לא נמצאה" }, 404);
+
+  const cfg = await loadNedarimConfig();
+  const open = OPEN_STATUSES.includes(row.status as (typeof OPEN_STATUSES)[number]) && !row.assistRequestedAt;
+  if (open && cfg.hasApiPassword) {
+    await refreshHistory("poll"); // כולל matchPendingPayments כשבוצעה קריאה
+    row = (await getByReference(ref)) ?? row;
+  }
+  const state = await getSyncState();
+  const next = nextAllowedAt(state, SYNC_MIN_INTERVAL_SEC);
   return json({
     reference: row.reference,
     status: row.status,
     verified: row.verified,
     assistRequested: !!row.assistRequestedAt,
     text: customerStatusText(row.status, !!row.assistRequestedAt),
+    hostedUrl: open && cfg.mosadId ? hostedUrlFor(row, cfg.mosadId) : null,
+    lastCheckedAt: state?.lastSuccessAt ?? null,
+    nextCheckAt: next,
+    autoCheck: cfg.hasApiPassword,
   });
 }

@@ -12,8 +12,9 @@ import { PayClient, type PayPlanOption } from "@/components/pay/pay-client";
 
 /*
  * /pay – דף התשלום והפעלת המנוי דרך נדרים פלוס (מחוברות בלבד; מי שלא נרשמה מופנית להרשמה וחוזרת לכאן).
- * ?plan=yearly|substitute_3m|substitute_daily  ?categories=1,2 (או ?category=1)  ?ref=NP-… (צפייה בסטטוס של בקשה קיימת)
- * שלבים (בצד הלקוח): בחירת מסלול → מקצועות + פרטים חסרים → iframe של נדרים → סיום. docs/nedarim-payments.md
+ * ?plan=yearly|substitute_3m|substitute_daily  ?categories=1,2 (או ?category=1)  ?ref=NP-… (המתנה/סטטוס של בקשה קיימת –
+ * גם כתובת החזרה מדף התשלום של נדרים). שלבים (בצד הלקוח): מסלול → מקצועות + פרטים חסרים → הפניה לדף התשלום המתארח של
+ * נדרים + המתנה לזיהוי התשלום → סיום. docs/nedarim-payments.md
  */
 export const metadata: Metadata = { title: "תשלום והפעלת מנוי" };
 export const dynamic = "force-dynamic";
@@ -71,8 +72,8 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
         <div>
           <h1 className="text-4xl md:text-5xl">תשלום והפעלת מנוי</h1>
           <p className="mt-2 max-w-md">
-            שלום {user.name.split(" ")[0]}, בחרי מסלול, אשרי את הפרטים ושלמי בטופס המאובטח של נדרים פלוס – המנוי ייפתח
-            אוטומטית.
+            שלום {user.name.split(" ")[0]}, בחרי מסלול, אשרי את הפרטים ושלמי בדף המאובטח של נדרים פלוס – המנוי ייפתח
+            אוטומטית כשהתשלום יזוהה.
           </p>
         </div>
       </div>
@@ -106,7 +107,6 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
           user={{ firstName: user.name.split(" ")[0], fullName: user.name, email: user.email, phone: user.phone, personalCode: user.personalCode }}
           coupon={coupon && coupon.percent ? { label: coupon.label, percent: coupon.percent } : null}
           initialRef={isValidReference(sp.ref) ? sp.ref : null}
-          simulate={cfg.simulate}
           substituteMonths={SUBSTITUTE_MONTHS}
           substituteDailyDownloads={prices.substituteDailyDownloads}
           yearlyListMonthly={prices.yearlyListMonthly}

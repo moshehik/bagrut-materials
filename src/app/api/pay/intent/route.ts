@@ -4,20 +4,23 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { isSameOriginRequest } from "@/lib/http-utils";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { requestMeta, logAudit } from "@/lib/audit";
 import { getPlanPrices } from "@/lib/pricing";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
-import { PLANS, SITE_NAME, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
+import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
-import { callbackUrl, loadNedarimConfig } from "@/lib/nedarim/config";
-import { MAX_BODY_BYTES, PAYABLE_PLANS, buildFinishTransactionValue, buildTransactionComment } from "@/lib/nedarim/logic";
+import { loadNedarimConfig } from "@/lib/nedarim/config";
+import { MAX_BODY_BYTES, PAYABLE_PLANS } from "@/lib/nedarim/logic";
 import { createIntent } from "@/lib/nedarim/store";
+import { redactNedarim } from "@/lib/nedarim/secrets";
+import { hostedUrlFor } from "@/lib/nedarim/hosted";
 
 /*
- * POST /api/pay/intent – עמוד התשלום (/pay, מחוברות בלבד): יוצר בקשת תשלום 'pending' עם מזהה ייחודי לפני שהמורה מקלידה כרטיס
- * ב-iframe של נדרים פלוס, ומחזיר לדפדפן את ערך ההודעה FinishTransaction2 (קוד מוסד + ApiValid + פרטים + CallBack).
- * הסכום נקבע כאן מההגדרות (getPlanPrices) ומהקופון של המשתמשת – לעולם לא מהדפדפן. מספר הכרטיס לא מגיע לכאן אף פעם.
+ * POST /api/pay/intent – עמוד התשלום (/pay, מחוברות בלבד): יוצר בקשת תשלום 'pending' עם מזהה ייחודי (NP-…) ומחזיר את הקישור
+ * לדף התשלום המתארח של נדרים פלוס (סכום נעול, פרטי המורה ממולאים, מזהה הבקשה בהערה). הסכום נקבע כאן מההגדרות (getPlanPrices)
+ * ומהקופון של המשתמשת – לעולם לא מהדפדפן, ואי אפשר לשנות אותו אחרי היצירה. מספר הכרטיס לא מגיע לכאן אף פעם.
  * docs/nedarim-payments.md
  */
 export const runtime = "nodejs";
@@ -37,6 +40,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!isSameOriginRequest(req)) return json({ error: "בקשה לא מהאתר" }, 403);
   const user = await getCurrentUser();
   if (!user) return json({ error: "יש להתחבר כדי לשלם" }, 401);
   if (user.suspended) return json({ error: "החשבון מושהה – לא ניתן לבצע רכישות" }, 403);
@@ -86,7 +90,7 @@ export async function POST(req: NextRequest) {
     if (roots.length !== uniq.length) return denied("not_root_subject", "יש לבחור מקצועות ראשיים בלבד");
   }
 
-  // --- פרטי פרופיל חסרים: טלפון (מוטבע בסימן המים + נשלח לנדרים), עיר ותיכון (רכישה ראשונה) ---
+  // --- פרטי פרופיל חסרים: טלפון (מוטבע בסימן המים + מזהה את התשלום), עיר ותיכון (רכישה ראשונה) ---
   const profile: Partial<{ phone: string; city: string; school: string }> = {};
   if (!user.phone) {
     const p = phoneSchema.safeParse(input.phone ?? "");
@@ -137,33 +141,17 @@ export async function POST(req: NextRequest) {
       ip,
       userAgent,
     });
-    const cb = callbackUrl(cfg);
-    const finish = buildFinishTransactionValue({
-      mosad: cfg.mosadId,
-      apiValid: cfg.apiValid,
-      reference: row.reference,
-      amountAgorot: row.amount,
-      firstName,
-      lastName,
-      phone,
-      email: user.email,
-      city: user.city ?? profile.city ?? "",
-      comment: buildTransactionComment(SITE_NAME, PLANS[input.plan].label, row.reference),
-      callbackUrl: cb,
-      param2: input.plan,
-    });
     return json({
       ok: true,
       reference: row.reference,
       amount: row.amount,
       listAmount: row.listAmount,
       couponPercent: row.couponPercent,
-      finish,
-      callbackConfigured: !!cb,
+      hostedUrl: hostedUrlFor(row, cfg.mosadId),
       simulate: cfg.simulate,
     });
   } catch (e) {
-    console.error("[pay intent] create failed", e);
+    console.error("[pay intent] create failed", redactNedarim(e instanceof Error ? e.message : String(e)));
     return json({ error: "לא הצלחנו ליצור את בקשת התשלום. נסי שוב בעוד רגע." }, 500);
   }
 }

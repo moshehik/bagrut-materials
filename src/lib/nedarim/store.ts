@@ -1,11 +1,12 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import {
   nedarimPaymentEvents,
   nedarimPayments,
+  nedarimTransactions,
   privateCoupons,
   purchases,
   transactions,
@@ -18,51 +19,49 @@ import { logAudit } from "@/lib/audit";
 import { sendMail, templates } from "@/lib/mail";
 import { getPlanPrices, type PlanPrices } from "@/lib/pricing";
 import { termFields } from "@/lib/purchase-helpers";
-import type { NedarimConfig } from "./config";
 import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
-  decideSettlement,
-  extractTransactionFields,
+  extractCallbackFields,
   generateReference,
-  isTransactionOk,
-  matchHistoryRow,
   type PayablePlan,
-  type SettlementDecision,
+  type TxForMatch,
+  type VerifyMethod,
 } from "./logic";
-import { getTransactionHistory } from "./manage";
+import { redactNedarim } from "./secrets";
 
 /**
  * שכבת ה-DB של התשלום דרך נדרים פלוס (שרת בלבד). docs/nedarim-payments.md
  *
- * עקרונות:
- * - כל בקשה = שורת nedarim_payments עם reference ייחודי שנוצר לפני המעבר ל-iframe; כל צעד נרשם ב-nedarim_payment_events.
- * - "הדפדפן אמר שהצליח" אינו ראיה: ההשלמה דורשת אימות מול היסטוריית העסקאות של המוסד (GetHistoryJson, מפתח npk_), או אישור
- *   ידני של המנהלת, או (רק אם NEDARIM_TRUST_CALLBACK=1) CallBack של נדרים בסכום הנכון.
- * - אידמפוטנטיות בלי טרנזקציות (neon-http לא תומך בהן): UPDATE מותנה על הסטטוס "תופס" את הבקשה, ורק הזוכה מכניס את שורות
- *   purchases (כמו upgradeToYearlyAction). CallBack כפול / דפדפן + CallBack יחד = מנוי אחד.
- * - שורות ה-purchases נבנות בדיוק כמו בקופה המדומה (purchaseAction): שורה לכל מקצוע, הסכום על הראשונה, תוקף מההורדה הראשונה
- *   (termFields), ממלאת מקום יומית = סל הורדות לכל המקצועות.
+ * - כל בקשה = שורת nedarim_payments עם reference ייחודי (אקראי קריפטוגרפי) שנוצר לפני ההפניה לדף התשלום של נדרים; כל צעד
+ *   נרשם ב-nedarim_payment_events (אחרי הסתרת סודות).
+ * - המנוי נפתח רק מעסקה שנמצאה בהיסטוריית המוסד (sync.ts → settleFromTransaction), מאישור ידני של המנהלת, או במצב דמה.
+ *   CallBack (אם הוגדר אצל נדרים) רק מפעיל רענון – לא משלים.
+ * - אידמפוטנטיות בלי טרנזקציות (neon-http): תפיסת העסקה (UPDATE מותנה על matched_payment_id) → תפיסת הבקשה (UPDATE מותנה על
+ *   הסטטוס; האינדקס הייחודי החלקי על transaction_id מונע שתי בקשות על עסקה אחת) → ורק הזוכה מכניס את שורות purchases.
+ * - שורות ה-purchases נבנות בדיוק כמו בקופה המדומה (purchaseAction): שורה לכל מקצוע, הסכום על הראשונה, תוקף מההורדה הראשונה.
  */
 
+/** JSON לשמירה ב-DB – תמיד אחרי הסתרת סודות (npk_, סוד ה-CallBack וכו') */
 const safeJson = (v: unknown) => {
   try {
-    return JSON.stringify(v).slice(0, 20000);
+    return redactNedarim(JSON.stringify(v)).slice(0, 20000);
   } catch {
-    return String(v).slice(0, 20000);
+    return redactNedarim(String(v)).slice(0, 20000);
   }
 };
+const errText = (e: unknown) => redactNedarim(e instanceof Error ? e.message : String(e)).slice(0, 300);
 
 export async function appendEvent(paymentId: number, kind: string, message = "", detail: unknown = null) {
   try {
     await db.insert(nedarimPaymentEvents).values({
       paymentId,
       kind,
-      message: String(message ?? "").slice(0, 500),
+      message: redactNedarim(String(message ?? "")).slice(0, 500),
       detail: detail === null || detail === undefined ? null : safeJson(detail),
     });
   } catch (e) {
-    console.error("[nedarim] event not written", kind, e);
+    console.error("[nedarim] event not written", kind, errText(e));
   }
 }
 
@@ -144,167 +143,21 @@ export async function createIntent(input: {
     } catch (e) {
       lastErr = e;
       // רק התנגשות reference (unique) חוזרת על עצמה
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!/unique|duplicate/i.test(msg)) throw e;
+      if (!/unique|duplicate/i.test(errText(e))) throw e;
     }
   }
   throw lastErr;
 }
 
-async function touch(id: number, patch: Partial<typeof nedarimPayments.$inferInsert>) {
+/** עדכון שדות על בקשה – כל טקסט חופשי עובר הסתרת סודות */
+export async function touchPayment(id: number, patch: Partial<typeof nedarimPayments.$inferInsert>) {
+  const clean = { ...patch };
+  if (typeof clean.errorMessage === "string") clean.errorMessage = redactNedarim(clean.errorMessage).slice(0, 500);
+  if (typeof clean.callbackBody === "string") clean.callbackBody = redactNedarim(clean.callbackBody).slice(0, 20000);
   await db
     .update(nedarimPayments)
-    .set({ ...patch, updatedAt: new Date() })
+    .set({ ...clean, updatedAt: new Date() })
     .where(eq(nedarimPayments.id, id));
-}
-
-/** מה הדפדפן קיבל מה-iframe (TransactionResponse.Value). מעדכן מזהים, ואז מנסה להשלים. */
-export async function recordClientResponse(row: NedarimPayment, value: unknown, cfg: NedarimConfig) {
-  const f = extractTransactionFields(value);
-  const ok = isTransactionOk(value);
-  const open = OPEN_STATUSES.includes(row.status as (typeof OPEN_STATUSES)[number]);
-  await touch(row.id, {
-    clientResponse: safeJson(value),
-    ...(f.transactionId ? { transactionId: f.transactionId } : {}),
-    ...(f.confirmation ? { confirmation: f.confirmation } : {}),
-    ...(f.last4 ? { cardLast4: f.last4 } : {}),
-    ...(open ? (ok ? { status: "processing" } : { status: "failed", errorMessage: f.message || "התשלום לא אושר" }) : {}),
-  });
-  await appendEvent(row.id, "client_response", ok ? "הדפדפן דיווח הצלחה" : `הדפדפן דיווח כישלון: ${f.message ?? ""}`, {
-    status: f.status,
-    transactionId: f.transactionId,
-    amount: f.amount,
-  });
-  if (!ok) return { ok: true as const, status: "failed", message: f.message ?? "" };
-  return verifyAndSettle(row.id, { report: { ok: true, amount: f.amount, fromCallback: false, message: f.message }, cfg });
-}
-
-/** ה-CallBack של נדרים פלוס (POST /api/pay/callback). body = אובייקט מפוענח, raw = הטקסט הגולמי. */
-export async function recordCallback(body: Record<string, unknown>, raw: string, cfg: NedarimConfig) {
-  const f = extractTransactionFields(body);
-  let row = f.reference ? await getByReference(f.reference) : null;
-  if (!row && f.transactionId) {
-    const [byTx] = await db
-      .select()
-      .from(nedarimPayments)
-      .where(eq(nedarimPayments.transactionId, f.transactionId))
-      .orderBy(desc(nedarimPayments.createdAt))
-      .limit(1);
-    row = byTx ?? null;
-  }
-  if (!row) return { ok: false as const, error: "לא זוהתה בקשה (אין Param1/מזהה עסקה מוכר)", fields: f };
-  const ok = f.ok !== false; // CallBack בלי שדה Status = מתייחסים כדיווח, האימות מכריע
-  const open = OPEN_STATUSES.includes(row.status as (typeof OPEN_STATUSES)[number]);
-  await touch(row.id, {
-    callbackBody: String(raw ?? "").slice(0, 20000),
-    ...(f.transactionId ? { transactionId: f.transactionId } : {}),
-    ...(f.confirmation ? { confirmation: f.confirmation } : {}),
-    ...(f.last4 ? { cardLast4: f.last4 } : {}),
-    ...(open ? (ok ? { status: "processing" } : { status: "failed", errorMessage: f.message || "נדרים פלוס דיווחו על כישלון" }) : {}),
-  });
-  await appendEvent(row.id, "callback", ok ? "התקבל CallBack מנדרים פלוס" : `CallBack: כישלון – ${f.message ?? ""}`, {
-    status: f.status,
-    transactionId: f.transactionId,
-    amount: f.amount,
-  });
-  if (!ok) return { ok: true as const, status: "failed" };
-  return verifyAndSettle(row.id, { report: { ok: true, amount: f.amount, fromCallback: true, message: f.message }, cfg });
-}
-
-type ApiCheck = { available: boolean; matched: boolean; reason: string; row: Record<string, unknown> | null };
-
-/** אימות מול היסטוריית נדרים פלוס. כשל רשת = available:false (לא "לא נמצא"). קריאה אחת ל-API (מוגבל ל-20 בשעה). */
-export async function verifyAgainstNedarim(intent: NedarimPayment, cfg: NedarimConfig): Promise<ApiCheck> {
-  if (!cfg.hasApiPassword) return { available: false, matched: false, reason: "אין מפתח API (NEDARIM_API_PASSWORD)", row: null };
-  const mosadId = intent.mosadId || cfg.mosadId;
-  if (!mosadId) return { available: false, matched: false, reason: "אין קוד מוסד", row: null };
-  try {
-    const tid = intent.transactionId && /^\d+$/.test(intent.transactionId) ? Number(intent.transactionId) : null;
-    // GetHistoryJson עולה לפי TransactionId: עם מזהה ידוע מתחילים שורה לפניו; בלעדיו לוקחים חלון גדול של האחרונות
-    const params = tid ? { lastId: Math.max(0, tid - 1), maxId: 50 } : { maxId: 500 };
-    const { json } = await getTransactionHistory({ mosadId, ...params });
-    const rows = Array.isArray(json)
-      ? json
-      : json && typeof json === "object" && Array.isArray((json as { Data?: unknown }).Data)
-        ? (json as { Data: unknown[] }).Data
-        : null;
-    if (!rows) return { available: false, matched: false, reason: "תשובה לא צפויה מנדרים פלוס", row: null };
-    const m = matchHistoryRow(rows, {
-      transactionId: intent.transactionId,
-      amountAgorot: intent.amount,
-      reference: intent.reference,
-    });
-    return { available: true, matched: m.matched, reason: m.reason, row: m.row };
-  } catch (e) {
-    return { available: false, matched: false, reason: `שגיאת רשת באימות: ${e instanceof Error ? e.message : String(e)}`, row: null };
-  }
-}
-
-export type SettleResult =
-  | { ok: true; status: string; verified: boolean; reason: string; purchaseId?: number | null }
-  | { ok: false; error: string };
-
-/**
- * הלב: מאמת (אם אפשר) ומשלים. options: { report, cfg, manualById, simulated }.
- */
-export async function verifyAndSettle(
-  id: number,
-  opts: {
-    report?: { ok: boolean | null; amount: number | null; fromCallback: boolean; message?: string | null } | null;
-    cfg: NedarimConfig;
-    manualById?: number | null;
-    simulated?: boolean;
-  },
-): Promise<SettleResult> {
-  const { report = null, cfg, manualById = null, simulated = false } = opts;
-  const intent = await getById(id);
-  if (!intent) return { ok: false, error: "בקשה לא נמצאה" };
-  if (intent.status === "paid") return { ok: true, status: "paid", verified: intent.verified, reason: "כבר הושלם", purchaseId: intent.purchaseId };
-
-  let decision: SettlementDecision;
-  if (manualById) {
-    decision = { action: "settle", verified: true, method: "manual", reason: "אישור ידני" };
-  } else {
-    const api = simulated ? null : await verifyAgainstNedarim(intent, cfg);
-    if (api && api.available) {
-      await appendEvent(
-        intent.id,
-        api.matched ? "verify_ok" : "verify_failed",
-        api.matched ? "אומת מול היסטוריית נדרים פלוס" : api.reason,
-        api.row,
-      );
-    } else if (api && !api.available && cfg.hasApiPassword) {
-      await appendEvent(intent.id, "verify_error", api.reason);
-    }
-    decision = decideSettlement({ intent, api, report, trustCallback: cfg.trustCallback, simulated });
-    if (api?.row) {
-      const r = api.row;
-      const str = (k: string) => (r[k] === undefined || r[k] === null ? "" : String(r[k]));
-      const patch: Partial<typeof nedarimPayments.$inferInsert> = {};
-      if (!intent.transactionId && str("TransactionId")) patch.transactionId = str("TransactionId").slice(0, 40);
-      if (!intent.confirmation && str("Confirmation")) patch.confirmation = str("Confirmation").slice(0, 40);
-      if (!intent.cardLast4 && str("LastNum")) patch.cardLast4 = str("LastNum").replace(/\D/g, "").slice(-4) || null;
-      if (Object.keys(patch).length) await touch(intent.id, patch);
-    }
-  }
-
-  if (decision.action === "fail") {
-    await touch(intent.id, { status: "failed", errorMessage: decision.reason.slice(0, 500) });
-    await appendEvent(intent.id, "error", decision.reason);
-    return { ok: true, status: "failed", verified: false, reason: decision.reason };
-  }
-  if (decision.action !== "settle") {
-    if (decision.action === "wait") {
-      await touch(intent.id, {
-        ...(intent.status === "pending" ? { status: "processing" } : {}),
-        errorMessage: decision.reason.slice(0, 500),
-      });
-    }
-    const fresh = await getById(intent.id);
-    return { ok: true, status: fresh?.status ?? intent.status, verified: false, reason: decision.reason };
-  }
-
-  return settle(intent, decision, manualById);
 }
 
 /** שורות ה-purchases שהתשלום מייצר – אותם כללים כמו purchaseAction (src/lib/actions/purchase.ts) */
@@ -334,25 +187,44 @@ export function buildPurchaseRows(
   }));
 }
 
+export type SettleResult =
+  | { ok: true; status: string; verified: boolean; reason: string; purchaseId?: number | null }
+  | { ok: false; error: string };
+
 /**
- * ההשלמה עצמה: תפיסה אטומית של הבקשה (UPDATE מותנה), ואז שורות purchases + תנועה כספית + קופון + מייל.
- * כישלון אחרי התפיסה מחזיר את הבקשה ל-processing עם הודעת שגיאה (המנהלת תראה "אמת מחדש").
+ * ההשלמה: תפיסה אטומית של הבקשה (UPDATE מותנה; האינדקס הייחודי על transaction_id מונע עסקה אחת → שתי בקשות), ואז שורות
+ * purchases + תנועה כספית + קופון + מייל. כישלון אחרי התפיסה מחזיר ל-processing עם הודעה (המנהלת רואה ומאשרת ידנית).
  */
-async function settle(intent: NedarimPayment, decision: SettlementDecision, byId: number | null): Promise<SettleResult> {
+async function settle(
+  intent: NedarimPayment,
+  how: { method: VerifyMethod; verified: boolean; reason: string; transactionId?: string | null; confirmation?: string | null; last4?: string | null; byId?: number | null },
+): Promise<SettleResult> {
   const paidAt = new Date();
-  const claimed = await db
-    .update(nedarimPayments)
-    .set({
-      status: "paid",
-      verified: decision.verified,
-      verifyMethod: decision.method,
-      paidAt,
-      settledById: byId,
-      errorMessage: null,
-      updatedAt: paidAt,
-    })
-    .where(and(eq(nedarimPayments.id, intent.id), inArray(nedarimPayments.status, [...OPEN_STATUSES])))
-    .returning({ id: nedarimPayments.id });
+  const byId = how.byId ?? null;
+  let claimed: { id: number }[];
+  try {
+    claimed = await db
+      .update(nedarimPayments)
+      .set({
+        status: "paid",
+        verified: how.verified,
+        verifyMethod: how.method,
+        transactionId: how.transactionId ?? intent.transactionId,
+        confirmation: how.confirmation ?? intent.confirmation,
+        cardLast4: how.last4 ?? intent.cardLast4,
+        paidAt,
+        settledById: byId,
+        errorMessage: null,
+        updatedAt: paidAt,
+      })
+      .where(and(eq(nedarimPayments.id, intent.id), inArray(nedarimPayments.status, [...OPEN_STATUSES])))
+      .returning({ id: nedarimPayments.id });
+  } catch (e) {
+    const reason = /unique|duplicate/i.test(errText(e)) ? "עסקה זו כבר שויכה לבקשה אחרת (TransactionId כפול)" : `ההשלמה נכשלה: ${errText(e)}`;
+    await touchPayment(intent.id, { status: "processing", errorMessage: reason });
+    await appendEvent(intent.id, "error", reason);
+    return { ok: false, error: reason };
+  }
   if (!claimed.length) {
     const fresh = await getById(intent.id);
     return { ok: true, status: fresh?.status ?? "paid", verified: fresh?.verified ?? false, reason: "כבר טופל", purchaseId: fresh?.purchaseId };
@@ -363,29 +235,30 @@ async function settle(intent: NedarimPayment, decision: SettlementDecision, byId
     const rows = buildPurchaseRows(intent, prices);
     const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
     const purchaseId = inserted[0]?.id ?? null;
-    await touch(intent.id, { purchaseId });
+    await touchPayment(intent.id, { purchaseId });
 
     const [user] = await db.select().from(users).where(eq(users.id, intent.userId)).limit(1);
     const description = describeIntent(intent);
+    const txId = how.transactionId ?? intent.transactionId;
     const noteParts = [`תשלום דרך נדרים פלוס ${intent.reference}`, description];
-    if (intent.transactionId) noteParts.push(`עסקה ${intent.transactionId}`);
-    if (intent.confirmation) noteParts.push(`אישור ${intent.confirmation}`);
-    if (decision.method === "manual") noteParts.push("אושר ידנית");
-    if (decision.method === "simulated") noteParts.push("סימולציה");
+    if (txId) noteParts.push(`עסקה ${txId}`);
+    if (how.confirmation ?? intent.confirmation) noteParts.push(`אישור ${how.confirmation ?? intent.confirmation}`);
+    if (how.method === "manual") noteParts.push("אושר ידנית");
+    if (how.method === "simulated") noteParts.push("סימולציה");
     try {
       await db.insert(transactions).values({
         userId: intent.userId,
         purchaseId,
-        type: decision.method === "manual" ? "manual" : "charge",
+        type: how.method === "manual" ? "manual" : "charge",
         amount: intent.amount,
-        method: decision.method === "simulated" ? "nedarim-sim" : "nedarim",
+        method: how.method === "simulated" ? "nedarim-sim" : "nedarim",
         reference: intent.reference,
         note: noteParts.join(" | ").slice(0, 500),
         createdById: byId,
       });
     } catch (e) {
-      console.error("[nedarim] transaction insert failed", e);
-      await appendEvent(intent.id, "error", `רישום התנועה הכספית נכשל: ${e instanceof Error ? e.message : String(e)}`);
+      console.error("[nedarim] transaction insert failed", errText(e));
+      await appendEvent(intent.id, "error", `רישום התנועה הכספית נכשל: ${errText(e)}`);
     }
 
     // קופון הנחה פרטי: נתפס עכשיו (ולא ביצירת הבקשה) – בקשה שלא שולמה לא "שורפת" אותו
@@ -398,56 +271,81 @@ async function settle(intent: NedarimPayment, decision: SettlementDecision, byId
       if (!got.length) await appendEvent(intent.id, "coupon_warn", "הקופון כבר נוצל/בוטל בינתיים – ההנחה כבר ניתנה בתשלום");
     }
 
-    await appendEvent(intent.id, decision.method === "manual" ? "manual_settle" : "settled", `הושלם (${decision.method}) – נוצר מנוי`, {
+    await appendEvent(intent.id, how.method === "manual" ? "manual_settle" : "settled", `הושלם (${how.method}${how.reason ? `, ${how.reason}` : ""}) – נוצר מנוי`, {
       purchaseId,
       rows: rows.length,
+      transactionId: txId,
       byId,
     });
     await logAudit({
       actorId: byId ?? intent.userId,
-      action: decision.method === "manual" ? "purchase.nedarim_manual" : "purchase.nedarim",
+      action: how.method === "manual" ? "purchase.nedarim_manual" : "purchase.nedarim",
       entityType: "purchase",
       entityId: purchaseId,
-      details: {
-        reference: intent.reference,
-        plan: intent.plan,
-        amount: intent.amount,
-        verified: decision.verified,
-        method: decision.method,
-        transactionId: intent.transactionId,
-        categoryIds: parseCategoryIds(intent),
-      },
+      details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, transactionId: txId, categoryIds: parseCategoryIds(intent) },
     });
 
     if (user) {
       const t = templates.purchase(user.name, description, formatPrice(intent.amount), rows[0]?.endsAt ?? null);
-      const send = () => sendMail({ to: user.email, ...t, kind: "purchase", userId: user.id }).catch((e) => console.error("[nedarim] mail", e));
+      const send = () => sendMail({ to: user.email, ...t, kind: "purchase", userId: user.id }).catch((e) => console.error("[nedarim] mail", errText(e)));
       try {
-        after(send); // ממשיך אחרי התשובה (Vercel waitUntil) – לא מעכב את המורה / את נדרים
+        after(send); // ממשיך אחרי התשובה (Vercel waitUntil) – לא מעכב את המורה
       } catch {
         void send(); // מחוץ להקשר בקשה (סקריפט)
       }
     }
-    return { ok: true, status: "paid", verified: decision.verified, reason: decision.reason, purchaseId };
+    return { ok: true, status: "paid", verified: how.verified, reason: how.reason, purchaseId };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = errText(e);
     console.error("[nedarim] settle failed after claim", msg);
-    await touch(intent.id, { status: "processing", verifyMethod: null, paidAt: null, errorMessage: `ההשלמה נכשלה: ${msg}`.slice(0, 500) });
-    await appendEvent(intent.id, "error", `ההשלמה נכשלה אחרי האימות: ${msg}`);
+    await touchPayment(intent.id, { status: "processing", verifyMethod: null, paidAt: null, errorMessage: `ההשלמה נכשלה: ${msg}` });
+    await appendEvent(intent.id, "error", `ההשלמה נכשלה אחרי התפיסה: ${msg}`);
     return { ok: false, error: `ההשלמה נכשלה: ${msg}` };
   }
 }
 
-/** אישור ידני ממסך הניהול (אחרי שהמנהלת ראתה את התשלום בפורטל נדרים / קיבלה אותו בדרך אחרת) */
-export const manualSettle = (id: number, adminId: number, cfg: NedarimConfig) => verifyAndSettle(id, { cfg, manualById: adminId });
-
-/** ניסיון אימות חוזר מול ה-API (כפתור "אמת מחדש") */
-export async function reverify(id: number, cfg: NedarimConfig) {
-  const intent = await getById(id);
-  if (!intent) return { ok: false as const, error: "בקשה לא נמצאה" };
-  await appendEvent(id, "retry", "אימות חוזר ממסך הניהול");
-  return verifyAndSettle(id, { report: { ok: true, amount: intent.amount, fromCallback: false }, cfg });
+/**
+ * השלמה מעסקה שנמצאה בהיסטוריית נדרים (sync.ts). תופס קודם את העסקה (matched_payment_id IS NULL → id) – עסקה אחת = בקשה אחת
+ * גם בין שני רענונים מקבילים; אם הבקשה נכשלת להיתפס – משחררים את העסקה.
+ */
+export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMatch, kind: "strong" | "weak"): Promise<SettleResult> {
+  const claimedTx = await db
+    .update(nedarimTransactions)
+    .set({ matchedPaymentId: intent.id })
+    .where(and(eq(nedarimTransactions.transactionId, tx.transactionId), isNull(nedarimTransactions.matchedPaymentId)))
+    .returning({ id: nedarimTransactions.transactionId });
+  if (!claimedTx.length) return { ok: false, error: "העסקה כבר שויכה" };
+  const reason = kind === "strong" ? "מזהה הבקשה בהערת העסקה" : "טלפון/מייל + סכום + חלון זמן";
+  await appendEvent(intent.id, "matched", `נמצאה עסקה ${tx.transactionId} (${reason})`, { transactionId: tx.transactionId, amount: tx.amount, at: tx.transactionAt, kind });
+  const r = await settle(intent, { method: "api", verified: true, reason, transactionId: tx.transactionId, confirmation: tx.confirmation, last4: tx.last4 });
+  if (!r.ok || r.status !== "paid") {
+    await db.update(nedarimTransactions).set({ matchedPaymentId: null }).where(and(eq(nedarimTransactions.transactionId, tx.transactionId), eq(nedarimTransactions.matchedPaymentId, intent.id)));
+  }
+  return r;
 }
+
+/** אישור ידני ממסך הניהול (אחרי שהמנהלת ראתה את התשלום בפורטל נדרים / קיבלה אותו בדרך אחרת). transactionId אופציונלי. */
+export async function manualSettle(id: number, adminId: number, transactionId?: string | null): Promise<SettleResult> {
+  const intent = await getById(id);
+  if (!intent) return { ok: false, error: "בקשה לא נמצאה" };
+  if (intent.status === "paid") return { ok: true, status: "paid", verified: intent.verified, reason: "כבר הושלם", purchaseId: intent.purchaseId };
+  if (!OPEN_STATUSES.includes(intent.status as (typeof OPEN_STATUSES)[number])) return { ok: false, error: "בקשה שבוטלה/פגה – ליצור בקשה חדשה או מנוי ידני ב«מנויים»" };
+  const tid = transactionId?.trim() || null;
+  if (tid) {
+    // אם העסקה קיימת במטמון – תופסים אותה (עסקה אחת = בקשה אחת)
+    const claimedTx = await db
+      .update(nedarimTransactions)
+      .set({ matchedPaymentId: intent.id })
+      .where(and(eq(nedarimTransactions.transactionId, tid), isNull(nedarimTransactions.matchedPaymentId)))
+      .returning({ id: nedarimTransactions.transactionId });
+    const [existing] = await db.select({ m: nedarimTransactions.matchedPaymentId }).from(nedarimTransactions).where(eq(nedarimTransactions.transactionId, tid)).limit(1);
+    if (!claimedTx.length && existing && existing.m !== intent.id) return { ok: false, error: `עסקה ${tid} כבר שויכה לבקשה אחרת` };
+  }
+  return settle(intent, { method: "manual", verified: true, reason: "אישור ידני", transactionId: tid, byId: adminId });
+}
+
+/** מצב דמה (פיתוח מקומי בלבד – הקורא בודק simulateAllowed) */
+export const simulatedSettle = (intent: NedarimPayment) => settle(intent, { method: "simulated", verified: false, reason: "מצב דמה (פיתוח בלבד)" });
 
 export async function cancelIntent(id: number, adminId: number, reason = "") {
   const intent = await getById(id);
@@ -455,19 +353,29 @@ export async function cancelIntent(id: number, adminId: number, reason = "") {
   if (intent.status === "paid") {
     return { ok: false as const, error: "בקשה שהושלמה אינה ניתנת לביטול מכאן – לזיכוי: ביטול/זיכוי המנוי ב«מנויים» וזיכוי בפורטל נדרים" };
   }
-  await touch(id, { status: "cancelled", settledById: adminId, errorMessage: reason ? reason.slice(0, 500) : intent.errorMessage });
+  await touchPayment(id, { status: "cancelled", settledById: adminId, errorMessage: reason ? reason.slice(0, 500) : intent.errorMessage });
   await appendEvent(id, "cancelled", `בוטל ידנית${reason ? `: ${reason}` : ""}`, { adminId });
   return { ok: true as const, status: "cancelled" };
 }
 
-/** המורה ביקשה להשלים דרך המנהלת (טופס נדרים לא נטען – נטפרי וכד'): סימון + מייל למנהלת */
+/** CallBack מנדרים (אופציונלי): רק רישום על הבקשה + יומן. הרענון וההתאמה – ב-route (sync.refreshHistory). */
+export async function recordCallback(body: Record<string, unknown>, raw: string): Promise<{ matched: boolean; paymentId: number | null }> {
+  const f = extractCallbackFields(body);
+  const row = f.reference ? await getByReference(f.reference) : null;
+  if (!row) return { matched: false, paymentId: null };
+  await touchPayment(row.id, { callbackBody: raw.slice(0, 20000), ...(f.transactionId && !row.transactionId ? { transactionId: f.transactionId } : {}) });
+  await appendEvent(row.id, "callback", "התקבל CallBack מנדרים פלוס – מפעיל רענון היסטוריה", { transactionId: f.transactionId, amount: f.amount });
+  return { matched: true, paymentId: row.id };
+}
+
+/** המורה ביקשה עזרה מהמנהלת (דף התשלום לא נפתח / בעיה אחרת): סימון + מייל למנהלת. הבקשה יוצאת מההתאמה האוטומטית. */
 export async function requestAssist(row: NedarimPayment, adminMail: string | null) {
   if (!OPEN_STATUSES.includes(row.status as (typeof OPEN_STATUSES)[number])) {
     return { ok: false as const, error: "הבקשה כבר אינה פתוחה" };
   }
   const already = !!row.assistRequestedAt;
-  if (!already) await touch(row.id, { assistRequestedAt: new Date() });
-  await appendEvent(row.id, "assist", already ? "בקשת סיוע חוזרת" : "המורה ביקשה להשלים את התשלום דרך המנהלת (טופס נדרים לא נטען)");
+  if (!already) await touchPayment(row.id, { assistRequestedAt: new Date() });
+  await appendEvent(row.id, "assist", already ? "בקשת סיוע חוזרת" : "המורה ביקשה עזרה מהמנהלת בהשלמת התשלום");
   if (!already && adminMail) {
     const [user] = await db.select().from(users).where(eq(users.id, row.userId)).limit(1);
     if (user) {
@@ -479,7 +387,7 @@ export async function requestAssist(row: NedarimPayment, adminMail: string | nul
         planLabel: PLANS[row.plan].label,
         amountText: formatPrice(row.amount),
       });
-      const send = () => sendMail({ to: adminMail, ...t, kind: "pay_assist", userId: user.id }).catch((e) => console.error("[nedarim] assist mail", e));
+      const send = () => sendMail({ to: adminMail, ...t, kind: "pay_assist", userId: user.id }).catch((e) => console.error("[nedarim] assist mail", errText(e)));
       try {
         after(send);
       } catch {

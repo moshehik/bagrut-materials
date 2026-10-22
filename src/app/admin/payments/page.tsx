@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { requireAdminPage } from "@/lib/session";
 import { db } from "@/db";
-import { categories, nedarimPaymentEvents, nedarimPayments, users } from "@/db/schema";
-import { loadNedarimConfig } from "@/lib/nedarim/config";
+import { categories, nedarimPaymentEvents, nedarimPayments, nedarimTransactions, users } from "@/db/schema";
+import { callbackUrl, loadNedarimConfig } from "@/lib/nedarim/config";
 import { NEDARIM_STATUSES, STATUS_LABEL_HE, isNedarimStatus } from "@/lib/nedarim/logic";
 import { expireStale, parseCategoryIds } from "@/lib/nedarim/store";
-import { siteUrl } from "@/lib/mail";
+import { SECRET_NAMES, getSecretStatus } from "@/lib/nedarim/secrets";
+import { SYNC_MIN_INTERVAL_SEC, getSyncState, listUnmatchedTransactions, nextAllowedAt } from "@/lib/nedarim/sync";
 import { NedarimPaymentRow, type NedarimPaymentRowData } from "@/components/admin/nedarim-payment-row";
+import { NedarimSecretsCard } from "@/components/admin/nedarim-secrets-card";
+import { NedarimSyncCard } from "@/components/admin/nedarim-sync-card";
 
-/** מסך "תשלומים (נדרים)": כל בקשות התשלום דרך נדרים פלוס, מצב ההגדרה, אימות מחדש / אישור ידני / ביטול. docs/nedarim-payments.md */
+/** מסך "תשלומים (נדרים)": מצב החיבור, שער הקריאה, סודות, כל בקשות התשלום, אישור ידני / ביטול. docs/nedarim-payments.md */
 export const dynamic = "force-dynamic";
 
 type SP = { status?: string; ref?: string; user?: string };
@@ -21,14 +24,22 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
   const userId = sp.user && Number.isInteger(Number(sp.user)) ? Number(sp.user) : undefined;
   const ref = sp.ref?.trim().toUpperCase();
 
-  const cfg = await loadNedarimConfig();
+  const [cfg, secretStatuses, syncState, unmatched] = await Promise.all([
+    loadNedarimConfig(),
+    Promise.all(SECRET_NAMES.map(getSecretStatus)),
+    getSyncState(),
+    listUnmatchedTransactions(30),
+  ]);
   let tablesReady = true;
   let expired = 0;
+  let cachedTx = 0;
   try {
     expired = await expireStale();
+    const [c] = await db.select({ n: sql<number>`count(*)::int` }).from(nedarimTransactions);
+    cachedTx = Number(c?.n ?? 0);
   } catch (e) {
     tablesReady = false;
-    console.error("[admin payments] nedarim tables missing?", e);
+    console.error("[admin payments] nedarim tables missing?", e instanceof Error ? e.message : e);
   }
 
   const conds: SQL[] = [];
@@ -84,7 +95,10 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
     events: (evByPayment.get(p.id) ?? []).map((e) => ({ id: e.id, kind: e.kind, message: e.message, detail: e.detail, createdAt: e.createdAt })),
   }));
 
-  const counts = { open: data.filter((d) => d.status === "pending" || d.status === "processing").length, assist: data.filter((d) => d.assistRequestedAt && (d.status === "pending" || d.status === "processing")).length };
+  const counts = {
+    open: data.filter((d) => d.status === "pending" || d.status === "processing").length,
+    manual: data.filter((d) => d.status === "processing" || (d.assistRequestedAt && d.status === "pending")).length,
+  };
 
   const link = (patch: Partial<SP>) => {
     const q = new URLSearchParams();
@@ -94,14 +108,14 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
     return `/admin/payments${s ? `?${s}` : ""}`;
   };
   const chipCls = (on: boolean) => `chip text-xs ${on ? "bg-oak text-white" : "bg-oak-soft text-oak-deep hover:bg-oak/30"}`;
-  const callbackShown = cfg.callbackSecret ? `${siteUrl()}/api/pay/callback?key=••••••` : "— (אין סוד)";
+  const cb = callbackUrl(cfg);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-2xl font-bold">תשלומים דרך נדרים פלוס</h2>
         <span className="chip bg-yellow-100 text-yellow-800">{counts.open} פתוחים</span>
-        {counts.assist > 0 && <span className="chip bg-red-100 text-red-800">{counts.assist} מבקשות עזרה</span>}
+        {counts.manual > 0 && <span className="chip bg-red-100 text-red-800">{counts.manual} ממתינים לאישור ידני</span>}
         <span className="chip bg-blue-soft text-blue-deep">{data.length} מוצגים</span>
         {expired > 0 && <span className="chip bg-gray-100 text-gray-700">{expired} פגו עכשיו</span>}
       </div>
@@ -111,12 +125,11 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
           <span className="font-bold">מצב החיבור:</span>
           <span className={`chip ${cfg.ready ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"}`}>{cfg.ready ? "פעיל" : "לא פעיל"}</span>
           {cfg.simulate && <span className="chip bg-pink-soft text-pink">מצב דמה (פיתוח)</span>}
-          <span className="chip bg-gray-100 text-gray-700">אימות API: {cfg.hasApiPassword ? "יש מפתח" : "אין – אישור ידני"}</span>
-          {cfg.trustCallback && <span className="chip bg-yellow-100 text-yellow-800">אמון ב-CallBack (לא מומלץ)</span>}
+          <span className="chip bg-gray-100 text-gray-700">זיהוי אוטומטי: {cfg.hasApiPassword ? "יש מפתח API" : "אין מפתח – אישור ידני בלבד"}</span>
         </div>
         {!tablesReady && (
           <p className="text-red-700 font-semibold">
-            טבלאות nedarim_payments עדיין לא קיימות ב-DB – להריץ <code>npx tsx scripts/create-nedarim-tables.ts --apply</code>.
+            טבלאות nedarim_* עדיין לא קיימות ב-DB – להריץ <code>npx tsx scripts/create-nedarim-tables.ts --apply</code>.
           </p>
         )}
         {cfg.missing.length > 0 && (
@@ -127,11 +140,29 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
           </ul>
         )}
         <p className="text-xs text-muted">
-          כתובת ה-CallBack שנשלחת לנדרים בכל עסקה (ורצוי להגדיר גם בפורטל שלהם): <code dir="ltr">{callbackShown}</code> · קוד מוסד:{" "}
-          <code dir="ltr">{cfg.mosadId || "—"}</code> · ה-iframe נטען מ-matara.pro – אצל מורות עם נטפרי הוא עלול להיחסם; הן מקבלות בעמוד
-          התשלום כפתור «להשלים את התשלום דרך המנהלת» שמסמן את הבקשה כאן ושולח לך מייל. הסודות עצמם במשתני סביבה בלבד.
+          הזרימה: המורה מופנית לדף התשלום של נדרים (<code dir="ltr">matara.pro/nedarimplus/online/?mosad={cfg.mosadId || "…"}</code>) עם הסכום נעול
+          ומזהה הבקשה בהערה; האתר מזהה את התשלום בהיסטוריית המוסד ופותח את המנוי. כתובת CallBack אופציונלית להגדרה בפורטל נדרים (רק מפעילה
+          רענון): <code dir="ltr">{cb ? cb.replace(/key=.*$/, "key=••••••") : "— (אין סוד CallBack; לא חובה)"}</code>
         </p>
       </div>
+
+      <NedarimSyncCard
+        hasApi={cfg.hasApiPassword}
+        minIntervalMin={Math.round(SYNC_MIN_INTERVAL_SEC / 60)}
+        data={{
+          lastSuccessAt: syncState?.lastSuccessAt ?? null,
+          lastFetchAt: syncState?.lastFetchAt ?? null,
+          lastTransactionId: syncState?.lastTransactionId ?? null,
+          lastFetchCount: syncState?.lastFetchCount ?? null,
+          consecutiveErrors: syncState?.consecutiveErrors ?? 0,
+          lastError: syncState?.lastError ?? null,
+          nextAllowedAt: nextAllowedAt(syncState, SYNC_MIN_INTERVAL_SEC),
+          cachedTransactions: cachedTx,
+          unmatched: unmatched.map((t) => ({ transactionId: t.transactionId, amount: t.amount, phone: t.phone, email: t.email, comments: t.comments, transactionAt: t.transactionAt, fetchedAt: t.fetchedAt })),
+        }}
+      />
+
+      <NedarimSecretsCard statuses={secretStatuses} />
 
       <div className="card p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2 text-sm">

@@ -1,30 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, CalendarDays, Check, CreditCard, Crown, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, Check, CreditCard, Crown, ExternalLink, Loader2, Lock, RefreshCw } from "lucide-react";
 import { GateShekel } from "@/components/gate-shekel";
 import { GateField, LocationFields } from "@/components/auth-forms";
 import { SUBJECT_HOUSES, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
-import {
-  FRAME_LOAD_TIMEOUT_MS,
-  NEDARIM_IFRAME_URL,
-  NEDARIM_ORIGINS,
-  type FinishTransactionValue,
-  type PayablePlan,
-} from "@/lib/nedarim/logic";
+import type { PayablePlan } from "@/lib/nedarim/logic";
 
 /*
  * דף התשלום (/pay) – צד הדפדפן. ארבעה שלבים:
  *   plan    – בחירת מסלול (מדולג כשהגיעו עם ?plan=).
  *   details – מקצועות (שנתי 1–3 / ממלאת מקום 3 חודשים = 1 / יומית = בלי), פרטים חסרים (טלפון, עיר, תיכון), סיכום →
- *             POST /api/pay/intent (יוצר בקשה עם מזהה NP-… ומחזיר את ערך FinishTransaction2).
- *   pay     – ה-iframe המאובטח של נדרים פלוס (matara.pro): הכרטיס מוקלד שם בלבד. "לתשלום" שולח postMessage FinishTransaction2
- *             (לפי הדוגמה הרשמית sample2.html); ה-iframe עונה ב-Height / TransactionResponse / ValidateFields.
- *   done    – הדפדפן מדווח ל-POST /api/pay/complete; השרת מאמת מול נדרים (או ממתין ל-CallBack / אישור) ומחזיר סטטוס.
- * נטפרי: הדפדפן של חלק מהמורות חסום לכל דומיין שאינו האתר – ה-iframe של matara.pro פשוט לא נטען, בלי שגיאה. לכן: אם לא הגיעה
- * הודעת Height תוך FRAME_LOAD_TIMEOUT_MS מוצגת חלופה – ניסיון חוזר, או "בקשה להשלמת התשלום דרך המנהלת" (POST /api/pay/assist).
- * הערה מהתיעוד של נדרים: postMessage ל-iframe לא עובד מ-localhost – לבדיקה מקומית יש מצב דמה (NEDARIM_SIMULATE=1).
+ *             POST /api/pay/intent (יוצר בקשה NP-… ומחזיר את הקישור לדף התשלום המתארח של נדרים פלוס).
+ *   waiting – הקישור לדף התשלום (נפתח בלשונית חדשה), "שילמתי – בדקי עכשיו" (POST /api/pay/check), polling רגוע של
+ *             GET /api/pay/status (השרת קורא לנדרים לכל היותר פעם ב-4 דק' – לכולן ביחד), "לפתוח שוב את דף התשלום", ופנייה למנהלת.
+ *   done    – המנוי פעיל / נכשל / ממתין לאישור ידני.
+ * האתר לא מקבל פרטי כרטיס בשום שלב – ההקלדה היא בדף של נדרים (matara.pro).
  */
 
 export type PayPlanOption = {
@@ -37,18 +29,23 @@ export type PayPlanOption = {
   days: number | null;
 };
 type Subject = { id: number; title: string; slug: string; icon: string };
-type Step = "plan" | "details" | "pay" | "done";
-type Intent = {
-  reference: string;
-  amount: number;
-  listAmount: number;
-  couponPercent: number | null;
-  finish: FinishTransactionValue;
-  simulate: boolean;
+type Step = "plan" | "details" | "waiting" | "done";
+type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean };
+type StatusInfo = {
+  status: string;
+  text: string;
+  assistRequested: boolean;
+  hostedUrl?: string | null;
+  lastCheckedAt?: string | null;
+  nextCheckAt?: string | null;
+  note?: string;
 };
-type Result = { reference: string; status: string; text: string; assistRequested?: boolean };
 
-const MAX_STATUS_POLLS = 10;
+const POLL_MS = 30_000;
+const MAX_POLL_MINUTES = 40;
+const FINAL = ["paid", "failed", "cancelled", "expired"];
+
+const fmtTime = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : null);
 
 export function PayClient(props: {
   plans: PayPlanOption[];
@@ -60,32 +57,22 @@ export function PayClient(props: {
   user: { firstName: string; fullName: string; email: string; phone: string | null; personalCode: string };
   coupon: { label: string; percent: number } | null;
   initialRef: string | null;
-  simulate: boolean;
   substituteMonths: number;
   substituteDailyDownloads: number;
   yearlyListMonthly: number;
   substituteMonthly: number;
 }) {
   const { plans, subjects, user, coupon } = props;
-  const [step, setStep] = useState<Step>(props.initialRef ? "done" : props.initialPlan ? "details" : "plan");
+  const [step, setStep] = useState<Step>(props.initialRef ? "waiting" : props.initialPlan ? "details" : "plan");
   const [planKey, setPlanKey] = useState<PayablePlan>(props.initialPlan ?? "yearly");
   const [selected, setSelected] = useState<number[]>(props.preselected.slice(0, YEARLY_INCLUDED_SUBJECTS));
   const [skip, setSkip] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [intent, setIntent] = useState<Intent | null>(null);
-  const [frameReady, setFrameReady] = useState(false);
-  const [frameStuck, setFrameStuck] = useState(false);
-  const [frameKey, setFrameKey] = useState(0);
-  const [paying, setPaying] = useState(false);
-  const [result, setResult] = useState<Result | null>(
-    props.initialRef ? { reference: props.initialRef, status: "pending", text: "בודקת את מצב התשלום…" } : null,
-  );
-  const frameRef = useRef<HTMLIFrameElement>(null);
-  const intentRef = useRef<Intent | null>(null);
-  useEffect(() => {
-    intentRef.current = intent;
-  }, [intent]);
+  const [intent, setIntent] = useState<Intent | null>(props.initialRef ? { reference: props.initialRef, amount: 0, listAmount: 0, couponPercent: null, hostedUrl: null, simulate: false } : null);
+  const [info, setInfo] = useState<StatusInfo | null>(null);
+  const [opened, setOpened] = useState(false);
+  const [startedAt] = useState(() => Date.now());
 
   const plan = useMemo(() => plans.find((p) => p.key === planKey) ?? plans[0], [plans, planKey]);
   const isYearly = plan.key === "yearly";
@@ -106,88 +93,86 @@ export function PayClient(props: {
     });
   }
 
-  // --- דיווח לשרת על תוצאת ה-iframe ---
-  const sendComplete = useCallback(async (payload: { reference: string; response?: unknown; simulate?: true }) => {
-    try {
-      const res = await fetch("/api/pay/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "שגיאה ברישום התשלום");
-      setResult({ reference: data.reference, status: data.status, text: data.text });
-    } catch (e) {
-      setResult({
-        reference: payload.reference,
-        status: "processing",
-        text: e instanceof Error ? e.message : "אירעה שגיאה. אם חויבת – התשלום יירשם, אין צורך לשלם שוב.",
-      });
-    } finally {
-      setPaying(false);
-      setStep("done");
-    }
+  /* ---------- סטטוס ---------- */
+  const applyInfo = useCallback((data: StatusInfo) => {
+    setInfo(data);
+    if (FINAL.includes(data.status) || data.assistRequested) setStep("done");
   }, []);
 
-  // --- הודעות מה-iframe של נדרים פלוס (רק ממקור matara.pro) ---
-  useEffect(() => {
-    function onMessage(event: MessageEvent) {
-      if (!NEDARIM_ORIGINS.includes(event.origin)) return;
-      const data = event.data as { Name?: string; Value?: unknown } | null;
-      if (!data || typeof data !== "object") return;
-      if (data.Name === "Height") {
-        if (frameRef.current) frameRef.current.style.height = `${parseInt(String(data.Value), 10) + 15}px`;
-        setFrameReady(true);
-        setFrameStuck(false);
-      } else if (data.Name === "TransactionResponse") {
-        const current = intentRef.current;
-        if (!current) return;
-        const value = data.Value && typeof data.Value === "object" ? (data.Value as Record<string, unknown>) : {};
-        if (String(value.Status ?? "").toUpperCase() === "ERROR") {
-          setPaying(false);
-          setError(String(value.Message ?? "") || "התשלום לא אושר. אפשר לנסות שוב.");
-          // גם כישלון נרשם בשרת (בלי לעבור לשלב הסיום) כדי שיופיע ביומן
-          fetch("/api/pay/complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference: current.reference, response: value }),
-          }).catch(() => {});
-          return;
-        }
-        void sendComplete({ reference: current.reference, response: value });
-      }
+  const fetchStatus = useCallback(async () => {
+    if (!intent) return;
+    try {
+      const res = await fetch(`/api/pay/status?ref=${encodeURIComponent(intent.reference)}`, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) applyInfo(data);
+    } catch {
+      /* ננסה שוב */
     }
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [sendComplete]);
+  }, [intent, applyInfo]);
 
-  // --- שעון: ה-iframe לא ענה Height → כנראה חסום (נטפרי) ---
   useEffect(() => {
-    if (step !== "pay" || frameReady) return;
-    const t = setTimeout(() => setFrameStuck(true), FRAME_LOAD_TIMEOUT_MS);
-    return () => clearTimeout(t);
-  }, [step, frameReady, frameKey]);
-
-  // --- בדיקת סטטוס בדף הסיום (אחרי רענון / בזמן אימות) ---
-  useEffect(() => {
-    if (step !== "done" || !result?.reference) return;
-    if (["paid", "failed", "cancelled", "expired"].includes(result.status) || result.assistRequested) return;
-    let tries = 0;
-    const timer = setInterval(async () => {
-      tries += 1;
-      try {
-        const res = await fetch(`/api/pay/status?ref=${encodeURIComponent(result.reference)}`, { cache: "no-store" });
-        const data = await res.json();
-        if (res.ok) setResult((r) => (r ? { ...r, status: data.status, text: data.text, assistRequested: data.assistRequested } : r));
-      } catch {
-        /* ננסה שוב */
+    if (step !== "waiting" || !intent) return;
+    const first = setTimeout(() => void fetchStatus(), 0);
+    const timer = setInterval(() => {
+      if (Date.now() - startedAt > MAX_POLL_MINUTES * 60_000) {
+        clearInterval(timer);
+        return;
       }
-      if (tries >= MAX_STATUS_POLLS) clearInterval(timer);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [step, result?.reference, result?.status, result?.assistRequested]);
+      void fetchStatus();
+    }, POLL_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [step, intent, fetchStatus, startedAt]);
 
-  // --- שלב 2 → יצירת בקשה ---
+  const checkNow = async (simulate = false) => {
+    if (!intent || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/pay/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(simulate ? { reference: intent.reference, simulate: true } : { reference: intent.reference }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "הבדיקה נכשלה – נסי שוב בעוד רגע");
+        return;
+      }
+      applyInfo(data);
+    } catch {
+      setError("שגיאת רשת – נסי שוב");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestAssist = async () => {
+    if (!intent || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/pay/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference: intent.reference }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "לא הצלחנו לשלוח את הבקשה");
+        return;
+      }
+      applyInfo({ status: data.status, text: data.text, assistRequested: true });
+    } catch {
+      setError("שגיאת רשת – נסי שוב");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* ---------- שלב 2 → יצירת בקשה ---------- */
   async function submitDetails(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -213,10 +198,11 @@ export function PayClient(props: {
         return;
       }
       setIntent(data);
-      setFrameReady(false);
-      setFrameStuck(false);
-      setFrameKey((k) => k + 1);
-      setStep("pay");
+      setInfo(null);
+      setOpened(false);
+      setStep("waiting");
+      // מעדכנים את הכתובת כדי שרענון/חזרה מנדרים יחזירו לאותה בקשה
+      window.history.replaceState(null, "", `/pay?ref=${encodeURIComponent(data.reference)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "שגיאת רשת");
     } finally {
@@ -224,59 +210,12 @@ export function PayClient(props: {
     }
   }
 
-  const postToFrame = (msg: unknown) => {
-    const win = frameRef.current?.contentWindow;
-    if (!win) return false;
-    // ה-iframe עונה ל-event.origin של ההורה; את היעד אנחנו מצמצמים לדומיין של נדרים (לא '*' כמו בדוגמה)
-    win.postMessage(msg, NEDARIM_ORIGINS[0]);
-    return true;
-  };
-
-  const pay = () => {
-    if (!intent || paying) return;
-    setError("");
-    setPaying(true);
-    if (!postToFrame({ Name: "FinishTransaction2", Value: intent.finish })) {
-      setPaying(false);
-      setError("טופס הסליקה עדיין לא נטען. נסי שוב בעוד רגע.");
-    }
-  };
-
-  const simulatePay = async () => {
-    if (!intent) return;
-    setPaying(true);
-    await sendComplete({ reference: intent.reference, simulate: true });
-  };
-
-  const requestAssist = async () => {
-    if (!intent || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/pay/assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference: intent.reference }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error || "לא הצלחנו לשלוח את הבקשה");
-        return;
-      }
-      setResult({ reference: intent.reference, status: data.status, text: data.text, assistRequested: true });
-      setStep("done");
-    } catch {
-      setError("שגיאת רשת – נסי שוב");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const restart = () => {
     setStep(props.initialPlan ? "details" : "plan");
     setIntent(null);
-    setResult(null);
+    setInfo(null);
     setError("");
+    window.history.replaceState(null, "", "/pay");
   };
 
   /* ---------- כרטיס המסלול (כמו בעמוד השלמת הרשמה) ---------- */
@@ -394,9 +333,9 @@ export function PayClient(props: {
   ) : null;
 
   /* ---------- שלב סיום ---------- */
-  if (step === "done" && result) {
-    const paid = result.status === "paid";
-    const failed = result.status === "failed";
+  if (step === "done" && intent && info) {
+    const paid = info.status === "paid";
+    const failed = info.status === "failed" || info.status === "cancelled" || info.status === "expired";
     return (
       <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-live="polite">
         <span className="gold-ring" aria-hidden="true" />
@@ -404,10 +343,10 @@ export function PayClient(props: {
           <span className="gate-icon mx-auto">
             {paid ? <Check className="h-6 w-6" strokeWidth={2} aria-hidden /> : failed ? <AlertCircle className="h-6 w-6" aria-hidden /> : <Loader2 className="h-6 w-6 animate-spin" aria-hidden />}
           </span>
-          <h2 className="mt-2 text-2xl">{paid ? "המנוי שלך פעיל!" : failed ? "התשלום לא אושר" : "הבקשה התקבלה"}</h2>
-          <p className="gate-soft mt-2 text-lg">{result.text}</p>
+          <h2 className="mt-2 text-2xl">{paid ? "המנוי שלך פעיל!" : failed ? "התשלום לא הושלם" : "הבקשה בטיפול"}</h2>
+          <p className="gate-soft mt-2 text-lg">{info.text}</p>
           <p className="mt-3 text-base">
-            מזהה הבקשה: <b dir="ltr">{result.reference}</b> – כדאי לשמור אותו לכל פנייה.
+            מזהה הבקשה: <b dir="ltr">{intent.reference}</b> – כדאי לשמור אותו לכל פנייה.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {paid && (
@@ -431,19 +370,25 @@ export function PayClient(props: {
     );
   }
 
-  /* ---------- שלב התשלום (iframe) ---------- */
-  if (step === "pay" && intent) {
+  /* ---------- שלב ההמתנה (אחרי יצירת הבקשה / חזרה מנדרים) ---------- */
+  if (step === "waiting" && intent) {
+    const hostedUrl = info?.hostedUrl ?? intent.hostedUrl;
+    const amount = intent.amount || 0;
+    const last = fmtTime(info?.lastCheckedAt);
+    const next = fmtTime(info?.nextCheckAt);
     return (
-      <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-labelledby="pay-h">
+      <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-labelledby="pay-h" aria-live="polite">
         <span className="gold-ring" aria-hidden="true" />
         <div className="gate-strip gate-total">
           <div className="flex w-full items-baseline justify-between gap-4">
             <span id="pay-h" className="text-2xl">
-              לתשלום – {plan.label}
+              {amount ? `לתשלום – ${plan.label}` : "בקשת התשלום שלך"}
             </span>
-            <span className="gate-price">
-              <GateShekel agorot={intent.amount} />
-            </span>
+            {amount > 0 && (
+              <span className="gate-price">
+                <GateShekel agorot={amount} />
+              </span>
+            )}
           </div>
           {intent.couponPercent ? (
             <div className="w-full text-base">
@@ -451,81 +396,53 @@ export function PayClient(props: {
             </div>
           ) : null}
         </div>
-        <p className="mt-3 text-base">
-          מזהה הבקשה: <b dir="ltr">{intent.reference}</b>. פרטי הכרטיס מוקלדים בטופס המאובטח של נדרים פלוס ואינם נשמרים
-          אצלנו.
-        </p>
 
-        <div className="relative mt-4 overflow-hidden rounded-xl border-[2.5px] border-[#0a0a0a] bg-white">
-          <iframe
-            key={frameKey}
-            ref={frameRef}
-            title="טופס סליקה מאובטח – נדרים פלוס"
-            src={NEDARIM_IFRAME_URL}
-            scrolling="no"
-            className="block w-full"
-            style={{ height: frameReady ? undefined : "0px", border: 0 }}
-            onLoad={() => postToFrame({ Name: "GetHeight" })}
-          />
-          {!frameReady && (
-            <div className="flex items-center justify-center gap-2 px-4 py-8 text-center text-base text-[#3b3000]" role="status">
-              {frameStuck ? (
-                <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />
-              ) : (
-                <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
-              )}
-              {frameStuck ? "טופס התשלום לא נטען" : "מתחברת לשרת הסליקה המאובטח…"}
-            </div>
-          )}
-        </div>
-
-        {frameStuck && !frameReady && (
-          <div className="gate-card mt-4 space-y-3" role="alert">
-            <h3 className="text-xl">טופס התשלום לא נטען אצלך</h3>
-            <p className="gate-soft text-base leading-relaxed">
-              הטופס מגיע מהשרת המאובטח של נדרים פלוס (matara.pro). אם את גולשת דרך נטפרי או סינון אחר, ייתכן שהוא חסום
-              אצלך – אפשר לבקש מהסינון לפתוח את האתר matara.pro ולנסות שוב, או להשלים את התשלום דרך מנהלת האתר: היא
-              תיצור איתך קשר, ואחרי התשלום המנוי ייפתח לך.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-gold py-2" onClick={() => { setFrameStuck(false); setFrameKey((k) => k + 1); }} disabled={busy}>
-                לנסות לטעון שוב
-              </button>
-              <button type="button" className="btn gate-skip py-2 !border-[#0a0a0a] !text-[#0a0a0a]" onClick={requestAssist} disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} להשלים את התשלום דרך המנהלת
-              </button>
-            </div>
+        <div className="gate-card mt-4 space-y-3">
+          <h3 className="text-xl">{opened ? "שילמת? נבדוק מול נדרים פלוס" : "שלב 1 – התשלום בדף המאובטח של נדרים פלוס"}</h3>
+          <p className="gate-soft text-base leading-relaxed">
+            הדף נפתח בלשונית חדשה, עם הסכום ופרטייך כבר ממולאים. אחרי התשלום חזרי לכאן – המנוי ייפתח אוטומטית ברגע שהתשלום
+            יזוהה. <b>הבדיקה מול נדרים פלוס מתבצעת פעם בכמה דקות</b>, אז ייתכן שתצטרכי להמתין קצת. אין צורך לשלם פעמיים.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {hostedUrl ? (
+              <a href={hostedUrl} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-gate py-2" onClick={() => setOpened(true)}>
+                <ExternalLink className="h-5 w-5" aria-hidden /> {opened ? "לפתוח שוב את דף התשלום" : "לדף התשלום של נדרים פלוס"} {arrow}
+              </a>
+            ) : (
+              <span className="text-base">טוענת את הקישור לדף התשלום…</span>
+            )}
+            <button type="button" className="btn gate-skip py-2 !border-[#0a0a0a] !text-[#0a0a0a]" onClick={() => checkNow()} disabled={busy}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" aria-hidden />} שילמתי – בדקי עכשיו
+            </button>
           </div>
-        )}
+          <p className="text-sm text-[#3b3000]">
+            {info?.status === "processing" ? info.text : info?.note ? info.note : last ? `נבדק לאחרונה ב-${last}${next ? ` · הבדיקה הבאה אחרי ${next}` : ""}` : "ממתינים לאישור התשלום…"}
+          </p>
+        </div>
 
         <div className="mt-4">{errorStrip}</div>
 
-        <div className="mt-4 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button type="button" className="btn btn-gold btn-gate py-2 disabled:opacity-50" onClick={pay} disabled={paying || !frameReady}>
-              {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" aria-hidden />}
-              {paying ? "מבצעת חיוב, נא להמתין…" : "לתשלום"} {!paying && arrow}
+        <div className="mt-4 text-center text-base">
+          <p>
+            מזהה הבקשה: <b dir="ltr">{intent.reference}</b>. הדף לא נפתח או יש בעיה?{" "}
+            <button type="button" className="underline" onClick={requestAssist} disabled={busy}>
+              כתבי לנו ונעזור להשלים את התשלום
             </button>
-            <button type="button" className="btn gate-skip py-2" onClick={() => { setStep("details"); setIntent(null); setError(""); }} disabled={paying}>
-              חזרה לפרטים
-            </button>
-          </div>
-          {!frameStuck && !frameReady && (
-            <button type="button" className="mt-3 text-base underline opacity-80" onClick={() => setFrameStuck(true)}>
-              הטופס לא נטען אצלך?
-            </button>
-          )}
+          </p>
+          <button type="button" className="mt-2 underline opacity-80" onClick={restart} disabled={busy}>
+            ביטול והתחלה מחדש
+          </button>
           {intent.simulate && (
             <div className="gate-strip mt-4 text-base">
-              <span>מצב דמה (פיתוח בלבד) – טופס נדרים לא מקבל הודעות מ-localhost:</span>
-              <button type="button" className="btn gate-skip py-1" onClick={simulatePay} disabled={paying}>
+              <span>מצב דמה (פיתוח בלבד):</span>
+              <button type="button" className="btn gate-skip py-1" onClick={() => checkNow(true)} disabled={busy}>
                 סימולציית תשלום מוצלח
               </button>
             </div>
           )}
           <p className="mt-3 flex items-center justify-center gap-1.5 text-base opacity-80">
-            <ShieldCheck className="h-4 w-4" aria-hidden />
-            הסליקה מתבצעת בשרת המאובטח של נדרים פלוס (תקן PCI) – מספר הכרטיס לא עובר דרך האתר.
+            <Lock className="h-4 w-4" aria-hidden />
+            פרטי הכרטיס מוקלדים רק בדף של נדרים פלוס (תקן PCI) – האתר לא מקבל ולא שומר אותם.
           </p>
         </div>
       </section>
@@ -648,7 +565,7 @@ export function PayClient(props: {
                 ltr
                 autoComplete="tel"
                 inputMode="tel"
-                hint="מוטבע בסימן המים של הקבצים שלך, ונשלח לחברת הסליקה"
+                hint="מוטבע בסימן המים של הקבצים שלך, ומשמש לזיהוי התשלום בנדרים פלוס"
               />
             )}
             {props.needsLocation && <LocationFields />}
@@ -693,7 +610,7 @@ export function PayClient(props: {
           {!canSubmit && needsSubjects && <p className="mt-2 text-[#ffd45a]">יש לבחור לפחות מקצוע אחד כדי להמשיך.</p>}
           <p className="mt-3 flex items-center justify-center gap-1.5 text-base opacity-80">
             <Lock className="h-4 w-4" aria-hidden />
-            בלחיצה על «המשך» ייפתח טופס הסליקה המאובטח של נדרים פלוס. פרטי הכרטיס אינם עוברים דרך האתר.
+            בלחיצה על «המשך» ייפתח דף התשלום המאובטח של נדרים פלוס. פרטי הכרטיס אינם עוברים דרך האתר.
           </p>
         </div>
       </form>

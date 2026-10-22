@@ -1,24 +1,25 @@
 # תשלום והפעלת מנוי דרך נדרים פלוס (`/pay`)
 
-מורה מחוברת בוחרת מסלול (מנוי שנתי / ממלאת מקום 3 חודשים / ממלאת מקום יומית) ואת המקצועות, משלמת בטופס הסליקה המאובטח של
-נדרים פלוס – והאתר מזהה את התשלום, מאמת אותו מול נדרים, ופותח לה **בדיוק את אותו מנוי שהקופה הישנה הייתה יוצרת** (שורות
-`purchases`, תוקף מההורדה הראשונה, מכסות, קופון). נבנה 22.10.2026, ענף `feature/nedarim-payments`.
+מורה מחוברת בוחרת מסלול (מנוי שנתי / ממלאת מקום 3 חודשים / ממלאת מקום יומית) ואת המקצועות, **מופנית לדף התשלום המתארח של
+נדרים פלוס** (`https://www.matara.pro/nedarimplus/online/?mosad=<קוד המוסד>`) עם הסכום נעול ופרטייה ממולאים – והאתר מזהה את
+התשלום בהיסטוריית העסקאות של המוסד (API של נדרים) ופותח לה **בדיוק את אותו מנוי שהקופה הישנה הייתה יוצרת** (שורות `purchases`,
+תוקף מההורדה הראשונה, מכסות, קופון, מייל אישור). האתר לא מחייב ולא מקבל פרטי כרטיס בשום שלב. ענף `feature/nedarim-payments`.
 
-**מצב:** קוד בנוי, typecheck + בדיקות לוגיקה + build עוברים. **לא פרוס, הטבלאות לא נוצרו ב-Neon, אין עדיין מפתחות של נדרים.** ר' "מה חסר".
+**מצב (22.10.2026):** קוד בנוי; typecheck, בדיקות יחידה ו-`next build` עוברים. **לא פרוס, הטבלאות לא נוצרו ב-Neon, לא בוצעה
+קריאה אמיתית לנדרים.** ר' "מה חסר".
 
 ## עקרונות
 
-1. **מספר הכרטיס לעולם לא עובר דרך השרת שלנו.** ההקלדה נעשית בתוך ה-iframe של נדרים (`https://matara.pro/nedarimplus/iframe`,
-   תקן PCI). אנחנו שולחים ל-iframe רק פרטי מורה, סכום ומזהה בקשה ב-`postMessage` (`FinishTransaction2`) – בדיוק השדות של הדוגמה
-   הרשמית `https://www.matara.pro/nedarimplus/iframe/sample2.html`. אין פרמטרים מומצאים.
-2. **"הדפדפן אמר שהצליח" אינו ראיה.** המנוי נפתח רק אחרי אחד מאלה: (א) אימות מול היסטוריית העסקאות של המוסד
-   (`Manage3.aspx` `GetHistoryJson`, מפתח `npk_`) – עסקה עם אותו `TransactionId` (או מזהה הבקשה בהערות), אותו סכום, ש"ח;
-   (ב) אישור ידני של המנהלת ב-`/admin/payments`; (ג) רק אם `NEDARIM_TRUST_CALLBACK=1` – CallBack של נדרים בסכום הנכון.
-3. **אידמפוטנטיות בלי טרנזקציות** (neon-http לא תומך בהן): `UPDATE nedarim_payments SET status='paid' WHERE status IN (pending,
-   processing)` "תופס" את הבקשה, ורק הזוכה מכניס את שורות `purchases`. CallBack כפול / דפדפן + CallBack = מנוי אחד. כישלון אחרי
-   התפיסה מחזיר ל-`processing` עם הודעה (המנהלת רואה "אמת מחדש").
-4. **הסודות ב-env בלבד** – הריפו ציבורי.
-5. הסכום נקבע **בשרת** (`getPlanPrices` + קופון פרטי), לא בדפדפן. הקופון נתפס רק בהשלמה (בקשה שלא שולמה לא "שורפת" אותו).
+1. **אין iframe ואין ApiValid.** הניווט לדף של נדרים הוא ניווט רגיל של הדפדפן (לשונית חדשה). matara.pro פתוח בנטפרי (אומת ע"י משה).
+2. **"הדפדפן אמר שהצליח" לא קיים בכלל.** המנוי נפתח רק כשעסקה מתאימה נמצאת ב-`GetHistoryJson` של המוסד (מפתח `npk_`), או
+   באישור ידני של המנהלת. CallBack (אם מגדירים בפורטל נדרים) רק מפעיל רענון – לא משלים.
+3. **מגבלת ה-API (20 קריאות בשעה למוסד) נאכפת בשער גלובלי** (`src/lib/nedarim/sync.ts`): שורה יחידה `nedarim_sync_state` עם
+   נעילה אטומית, מרווח מינימלי (4 דק' ל-polling → ≤15/שעה; 3 דק' ל"שילמתי"; דקה למנהלת/CallBack/בדיקת מפתח), `LastId`
+   אינקרמנטלי, backoff מעריכי בשגיאה. polling של מורות לעולם לא קורא ל-API ישירות.
+4. **אידמפוטנטיות בלי טרנזקציות** (neon-http): תפיסת העסקה (`matched_payment_id IS NULL → id`) → תפיסת הבקשה (UPDATE מותנה על
+   הסטטוס; אינדקס ייחודי חלקי על `transaction_id` של בקשות `paid`) → רק הזוכה מכניס שורות `purchases`. עסקה אחת = בקשה אחת.
+5. **הסודות מוצפנים ב-DB או ב-env בלבד** (הריפו ציבורי). הסכום נקבע **בשרת** ונעול בקישור; אי אפשר לשנות plan/amount/מקצועות
+   אחרי יצירת הבקשה (אין endpoint שמעדכן אותם).
 
 ## הזרימה
 
@@ -26,88 +27,115 @@
 מורה ---> GET /pay?plan=yearly&categories=1,2   (מחוברת; אחרת → /login?next=… / הרשמה)
        |   nedarim_enabled כבוי → redirect ל-/checkout (הקופה הישנה). /checkout?plan=… דולק → redirect ל-/pay.
        |  1. מסלול → מקצועות (שנתי 1–3 / 3 חודשים 1 / יומית בלי) + טלפון/עיר/תיכון אם חסרים
-       |     ---> POST /api/pay/intent   → שורת nedarim_payments status=pending, reference=NP-XXXXXXXX
-       |     <--- { reference, amount, finish (FinishTransaction2: Mosad, ApiValid, פרטים, Amount, Param1=reference, Param2=plan,
-       |            Comment="לו״ז העניין - מנוי שנתי - NP-…", CallBack=https://<site>/api/pay/callback?key=SECRET) }
-       |  2. iframe matara.pro (כרטיס/תוקף/CVV שם). "לתשלום" → postMessage FinishTransaction2 ; תשובה TransactionResponse
-       |  3a. דפדפן ---> POST /api/pay/complete { reference, response }      (טריגר)
-       |  3b. נדרים  ---> POST /api/pay/callback?key=SECRET (Param1=reference)  (webhook)
-       v  4. verifyAndSettle (src/lib/nedarim/store.ts): GetHistoryJson → paid (verified, api) | processing ("ממתין לאימות")
-          השלמה = buildPurchaseRows (כמו purchaseAction) + transactions (method="nedarim") + קופון + מייל templates.purchase
+       |     ---> POST /api/pay/intent → שורת nedarim_payments status=pending, reference=NP-XXXXXXXX (אקראי קריפטוגרפי)
+       |     <--- { reference, amount, hostedUrl }   (הכתובת הופכת ל-/pay?ref=NP-…)
+       |  2. לשונית חדשה: דף התשלום של נדרים (Amount נעול, ClientName/Phone/Email ממולאים, comment+Analytic = מזהה הבקשה,
+       |     Redirect חזרה ל-/pay?ref=…). ההקלדה של הכרטיס – שם בלבד.
+       |  3. דף ההמתנה: polling GET /api/pay/status כל 30 שנ' (מפעיל את השער – קריאה אמיתית לכל היותר פעם ב-4 דק'),
+       |     כפתור "שילמתי – בדקי עכשיו" (POST /api/pay/check – רצפה 3 דק'), "לפתוח שוב את דף התשלום", פנייה למנהלת (assist).
+       v  4. sync.refreshHistory → nedarim_transactions (מטמון) → matchPendingPayments → settleFromTransaction:
+          purchases (buildPurchaseRows, כמו purchaseAction) + transactions (method="nedarim") + קופון + templates.purchase
 ```
 
-### איך המנוי מחובר למערכת הקיימת
+### ההתאמה (logic.ts: `findCandidates`, `decideAutoMatches`)
 
-`buildPurchaseRows` ב-`store.ts` מייצר את אותן שורות כמו `purchaseAction` (`src/lib/actions/purchase.ts`):
-- **שנתי**: שורה לכל מקצוע ראשי (1–3), הסכום על הראשונה, `termDays=365`, `endsAt=NULL` (מתחיל בהורדה הראשונה – `reserveDownloads`);
-  עם "דלג" – שורה אחת `subjectsPending=true`.
-- **ממלאת מקום 3 חודשים**: מקצוע אחד, `termDays=90`, מכסה `PLANS.substitute_3m.downloadsLimit`.
-- **ממלאת מקום יומית**: `categoryId=NULL`, `downloadsLimit=substitute_daily_downloads`, בלי תוקף.
-- `purchases.payment_ref = NP-…` לכל השורות, `nedarim_payments.purchase_id` = הראשונה. השדרוג ל-/account/upgrade, הוספת מקצוע
-  ב-/account/subjects, המכסות והמנויים בניהול – כולם עובדים על השורות האלה כרגיל. (purchaseAction לא שונה – כשההגדרה דולקת
-  הוא כבר לא מקבל מסלולי מנוי, כי /checkout מפנה ל-/pay.)
+מועמדות לבקשה: **סכום זהה בדיוק** (אגורות), ש"ח, עסקה שלא שויכה, מועד העסקה (`TransactionTime`; אם חסר – מועד הקריאה) לא לפני
+יצירת הבקשה פחות 15 דק'. בקשות ישנות מ-48 שעות לא נבדקות (פגות).
+- **strong** – מזהה הבקשה `NP-…` מופיע בהערת העסקה (`Comments`; נשלח גם ב-`comment` וגם ב-`Analytic`). בדיוק אחת → מנוי. יותר → ספק.
+- **weak** (רק בלי strong – למשל פתחה את דף נדרים בלי הקישור שלנו) – טלפון מנורמל זהה **או** מייל זהה. מנוי רק אם לבקשה יש
+  בדיוק עסקה אחת כזו **ו**אותה עסקה לא מתאימה לשום בקשה פתוחה אחרת.
+- כל ספק → הבקשה `processing` ("ממתין לאישור ידני") עם הסיבה, מופיעה למנהלת. סכום שונה/חלקי, מטבע אחר, זיכוי (סכום שלילי),
+  ביטול (0) – לעולם לא מתאימים. בקשה שביקשה עזרה (assist) יוצאת מההתאמה האוטומטית.
 
-### נטפרי (אילוץ מרכזי – ר' CLAUDE.md)
+### פרמטרי דף התשלום המתארח – מה נמצא
 
-נטפרי מסנן לפי רשימת אתרים מאושרים; אצל חלק מהמורות הדפדפן חסום לכל דומיין שאינו האתר. ה-iframe נטען מ-`matara.pro` (דומיין
-צד-שלישי) ולכן **עלול לא להיטען בלי שום שגיאה**. מה בדקתי: דף הדוגמה וה-iframe של נדרים טוענים רק `matara.pro` + Google Fonts;
-אין proxy/redirect same-origin אפשרי – ה-iframe חייב לרוץ ב-origin של נדרים (PCI, ה-postMessage שלהם עונה ל-`event.origin`, וכל
-בקשות הסליקה שבתוכו הולכות ל-matara.pro). גם דף התשלום המתארח של נדרים הוא באותו דומיין. לא מצאתי אישור פומבי שנדרים פלוס
-פתוח בנטפרי (סביר – הוא נפוץ מאוד במגזר – אבל לא מאומת). לכן:
-- בעמוד התשלום יש שעון: אם ה-iframe לא ענה `Height` תוך 12 שניות (או לחיצה על "הטופס לא נטען אצלך?") מוצגת חלופה: ניסיון
-  חוזר, הסבר ("לבקש מהסינון לפתוח את matara.pro"), וכפתור **"להשלים את התשלום דרך המנהלת"** → `POST /api/pay/assist`: הבקשה
-  נשארת פתוחה ומסומנת, המנהלת מקבלת מייל (`templates.payAssistAdmin`), ואחרי שהתשלום מתקבל בדרך אחרת – "אשר ידנית" פותח את המנוי.
-- **לבדוק בפועל** עם מורה שגולשת בנטפרי מיד אחרי הפריסה הראשונה, ואם חסום – לבקש מנטפרי לפתוח את `matara.pro` (זה הפתרון האמיתי).
+אין תיעוד רשמי פומבי לדף. הפרמטרים אומתו ב-**קוד הדף עצמו** (`/nedarimplus/online/Files/JavaScript5.js`, הפונקציות
+`GetURLParameter`/`DecodeParam`) ותואמים לתיעוד ה-API שנדרים מוסרים למפתחים (עותק ציבורי: `seedlinggary/kty-frontend`,
+`NedarimPlus-API.md`):
+`mosad` (חובה), `Amount`, `AmountLock`, `Payment`, `PaymentLock`/`tashlumlock`, `Day`, `ClientName`, `Phone`, `Email`, `Street`,
+`City`, `Zeout`, `Bank`/`Snif`/`Account`, `groupe`, `groupelock`, `comment` (ממלא **ונועל** את ההערה), `avour` (ממלא) + `avourlock`,
+`CustomAvour`, `CustomKoteret`, `Analytic` (מצורף לתחילת הערת העסקה עם " | "), `Redirect` (אחרי תשלום מוצלח), `TakanonChecked`,
+`logo`, `HideParameters`, `currency`, `OnlyShekel`/`OnlyDollar`/`ForceDollar`, `Language`/`lang`, `NormalDefault`/`KevaDefault`,
+`OnlyNormal`/`onlykeva`/`onlymasav`/`OnlyBit`/`OnlyDigitalTransfer`/`OnlyCrypto`, `CRM`, `S`, `MatrimId`, `device`.
+**אין** פרמטר CallBack ואין Param1/Param2 בדף – לכן הזיהוי דרך ההערה. מה שאנחנו שולחים (`hostedPaymentUrl`): `mosad`, `Amount`,
+`AmountLock=1`, `Payment=1`, `PaymentLock=1`, `OnlyNormal=1`, `OnlyShekel=1`, `ClientName`, `Phone`, `Email`, `comment`, `Analytic`,
+`Redirect`, `HideParameters=1`. לא שולחים: Groupe, Street/City, Zeout, TakanonChecked (המורה מאשרת תקנון בעצמה).
+
+### GetHistoryJson – מה הונח
+
+`POST https://matara.pro/nedarimplus/Reports/Manage3.aspx` עם `Action=GetHistoryJson, ApiPassword, MosadId, LastId (exclusive),
+MaxId (≤2000)`; תשובה: מערך עם `TransactionId, Amount, Currency (1=ש"ח), Phone, Mail, Comments, TransactionTime, ClientName,
+Confirmation, LastNum, …` (לפי התיעוד הנ"ל). עסקאות מבוטלות = `Amount` 0; זיכויים = שורות נפרדות בסכום שלילי. `parseHistoryRow`
+סובלני לשמות קרובים ולפורמטי תאריך (ISO / dd/MM/yyyy HH:mm). **לא אומת מול תשובה אמיתית** – אחרי הקריאה הראשונה לבדוק את
+`raw` ב-`nedarim_transactions`. הקריאה הראשונה (בלי LastId) מתחילה מהעסקה הראשונה של המוסד – ההיסטוריה "נגללת" ב-2000 שורות
+לקריאה; עסקאות ישנות לעולם לא מתאימות (חלון הזמן), אז זה רק עניין של זמן עד שהמטמון מדביק את ההווה.
 
 ## קבצים
 
 | קובץ | תפקיד |
 |---|---|
-| `src/lib/nedarim/logic.ts` | לוגיקה טהורה (בלי imports): מזהה בקשה, FinishTransaction2, פענוח CallBack, התאמה להיסטוריה, החלטת השלמה, טקסטים. נבדק ב-`scripts/nedarim-tests/logic.test.ts` |
-| `src/lib/nedarim/config.ts` | env + ההגדרה `nedarim_enabled`; `missing` = מה חסר; `callbackUrl` |
-| `src/lib/nedarim/manage.ts` | `GetHistoryJson` (Manage3, מפתח npk_) |
-| `src/lib/nedarim/store.ts` | DB: יצירת בקשה, דיווחים, אימות, השלמה אידמפוטנטית (`buildPurchaseRows`), אישור ידני, ביטול, בקשת סיוע, פקיעה |
-| `src/app/pay/page.tsx`, `src/components/pay/pay-client.tsx` | העמוד (4 שלבים, עיצוב "שער" כמו השלמת הרשמה, חלופת נטפרי, מצב דמה) |
-| `src/app/api/pay/{intent,complete,callback,status,assist}/route.ts` | ה-API (מחוברות בלבד חוץ מ-callback שמוגן בסוד) |
-| `src/app/admin/payments/page.tsx`, `src/components/admin/nedarim-payment-row.tsx`, `src/lib/actions/nedarim-admin.ts` | מסך "תשלומים (נדרים)": מצב החיבור, רשימה, יומן, אמת מחדש / אשר ידנית / ביטול |
-| `src/db/schema.ts` (`nedarimPayments`, `nedarimPaymentEvents`), `scripts/create-nedarim-tables.ts` | הסכמה וה-SQL (dry-run כברירת מחדל, `--apply` מריץ) |
-| `src/lib/settings.ts` (`nedarim_enabled`), `src/lib/mail.ts` (`payAssistAdmin`), `src/components/admin/admin-nav.tsx`, `src/app/checkout/page.tsx` (redirect) | רישומים |
+| `src/lib/nedarim/logic.ts` | לוגיקה טהורה: מזהה בקשה, `hostedPaymentUrl`, `parseHistoryRow`, `findCandidates`/`decideAutoMatches`, CallBack, טקסטים. נבדק ב-`scripts/nedarim-tests/logic.test.ts` |
+| `src/lib/nedarim/sync.ts` | שער הקריאה הגלובלי + מטמון העסקאות + `matchPendingPayments` |
+| `src/lib/nedarim/store.ts` | DB: יצירת בקשה, `settleFromTransaction` / `manualSettle` / `simulatedSettle` (השלמה אידמפוטנטית, `buildPurchaseRows`), ביטול, סיוע, CallBack, פקיעה |
+| `src/lib/nedarim/manage.ts` | `GetHistoryJson` (Manage3) – נקרא רק מהשער |
+| `src/lib/nedarim/config.ts`, `hosted.ts` | קונפיגורציה (env + הגדרה + סודות), בניית הקישור לבקשה |
+| `src/lib/nedarim/secret-crypto.ts`, `secrets.ts` | הצפנת סודות (AES-256-GCM, HKDF), `getNedarimApiPassword`, `redactNedarim`. נבדק ב-`secret-crypto.test.ts` |
+| `src/app/pay/page.tsx`, `src/components/pay/pay-client.tsx` | העמוד (מסלול → פרטים → המתנה → סיום) |
+| `src/app/api/pay/{intent,status,check,assist,callback}/route.ts` | ה-API (מחוברות + בעלות על הבקשה + same-origin; callback מוגן בסוד) |
+| `src/app/admin/payments/page.tsx`, `src/components/admin/nedarim-{payment-row,sync-card,secrets-card}.tsx`, `src/lib/actions/nedarim-admin.ts` | מסך "תשלומים (נדרים)": מצב, שער הקריאה + "רענון עכשיו" + עסקאות לא משויכות, סודות (החלפה/בדיקה/הסרה), רשימה, יומן, "בדוק שוב" / "אשר ידנית" (עם מספר עסקה) / ביטול |
+| `src/db/schema.ts`, `scripts/create-nedarim-tables.ts` | `nedarim_payments`, `nedarim_payment_events`, `nedarim_sync_state`, `nedarim_transactions`, `app_secrets` + ה-SQL (dry-run כברירת מחדל, `--apply`) |
+| `src/lib/settings.ts` (`nedarim_enabled`), `src/lib/mail.ts` (`payAssistAdmin`), `src/lib/agentEvents.ts` (redaction), `src/lib/http-utils.ts` (`isSameOriginRequest`), `next.config.ts` (no-store), `src/components/admin/admin-nav.tsx`, `src/app/checkout/page.tsx` (redirect) | רישומים |
 
-## משתני סביבה (Vercel ×3 סביבות + .env.local; Redeploy אחרי שינוי)
+## הגדרות וסודות
 
-| משתנה | מה |
+| איפה | מה |
 |---|---|
-| `NEDARIM_MOSAD_ID` | קוד המוסד בנדרים פלוס |
-| `NEDARIM_API_VALID` | ה-ApiValid של ה-iframe שנדרים מסרו למוסד |
-| `NEDARIM_API_PASSWORD` | מפתח `npk_…` (reports.matara.pro > הגדרות > API) – האימות האוטומטי. בלעדיו כל תשלום מחכה ל"אשר ידנית" |
-| `NEDARIM_CALLBACK_SECRET` | מחרוזת אקראית ארוכה (למשל `openssl rand -hex 24`); חלק מכתובת ה-CallBack |
-| `NEDARIM_TRUST_CALLBACK=1` | (לא מומלץ) להשלים לפי CallBack בלי API |
-| `NEDARIM_SIMULATE=1` | **פיתוח בלבד**: העמוד פעיל בלי ההגדרה, כפתור "סימולציית תשלום מוצלח" משלים בלי נדרים (`verify_method=simulated`, `verified=false`) |
+| `NEDARIM_MOSAD_ID` (env) | קוד המוסד – לא סוד (מופיע בקישור לדף התשלום) |
+| מפתח API `npk_…` | **מוחלף מהאתר** (/admin/payments → "סודות נדרים פלוס", מוצפן ב-`app_secrets`) או env `NEDARIM_API_PASSWORD`. ה-DB גובר |
+| סוד CallBack (אופציונלי, ≥32 תווים) | מהאתר או env `NEDARIM_CALLBACK_SECRET`; כתובת: `https://<site>/api/pay/callback` + כותרת `X-Nedarim-Key: <סוד>` (עדיף) או `?key=<סוד>` |
+| `NEDARIM_SECRETS_KEY` (env, מומלץ, ≥32 תווים אקראיים) | הסוד הראשי להצפנת `app_secrets`; בלעדיו נגזר מ-`SESSION_SECRET` (HKDF עם תווית נפרדת). החלפתו = הסודות ב-DB לא ניתנים לפענוח – להזין מחדש |
+| `NEDARIM_SIMULATE=1` | **פיתוח מקומי בלבד** (לא ב-Vercel – נבדק גם `VERCEL`/`VERCEL_ENV`): "סימולציית תשלום מוצלח" משלימה בלי נדרים (`verify_method=simulated`) |
+| `nedarim_enabled` | /admin/settings → "תשלומים". כבוי = הקופה הישנה |
 
-הדלקה: `/admin/settings` → קבוצה "תשלומים" → "תשלום בכרטיס אשראי דרך נדרים פלוס". כבוי = הקופה הישנה ממשיכה לעבוד.
+### הצפנת הסודות (`secret-crypto.ts`)
+AES-256-GCM, מפתח 32 בתים מ-HKDF-SHA256(master, salt "app_secrets", info "luz-haninyan:app-secrets:aes-256-gcm:v1"), IV אקראי 12 בתים
+לכל כתיבה, AAD = שם הסוד (blob של סוד אחד לא ניתן להעברה לשם אחר), פורמט `base64(version‖iv‖tag‖data)`. ב-DB נשמרים גם 4 התווים
+האחרונים לתצוגה. הערך הגולמי: לא מוחזר ללקוח, לא באודיט (רק שם + last4), לא ביומן, לא בשגיאות (`redactNedarim`: כל `npk_…`,
+`key=…`, וכל ערך סוד ידוע). השוואת סוד ה-CallBack: SHA-256 של שני הצדדים + `timingSafeEqual`.
 
 ## איך בודקים
 
-1. **לוגיקה:** `npx tsx --test scripts/nedarim-tests/logic.test.ts` (7 בדיקות). typecheck: `npx tsc --noEmit`.
-2. **מקומית עם DB בדיקה** (לא על Neon של הפרודקשן!): `npx tsx scripts/create-nedarim-tables.ts --apply`, `NEDARIM_SIMULATE=1`,
-   `npm run dev`, `/pay?plan=yearly`, "המשך לתשלום", "סימולציית תשלום מוצלח" → `/admin/payments` שורה `שולם (סימולציה)`,
-   מנוי חדש ב-`/admin/subscriptions`, תנועה ב-`/admin/finance`. **טופס נדרים לא מקבל postMessage מ-localhost** – הסליקה האמיתית
-   רק מהדומיין של האתר.
-3. **בפרודקשן (אחרי אישור פריסה):** SQL ב-Neon → env → Redeploy → הדלקת ההגדרה → תשלום אמיתי בסכום קטן (אפשר להוריד זמנית את
-   `price_yearly`) → השורה ב-"תשלומים (נדרים)" צריכה להגיע ל-`שולם` עם "אומת מול נדרים פלוס"; ה-CallBack ביומן; המנוי ב-"מנויים".
-   אם נשארה "ממתין לאימות" – "אמת מחדש"; בלי מפתח API – "אשר ידנית" אחרי בדיקה בפורטל. ואז: לקרוא את `callback_body` ביומן ולכוון
-   את `extractTransactionFields` לשמות השדות האמיתיים.
+1. **יחידה:** `npx tsx --test scripts/nedarim-tests/logic.test.ts scripts/nedarim-tests/secret-crypto.test.ts` (13 בדיקות: קישור,
+   פענוח היסטוריה, התאמה חזקה/חלשה/ספק/עסקה של אחרת/זיכוי/סכום חלקי, הצפנה/פענוח, tag פגום, AAD, redaction). typecheck: `npx tsc --noEmit`.
+2. **מקומית עם DB בדיקה** (לא Neon של הפרודקשן): `npx tsx scripts/create-nedarim-tables.ts --apply`, `NEDARIM_SIMULATE=1`,
+   `npm run dev`, `/pay?plan=yearly` → "המשך לתשלום" → "סימולציית תשלום מוצלח" → `/admin/payments` שורה `שולם (סימולציה)`, מנוי
+   ב-`/admin/subscriptions`, תנועה ב-`/admin/finance`.
+3. **בפרודקשן (אחרי אישור פריסה):** SQL ב-Neon → `NEDARIM_MOSAD_ID` (+ `NEDARIM_SECRETS_KEY`) ב-Vercel → Redeploy → הזנת מפתח
+   ה-API במסך הניהול → "בדיקת מפתח" (קריאה אחת) → הדלקת ההגדרה → תשלום אמיתי בסכום קטן (אפשר להוריד זמנית את `price_yearly`) →
+   "שילמתי – בדקי עכשיו" → השורה צריכה להגיע ל-`שולם – הותאם לעסקה`. אם נשארה "ממתין לאישור ידני" – לבדוק את `raw` של העסקה
+   במטמון (שמות השדות) ולאשר ידנית עם מספר העסקה.
+
+## אבטחה – מה נבדק (22.10.2026)
+
+| סעיף | מצב |
+|---|---|
+| callback: השוואת סוד באורך קבוע (hash+timingSafeEqual), rate-limit IP, גודל גוף, תשובה אחידה, לא משלים לבדו, לוג בלי סודות, תמיכה בכותרת | **תקין / תוקן** (עבר ל-SHA-256 compare + `X-Nedarim-Key`). **סיכון פתוח:** `?key=` בשורת הכתובת מופיע בלוגי הגישה של Vercel – להעדיף כותרת אם הפורטל של נדרים מאפשר; וממילא ה-callback לא משדרג |
+| intent/status/check/assist: authz (רק בעלת הבקשה; IDOR לפי reference), CSRF/origin, rate-limit, zod, מחיר מהשרת, אין שינוי אחרי יצירה, reference אקראי | **תקין / תוקן** (נוסף `isSameOriginRequest` ל-POST; reference 8 תווים מ-32 = 40 ביט + בעלות) |
+| idempotency/races: השלמה כפולה, שני רענונים במקביל, קופון כפול, סכום שונה/חלקי, מטבע, replay של עסקה | **תוקן:** נעילת השער; תפיסת העסקה ואז הבקשה; אינדקס ייחודי חלקי; קופון UPDATE מותנה; סכום חייב להיות זהה; `isIls`. **סיכון פתוח:** זיכוי אחרי "שולם" לא מבטל מנוי אוטומטית (שורת זיכוי שלילית נשארת לא-משויכת; המנהלת מבטלת ב«מנויים») |
+| postMessage / iframe / CSP frame-src | **לא רלוונטי** (אין iframe). frame-ancestors 'self' הגלובלי נשאר |
+| PCI | **תקין** – שום נתון כרטיס לא עובר/נשמר; `last4` רק מהיסטוריית נדרים |
+| אדמין: requireAdmin, XSS, מייל | **תקין** – כל action דרך `admin()`; אין `dangerouslySetInnerHTML`; `payAssistAdmin` מסיר CR/LF ומוגבל באורך; HTML escaped |
+| מצב דמה בפרודקשן | **תוקן** – `simulateAllowed()` דורש גם לא-Vercel; כפתור הסימולציה מוצג רק כשהשרת מחזיר `simulate:true` |
+| DB: פרמטרים, אינדקסים, ON DELETE | **תקין** – drizzle בלבד; `sql.raw` רק ב-DDL קבוע; cascade/set null הגיוניים |
+| headers/cookies: אין סוד ב-URL ל-Referer; no-store | **תקין** – `Cache-Control: no-store` ל-/pay, /api/pay/*, /admin/payments; הקישור לנדרים נושא טלפון/מייל (לא סוד) ונמחק משורת הכתובת ע"י `HideParameters` |
+| דליפת מפתח: לוגים, DB (error/callback/raw), יומן, מסך, מייל, agent events | **תוקן** – `redactNedarim` בכל כתיבה; `agentEvents.redactSecrets` כולל `npk_` + env NEDARIM_* + SESSION_SECRET; fetch עם `redirect:"error"`; המפתח רק ב-POST body |
 
 ## מה חסר / שאלות פתוחות למשה
 
-1. **מנדרים פלוס:** `ApiValid` של ה-iframe, מפתח `npk_` (API), ואישור שקוד המוסד נכון. עד אז – מצב דמה בלבד.
-2. **הרצת ה-SQL ב-Neon לפני ה-push** (`npx tsx scripts/create-nedarim-tables.ts --apply`) – push מפרס מיד.
-3. **כתובת ה-CallBack לרישום אצל נדרים** (אם בפורטל יש הגדרה קבועה למוסד): `https://bagrut-materials.vercel.app/api/pay/callback?key=<NEDARIM_CALLBACK_SECRET>`.
-   היא גם נשלחת בכל עסקה בשדה `CallBack`.
-4. **השדות של ה-CallBack אינם מתועדים** – הקוד שומר גוף גולמי ומחלץ `Param1`/`TransactionId`/`Amount`/`Status`/`Confirmation`/`LastNum`
-   בסובלנות; לכוון אחרי העסקה הראשונה. גם `GetHistoryJson` (`LastId`/`MaxId`, שמות העמודות) לפי ההבנה מגמ"ח – לא אומת.
-5. **תשלומים (Tashlumim):** נשלח תמיד `1` (חיוב אחד). בעמוד המחירים כתוב "12 תשלומים · חיוב אחד" – אם רוצים פריסה אמיתית לתשלומים
-   בכרטיס, לשנות `Tashlumim` ב-`buildFinishTransactionValue` (נדרים תומכים).
-6. **שדרוג ממלאת מקום → שנתי** (`/account/upgrade`) עדיין עובר דרך הקופה המדומה (`upgradeToYearlyAction`, `MOCK-UPG-…`) – לא חובר לנדרים.
-7. **רכישה בודדת / תיקייה (single/bundle)** – לא חוברו; `/pay` מוכר רק מסלולי מנוי. אם רוצים – אותו מנגנון עם `purpose` נוסף.
-8. בדיקה בדפדפן מול iframe אמיתי לא בוצעה (אין מפתחות, ואין localhost). הפרוטוקול נלקח מהדוגמה הרשמית של נדרים.
+1. **SQL ב-Neon לפני ה-push** (`npx tsx scripts/create-nedarim-tables.ts --apply`) – push מפרס מיד.
+2. `NEDARIM_MOSAD_ID=7019454` ו-`NEDARIM_SECRETS_KEY` ב-Vercel (×3) + Redeploy; את מפתח ה-API להזין במסך הניהול (או env).
+3. שמות שדות `GetHistoryJson` ופורמט `TransactionTime` – לאמת אחרי הקריאה הראשונה (`raw` במטמון).
+4. **תשלומים (Tashlumim):** `Payment=1` נעול. אם רוצים לאפשר פריסה – להסיר את `PaymentLock` (ההיסטוריה מראה את הסכום המלא בשורה אחת).
+5. הפעלה תקופתית (cron) – לא נוספה (ל-Hobby אין cron חופשי); הזיהוי קורה כשמורה בדף ההמתנה / מנהלת לוחצת "רענון". מורה שסגרה
+   את הדף – התשלום יזוהה בפעם הבאה שמישהי/המנהלת מפעילה רענון (או CallBack אם יוגדר).
+6. שדרוג ממלאת מקום→שנתי, רכישה בודדת/תיקייה – עדיין בקופה המדומה.

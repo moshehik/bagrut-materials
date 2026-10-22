@@ -9,8 +9,9 @@ import {
   pgEnum,
   index,
   uniqueIndex,
+  bigint,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("role", ["user", "admin"]);
 export const tierEnum = pgEnum("tier", [
@@ -724,8 +725,9 @@ export const driveEvents = pgTable(
 
 /**
  * בקשת תשלום דרך נדרים פלוס (ר' src/lib/nedarim/, docs/nedarim-payments.md): שורה לכל ניסיון תשלום, נוצרת לפני שהמורה
- * מקלידה כרטיס ב-iframe של נדרים (reference = NP-XXXXXXXX, נשלח כ-Param1 וחוזר ב-CallBack). מספר הכרטיס לעולם לא מגיע לכאן.
- * status: pending (נוצרה) → processing (דווח הצלחה, עדיין לא אומת) → paid (אומת/אושר – נוצרו שורות purchases) ; failed / cancelled / expired.
+ * מופנית לדף התשלום המתארח של נדרים (reference = NP-XXXXXXXX, נשלח בהערת העסקה). מספר הכרטיס לעולם לא מגיע לכאן.
+ * status: pending (נוצרה, ממתינה לעסקה) → processing (נמצאו כמה עסקאות מתאימות / ממתין לאישור ידני) → paid (עסקה הותאמה / אושר
+ * ידנית – נוצרו שורות purchases) ; failed / cancelled / expired.
  * ההשלמה אידמפוטנטית: UPDATE מותנה על הסטטוס, ורק הזוכה מכניס את שורות הרכישה (purchase_id = השורה הראשונה).
  * נוצר ב-SQL גולמי (scripts/create-nedarim-tables.ts) — db:push שבור כאן.
  */
@@ -749,25 +751,23 @@ export const nedarimPayments = pgTable(
     listAmount: integer("list_amount").notNull(),
     couponId: integer("coupon_id").references(() => privateCoupons.id, { onDelete: "set null" }),
     couponPercent: integer("coupon_percent"),
-    /** הפרטים שנשלחו ל-iframe (תמונת מצב בזמן יצירת הבקשה) */
+    /** הפרטים שנשלחו לדף התשלום של נדרים ומשמשים להתאמה (תמונת מצב בזמן יצירת הבקשה) */
     firstName: varchar("first_name", { length: 60 }),
     lastName: varchar("last_name", { length: 60 }),
     phone: varchar("phone", { length: 20 }),
     email: varchar("email", { length: 255 }),
     mosadId: varchar("mosad_id", { length: 20 }),
-    /** מזהי העסקה אצל נדרים פלוס (מהדפדפן / CallBack / היסטוריית ה-API) */
+    /** מזהי העסקה אצל נדרים פלוס (מהיסטוריית ה-API – nedarim_transactions – או מה-CallBack) */
     transactionId: varchar("transaction_id", { length: 40 }),
     confirmation: varchar("confirmation", { length: 40 }),
     cardLast4: varchar("card_last4", { length: 4 }),
-    /** אומת מול נדרים פלוס (api) או אושר ידנית (manual); callback/simulated = לא אומת באמת */
+    /** הותאם לעסקה בהיסטוריית נדרים (api) או אושר ידנית (manual); simulated = מצב דמה */
     verified: boolean("verified").notNull().default(false),
     verifyMethod: varchar("verify_method", { length: 12 }),
-    /** TransactionResponse שהדפדפן קיבל מה-iframe (JSON) */
-    clientResponse: text("client_response"),
-    /** גוף ה-CallBack הגולמי של נדרים (השדות אינם מתועדים – נשמר כמו שהוא) */
+    /** גוף ה-CallBack הגולמי של נדרים, אם הוגדר אצלם (השדות אינם מתועדים – נשמר אחרי הסתרת סודות) */
     callbackBody: text("callback_body"),
     errorMessage: text("error_message"),
-    /** המורה ביקשה להשלים את התשלום דרך המנהלת (טופס נדרים לא נטען – למשל נטפרי) */
+    /** המורה ביקשה עזרה מהמנהלת בהשלמת התשלום – הבקשה יוצאת מההתאמה האוטומטית עד אישור ידני */
     assistRequestedAt: timestamp("assist_requested_at"),
     ip: varchar("ip", { length: 64 }),
     userAgent: text("user_agent"),
@@ -784,10 +784,75 @@ export const nedarimPayments = pgTable(
     index("nedarim_payments_user_idx").on(t.userId),
     index("nedarim_payments_status_idx").on(t.status, t.createdAt),
     index("nedarim_payments_tx_idx").on(t.transactionId),
+    // עסקה אחת של נדרים יכולה לפתוח מנוי אחד בלבד (replay של TransactionId על בקשה אחרת נכשל ב-DB)
+    uniqueIndex("nedarim_payments_paid_tx_idx")
+      .on(t.transactionId)
+      .where(sql`status = 'paid' AND transaction_id IS NOT NULL`),
   ],
 );
 
-/** יומן של בקשת תשלום בנדרים: created / client_response / callback / verify_ok / verify_failed / settled / manual_settle / cancelled / assist / error */
+/**
+ * סודות אפליקציה שהמנהלת מחליפה מהאתר בלי פריסה (כרגע: מפתח ה-API של נדרים npk_, וסוד ה-CallBack האופציונלי).
+ * הערך מוצפן AES-256-GCM (src/lib/nedarim/secret-crypto.ts): ciphertext = base64(iv ‖ tag ‖ data), AAD = name,
+ * מפתח נגזר ב-HKDF מ-NEDARIM_SECRETS_KEY (או SESSION_SECRET). הערך הגולמי לעולם לא נשמר ולא מוחזר ללקוח.
+ * סדר קריאה: כאן ← env. נוצר ב-SQL גולמי (scripts/create-nedarim-tables.ts).
+ */
+export const appSecrets = pgTable("app_secrets", {
+  name: varchar("name", { length: 60 }).primaryKey(),
+  ciphertext: text("ciphertext").notNull(),
+  /** גרסת מפתח ההצפנה (1 = HKDF מהמפתח הנוכחי) – לרוטציה עתידית */
+  keyVersion: integer("key_version").notNull().default(1),
+  /** 4 תווים אחרונים בלבד – לתצוגה "מסתיים ב-…" במסך הניהול */
+  last4: varchar("last4", { length: 4 }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedById: integer("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+});
+
+/**
+ * שער הקריאה הגלובלי ל-GetHistoryJson של נדרים (מוגבל ל-20 קריאות בשעה למוסד) – שורה יחידה (id = 1). ר' src/lib/nedarim/sync.ts:
+ * נעילה אטומית (lock_until), מרווח מינימלי בין קריאות, LastId אינקרמנטלי, backoff בשגיאות.
+ */
+export const nedarimSyncState = pgTable("nedarim_sync_state", {
+  id: integer("id").primaryKey(),
+  /** ה-TransactionId הגבוה ביותר שנקרא – נשלח כ-LastId (exclusive) בקריאה הבאה */
+  lastTransactionId: bigint("last_transaction_id", { mode: "number" }),
+  lastFetchAt: timestamp("last_fetch_at"),
+  lastSuccessAt: timestamp("last_success_at"),
+  /** נעילה: קריאה אחת בלבד רצה בכל רגע (גם בין instances של Vercel) */
+  lockUntil: timestamp("lock_until"),
+  /** backoff אחרי שגיאה: לא קוראים לפני */
+  nextAllowedAt: timestamp("next_allowed_at"),
+  consecutiveErrors: integer("consecutive_errors").notNull().default(0),
+  lastError: text("last_error"),
+  lastFetchCount: integer("last_fetch_count"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+/**
+ * עסקאות שנקראו מהיסטוריית נדרים (GetHistoryJson) – המטמון שממנו נעשית ההתאמה לבקשות. שדות מנורמלים (סכום באגורות, טלפון
+ * ספרות, מייל lowercase) + raw (JSON אחרי הסתרת סודות). matched_payment_id = הבקשה שהעסקה פתחה (עסקה אחת = בקשה אחת).
+ */
+export const nedarimTransactions = pgTable(
+  "nedarim_transactions",
+  {
+    transactionId: varchar("transaction_id", { length: 40 }).primaryKey(),
+    amount: integer("amount").notNull(),
+    currency: varchar("currency", { length: 4 }),
+    phone: varchar("phone", { length: 30 }),
+    email: varchar("email", { length: 255 }),
+    clientName: varchar("client_name", { length: 120 }),
+    comments: text("comments"),
+    confirmation: varchar("confirmation", { length: 40 }),
+    last4: varchar("last4", { length: 4 }),
+    transactionAt: timestamp("transaction_at"),
+    raw: text("raw"),
+    matchedPaymentId: integer("matched_payment_id").references(() => nedarimPayments.id, { onDelete: "set null" }),
+    fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
+  },
+  (t) => [index("nedarim_transactions_matched_idx").on(t.matchedPaymentId), index("nedarim_transactions_at_idx").on(t.transactionAt)],
+);
+
+/** יומן של בקשת תשלום בנדרים: created / callback / matched / ambiguous / settled / manual_settle / cancelled / assist / error */
 export const nedarimPaymentEvents = pgTable(
   "nedarim_payment_events",
   {
@@ -881,4 +946,7 @@ export type SichaTeacherStatus = typeof sichaTeacherStatus.$inferSelect;
 export type SichaSeminar = (typeof sichaSeminarEnum.enumValues)[number];
 export type NedarimPayment = typeof nedarimPayments.$inferSelect;
 export type NedarimPaymentEvent = typeof nedarimPaymentEvents.$inferSelect;
+export type AppSecret = typeof appSecrets.$inferSelect;
+export type NedarimTransaction = typeof nedarimTransactions.$inferSelect;
+export type NedarimSyncState = typeof nedarimSyncState.$inferSelect;
 export type CategoryModule = (typeof categoryModuleEnum.enumValues)[number];

@@ -25,11 +25,26 @@ const MAX_DETAILS = 6000;
 /** מסתיר סודות נפוצים (connection strings, טוקנים, ערכי env רגישים) לפני כתיבה ליומן. */
 export function redactSecrets(text: string): string {
   let out = text;
-  for (const name of ["DATABASE_URL", "DRIVE_BRIDGE_SECRET", "DRIVE_BRIDGE_URL", "CLAUDE_CODE_OAUTH_TOKEN", "GITHUB_TOKEN", "GH_DISPATCH_TOKEN", "ORACLE_CONVERT_API_KEY"]) {
+  for (const name of [
+    "DATABASE_URL",
+    "DRIVE_BRIDGE_SECRET",
+    "DRIVE_BRIDGE_URL",
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "GITHUB_TOKEN",
+    "GH_DISPATCH_TOKEN",
+    "ORACLE_CONVERT_API_KEY",
+    "SESSION_SECRET",
+    "MAIL_SCRIPT_URL",
+    // נדרים פלוס (src/lib/nedarim) – המפתח npk_ נתפס גם לפי תבנית למטה (כשהוא מגיע מ-app_secrets ולא מ-env)
+    "NEDARIM_API_PASSWORD",
+    "NEDARIM_CALLBACK_SECRET",
+    "NEDARIM_SECRETS_KEY",
+  ]) {
     const v = process.env[name]?.trim();
     if (v && v.length >= 8) out = out.split(v).join(`[${name}]`);
   }
   return out
+    .replace(/\bnpk_[A-Za-z0-9]{4,}/g, "npk_[REDACTED]")
     .replace(/postgres(?:ql)?:\/\/[^\s"'`]+/gi, "postgres://[REDACTED]")
     .replace(/\b(?:ghp|gho|ghs|github_pat)_[A-Za-z0-9_]{16,}/g, "[GITHUB_TOKEN]")
     .replace(/\bsk-[A-Za-z0-9_-]{20,}/g, "[API_KEY]")

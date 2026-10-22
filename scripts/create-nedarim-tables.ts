@@ -1,5 +1,6 @@
 /**
- * חד-פעמי: יוצר את טבלאות התשלום דרך נדרים פלוס (nedarim_payments, nedarim_payment_events) ב-SQL גולמי —
+ * חד-פעמי: יוצר את טבלאות התשלום דרך נדרים פלוס (nedarim_payments, nedarim_payment_events, nedarim_sync_state,
+ * nedarim_transactions, app_secrets) ב-SQL גולמי —
  * `npm run db:push` שבור בסביבה הזו (ר' scripts/create-fix-tables.ts). IF NOT EXISTS – בטוח להריץ שוב.
  *
  * ברירת המחדל היא dry-run: מדפיס את ה-SQL ואת ה-host של ה-DB ולא מריץ כלום.
@@ -36,7 +37,6 @@ export const NEDARIM_TABLES_SQL = [
     card_last4 varchar(4),
     verified boolean NOT NULL DEFAULT false,
     verify_method varchar(12),
-    client_response text,
     callback_body text,
     error_message text,
     assist_requested_at timestamp,
@@ -52,6 +52,7 @@ export const NEDARIM_TABLES_SQL = [
   `CREATE INDEX IF NOT EXISTS nedarim_payments_user_idx ON nedarim_payments (user_id)`,
   `CREATE INDEX IF NOT EXISTS nedarim_payments_status_idx ON nedarim_payments (status, created_at)`,
   `CREATE INDEX IF NOT EXISTS nedarim_payments_tx_idx ON nedarim_payments (transaction_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS nedarim_payments_paid_tx_idx ON nedarim_payments (transaction_id) WHERE status = 'paid' AND transaction_id IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS nedarim_payment_events (
     id serial PRIMARY KEY,
     payment_id integer NOT NULL REFERENCES nedarim_payments(id) ON DELETE CASCADE,
@@ -61,6 +62,46 @@ export const NEDARIM_TABLES_SQL = [
     created_at timestamp NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS nedarim_payment_events_payment_idx ON nedarim_payment_events (payment_id, created_at)`,
+  // שער הקריאה ל-GetHistoryJson (שורה יחידה) + מטמון העסקאות שנקראו – ר' src/lib/nedarim/sync.ts
+  `CREATE TABLE IF NOT EXISTS nedarim_sync_state (
+    id integer PRIMARY KEY,
+    last_transaction_id bigint,
+    last_fetch_at timestamp,
+    last_success_at timestamp,
+    lock_until timestamp,
+    next_allowed_at timestamp,
+    consecutive_errors integer NOT NULL DEFAULT 0,
+    last_error text,
+    last_fetch_count integer,
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `INSERT INTO nedarim_sync_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+  `CREATE TABLE IF NOT EXISTS nedarim_transactions (
+    transaction_id varchar(40) PRIMARY KEY,
+    amount integer NOT NULL,
+    currency varchar(4),
+    phone varchar(30),
+    email varchar(255),
+    client_name varchar(120),
+    comments text,
+    confirmation varchar(40),
+    last4 varchar(4),
+    transaction_at timestamp,
+    raw text,
+    matched_payment_id integer REFERENCES nedarim_payments(id) ON DELETE SET NULL,
+    fetched_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS nedarim_transactions_matched_idx ON nedarim_transactions (matched_payment_id)`,
+  `CREATE INDEX IF NOT EXISTS nedarim_transactions_at_idx ON nedarim_transactions (transaction_at)`,
+  // סודות שמוחלפים מהאתר (מפתח npk_ וכו') – מוצפנים AES-256-GCM, ר' src/lib/nedarim/secret-crypto.ts
+  `CREATE TABLE IF NOT EXISTS app_secrets (
+    name varchar(60) PRIMARY KEY,
+    ciphertext text NOT NULL,
+    key_version integer NOT NULL DEFAULT 1,
+    last4 varchar(4),
+    updated_at timestamp NOT NULL DEFAULT now(),
+    updated_by_id integer REFERENCES users(id) ON DELETE SET NULL
+  )`,
 ];
 
 async function main() {

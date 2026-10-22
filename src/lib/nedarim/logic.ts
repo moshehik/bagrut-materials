@@ -1,16 +1,13 @@
 /**
- * הלוגיקה הטהורה של התשלום דרך נדרים פלוס – בלי imports, בלי DB, בלי React: נטענת בשרת (api/pay/*, store.ts),
+ * הלוגיקה הטהורה של התשלום דרך נדרים פלוס – בלי imports, בלי DB, בלי React: נטענת בשרת (api/pay/*, store.ts, sync.ts),
  * בדפדפן (components/pay/pay-client.tsx) ובבדיקות (scripts/nedarim-tests/logic.test.ts). תיעוד: docs/nedarim-payments.md.
  *
- * מקור הפרוטוקול: הדוגמה הרשמית של נדרים פלוס https://www.matara.pro/nedarimplus/iframe/sample2.html והקוד של ה-iframe עצמו
- * (https://matara.pro/nedarimplus/iframe): ההורה שולח postMessage {Name:'FinishTransaction2', Value:{...}} ומקבל
- * {Name:'Height'|'TransactionResponse'|'ValidateFields'}. מספר הכרטיס, התוקף וה-CVV מוקלדים אך ורק בתוך ה-iframe (matara.pro) –
- * לעולם לא עוברים דרך השרת שלנו. הערה מהדוגמה: postMessage ל-iframe לא עובד מ-localhost – רק מדומיין אמיתי.
+ * הזרימה: האתר יוצר בקשה (reference NP-…), מפנה את המורה לדף התשלום המתארח של נדרים (hostedPaymentUrl – פרמטרים שאומתו מול
+ * הקוד של הדף עצמו, JavaScript5.js), ומזהה את התשלום בהיסטוריית העסקאות של המוסד (GetHistoryJson) לפי מזהה הבקשה בהערות,
+ * ובמקרה הצורך לפי טלפון/מייל + סכום מדויק + חלון זמן (findCandidates / decideAutoMatches). האתר לא מקבל פרטי כרטיס לעולם.
  */
 
-export const NEDARIM_IFRAME_URL = "https://matara.pro/nedarimplus/iframe";
-/** מקורות שמהם מותר לקבל postMessage (ה-iframe עונה ל-event.origin של ההורה; אנחנו בודקים את המקור שלו) */
-export const NEDARIM_ORIGINS: readonly string[] = ["https://matara.pro", "https://www.matara.pro"];
+export const NEDARIM_HOSTED_BASE = "https://www.matara.pro/nedarimplus/online/";
 
 export const NEDARIM_STATUSES = ["pending", "processing", "paid", "failed", "expired", "cancelled"] as const;
 export type NedarimStatus = (typeof NEDARIM_STATUSES)[number];
@@ -19,7 +16,7 @@ export const OPEN_STATUSES: readonly NedarimStatus[] = ["pending", "processing"]
 export const isNedarimStatus = (s: unknown): s is NedarimStatus =>
   typeof s === "string" && (NEDARIM_STATUSES as readonly string[]).includes(s);
 
-export type VerifyMethod = "api" | "callback" | "manual" | "simulated";
+export type VerifyMethod = "api" | "manual" | "simulated";
 
 /** המסלולים שנמכרים דרך /pay (המסלולים החודשיים הישנים הוסרו – ר' RETIRED_PLANS ב-constants) */
 export const PAYABLE_PLANS = ["yearly", "substitute_3m", "substitute_daily"] as const;
@@ -31,14 +28,14 @@ export const REFERENCE_PREFIX = "NP-";
 export const REFERENCE_RE = /^NP-[A-HJ-NP-Z2-9]{8}$/; // בלי I/O/0/1 (קריא בטלפון)
 const REFERENCE_IN_TEXT_RE = /NP-[A-HJ-NP-Z2-9]{8}/;
 export const MAX_BODY_BYTES = 8 * 1024;
-/** בקשה 'pending' ישנה מזה נחשבת פגת תוקף (ניקוי במסך הניהול) */
+/** בקשה 'pending' ישנה מזה נחשבת פגת תוקף (ניקוי במסך הניהול) – ועסקה לא תותאם לבקשה ישנה יותר */
 export const INTENT_TTL_HOURS = 48;
-/** כמה זמן מחכים להודעת Height מה-iframe לפני שמציעים את החלופה (נטפרי / חסימה) */
-export const FRAME_LOAD_TIMEOUT_MS = 12_000;
+/** עסקה יכולה להיות מתוארכת מעט לפני יצירת הבקשה (שעון שרת שונה) */
+export const MATCH_EARLY_GRACE_MS = 15 * 60 * 1000;
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-/** מזהה בקשה חדש NP-XXXXXXXX. randomBytes(n) → מערך בתים באורך n (crypto.randomBytes בשרת). */
+/** מזהה בקשה חדש NP-XXXXXXXX. randomBytes(n) → מערך בתים באורך n (crypto.randomBytes בשרת – אקראי קריפטוגרפי, לא רץ). */
 export function generateReference(randomBytes: (n: number) => Uint8Array): string {
   const bytes = randomBytes(8);
   let out = REFERENCE_PREFIX;
@@ -48,7 +45,7 @@ export function generateReference(randomBytes: (n: number) => Uint8Array): strin
 
 export const isValidReference = (s: unknown): s is string => typeof s === "string" && REFERENCE_RE.test(s);
 
-/** מוצא מזהה בקשה בתוך טקסט חופשי (Param1 / Comment שנדרים מחזירים) – או null */
+/** מוצא מזהה בקשה בתוך טקסט חופשי (הערת העסקה / Param1 שנדרים מחזירים) – או null */
 export function extractReference(text: unknown): string | null {
   const m = String(text ?? "")
     .toUpperCase()
@@ -70,88 +67,211 @@ export function shekelsToAgorot(v: unknown): number | null {
   return Math.round(n * 100);
 }
 
-// ---------------------------------------------------------------------------------------------------------------- ה-iframe
+/** טלפון → ספרות בלבד בפורמט מקומי (972… → 0…), להשוואה בין הבקשה לעסקה */
+export function phoneDigits(v: unknown): string {
+  let d = String(v ?? "").replace(/\D/g, "");
+  if (d.startsWith("00972")) d = "0" + d.slice(5);
+  else if (d.startsWith("972")) d = "0" + d.slice(3);
+  else if (/^\d{9}$/.test(d) && d[0] !== "0") d = "0" + d;
+  return d.slice(0, 15);
+}
 
-export type FinishTransactionValue = {
-  Mosad: string;
-  ApiValid: string;
-  PaymentType: string;
-  Currency: string;
-  Zeout: string;
-  FirstName: string;
-  LastName: string;
-  Street: string;
-  City: string;
-  Phone: string;
-  Mail: string;
-  Amount: string;
-  Tashlumim: string;
-  Groupe: string;
-  Comment: string;
-  Param1: string;
-  Param2: string;
-  ForceUpdateMatching: string;
-  CallBack: string;
-  CallBackMailError: string;
+export const emailKey = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+// ---------------------------------------------------------------------------------------------------------------- דף התשלום המתארח
+
+/**
+ * הקישור לדף התשלום המתארח של נדרים פלוס. רק פרמטרים שאומתו מול הקוד של הדף (JavaScript5.js, GetURLParameter/DecodeParam):
+ *   mosad (חובה), Amount + AmountLock=1 (סכום נעול), Payment=1 + PaymentLock=1 (תשלום אחד), OnlyNormal=1 (חיוב רגיל בלבד –
+ *   בלי הו"ק/ביט/העברה), OnlyShekel=1, ClientName / Phone / Email (ממולאים ונעולים), comment (הערה ממולאת ונעולה – הדף
+ *   עצמו מנטרל את השדה), Analytic (מצורף לתחילת הערת העסקה: "NP-… | …" – ערוץ שני למזהה), Redirect (חזרה לאתר אחרי
+ *   תשלום מוצלח), HideParameters=1 (הדף מסיר את הפרמטרים משורת הכתובת אחרי הטעינה – הטלפון/המייל לא נשארים בהיסטוריה).
+ * אין בדף פרמטר CallBack ואין Param1/Param2 – ולכן הזיהוי הוא דרך ההערה (ראו findCandidates).
+ */
+export function hostedPaymentUrl(input: {
+  mosadId: string;
+  amountAgorot: number;
+  reference: string;
+  clientName: string;
+  phone: string;
+  email: string;
+  comment: string;
+  redirectUrl: string;
+}): string {
+  const q = new URLSearchParams();
+  q.set("mosad", input.mosadId);
+  q.set("Amount", agorotToAmountString(input.amountAgorot));
+  q.set("AmountLock", "1");
+  q.set("Payment", "1");
+  q.set("PaymentLock", "1");
+  q.set("OnlyNormal", "1");
+  q.set("OnlyShekel", "1");
+  if (input.clientName) q.set("ClientName", input.clientName.slice(0, 60));
+  if (input.phone) q.set("Phone", input.phone.slice(0, 20));
+  if (input.email) q.set("Email", input.email.slice(0, 120));
+  q.set("comment", input.comment.slice(0, 150));
+  q.set("Analytic", input.reference);
+  if (input.redirectUrl) q.set("Redirect", input.redirectUrl);
+  q.set("HideParameters", "1");
+  return `${NEDARIM_HOSTED_BASE}?${q.toString()}`;
+}
+
+/** הערת העסקה שרואים בפורטל של נדרים ובהיסטוריה: שם האתר + המסלול + מזהה הבקשה */
+export function buildTransactionComment(siteName: string, planLabel: string, reference: string): string {
+  return [siteName.trim(), planLabel.trim(), reference].filter(Boolean).join(" - ").slice(0, 150);
+}
+
+// ---------------------------------------------------------------------------------------------------------------- היסטוריית העסקאות (GetHistoryJson)
+
+function pick(obj: unknown, names: string[]): string | undefined {
+  if (!obj || typeof obj !== "object") return undefined;
+  const rec = obj as Record<string, unknown>;
+  const lower = new Map(Object.keys(rec).map((k) => [k.toLowerCase(), k]));
+  for (const n of names) {
+    const k = lower.get(n.toLowerCase());
+    if (k !== undefined && rec[k] !== undefined && rec[k] !== null && String(rec[k]) !== "") return String(rec[k]);
+  }
+  return undefined;
+}
+
+/** תאריך כפי שנדרים מחזירים (TransactionTime): ISO, או dd/MM/yyyy HH:mm[:ss]. null אם לא ניתן לפענח. */
+export function parseNedarimDate(v: unknown): Date | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : new Date(t);
+}
+
+export type NormalizedTx = {
+  transactionId: string;
+  /** באגורות (שלילי = זיכוי; 0 = בוטל) */
+  amount: number;
+  /** "1" = ש"ח, "2" = דולר (לפי התיעוד); null אם אין שדה */
+  currency: string | null;
+  phone: string;
+  email: string;
+  clientName: string | null;
+  comments: string | null;
+  confirmation: string | null;
+  last4: string | null;
+  transactionAt: Date | null;
 };
 
 /**
- * הערך של ההודעה FinishTransaction2 להורה של ה-iframe – בדיוק השדות שהדוגמה הרשמית (sample2.html) שולחת, בלי Tokef
- * (התוקף מוקלד בתוך ה-iframe). אין כאן פרמטרים מומצאים.
+ * שורה מ-GetHistoryJson → מבנה מנורמל. שמות השדות לפי תיעוד ה-API של נדרים (TransactionId, Amount, Currency, Phone, Mail,
+ * Comments, TransactionTime, ClientName, Confirmation, LastNum) עם סובלנות לשמות קרובים. null = אין מזהה עסקה.
  */
-export function buildFinishTransactionValue(input: {
-  mosad: string;
-  apiValid: string;
-  reference: string;
-  amountAgorot: number;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  city?: string | null;
-  comment: string;
-  callbackUrl: string;
-  /** Param2 – מה נרכש (למשל "yearly"), חוזר ב-CallBack */
-  param2?: string;
-}): FinishTransactionValue {
+export function parseHistoryRow(row: unknown): NormalizedTx | null {
+  const id = pick(row, ["TransactionId", "TransactionID", "Id"]);
+  if (!id || !/^\d{1,30}$/.test(id.trim())) return null;
+  const amount = shekelsToAgorot(pick(row, ["Amount", "Sum", "Schum"]));
+  if (amount === null) return null;
   return {
-    Mosad: String(input.mosad ?? ""),
-    ApiValid: String(input.apiValid ?? ""),
-    PaymentType: "Ragil", // חיוב חד-פעמי (לא הו"ק ולא טוקן)
-    Currency: "1", // ש"ח
-    Zeout: "", // ת.ז מוקלדת ב-iframe אם נדרים דורשים
-    FirstName: String(input.firstName ?? ""),
-    LastName: String(input.lastName ?? ""),
-    Street: "",
-    City: String(input.city ?? ""),
-    Phone: String(input.phone ?? ""),
-    Mail: String(input.email ?? ""),
-    Amount: agorotToAmountString(input.amountAgorot),
-    Tashlumim: "1",
-    Groupe: "",
-    Comment: String(input.comment ?? "").slice(0, 200),
-    Param1: String(input.reference ?? ""), // מזהה הבקשה שלנו – חוזר ב-CallBack
-    Param2: String(input.param2 ?? ""),
-    ForceUpdateMatching: "",
-    CallBack: String(input.callbackUrl ?? ""),
-    CallBackMailError: "",
+    transactionId: id.trim(),
+    amount,
+    currency: pick(row, ["Currency"]) ?? null,
+    phone: phoneDigits(pick(row, ["Phone", "Cellular", "Phone1", "Tel"])),
+    email: emailKey(pick(row, ["Mail", "Email"])),
+    clientName: pick(row, ["ClientName", "Name", "FullName"])?.slice(0, 120) ?? null,
+    comments: pick(row, ["Comments", "Comment", "Avour", "Param1"])?.slice(0, 500) ?? null,
+    confirmation: pick(row, ["Confirmation", "ConfirmationNumber"])?.slice(0, 40) ?? null,
+    last4: (pick(row, ["LastNum", "Last4", "CardLast4"]) ?? "").replace(/\D/g, "").slice(-4) || null,
+    transactionAt: parseNedarimDate(pick(row, ["TransactionTime", "Date", "CreateDate", "Time"])),
   };
 }
 
-/** הערת העסקה שרואים בפורטל של נדרים: שם האתר + המסלול + מזהה הבקשה (כדי שאפשר יהיה לאתר אותה גם בלי Param1) */
-export function buildTransactionComment(siteName: string, planLabel: string, reference: string): string {
-  return [siteName.trim(), planLabel.trim(), reference].filter(Boolean).join(" - ").slice(0, 200);
+export const isIls = (currency: string | null) =>
+  currency === null || currency === "1" || currency.includes("₪") || /ils|nis|ש"ח|שח/i.test(currency);
+
+export type OpenPaymentForMatch = {
+  id: number;
+  reference: string;
+  /** באגורות */
+  amount: number;
+  phone: string | null;
+  email: string | null;
+  createdAt: Date;
+};
+export type TxForMatch = NormalizedTx & { fetchedAt: Date; matchedPaymentId: number | null };
+
+/**
+ * מועמדות להתאמה לבקשה: סכום זהה בדיוק, ש"ח, לא משויכת, ומועד העסקה (או מועד הקריאה אם אין) לא לפני יצירת הבקשה (פחות
+ * חסד קטן). strong = מזהה הבקשה מופיע בהערת העסקה; weak = טלפון זהה או מייל זהה (שניהם לא ריקים).
+ */
+export function findCandidates(p: OpenPaymentForMatch, txs: TxForMatch[]): { strong: TxForMatch[]; weak: TxForMatch[] } {
+  const strong: TxForMatch[] = [];
+  const weak: TxForMatch[] = [];
+  const notBefore = p.createdAt.getTime() - MATCH_EARLY_GRACE_MS;
+  const pPhone = phoneDigits(p.phone);
+  const pEmail = emailKey(p.email);
+  for (const t of txs) {
+    if (t.matchedPaymentId !== null) continue;
+    if (t.amount <= 0 || t.amount !== p.amount || !isIls(t.currency)) continue;
+    const when = (t.transactionAt ?? t.fetchedAt).getTime();
+    if (when < notBefore) continue;
+    if (extractReference(t.comments) === p.reference) {
+      strong.push(t);
+      continue;
+    }
+    const phoneOk = !!pPhone && pPhone.length >= 9 && t.phone === pPhone;
+    const emailOk = !!pEmail && pEmail.includes("@") && t.email === pEmail;
+    if (phoneOk || emailOk) weak.push(t);
+  }
+  return { strong, weak };
 }
 
-/** TransactionResponse.Value שה-iframe מחזיר: הצלחה = Status 'OK' (ה-iframe עצמו מתייחס לכל דבר שאינו 'Error' כהצלחה; אנחנו קפדניים) */
-export function isTransactionOk(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false;
-  return String((value as Record<string, unknown>).Status ?? "")
-    .trim()
-    .toUpperCase() === "OK";
+export type AutoMatch = { paymentId: number; tx: TxForMatch; kind: "strong" | "weak" };
+
+/**
+ * ההחלטה הגלובלית: אילו בקשות משודרגות אוטומטית ואילו "לא בטוח – אישור ידני".
+ *   strong: בדיוק עסקה אחת עם מזהה הבקשה → התאמה. יותר מאחת → ambiguous.
+ *   weak (רק לבקשות בלי strong): עסקה אחת בדיוק שמתאימה לבקשה, ואותה עסקה לא מתאימה לשום בקשה פתוחה אחרת → התאמה; אחרת ambiguous.
+ * אותה עסקה לעולם לא מוקצית לשתי בקשות.
+ */
+export function decideAutoMatches(payments: OpenPaymentForMatch[], txs: TxForMatch[]): { matches: AutoMatch[]; ambiguous: { paymentId: number; reason: string }[] } {
+  const matches: AutoMatch[] = [];
+  const ambiguous: { paymentId: number; reason: string }[] = [];
+  const taken = new Set<string>();
+  const cands = new Map<number, ReturnType<typeof findCandidates>>();
+  for (const p of payments) cands.set(p.id, findCandidates(p, txs));
+
+  // strong first
+  for (const p of payments) {
+    const c = cands.get(p.id)!;
+    if (c.strong.length === 1 && !taken.has(c.strong[0].transactionId)) {
+      taken.add(c.strong[0].transactionId);
+      matches.push({ paymentId: p.id, tx: c.strong[0], kind: "strong" });
+    } else if (c.strong.length > 1) {
+      ambiguous.push({ paymentId: p.id, reason: `נמצאו ${c.strong.length} עסקאות עם מזהה הבקשה` });
+    }
+  }
+  const decided = new Set([...matches.map((m) => m.paymentId), ...ambiguous.map((a) => a.paymentId)]);
+  // weak: מי עוד "טוענת" לאותה עסקה
+  const claimers = new Map<string, number[]>();
+  for (const p of payments) {
+    if (decided.has(p.id)) continue;
+    for (const t of cands.get(p.id)!.weak) claimers.set(t.transactionId, [...(claimers.get(t.transactionId) ?? []), p.id]);
+  }
+  for (const p of payments) {
+    if (decided.has(p.id)) continue;
+    const weak = cands.get(p.id)!.weak.filter((t) => !taken.has(t.transactionId));
+    if (weak.length === 0) continue;
+    if (weak.length === 1 && (claimers.get(weak[0].transactionId) ?? []).length === 1) {
+      taken.add(weak[0].transactionId);
+      matches.push({ paymentId: p.id, tx: weak[0], kind: "weak" });
+    } else {
+      ambiguous.push({ paymentId: p.id, reason: weak.length > 1 ? `נמצאו ${weak.length} עסקאות בסכום הזה עם הטלפון/המייל של המורה` : "העסקה מתאימה גם לבקשה פתוחה אחרת" });
+    }
+  }
+  return { matches, ambiguous };
 }
 
-// ---------------------------------------------------------------------------------------------------------------- CallBack ואימות
+// ---------------------------------------------------------------------------------------------------------------- CallBack (אופציונלי)
 
 /** גוף ה-CallBack של נדרים: form-urlencoded (ברירת המחדל של ASP.NET) או JSON. מחזיר אובייקט שטוח, או {} אם ריק */
 export function parseCallbackBody(contentType: string | null | undefined, text: string | null | undefined): Record<string, unknown> {
@@ -175,150 +295,26 @@ export function parseCallbackBody(contentType: string | null | undefined, text: 
   return out;
 }
 
-function pick(obj: unknown, names: string[]): string | undefined {
-  if (!obj || typeof obj !== "object") return undefined;
-  const rec = obj as Record<string, unknown>;
-  const lower = new Map(Object.keys(rec).map((k) => [k.toLowerCase(), k]));
-  for (const n of names) {
-    const k = lower.get(n.toLowerCase());
-    if (k !== undefined && rec[k] !== undefined && rec[k] !== null && String(rec[k]) !== "") return String(rec[k]);
-  }
-  return undefined;
-}
-
-export type TransactionFields = {
-  reference: string | null;
-  transactionId: string | null;
-  /** באגורות */
-  amount: number | null;
-  status: string | null;
-  /** true/false לפי Status, null אם אין שדה Status */
-  ok: boolean | null;
-  confirmation: string | null;
-  last4: string | null;
-  message: string | null;
-};
-
-/**
- * מחלץ את השדות שמעניינים אותנו מתשובת נדרים (CallBack או TransactionResponse) בסובלנות לשמות. השדות המדויקים של ה-CallBack
- * אינם מתועדים בדוגמאות הפומביות – ולכן הגוף הגולמי נשמר תמיד (nedarim_payments.callback_body) והאימות המחייב נעשה מול ה-API
- * (matchHistoryRow), לא מול הגוף הזה.
- */
-export function extractTransactionFields(obj: unknown): TransactionFields {
-  const reference =
-    extractReference(pick(obj, ["Param1"])) || extractReference(pick(obj, ["Comment", "Comments", "Avour"])) || null;
-  const amount = shekelsToAgorot(pick(obj, ["Amount", "Sum", "Schum"]));
-  const statusRaw = pick(obj, ["Status"]);
-  const status = statusRaw ? statusRaw.trim().toUpperCase() : null;
+/** השדות שמעניינים אותנו מ-CallBack (לא מתועד – סובלני לשמות). רק לרישום ביומן ולהפעלת רענון; לא להשלמה. */
+export function extractCallbackFields(obj: unknown): { reference: string | null; transactionId: string | null; amount: number | null } {
   return {
-    reference,
+    reference: extractReference(pick(obj, ["Param1"])) || extractReference(pick(obj, ["Comment", "Comments", "Avour"])) || null,
     transactionId: pick(obj, ["TransactionId", "TransactionID", "Id"])?.slice(0, 40) ?? null,
-    amount: amount && amount > 0 ? amount : null,
-    status,
-    ok: status ? status === "OK" : null,
-    confirmation: pick(obj, ["Confirmation", "ConfirmationNumber", "AuthorisationNumber"])?.slice(0, 40) ?? null,
-    last4: (pick(obj, ["LastNum", "Last4", "CardLast4"]) ?? "").replace(/\D/g, "").slice(-4) || null,
-    message: pick(obj, ["Message", "ErrorMessage", "BackMessage"])?.slice(0, 500) ?? null,
+    amount: shekelsToAgorot(pick(obj, ["Amount", "Sum", "Schum"])),
   };
 }
 
-export type HistoryRow = Record<string, unknown>;
+// ---------------------------------------------------------------------------------------------------------------- טקסטים
 
-/**
- * מוצא בהיסטוריית העסקאות של המוסד (Manage3 GetHistoryJson) את העסקה של הבקשה. התאמה: TransactionId שווה (אם ידוע) + סכום שווה
- * + מטבע ש"ח; בלי TransactionId – לפי מזהה הבקשה בהערות (Comments) + סכום. שמות השדות (TransactionId/Amount/Currency/Comments)
- * לפי המסמך של נדרים כפי שהובן בגמ"ח – לא אומתו מול תשובה אמיתית (ר' docs/nedarim-payments.md, "מה חסר").
- */
-export function matchHistoryRow(
-  rows: unknown,
-  want: { transactionId: string | null; amountAgorot: number; reference: string },
-): { matched: boolean; row: HistoryRow | null; reason: string } {
-  const list: HistoryRow[] = Array.isArray(rows) ? rows.filter((r): r is HistoryRow => !!r && typeof r === "object") : [];
-  const sameAmount = (r: HistoryRow) => {
-    const a = shekelsToAgorot(pick(r, ["Amount", "Sum", "Schum"]));
-    return a !== null && Math.abs(a - want.amountAgorot) <= 1;
-  };
-  const ils = (r: HistoryRow) => {
-    const c = pick(r, ["Currency"]);
-    return c === undefined || c === "1" || c.includes("₪") || /ils|nis|ש"ח|שח/i.test(c);
-  };
-  if (want.transactionId) {
-    const row = list.find((r) => pick(r, ["TransactionId", "TransactionID", "Id"]) === String(want.transactionId));
-    if (!row) return { matched: false, row: null, reason: "העסקה לא נמצאה בהיסטוריה של המוסד" };
-    if (!sameAmount(row)) {
-      return {
-        matched: false,
-        row,
-        reason: `סכום העסקה (${pick(row, ["Amount"]) ?? "?"}) שונה מהסכום שהתבקש (${agorotToAmountString(want.amountAgorot)})`,
-      };
-    }
-    if (!ils(row)) return { matched: false, row, reason: 'מטבע העסקה אינו ש"ח' };
-    return { matched: true, row, reason: "" };
-  }
-  const ref = want.reference.toUpperCase();
-  const byComment = list.filter((r) =>
-    String(pick(r, ["Comments", "Comment", "Param1"]) ?? "")
-      .toUpperCase()
-      .includes(ref),
-  );
-  if (byComment.length === 0) return { matched: false, row: null, reason: "לא נמצאה עסקה עם מזהה הבקשה בהערות" };
-  const row = byComment.find((r) => sameAmount(r) && ils(r));
-  if (!row) return { matched: false, row: byComment[0], reason: "נמצאה עסקה עם מזהה הבקשה אבל בסכום/מטבע אחר" };
-  return { matched: true, row, reason: "" };
-}
-
-export type SettlementDecision = {
-  action: "settle" | "wait" | "fail" | "noop";
-  verified: boolean;
-  method: VerifyMethod | null;
-  reason: string;
-};
-
-/**
- * ההחלטה אם להשלים את התשלום ואיך לסמן אותו.
- *   intent: { status, amount }; api: תוצאת האימות מול ההיסטוריה (null = לא נוסה);
- *   report: מה שדווח (CallBack או דפדפן); trustCallback: NEDARIM_TRUST_CALLBACK; simulated: מצב דמה (פיתוח בלבד).
- */
-export function decideSettlement(input: {
-  intent: { status: string; amount: number } | null;
-  api: { available: boolean; matched: boolean; reason: string } | null;
-  report: { ok: boolean | null; amount: number | null; fromCallback: boolean; message?: string | null } | null;
-  trustCallback?: boolean;
-  simulated?: boolean;
-}): SettlementDecision {
-  const { intent, api, report, trustCallback = false, simulated = false } = input;
-  if (!intent) return { action: "noop", verified: false, method: null, reason: "אין בקשה" };
-  if (intent.status === "paid") return { action: "noop", verified: true, method: null, reason: "כבר הושלם" };
-  if (intent.status === "cancelled" || intent.status === "expired") {
-    return { action: "noop", verified: false, method: null, reason: "הבקשה בוטלה / פגה" };
-  }
-  if (simulated) return { action: "settle", verified: false, method: "simulated", reason: "מצב דמה (פיתוח בלבד)" };
-  if (api && api.available) {
-    if (api.matched) return { action: "settle", verified: true, method: "api", reason: "" };
-    return { action: "wait", verified: false, method: null, reason: api.reason || "לא אומת מול נדרים פלוס" };
-  }
-  if (report && report.ok === false) {
-    return { action: "fail", verified: false, method: null, reason: report.message || "נדרים פלוס דיווחו על כישלון" };
-  }
-  const amountOk = !!report && (report.amount === null || Math.abs(report.amount - intent.amount) <= 1);
-  if (report && report.ok && report.fromCallback && trustCallback && amountOk) {
-    return { action: "settle", verified: false, method: "callback", reason: "אושר לפי CallBack (בלי אימות API)" };
-  }
-  if (report && report.ok) {
-    return { action: "wait", verified: false, method: null, reason: "ממתין לאימות מול נדרים פלוס (אין מפתח API / האימות לא הצליח)" };
-  }
-  return { action: "noop", verified: false, method: null, reason: "אין דיווח הצלחה" };
-}
-
-/** הטקסט שהמורה רואה לפי הסטטוס (עמוד התשלום / בדיקת סטטוס) – פנייה בלשון נוכחת */
+/** הטקסט שהמורה רואה לפי הסטטוס – פנייה בלשון נוכחת */
 export function customerStatusText(status: string, assistRequested = false): string {
   switch (status) {
     case "paid":
-      return "התשלום התקבל והמנוי שלך פעיל. תודה!";
+      return "התשלום זוהה והמנוי שלך פעיל. תודה!";
     case "processing":
       return assistRequested
         ? "הבקשה שלך הועברה למנהלת האתר – היא תיצור איתך קשר להשלמת התשלום. אין צורך לשלם שוב."
-        : "התשלום התקבל ונמצא באימות מול חברת הסליקה. המנוי יופעל אוטומטית בסיום האימות – אין צורך לשלם שוב.";
+        : "התשלום התקבל אצל נדרים פלוס אבל לא הצלחנו לשייך אותו אוטומטית – מנהלת האתר תאשר אותו ידנית. אין צורך לשלם שוב.";
     case "failed":
       return "התשלום לא אושר. אפשר לנסות שוב, או לפנות אלינו.";
     case "cancelled":
@@ -328,13 +324,13 @@ export function customerStatusText(status: string, assistRequested = false): str
     default:
       return assistRequested
         ? "הבקשה שלך הועברה למנהלת האתר – היא תיצור איתך קשר להשלמת התשלום."
-        : "ממתין להשלמת התשלום.";
+        : "ממתינים לאישור התשלום מנדרים פלוס. הבדיקה מתבצעת פעם בכמה דקות – אפשר להשאיר את הדף פתוח, או לחזור אחר כך לאזור האישי.";
   }
 }
 
 export const STATUS_LABEL_HE: Record<NedarimStatus, string> = {
   pending: "ממתין לתשלום",
-  processing: "ממתין לאימות",
+  processing: "ממתין לאישור ידני",
   paid: "שולם",
   failed: "נכשל",
   expired: "פג תוקף",
@@ -342,8 +338,7 @@ export const STATUS_LABEL_HE: Record<NedarimStatus, string> = {
 };
 
 export const VERIFY_LABEL_HE: Record<VerifyMethod, string> = {
-  api: "אומת מול נדרים פלוס",
-  callback: "לפי CallBack (ללא אימות API)",
+  api: "הותאם לעסקה בנדרים פלוס",
   manual: "אושר ידנית",
   simulated: "סימולציה (פיתוח)",
 };

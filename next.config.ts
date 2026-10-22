@@ -16,7 +16,13 @@ const nextConfig: NextConfig = {
     qualities: [75, 100],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // דף התשלום ומסכי התשלומים לא נשמרים במטמון (מזהי בקשה, פרטי מנוי)
+      { source: "/pay", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/api/pay/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/admin/payments", headers: [{ key: "Cache-Control", value: "no-store" }] },
+    ];
   },
 };
 

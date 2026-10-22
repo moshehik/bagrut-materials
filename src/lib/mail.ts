@@ -221,17 +221,20 @@ export const templates = {
       ),
     };
   },
-  /** למנהלת: מורה לא הצליחה לשלם דרך טופס נדרים (למשל נטפרי) וביקשה להשלים את התשלום דרכה */
-  payAssistAdmin(input: { userName: string; email: string; phone: string | null; reference: string; planLabel: string; amountText: string }) {
+  /** למנהלת: מורה ביקשה עזרה בהשלמת התשלום בנדרים פלוס (דף התשלום לא נפתח / בעיה אחרת) */
+  payAssistAdmin(raw: { userName: string; email: string; phone: string | null; reference: string; planLabel: string; amountText: string }) {
+    // נתוני משתמשת נכנסים לשורת הנושא – בלי שורות חדשות (הזרקת כותרות מייל) ובאורך סביר
+    const line = (s: string | null | undefined, max = 80) => String(s ?? "").replace(/[\r\n\t]+/g, " ").trim().slice(0, max);
+    const input = { ...raw, userName: line(raw.userName), email: line(raw.email, 120), reference: line(raw.reference, 16), planLabel: line(raw.planLabel) };
     const url = `${siteUrl()}/admin/payments?ref=${encodeURIComponent(input.reference)}`;
-    const phone = input.phone ?? "לא ידוע";
+    const phone = line(input.phone, 20) || "לא ידוע";
     return {
       subject: `בקשה להשלמת תשלום דרך המנהלת – ${input.userName} (${input.reference})`,
-      text: `${input.userName} (${input.email}, טלפון ${phone}) ניסתה לשלם באתר על ${input.planLabel} (${input.amountText}) אבל טופס התשלום של נדרים פלוס לא נטען אצלה (ייתכן בגלל סינון נטפרי), והיא ביקשה להשלים את התשלום דרכך.\n\nמזהה הבקשה: ${input.reference}\nאחרי שהתשלום יתקבל (טלפונית / העברה) – לאשר ידנית במסך "תשלומים (נדרים)": ${url}`,
+      text: `${input.userName} (${input.email}, טלפון ${phone}) התחילה תשלום באתר על ${input.planLabel} (${input.amountText}) וביקשה עזרה בהשלמתו (דף התשלום של נדרים פלוס לא נפתח או בעיה אחרת).\n\nמזהה הבקשה: ${input.reference}\nאחרי שהתשלום יתקבל (בנדרים / טלפונית / העברה) – לאשר ידנית במסך "תשלומים (נדרים)": ${url}`,
       html: layoutHtml(
         "בקשה להשלמת תשלום דרך המנהלת",
-        `<p><b>${esc(input.userName)}</b> (<a href="mailto:${esc(input.email)}">${esc(input.email)}</a>, טלפון <b dir="ltr">${esc(phone)}</b>) ניסתה לשלם באתר על <b>${esc(input.planLabel)}</b> (${esc(input.amountText)}), אבל טופס התשלום של נדרים פלוס לא נטען אצלה (ייתכן בגלל סינון נטפרי) והיא ביקשה להשלים את התשלום דרכך.</p>
-         <p>מזהה הבקשה: <b dir="ltr">${esc(input.reference)}</b><br><span style="color:#756b57;font-size:13px">אחרי שהתשלום יתקבל (טלפונית / העברה) – לאשר ידנית במסך "תשלומים (נדרים)", והמנוי ייפתח אוטומטית.</span></p>`,
+        `<p><b>${esc(input.userName)}</b> (<a href="mailto:${esc(input.email)}">${esc(input.email)}</a>, טלפון <b dir="ltr">${esc(phone)}</b>) התחילה תשלום באתר על <b>${esc(input.planLabel)}</b> (${esc(input.amountText)}) וביקשה עזרה בהשלמתו (דף התשלום של נדרים פלוס לא נפתח או בעיה אחרת).</p>
+         <p>מזהה הבקשה: <b dir="ltr">${esc(input.reference)}</b><br><span style="color:#756b57;font-size:13px">אחרי שהתשלום יתקבל (בנדרים / טלפונית / העברה) – לאשר ידנית במסך "תשלומים (נדרים)", והמנוי ייפתח אוטומטית.</span></p>`,
         { label: "לבקשת התשלום", href: url },
       ),
     };

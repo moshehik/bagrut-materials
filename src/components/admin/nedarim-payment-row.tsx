@@ -93,7 +93,7 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
         <td className="py-2 pe-3">
           <span className={`chip ${STATUS_CLS[p.status] ?? ""}`}>{label}</span>
           {p.assistRequestedAt && open && (
-            <div className="mt-1 text-xs font-semibold text-red-700">ביקשה להשלים דרכך ({fmt(p.assistRequestedAt)})</div>
+            <div className="mt-1 text-xs font-semibold text-red-700">ביקשה עזרה ({fmt(p.assistRequestedAt)}) – לא תותאם אוטומטית</div>
           )}
           {p.status === "paid" && (
             <div className="mt-1 text-xs text-muted">
@@ -111,8 +111,8 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
         <td className="py-2 pe-3">
           <div className="flex flex-wrap gap-1">
             {open && hasApi && (
-              <button type="button" className="btn btn-ghost text-xs py-1 px-2" disabled={pending} onClick={() => run(() => reverifyNedarimPayment(p.id))} title="קריאה אחת ל-API של נדרים">
-                <RefreshCw className="h-3.5 w-3.5" /> אמת מחדש
+              <button type="button" className="btn btn-ghost text-xs py-1 px-2" disabled={pending} onClick={() => run(() => reverifyNedarimPayment(p.id))} title="רענון היסטוריה (אם עברה דקה) + התאמה">
+                <RefreshCw className="h-3.5 w-3.5" /> בדוק שוב
               </button>
             )}
             {open && (
@@ -121,8 +121,8 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
                 className="btn btn-oak text-xs py-1 px-2"
                 disabled={pending}
                 onClick={() => {
-                  if (confirm(`לאשר ידנית את התשלום ${p.reference} (${formatPrice(p.amount)}) ולפתוח את המנוי?\nרק אחרי שראית את התשלום בפורטל נדרים / קיבלת אותו בדרך אחרת.`))
-                    run(() => manualSettleNedarimPayment(p.id));
+                  const tid = prompt(`לאשר ידנית את התשלום ${p.reference} (${formatPrice(p.amount)}) ולפתוח את המנוי?\nרק אחרי שראית את התשלום בפורטל נדרים / קיבלת אותו בדרך אחרת.\n\nמספר העסקה בנדרים (לא חובה, ספרות בלבד):`, "");
+                  if (tid !== null) run(() => manualSettleNedarimPayment(p.id, tid));
                 }}
               >
                 <BadgeCheck className="h-3.5 w-3.5" /> אשר ידנית
