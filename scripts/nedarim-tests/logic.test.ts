@@ -1,23 +1,29 @@
 /**
  * בדיקות הלוגיקה הטהורה של התשלום דרך נדרים פלוס (בלי DB, בלי רשת). כל הנתונים כאן מומצאים.
- * הרצה: npx tsx --test scripts/nedarim-tests/logic.test.ts scripts/nedarim-tests/secret-crypto.test.ts
+ * הרצה (עם TZ=UTC כדי לוודא שפענוח התאריכים לא תלוי בשעון השרת):
+ *   TZ=UTC npx tsx --test scripts/nedarim-tests/logic.test.ts scripts/nedarim-tests/secret-crypto.test.ts
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   agorotToAmountString,
+  checkManualTransaction,
   decideAutoMatches,
   extractCallbackFields,
   extractReference,
   findCandidates,
   generateReference,
   hostedPaymentUrl,
+  isApprovedTx,
   isValidReference,
   parseCallbackBody,
   parseHistoryRow,
   parseNedarimDate,
   phoneDigits,
+  pickRawFields,
+  settlementPlan,
   shekelsToAgorot,
+  transactionStatusOk,
   type OpenPaymentForMatch,
   type TxForMatch,
 } from "../../src/lib/nedarim/logic";
@@ -35,7 +41,7 @@ test("reference: format, validation, extraction from text", () => {
   assert.equal(isValidReference("GP-ABCDEFGH"), false);
 });
 
-test("amount / phone / date conversions", () => {
+test("amount / phone conversions", () => {
   assert.equal(agorotToAmountString(58800), "588");
   assert.equal(agorotToAmountString(12990), "129.9");
   assert.equal(shekelsToAgorot("588.00 ₪"), 58800);
@@ -43,10 +49,23 @@ test("amount / phone / date conversions", () => {
   assert.equal(phoneDigits("+972-50-123 4567"), "0501234567");
   assert.equal(phoneDigits("050-1234567"), "0501234567");
   assert.equal(phoneDigits("501234567"), "0501234567");
-  assert.equal(parseNedarimDate("22/10/2026 14:05")?.getFullYear(), 2026);
-  assert.equal(parseNedarimDate("22/10/2026 14:05")?.getMinutes(), 5);
+});
+
+test("M4: dates without offset are Asia/Jerusalem regardless of server TZ (DST aware)", () => {
+  // 22.10.2026 – שעון קיץ (IDT, UTC+3; מסתיים 25.10.2026)
+  assert.equal(parseNedarimDate("22/10/2026 14:05")?.toISOString(), "2026-10-22T11:05:00.000Z");
+  // 22.01.2026 – שעון חורף (IST, UTC+2)
+  assert.equal(parseNedarimDate("22/01/2026 14:05:30")?.toISOString(), "2026-01-22T12:05:30.000Z");
+  // ISO בלי offset – גם שעת ירושלים
+  assert.equal(parseNedarimDate("2026-10-22T14:05:00")?.toISOString(), "2026-10-22T11:05:00.000Z");
+  assert.equal(parseNedarimDate("2026-01-22 14:05")?.toISOString(), "2026-01-22T12:05:00.000Z");
+  // ISO עם Z – כפי שהוא
   assert.equal(parseNedarimDate("2026-10-22T11:05:00Z")?.toISOString(), "2026-10-22T11:05:00.000Z");
+  // גבול DST (25.10.2026 02:00 → 01:00): 00:30 עדיין UTC+3; 03:30 כבר UTC+2 (השעה 01:00–02:00 כפולה – לא נבדקת)
+  assert.equal(parseNedarimDate("25/10/2026 00:30")?.toISOString(), "2026-10-24T21:30:00.000Z");
+  assert.equal(parseNedarimDate("25/10/2026 03:30")?.toISOString(), "2026-10-25T01:30:00.000Z");
   assert.equal(parseNedarimDate("garbage"), null);
+  assert.equal(parseNedarimDate(""), null);
 });
 
 test("hosted payment URL uses only the documented/verified parameters", () => {
@@ -72,29 +91,49 @@ test("hosted payment URL uses only the documented/verified parameters", () => {
   assert.equal(u.searchParams.get("Redirect"), "https://example.com/pay?ref=NP-ABCDEFGH");
 });
 
-test("history row parsing: documented field names, tolerant", () => {
-  const t = parseHistoryRow({ TransactionId: 123456, Amount: "588", Currency: "1", Phone: "050-1234567", Mail: "R@Example.com", Comments: "NP-ABCDEFGH | לו״ז העניין", TransactionTime: "22/10/2026 14:05", Confirmation: "0012345", LastNum: "4321" });
+test("history row parsing: documented field names, approval, raw whitelist (M6)", () => {
+  const row = { TransactionId: 123456, Amount: "588", Currency: "1", Phone: "050-1234567", Mail: "R@Example.com", Comments: "NP-ABCDEFGH | לו״ז העניין", TransactionTime: "22/10/2026 14:05", Confirmation: "0012345", LastNum: "4321", Zeout: "123456789", Adresse: "רחוב 1", ClientName: "רחל" };
+  const t = parseHistoryRow(row);
   assert.ok(t);
   assert.equal(t.transactionId, "123456");
   assert.equal(t.amount, 58800);
   assert.equal(t.phone, "0501234567");
   assert.equal(t.email, "r@example.com");
   assert.equal(t.last4, "4321");
-  assert.equal(t.transactionAt?.getHours(), 14);
+  assert.equal(t.approved, true);
+  assert.equal(t.transactionAt?.toISOString(), "2026-10-22T11:05:00.000Z");
+  const raw = pickRawFields(row);
+  assert.ok(!("Zeout" in raw) && !("Adresse" in raw) && !("ClientName" in raw) && !("Phone" in raw) && !("Mail" in raw));
+  assert.equal(raw.Confirmation, "0012345");
   assert.equal(parseHistoryRow({ Amount: "5" }), null, "no id");
   assert.equal(parseHistoryRow({ TransactionId: "abc", Amount: "5" }), null, "non-numeric id");
   assert.equal(parseHistoryRow(null), null);
+});
+
+test("H1: approval requires a confirmation number and no failure status; unknown status = not approved", () => {
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588" })!.approved, false, "no confirmation");
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "  " })!.approved, false, "blank confirmation");
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123" })!.approved, true);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123", Status: "Error" })!.approved, false);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123", Status: "סירוב" })!.approved, false);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123", Status: "ממתין" })!.approved, false);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123", Status: "OK" })!.approved, true);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123", Status: "אושר" })!.approved, true);
+  assert.equal(parseHistoryRow({ TransactionId: 1, Amount: "588", Confirmation: "123", Status: "whatever" })!.approved, false, "unknown status is fail-safe");
+  assert.equal(transactionStatusOk(null), null);
+  assert.equal(transactionStatusOk("Success"), true);
+  assert.equal(isApprovedTx({ confirmation: "1", status: null }), true);
 });
 
 const now = new Date("2026-10-22T12:00:00Z");
 const createdAt = new Date(now.getTime() - 10 * 60 * 1000);
 const mkPayment = (o: Partial<OpenPaymentForMatch> = {}): OpenPaymentForMatch => ({ id: 1, reference: "NP-ABCDEFGH", amount: 58800, phone: "0501234567", email: "r@example.com", createdAt, ...o });
 const mkTx = (o: Partial<TxForMatch> = {}): TxForMatch => ({
-  transactionId: "100", amount: 58800, currency: "1", phone: "", email: "", clientName: null, comments: null, confirmation: null, last4: null,
-  transactionAt: now, fetchedAt: now, matchedPaymentId: null, ...o,
+  transactionId: "100", amount: 58800, currency: "1", phone: "", email: "", clientName: null, comments: null, confirmation: "0012345", last4: null,
+  status: null, approved: true, transactionAt: now, fetchedAt: now, matchedPaymentId: null, ...o,
 });
 
-test("findCandidates: amount exact, ILS, time window, unmatched; strong vs weak", () => {
+test("findCandidates: approved + amount exact + ILS + dated + window + unmatched; strong vs weak", () => {
   const p = mkPayment();
   const strong = mkTx({ transactionId: "1", comments: "NP-ABCDEFGH | מנוי" });
   const weakPhone = mkTx({ transactionId: "2", phone: "0501234567" });
@@ -107,46 +146,70 @@ test("findCandidates: amount exact, ILS, time window, unmatched; strong vs weak"
   const refund = mkTx({ transactionId: "9", comments: "זיכוי NP-ABCDEFGH", amount: -58800 });
   const cancelled = mkTx({ transactionId: "10", comments: "NP-ABCDEFGH", amount: 0 });
   const stranger = mkTx({ transactionId: "11", phone: "0529999999" });
-  const noTime = mkTx({ transactionId: "12", comments: "NP-ABCDEFGH", transactionAt: null, fetchedAt: now });
-  const c = findCandidates(p, [strong, weakPhone, weakMail, wrongAmount, partial, usd, tooOld, taken, refund, cancelled, stranger, noTime]);
-  assert.deepEqual(c.strong.map((t) => t.transactionId), ["1", "12"]);
+  const noTime = mkTx({ transactionId: "12", comments: "NP-ABCDEFGH", transactionAt: null }); // M3
+  const notApproved = mkTx({ transactionId: "13", comments: "NP-ABCDEFGH", approved: false, confirmation: null }); // H1
+  const c = findCandidates(p, [strong, weakPhone, weakMail, wrongAmount, partial, usd, tooOld, taken, refund, cancelled, stranger, noTime, notApproved]);
+  assert.deepEqual(c.strong.map((t) => t.transactionId), ["1"]);
   assert.deepEqual(c.weak.map((t) => t.transactionId), ["2", "3"]);
 });
 
-test("decideAutoMatches: strong unique → match; multiple strong → ambiguous", () => {
+test("M3: cutoff excludes historical transactions even inside the payment window", () => {
+  const p = mkPayment();
+  const tx = mkTx({ transactionId: "1", comments: "NP-ABCDEFGH", transactionAt: new Date(createdAt.getTime() - 5 * 60 * 1000) });
+  assert.equal(findCandidates(p, [tx], null).strong.length, 1, "inside grace window");
+  assert.equal(findCandidates(p, [tx], createdAt).strong.length, 0, "before cutoff");
+  assert.equal(findCandidates(p, [tx], new Date(createdAt.getTime() - 10 * 60 * 1000)).strong.length, 1, "after cutoff");
+});
+
+test("decideAutoMatches: only a unique strong match settles; multiple strong → review", () => {
   const p = mkPayment();
   const one = decideAutoMatches([p], [mkTx({ transactionId: "1", comments: "NP-ABCDEFGH" }), mkTx({ transactionId: "2", phone: "0501234567" })]);
   assert.equal(one.matches.length, 1);
   assert.equal(one.matches[0].tx.transactionId, "1");
-  assert.equal(one.matches[0].kind, "strong");
-  assert.equal(one.ambiguous.length, 0);
+  assert.equal(one.review.length, 0);
   const two = decideAutoMatches([p], [mkTx({ transactionId: "1", comments: "NP-ABCDEFGH" }), mkTx({ transactionId: "2", comments: "NP-ABCDEFGH" })]);
   assert.equal(two.matches.length, 0);
-  assert.equal(two.ambiguous.length, 1);
+  assert.equal(two.review.length, 1);
+  assert.deepEqual(two.review[0].transactionIds, ["1", "2"]);
 });
 
-test("decideAutoMatches: weak only when exactly one tx ↔ exactly one payment", () => {
+test("L4: weak (phone/email only) never settles automatically – goes to manual review with the candidate ids", () => {
   const p = mkPayment();
-  const ok = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: "0501234567" })]);
-  assert.equal(ok.matches.length, 1);
-  assert.equal(ok.matches[0].kind, "weak");
-  // שתי עסקאות בסכום הזה מאותו טלפון → ספק
-  const twoTx = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: "0501234567" }), mkTx({ transactionId: "3", email: "r@example.com" })]);
-  assert.equal(twoTx.matches.length, 0);
-  assert.equal(twoTx.ambiguous.length, 1);
-  // שתי בקשות פתוחות של אותה מורה (אותו טלפון, אותו סכום) ועסקה אחת → ספק, אף אחת לא נתפסת
-  const p2 = mkPayment({ id: 2, reference: "NP-ZZZZZZZZ" });
-  const twoPayments = decideAutoMatches([p, p2], [mkTx({ transactionId: "2", phone: "0501234567" })]);
-  assert.equal(twoPayments.matches.length, 0);
-  assert.equal(twoPayments.ambiguous.length, 2);
-  // עסקה של מישהי אחרת באותו סכום – לא נתפסת
+  const weak = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: "0501234567" })]);
+  assert.equal(weak.matches.length, 0);
+  assert.equal(weak.review.length, 1);
+  assert.deepEqual(weak.review[0].transactionIds, ["2"]);
+  // עסקה של מישהי אחרת באותו סכום – לא מועמדת כלל (לא review)
   const other = decideAutoMatches([p], [mkTx({ transactionId: "5", phone: "0529999999", email: "x@y.com" })]);
   assert.equal(other.matches.length, 0);
-  assert.equal(other.ambiguous.length, 0);
-  // אותה עסקה לא מוקצית לשתי בקשות (strong ל-p, weak ל-p2 עם אותו טלפון)
-  const shared = decideAutoMatches([p, p2], [mkTx({ transactionId: "7", comments: "NP-ABCDEFGH", phone: "0501234567" })]);
-  assert.equal(shared.matches.length, 1);
-  assert.equal(shared.matches[0].paymentId, 1);
+  assert.equal(other.review.length, 0);
+  // אותה עסקה strong לשתי בקשות (לא אמור לקרות) – אף אחת לא נתפסת, שתיהן ל-review
+  const p2 = mkPayment({ id: 2, reference: "NP-ABCDEFGH" });
+  const shared = decideAutoMatches([p, p2], [mkTx({ transactionId: "7", comments: "NP-ABCDEFGH" })]);
+  assert.equal(shared.matches.length, 0);
+  assert.equal(shared.review.length, 2);
+});
+
+test("M1: manual settle with a cached transaction requires approved, exact amount, positive, ILS", () => {
+  const intent = { amount: 58800 };
+  assert.equal(checkManualTransaction(intent, { amount: 58800, currency: "1", approved: true, confirmation: "1" }).ok, true);
+  assert.equal(checkManualTransaction(intent, { amount: 58700, currency: "1", approved: true, confirmation: "1" }).ok, false, "amount mismatch");
+  assert.equal(checkManualTransaction(intent, { amount: 29400, currency: "1", approved: true, confirmation: "1" }).ok, false, "partial");
+  assert.equal(checkManualTransaction(intent, { amount: -58800, currency: "1", approved: true, confirmation: "1" }).ok, false, "negative");
+  assert.equal(checkManualTransaction(intent, { amount: 0, currency: "1", approved: true, confirmation: "1" }).ok, false, "zero");
+  assert.equal(checkManualTransaction(intent, { amount: 58800, currency: "2", approved: true, confirmation: "1" }).ok, false, "USD");
+  assert.equal(checkManualTransaction(intent, { amount: 58800, currency: "1", approved: false, confirmation: null }).ok, false, "not approved");
+  assert.ok(checkManualTransaction(intent, { amount: 58700, currency: "1", approved: true, confirmation: "1" }).reason.includes("587"));
+});
+
+test("M2/M5: settlement plan – coupon must be claimed first; existing purchases are never inserted twice", () => {
+  assert.equal(settlementPlan({ hasCoupon: true, couponClaimed: false, existingPurchaseId: null }), "wait_coupon");
+  assert.equal(settlementPlan({ hasCoupon: true, couponClaimed: true, existingPurchaseId: null }), "insert");
+  assert.equal(settlementPlan({ hasCoupon: false, couponClaimed: false, existingPurchaseId: null }), "insert");
+  assert.equal(settlementPlan({ hasCoupon: false, couponClaimed: false, existingPurchaseId: 42 }), "skip_insert");
+  assert.equal(settlementPlan({ hasCoupon: true, couponClaimed: true, existingPurchaseId: 42 }), "skip_insert");
+  // שחזור אחרי כשל מאוחר: קופון כבר נתפס לבקשה הזו + purchases קיימים → רק סימון paid
+  assert.equal(settlementPlan({ hasCoupon: true, couponClaimed: true, existingPurchaseId: 7 }), "skip_insert");
 });
 
 test("callback body parsing (optional webhook)", () => {

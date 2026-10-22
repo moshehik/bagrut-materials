@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
-import { and, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import {
   nedarimPaymentEvents,
@@ -22,8 +22,10 @@ import { termFields } from "@/lib/purchase-helpers";
 import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
+  checkManualTransaction,
   extractCallbackFields,
   generateReference,
+  settlementPlan,
   type PayablePlan,
   type TxForMatch,
   type VerifyMethod,
@@ -89,6 +91,17 @@ export function describeIntent(row: Pick<NedarimPayment, "plan" | "subjectsPendi
   const subjects = subjectTitles.length ? ` – ${subjectTitles.join(", ")}` : row.subjectsPending ? " – המקצועות ייבחרו בחשבון" : "";
   const coupon = row.couponPercent ? ` (קופון ${row.couponPercent}% הנחה)` : "";
   return `${label}${subjects}${coupon}`;
+}
+
+/** בקשה פתוחה של המשתמשת עם אותו קופון (M2) – לא יוצרים בקשה שנייה על אותו קופון, משתמשים בקיימת */
+export async function findOpenWithCoupon(userId: number, couponId: number): Promise<NedarimPayment | null> {
+  const [row] = await db
+    .select()
+    .from(nedarimPayments)
+    .where(and(eq(nedarimPayments.userId, userId), eq(nedarimPayments.couponId, couponId), inArray(nedarimPayments.status, [...OPEN_STATUSES])))
+    .orderBy(desc(nedarimPayments.createdAt))
+    .limit(1);
+  return row ?? null;
 }
 
 /** יצירת בקשת תשלום חדשה (status pending). המקצועות כבר אומתו ע"י הקורא (מקצועות ראשיים, 1–3). */
@@ -188,12 +201,13 @@ export function buildPurchaseRows(
 }
 
 export type SettleResult =
-  | { ok: true; status: string; verified: boolean; reason: string; purchaseId?: number | null }
-  | { ok: false; error: string };
+  | { ok: true; status: string; verified: boolean; reason: string; purchaseId?: number | null; /** הקריאה הזו היא שתפסה את הבקשה */ claimed: boolean }
+  | { ok: false; error: string; /** נדרש אישור ידני (למשל קופון שכבר נוצל) */ review?: boolean };
 
 /**
- * ההשלמה: תפיסה אטומית של הבקשה (UPDATE מותנה; האינדקס הייחודי על transaction_id מונע עסקה אחת → שתי בקשות), ואז שורות
- * purchases + תנועה כספית + קופון + מייל. כישלון אחרי התפיסה מחזיר ל-processing עם הודעה (המנהלת רואה ומאשרת ידנית).
+ * ההשלמה: תפיסה אטומית של הבקשה (UPDATE מותנה; האינדקס הייחודי על transaction_id מונע עסקה אחת → שתי בקשות) →
+ * תפיסת הקופון (M2: נכשל → חזרה ל-processing לאישור ידני, בלי מנוי) → שורות purchases (M5: אם כבר קיימות מניסיון קודם –
+ * לא מכניסים שוב) → תנועה כספית + אירועים + מייל. **אחרי ש-purchases נכנסו, שום כישלון לא מחזיר אחורה** – נשארים paid + אירוע error.
  */
 async function settle(
   intent: NedarimPayment,
@@ -223,29 +237,84 @@ async function settle(
     const reason = /unique|duplicate/i.test(errText(e)) ? "עסקה זו כבר שויכה לבקשה אחרת (TransactionId כפול)" : `ההשלמה נכשלה: ${errText(e)}`;
     await touchPayment(intent.id, { status: "processing", errorMessage: reason });
     await appendEvent(intent.id, "error", reason);
-    return { ok: false, error: reason };
+    return { ok: false, error: reason, review: true };
   }
   if (!claimed.length) {
     const fresh = await getById(intent.id);
-    return { ok: true, status: fresh?.status ?? "paid", verified: fresh?.verified ?? false, reason: "כבר טופל", purchaseId: fresh?.purchaseId };
+    return { ok: true, status: fresh?.status ?? "paid", verified: fresh?.verified ?? false, reason: "כבר טופל", purchaseId: fresh?.purchaseId, claimed: false };
   }
 
-  try {
-    const prices = await getPlanPrices();
-    const rows = buildPurchaseRows(intent, prices);
-    const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
-    const purchaseId = inserted[0]?.id ?? null;
-    await touchPayment(intent.id, { purchaseId });
+  // --- קופון (M2): נתפס לפני יצירת המנוי; נכשל → אין מנוי, אישור ידני ---
+  let couponClaimed = false;
+  if (intent.couponId) {
+    const got = await db
+      .update(privateCoupons)
+      .set({ status: "used", usedAt: paidAt, claimedBy: intent.userId })
+      .where(and(eq(privateCoupons.id, intent.couponId), eq(privateCoupons.status, "active")))
+      .returning({ id: privateCoupons.id });
+    couponClaimed = got.length > 0;
+    // ניסיון חוזר אחרי כישלון מאוחר: הקופון כבר נתפס לבקשה הזו – תקין
+    if (!couponClaimed) {
+      const [c] = await db.select({ status: privateCoupons.status, claimedBy: privateCoupons.claimedBy }).from(privateCoupons).where(eq(privateCoupons.id, intent.couponId)).limit(1);
+      if (c?.status === "used" && c.claimedBy === intent.userId && intent.purchaseId) couponClaimed = true;
+    }
+  }
+  // --- purchases קיימים מניסיון קודם (M5) – גם לפי payment_ref, למקרה ש-purchase_id לא נשמר ---
+  let existingPurchaseId = intent.purchaseId ?? null;
+  if (!existingPurchaseId) {
+    const [p] = await db.select({ id: purchases.id }).from(purchases).where(eq(purchases.paymentRef, intent.reference)).limit(1);
+    existingPurchaseId = p?.id ?? null;
+  }
+  const plan = settlementPlan({ hasCoupon: !!intent.couponId, couponClaimed, existingPurchaseId });
+  if (plan === "wait_coupon") {
+    const reason = "הקופון שבבקשה כבר נוצל/בוטל – המחיר ששולם מוזל; לאישור ידני של המנהלת";
+    await touchPayment(intent.id, { status: "processing", verifyMethod: null, paidAt: null, errorMessage: reason });
+    await appendEvent(intent.id, "coupon_conflict", reason, { couponId: intent.couponId });
+    return { ok: false, error: reason, review: true };
+  }
 
-    const [user] = await db.select().from(users).where(eq(users.id, intent.userId)).limit(1);
-    const description = describeIntent(intent);
-    const txId = how.transactionId ?? intent.transactionId;
-    const noteParts = [`תשלום דרך נדרים פלוס ${intent.reference}`, description];
-    if (txId) noteParts.push(`עסקה ${txId}`);
-    if (how.confirmation ?? intent.confirmation) noteParts.push(`אישור ${how.confirmation ?? intent.confirmation}`);
-    if (how.method === "manual") noteParts.push("אושר ידנית");
-    if (how.method === "simulated") noteParts.push("סימולציה");
+  let purchaseId = existingPurchaseId;
+  let rows: (typeof purchases.$inferInsert)[] = [];
+  if (plan === "insert") {
     try {
+      const prices = await getPlanPrices();
+      rows = buildPurchaseRows(intent, prices);
+      const inserted = await db.insert(purchases).values(rows).returning({ id: purchases.id });
+      purchaseId = inserted[0]?.id ?? null;
+    } catch (e) {
+      // עוד לא נוצר מנוי – בטוח לחזור אחורה (ולשחרר את הקופון שתפסנו עכשיו)
+      const msg = errText(e);
+      console.error("[nedarim] purchases insert failed", msg);
+      if (intent.couponId && couponClaimed && !intent.purchaseId) {
+        await db.update(privateCoupons).set({ status: "active", usedAt: null }).where(and(eq(privateCoupons.id, intent.couponId), eq(privateCoupons.claimedBy, intent.userId)));
+      }
+      await touchPayment(intent.id, { status: "processing", verifyMethod: null, paidAt: null, errorMessage: `יצירת המנוי נכשלה: ${msg}` });
+      await appendEvent(intent.id, "error", `יצירת המנוי נכשלה: ${msg}`);
+      return { ok: false, error: `יצירת המנוי נכשלה: ${msg}`, review: true };
+    }
+  } else {
+    await appendEvent(intent.id, "reuse_purchase", `המנוי כבר נוצר בניסיון קודם (#${purchaseId}) – רק סימון paid`);
+  }
+
+  // --- מכאן: המנוי קיים. כל כישלון = אירוע error, נשארים paid (M5) ---
+  const step = async (name: string, fn: () => Promise<void>) => {
+    try {
+      await fn();
+    } catch (e) {
+      console.error(`[nedarim] post-settle step failed: ${name}`, errText(e));
+      await appendEvent(intent.id, "error", `שלב «${name}» נכשל אחרי יצירת המנוי (המנוי נשאר פעיל): ${errText(e)}`);
+    }
+  };
+  await step("purchase_id", () => touchPayment(intent.id, { purchaseId }));
+  const txId = how.transactionId ?? intent.transactionId;
+  const description = describeIntent(intent);
+  if (plan === "insert") {
+    await step("תנועה כספית", async () => {
+      const noteParts = [`תשלום דרך נדרים פלוס ${intent.reference}`, description];
+      if (txId) noteParts.push(`עסקה ${txId}`);
+      if (how.confirmation ?? intent.confirmation) noteParts.push(`אישור ${how.confirmation ?? intent.confirmation}`);
+      if (how.method === "manual") noteParts.push("אושר ידנית");
+      if (how.method === "simulated") noteParts.push("סימולציה");
       await db.insert(transactions).values({
         userId: intent.userId,
         purchaseId,
@@ -256,36 +325,25 @@ async function settle(
         note: noteParts.join(" | ").slice(0, 500),
         createdById: byId,
       });
-    } catch (e) {
-      console.error("[nedarim] transaction insert failed", errText(e));
-      await appendEvent(intent.id, "error", `רישום התנועה הכספית נכשל: ${errText(e)}`);
-    }
-
-    // קופון הנחה פרטי: נתפס עכשיו (ולא ביצירת הבקשה) – בקשה שלא שולמה לא "שורפת" אותו
-    if (intent.couponId) {
-      const got = await db
-        .update(privateCoupons)
-        .set({ status: "used", usedAt: paidAt, claimedBy: intent.userId })
-        .where(and(eq(privateCoupons.id, intent.couponId), eq(privateCoupons.status, "active")))
-        .returning({ id: privateCoupons.id });
-      if (!got.length) await appendEvent(intent.id, "coupon_warn", "הקופון כבר נוצל/בוטל בינתיים – ההנחה כבר ניתנה בתשלום");
-    }
-
-    await appendEvent(intent.id, how.method === "manual" ? "manual_settle" : "settled", `הושלם (${how.method}${how.reason ? `, ${how.reason}` : ""}) – נוצר מנוי`, {
-      purchaseId,
-      rows: rows.length,
-      transactionId: txId,
-      byId,
     });
-    await logAudit({
-      actorId: byId ?? intent.userId,
-      action: how.method === "manual" ? "purchase.nedarim_manual" : "purchase.nedarim",
-      entityType: "purchase",
-      entityId: purchaseId,
-      details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, transactionId: txId, categoryIds: parseCategoryIds(intent) },
-    });
-
-    if (user) {
+  }
+  await appendEvent(intent.id, how.method === "manual" ? "manual_settle" : "settled", `הושלם (${how.method}${how.reason ? `, ${how.reason}` : ""}) – ${plan === "insert" ? "נוצר מנוי" : "המנוי כבר היה קיים"}`, {
+    purchaseId,
+    rows: rows.length,
+    transactionId: txId,
+    byId,
+  });
+  await logAudit({
+    actorId: byId ?? intent.userId,
+    action: how.method === "manual" ? "purchase.nedarim_manual" : "purchase.nedarim",
+    entityType: "purchase",
+    entityId: purchaseId,
+    details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, transactionId: txId, categoryIds: parseCategoryIds(intent), reusedPurchase: plan !== "insert" },
+  });
+  if (plan === "insert") {
+    await step("מייל", async () => {
+      const [user] = await db.select().from(users).where(eq(users.id, intent.userId)).limit(1);
+      if (!user) return;
       const t = templates.purchase(user.name, description, formatPrice(intent.amount), rows[0]?.endsAt ?? null);
       const send = () => sendMail({ to: user.email, ...t, kind: "purchase", userId: user.id }).catch((e) => console.error("[nedarim] mail", errText(e)));
       try {
@@ -293,55 +351,73 @@ async function settle(
       } catch {
         void send(); // מחוץ להקשר בקשה (סקריפט)
       }
-    }
-    return { ok: true, status: "paid", verified: how.verified, reason: how.reason, purchaseId };
-  } catch (e) {
-    const msg = errText(e);
-    console.error("[nedarim] settle failed after claim", msg);
-    await touchPayment(intent.id, { status: "processing", verifyMethod: null, paidAt: null, errorMessage: `ההשלמה נכשלה: ${msg}` });
-    await appendEvent(intent.id, "error", `ההשלמה נכשלה אחרי התפיסה: ${msg}`);
-    return { ok: false, error: `ההשלמה נכשלה: ${msg}` };
+    });
   }
+  return { ok: true, status: "paid", verified: how.verified, reason: how.reason, purchaseId, claimed: true };
+}
+
+/** שחרור עסקה שנתפסה לבקשה (כשההשלמה לא הושלמה ע"י הקריאה הזו – L1) */
+async function releaseTx(transactionId: string, paymentId: number) {
+  await db.update(nedarimTransactions).set({ matchedPaymentId: null }).where(and(eq(nedarimTransactions.transactionId, transactionId), eq(nedarimTransactions.matchedPaymentId, paymentId)));
 }
 
 /**
- * השלמה מעסקה שנמצאה בהיסטוריית נדרים (sync.ts). תופס קודם את העסקה (matched_payment_id IS NULL → id) – עסקה אחת = בקשה אחת
- * גם בין שני רענונים מקבילים; אם הבקשה נכשלת להיתפס – משחררים את העסקה.
+ * השלמה מעסקה שנמצאה בהיסטוריית נדרים (sync.ts, התאמה strong בלבד). תופס קודם את העסקה (matched_payment_id IS NULL → id) –
+ * עסקה אחת = בקשה אחת גם בין שני רענונים מקבילים; אם הבקשה לא נתפסה ע"י הקריאה הזו (כולל "כבר טופל") – משחררים את העסקה.
  */
-export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMatch, kind: "strong" | "weak"): Promise<SettleResult> {
+export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMatch): Promise<SettleResult> {
   const claimedTx = await db
     .update(nedarimTransactions)
     .set({ matchedPaymentId: intent.id })
     .where(and(eq(nedarimTransactions.transactionId, tx.transactionId), isNull(nedarimTransactions.matchedPaymentId)))
     .returning({ id: nedarimTransactions.transactionId });
   if (!claimedTx.length) return { ok: false, error: "העסקה כבר שויכה" };
-  const reason = kind === "strong" ? "מזהה הבקשה בהערת העסקה" : "טלפון/מייל + סכום + חלון זמן";
-  await appendEvent(intent.id, "matched", `נמצאה עסקה ${tx.transactionId} (${reason})`, { transactionId: tx.transactionId, amount: tx.amount, at: tx.transactionAt, kind });
+  const reason = "מזהה הבקשה בהערת העסקה";
+  await appendEvent(intent.id, "matched", `נמצאה עסקה ${tx.transactionId} (${reason})`, { transactionId: tx.transactionId, amount: tx.amount, at: tx.transactionAt, confirmation: tx.confirmation });
   const r = await settle(intent, { method: "api", verified: true, reason, transactionId: tx.transactionId, confirmation: tx.confirmation, last4: tx.last4 });
-  if (!r.ok || r.status !== "paid") {
-    await db.update(nedarimTransactions).set({ matchedPaymentId: null }).where(and(eq(nedarimTransactions.transactionId, tx.transactionId), eq(nedarimTransactions.matchedPaymentId, intent.id)));
-  }
+  if (!r.ok || r.status !== "paid" || !r.claimed) await releaseTx(tx.transactionId, intent.id);
   return r;
 }
 
-/** אישור ידני ממסך הניהול (אחרי שהמנהלת ראתה את התשלום בפורטל נדרים / קיבלה אותו בדרך אחרת). transactionId אופציונלי. */
-export async function manualSettle(id: number, adminId: number, transactionId?: string | null): Promise<SettleResult> {
+/**
+ * אישור ידני ממסך הניהול. transactionId אופציונלי: אם העסקה קיימת במטמון – נבדקת (M1: מאושרת, סכום זהה, חיובית, ש"ח) ונתפסת;
+ * סטייה → סירוב, אלא אם force (אישור חריג מפורש – המנהלת מקבלת את הסכומים ומאשרת; הקורא רושם אודיט).
+ */
+export async function manualSettle(id: number, adminId: number, transactionId?: string | null, force = false): Promise<SettleResult & { mismatch?: string }> {
   const intent = await getById(id);
   if (!intent) return { ok: false, error: "בקשה לא נמצאה" };
-  if (intent.status === "paid") return { ok: true, status: "paid", verified: intent.verified, reason: "כבר הושלם", purchaseId: intent.purchaseId };
+  if (intent.status === "paid") return { ok: true, status: "paid", verified: intent.verified, reason: "כבר הושלם", purchaseId: intent.purchaseId, claimed: false };
   if (!OPEN_STATUSES.includes(intent.status as (typeof OPEN_STATUSES)[number])) return { ok: false, error: "בקשה שבוטלה/פגה – ליצור בקשה חדשה או מנוי ידני ב«מנויים»" };
   const tid = transactionId?.trim() || null;
+  let reason = "אישור ידני";
+  let txConfirmation: string | null = null;
+  let txLast4: string | null = null;
   if (tid) {
-    // אם העסקה קיימת במטמון – תופסים אותה (עסקה אחת = בקשה אחת)
-    const claimedTx = await db
-      .update(nedarimTransactions)
-      .set({ matchedPaymentId: intent.id })
-      .where(and(eq(nedarimTransactions.transactionId, tid), isNull(nedarimTransactions.matchedPaymentId)))
-      .returning({ id: nedarimTransactions.transactionId });
-    const [existing] = await db.select({ m: nedarimTransactions.matchedPaymentId }).from(nedarimTransactions).where(eq(nedarimTransactions.transactionId, tid)).limit(1);
-    if (!claimedTx.length && existing && existing.m !== intent.id) return { ok: false, error: `עסקה ${tid} כבר שויכה לבקשה אחרת` };
+    const [cached] = await db.select().from(nedarimTransactions).where(eq(nedarimTransactions.transactionId, tid)).limit(1);
+    if (cached) {
+      if (cached.matchedPaymentId && cached.matchedPaymentId !== intent.id) return { ok: false, error: `עסקה ${tid} כבר שויכה לבקשה אחרת` };
+      const check = checkManualTransaction(intent, { amount: cached.amount, currency: cached.currency, approved: cached.approved, confirmation: cached.confirmation });
+      if (!check.ok && !force) return { ok: false, error: `${check.reason} – לאישור חריג יש לאשר במפורש`, mismatch: check.reason };
+      if (!check.ok) {
+        reason = `אישור ידני חריג: ${check.reason}`;
+        await appendEvent(intent.id, "manual_override", reason, { transactionId: tid, txAmount: cached.amount, intentAmount: intent.amount, currency: cached.currency, approved: cached.approved, adminId });
+      }
+      const claimedTx = await db
+        .update(nedarimTransactions)
+        .set({ matchedPaymentId: intent.id })
+        .where(and(eq(nedarimTransactions.transactionId, tid), isNull(nedarimTransactions.matchedPaymentId)))
+        .returning({ id: nedarimTransactions.transactionId });
+      if (!claimedTx.length && cached.matchedPaymentId !== intent.id) return { ok: false, error: `עסקה ${tid} נתפסה בינתיים לבקשה אחרת` };
+      txConfirmation = cached.confirmation;
+      txLast4 = cached.last4;
+    } else {
+      reason = "אישור ידני (מספר עסקה לא נמצא במטמון – לא אומת)";
+      await appendEvent(intent.id, "manual_unverified", `מספר עסקה ${tid} אינו במטמון ההיסטוריה – האישור על אחריות המנהלת`, { transactionId: tid, adminId });
+    }
   }
-  return settle(intent, { method: "manual", verified: true, reason: "אישור ידני", transactionId: tid, byId: adminId });
+  const r = await settle(intent, { method: "manual", verified: !!tid && !!txConfirmation, reason, transactionId: tid, confirmation: txConfirmation, last4: txLast4, byId: adminId });
+  if (tid && (!r.ok || r.status !== "paid" || !r.claimed)) await releaseTx(tid, intent.id);
+  return r;
 }
 
 /** מצב דמה (פיתוח מקומי בלבד – הקורא בודק simulateAllowed) */

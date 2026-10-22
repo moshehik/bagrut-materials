@@ -73,9 +73,18 @@ export const NEDARIM_TABLES_SQL = [
     consecutive_errors integer NOT NULL DEFAULT 0,
     last_error text,
     last_fetch_count integer,
+    cutoff_at timestamp,
+    hour_window_start timestamp,
+    hour_calls integer NOT NULL DEFAULT 0,
     updated_at timestamp NOT NULL DEFAULT now()
   )`,
-  `INSERT INTO nedarim_sync_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+  // עמודות שנוספו אחרי הגרסה הראשונה של הטבלה (idempotent)
+  `ALTER TABLE nedarim_sync_state ADD COLUMN IF NOT EXISTS cutoff_at timestamp`,
+  `ALTER TABLE nedarim_sync_state ADD COLUMN IF NOT EXISTS hour_window_start timestamp`,
+  `ALTER TABLE nedarim_sync_state ADD COLUMN IF NOT EXISTS hour_calls integer NOT NULL DEFAULT 0`,
+  // מועד החיתוך = רגע ההדלקה: עסקאות שקדמו לו הן היסטוריות ולעולם לא מתאימות לבקשה
+  `INSERT INTO nedarim_sync_state (id, cutoff_at) VALUES (1, now()) ON CONFLICT (id) DO NOTHING`,
+  `UPDATE nedarim_sync_state SET cutoff_at = now() WHERE id = 1 AND cutoff_at IS NULL`,
   `CREATE TABLE IF NOT EXISTS nedarim_transactions (
     transaction_id varchar(40) PRIMARY KEY,
     amount integer NOT NULL,
@@ -86,11 +95,15 @@ export const NEDARIM_TABLES_SQL = [
     comments text,
     confirmation varchar(40),
     last4 varchar(4),
+    status varchar(30),
+    approved boolean NOT NULL DEFAULT false,
     transaction_at timestamp,
     raw text,
     matched_payment_id integer REFERENCES nedarim_payments(id) ON DELETE SET NULL,
     fetched_at timestamp NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE nedarim_transactions ADD COLUMN IF NOT EXISTS status varchar(30)`,
+  `ALTER TABLE nedarim_transactions ADD COLUMN IF NOT EXISTS approved boolean NOT NULL DEFAULT false`,
   `CREATE INDEX IF NOT EXISTS nedarim_transactions_matched_idx ON nedarim_transactions (matched_payment_id)`,
   `CREATE INDEX IF NOT EXISTS nedarim_transactions_at_idx ON nedarim_transactions (transaction_at)`,
   // סודות שמוחלפים מהאתר (מפתח npk_ וכו') – מוצפנים AES-256-GCM, ר' src/lib/nedarim/secret-crypto.ts

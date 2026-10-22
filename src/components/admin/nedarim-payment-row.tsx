@@ -48,16 +48,16 @@ const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { dateStyle: "sho
 
 export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentRowData; hasApi: boolean; highlight?: boolean }) {
   const [pending, startTransition] = useTransition();
-  const [msg, setMsg] = useState<{ error?: string; ok?: string } | null>(null);
+  const [msg, setMsg] = useState<{ error?: string; ok?: string; mismatch?: { tid: string; reason: string } } | null>(null);
   const [showEvents, setShowEvents] = useState(false);
   const open = p.status === "pending" || p.status === "processing";
   const label = isNedarimStatus(p.status) ? STATUS_LABEL_HE[p.status] : p.status;
 
-  const run = (fn: () => Promise<{ error?: string; ok?: true; status?: string; reason?: string }>) => {
+  const run = (fn: () => Promise<{ error?: string; ok?: true; status?: string; reason?: string; mismatch?: string }>, tid?: string) => {
     setMsg(null);
     startTransition(async () => {
       const r = await fn();
-      if (r.error) setMsg({ error: r.error });
+      if (r.error) setMsg({ error: r.error, mismatch: r.mismatch && tid ? { tid, reason: r.mismatch } : undefined });
       else setMsg({ ok: `${isNedarimStatus(r.status) ? STATUS_LABEL_HE[r.status] : (r.status ?? "בוצע")}${r.reason ? ` – ${r.reason}` : ""}` });
     });
   };
@@ -122,7 +122,7 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
                 disabled={pending}
                 onClick={() => {
                   const tid = prompt(`לאשר ידנית את התשלום ${p.reference} (${formatPrice(p.amount)}) ולפתוח את המנוי?\nרק אחרי שראית את התשלום בפורטל נדרים / קיבלת אותו בדרך אחרת.\n\nמספר העסקה בנדרים (לא חובה, ספרות בלבד):`, "");
-                  if (tid !== null) run(() => manualSettleNedarimPayment(p.id, tid));
+                  if (tid !== null) run(() => manualSettleNedarimPayment(p.id, tid), tid.trim());
                 }}
               >
                 <BadgeCheck className="h-3.5 w-3.5" /> אשר ידנית
@@ -151,6 +151,19 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
             </button>
           </div>
           {msg?.error && <div className="text-xs text-red-600 mt-1">{msg.error}</div>}
+          {msg?.mismatch && open && (
+            <button
+              type="button"
+              className="btn text-xs py-1 px-2 mt-1 text-red-700 border border-red-300 hover:bg-red-50"
+              disabled={pending}
+              onClick={() => {
+                const m = msg.mismatch!;
+                if (confirm(`אישור חריג: ${m.reason}.\nלפתוח את המנוי בכל זאת? הפעולה והסכומים יירשמו בלוג הפעולות.`)) run(() => manualSettleNedarimPayment(p.id, m.tid, true));
+              }}
+            >
+              אשר כחריג בכל זאת
+            </button>
+          )}
           {msg?.ok && <div className="text-xs text-green-700 mt-1">{msg.ok}</div>}
         </td>
       </tr>

@@ -12,7 +12,7 @@ import { matchPendingPayments, refreshHistory } from "@/lib/nedarim/sync";
  * פעולות המנהלת על התשלומים בנדרים (/admin/payments). כל פעולה: אדמין בלבד (admin()), הבדיקה המובנית של Next ל-server actions
  * (Origin מול Host), rate-limit היכן שיש קריאה חיצונית, logAudit בלי ערכי סודות. docs/nedarim-payments.md
  */
-export type NedarimAdminState = { ok?: true; error?: string; status?: string; reason?: string };
+export type NedarimAdminState = { ok?: true; error?: string; status?: string; reason?: string; /** אישור ידני נדחה בגלל אי-התאמה – אפשר לאשר כחריג */ mismatch?: string };
 
 async function admin() {
   const u = await getCurrentUser();
@@ -54,16 +54,26 @@ export async function reverifyNedarimPayment(id: number): Promise<NedarimAdminSt
   return { ok: true, status: fresh?.status ?? row.status, reason: fresh?.status === "paid" ? "נמצאה עסקה – המנוי נפתח" : `${r.reason ?? ""} לא נמצאה עסקה מתאימה לבקשה הזו`.trim() };
 }
 
-/** "אשר ידנית" – אחרי שהמנהלת ראתה את התשלום בפורטל נדרים / קיבלה אותו בדרך אחרת. transactionId אופציונלי (מהפורטל). */
-export async function manualSettleNedarimPayment(id: number, transactionId?: string): Promise<NedarimAdminState> {
+/**
+ * "אשר ידנית" – אחרי שהמנהלת ראתה את התשלום בפורטל נדרים / קיבלה אותו בדרך אחרת. transactionId אופציונלי (מהפורטל);
+ * עסקה שקיימת במטמון חייבת להתאים (M1) – אחרת סירוב, ו-force=true רק אחרי אישור מפורש (נרשם באודיט עם הסכומים).
+ */
+export async function manualSettleNedarimPayment(id: number, transactionId?: string, force = false): Promise<NedarimAdminState> {
   const me = await admin();
   if (!me) return { error: "אין הרשאה" };
   const tid = (transactionId ?? "").trim();
   if (tid && !/^\d{1,30}$/.test(tid)) return { error: "מספר עסקה לא תקין (ספרות בלבד)" };
-  const r = await manualSettle(id, me.id, tid || null);
-  await logAudit({ actorId: me.id, action: "nedarim.manual_settle", entityType: "nedarim_payment", entityId: id, details: { transactionId: tid || null, result: r } });
+  const before = await getById(id);
+  const r = await manualSettle(id, me.id, tid || null, force);
+  await logAudit({
+    actorId: me.id,
+    action: force ? "nedarim.manual_settle_override" : "nedarim.manual_settle",
+    entityType: "nedarim_payment",
+    entityId: id,
+    details: { transactionId: tid || null, force, intentAmount: before?.amount ?? null, result: r },
+  });
   revalidate();
-  if (!r.ok) return { error: r.error };
+  if (!r.ok) return { error: r.error, mismatch: r.mismatch };
   return { ok: true, status: r.status, reason: r.reason };
 }
 

@@ -7,7 +7,7 @@ import { callbackUrl, loadNedarimConfig } from "@/lib/nedarim/config";
 import { NEDARIM_STATUSES, STATUS_LABEL_HE, isNedarimStatus } from "@/lib/nedarim/logic";
 import { expireStale, parseCategoryIds } from "@/lib/nedarim/store";
 import { SECRET_NAMES, getSecretStatus } from "@/lib/nedarim/secrets";
-import { SYNC_MIN_INTERVAL_SEC, getSyncState, listUnmatchedTransactions, nextAllowedAt } from "@/lib/nedarim/sync";
+import { HOURLY_CALL_CAP, SYNC_MIN_INTERVAL_SEC, currentHourCalls, getSyncState, listUnmatchedTransactions, nextAllowedAt } from "@/lib/nedarim/sync";
 import { NedarimPaymentRow, type NedarimPaymentRowData } from "@/components/admin/nedarim-payment-row";
 import { NedarimSecretsCard } from "@/components/admin/nedarim-secrets-card";
 import { NedarimSyncCard } from "@/components/admin/nedarim-sync-card";
@@ -157,8 +157,11 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
           consecutiveErrors: syncState?.consecutiveErrors ?? 0,
           lastError: syncState?.lastError ?? null,
           nextAllowedAt: nextAllowedAt(syncState, SYNC_MIN_INTERVAL_SEC),
+          cutoffAt: syncState?.cutoffAt ?? null,
+          hourCalls: currentHourCalls(syncState),
+          hourCap: HOURLY_CALL_CAP,
           cachedTransactions: cachedTx,
-          unmatched: unmatched.map((t) => ({ transactionId: t.transactionId, amount: t.amount, phone: t.phone, email: t.email, comments: t.comments, transactionAt: t.transactionAt, fetchedAt: t.fetchedAt })),
+          unmatched: unmatched.map((t) => ({ transactionId: t.transactionId, amount: t.amount, phone: t.phone, email: t.email, comments: t.comments, transactionAt: t.transactionAt, fetchedAt: t.fetchedAt, approved: t.approved })),
         }}
       />
 

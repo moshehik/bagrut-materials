@@ -825,6 +825,11 @@ export const nedarimSyncState = pgTable("nedarim_sync_state", {
   consecutiveErrors: integer("consecutive_errors").notNull().default(0),
   lastError: text("last_error"),
   lastFetchCount: integer("last_fetch_count"),
+  /** מועד החיתוך: עסקאות שמועדן לפני זה הן היסטוריות ולעולם לא מתאימות (נקבע ביצירת השורה = הדלקת המנגנון) */
+  cutoffAt: timestamp("cutoff_at"),
+  /** מונה שעתי (L3): ≤ HOURLY_CALL_CAP קריאות בחלון של שעה, מכל הסיבות */
+  hourWindowStart: timestamp("hour_window_start"),
+  hourCalls: integer("hour_calls").notNull().default(0),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -844,7 +849,12 @@ export const nedarimTransactions = pgTable(
     comments: text("comments"),
     confirmation: varchar("confirmation", { length: 40 }),
     last4: varchar("last4", { length: 4 }),
+    /** שדה סטטוס אם נדרים מחזירים (לא מתועד) */
+    status: varchar("status", { length: 30 }),
+    /** isApprovedTx: יש אישור ואין סטטוס כישלון – רק כאלה מתאימות אוטומטית */
+    approved: boolean("approved").notNull().default(false),
     transactionAt: timestamp("transaction_at"),
+    /** JSON של שדות נבחרים בלבד (RAW_KEEP_FIELDS – בלי ת"ז/כתובת/שם), אחרי הסתרת סודות */
     raw: text("raw"),
     matchedPaymentId: integer("matched_payment_id").references(() => nedarimPayments.id, { onDelete: "set null" }),
     fetchedAt: timestamp("fetched_at").notNull().defaultNow(),

@@ -13,7 +13,7 @@ import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
 import { MAX_BODY_BYTES, PAYABLE_PLANS } from "@/lib/nedarim/logic";
-import { createIntent } from "@/lib/nedarim/store";
+import { createIntent, findOpenWithCoupon } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
 
@@ -116,6 +116,23 @@ export async function POST(req: NextRequest) {
   if (Object.keys(profile).length) {
     await db.update(users).set(profile).where(eq(users.id, user.id));
     await logAudit({ actorId: user.id, action: "profile.complete", entityType: "user", entityId: user.id, details: profile });
+  }
+
+  // M2: בקשה פתוחה עם אותו קופון – לא יוצרים שנייה (הקופון חד-פעמי); מחזירים את הקיימת
+  if (coupon && pct > 0) {
+    const existing = await findOpenWithCoupon(user.id, coupon.id);
+    if (existing) {
+      return json({
+        ok: true,
+        reused: true,
+        reference: existing.reference,
+        amount: existing.amount,
+        listAmount: existing.listAmount,
+        couponPercent: existing.couponPercent,
+        hostedUrl: hostedUrlFor(existing, cfg.mosadId),
+        simulate: cfg.simulate,
+      });
+    }
   }
 
   const phone = user.phone ?? profile.phone ?? "";

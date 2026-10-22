@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
-import { customerStatusText, isValidReference, OPEN_STATUSES } from "@/lib/nedarim/logic";
-import { getByReference } from "@/lib/nedarim/store";
+import { INTENT_TTL_HOURS, customerStatusText, isValidReference, OPEN_STATUSES } from "@/lib/nedarim/logic";
+import { expireStale, getByReference } from "@/lib/nedarim/store";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
 import { SYNC_MIN_INTERVAL_SEC, getSyncState, nextAllowedAt, refreshHistory } from "@/lib/nedarim/sync";
 
@@ -27,6 +27,11 @@ export async function GET(req: NextRequest) {
   if (!isValidReference(ref)) return json({ error: "מזהה בקשה לא תקין" }, 400);
   let row = await getByReference(ref);
   if (!row || row.userId !== user.id) return json({ error: "בקשה לא נמצאה" }, 404);
+  // L6: בקשה ממתינה שעברה את חלון ה-TTL מוצגת למורה כפגה (ולא "ממתינים")
+  if (row.status === "pending" && row.createdAt.getTime() < Date.now() - INTENT_TTL_HOURS * 3600_000) {
+    await expireStale();
+    row = (await getByReference(ref)) ?? row;
+  }
 
   const cfg = await loadNedarimConfig();
   const open = OPEN_STATUSES.includes(row.status as (typeof OPEN_STATUSES)[number]) && !row.assistRequestedAt;

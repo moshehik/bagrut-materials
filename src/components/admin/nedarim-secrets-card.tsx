@@ -33,6 +33,7 @@ function SecretCard({ s, testable }: { s: SecretStatus; testable: boolean }) {
           {s.configured ? "מוגדר" : "לא מוגדר"}
         </span>
         {s.source && <span className="chip bg-gray-100 text-gray-700">מקור: {s.source === "db" ? "האתר (מוצפן)" : "משתני סביבה"}</span>}
+        {s.undecryptable && <span className="chip bg-red-100 text-red-700">הערך השמור לא ניתן לפענוח (מפתח ההצפנה הוחלף?) – להזין מחדש</span>}
         {s.envAlsoSet && <span className="chip bg-yellow-100 text-yellow-800">הערך מהאתר דורס את משתני הסביבה</span>}
       </div>
       {s.source === "db" && (

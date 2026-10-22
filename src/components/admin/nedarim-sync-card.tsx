@@ -12,8 +12,11 @@ export type SyncCardData = {
   consecutiveErrors: number;
   lastError: string | null;
   nextAllowedAt: Date | null;
+  cutoffAt: Date | null;
+  hourCalls: number;
+  hourCap: number;
   cachedTransactions: number;
-  unmatched: { transactionId: string; amount: number; phone: string | null; email: string | null; comments: string | null; transactionAt: Date | null; fetchedAt: Date }[];
+  unmatched: { transactionId: string; amount: number; phone: string | null; email: string | null; comments: string | null; transactionAt: Date | null; fetchedAt: Date; approved: boolean }[];
 };
 
 const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—");
@@ -47,8 +50,9 @@ export function NedarimSyncCard({ data, hasApi, minIntervalMin }: { data: SyncCa
       </div>
       <p className="text-xs text-muted">
         נדרים מגבילים ל-20 קריאות בשעה למוסד. האתר קורא לכל היותר פעם ב-{minIntervalMin} דקות (לכל המורות ביחד), תמיד מהעסקה האחרונה
-        שנקראה (LastId), ומתאים בקשות פתוחות לעסקאות לפי מזהה הבקשה בהערה – או לפי טלפון/מייל + סכום מדויק + חלון זמן. רק התאמה
-        חד-משמעית פותחת מנוי; ספק → "ממתין לאישור ידני".
+        שנקראה (LastId), עד {data.hourCap} קריאות בשעה מכל הסיבות, ומתאים בקשות פתוחות לעסקאות מאושרות (יש מספר אישור) לפי מזהה
+        הבקשה בהערת העסקה. רק התאמה חד-משמעית כזו פותחת מנוי; התאמה לפי טלפון/מייל בלבד, כמה מועמדות, או קופון שכבר נוצל →
+        "ממתין לאישור ידני" עם מספרי העסקאות.
       </p>
       <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 text-xs">
         <div>קריאה מוצלחת אחרונה: <b>{fmt(data.lastSuccessAt)}</b>{data.lastFetchCount !== null ? ` (${data.lastFetchCount} עסקאות)` : ""}</div>
@@ -56,6 +60,8 @@ export function NedarimSyncCard({ data, hasApi, minIntervalMin }: { data: SyncCa
         <div>LastId: <code dir="ltr">{data.lastTransactionId ?? "—"}</code></div>
         <div>הקריאה הבאה מותרת: {fmt(data.nextAllowedAt)}</div>
         <div>עסקאות במטמון: {data.cachedTransactions}</div>
+        <div>קריאות בשעה הנוכחית: {data.hourCalls} / {data.hourCap}</div>
+        <div>מועד חיתוך (עסקאות ישנות יותר לא מתאימות): {fmt(data.cutoffAt)}</div>
         {data.lastError && <div className="sm:col-span-2 text-red-700">שגיאה אחרונה: {data.lastError}</div>}
       </div>
       {msg?.error && <p className="text-xs text-red-600">{msg.error}</p>}
@@ -76,7 +82,7 @@ export function NedarimSyncCard({ data, hasApi, minIntervalMin }: { data: SyncCa
             <tbody>
               {data.unmatched.map((t) => (
                 <tr key={t.transactionId} className="border-t border-foreground/5">
-                  <td className="py-1 pe-2 font-mono" dir="ltr">{t.transactionId}</td>
+                  <td className="py-1 pe-2 font-mono" dir="ltr">{t.transactionId}{!t.approved && <span className="ms-1 text-red-700" title="בלי מספר אישור / סטטוס לא הצלחה – לא מתאימה אוטומטית">!</span>}</td>
                   <td className="py-1 pe-2 whitespace-nowrap">₪{(t.amount / 100).toLocaleString("he-IL")}</td>
                   <td className="py-1 pe-2" dir="ltr">{[t.phone, t.email].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="py-1 pe-2">{t.comments ?? "—"}</td>

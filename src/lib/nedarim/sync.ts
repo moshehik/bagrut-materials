@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { nedarimPayments, nedarimSyncState, nedarimTransactions, type NedarimSyncState } from "@/db/schema";
 import { getTransactionHistory } from "./manage";
@@ -7,8 +7,10 @@ import { getNedarimApiPassword, redactNedarim } from "./secrets";
 import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
+  TX_RETENTION_DAYS,
   decideAutoMatches,
   parseHistoryRow,
+  pickRawFields,
   type OpenPaymentForMatch,
   type TxForMatch,
 } from "./logic";
@@ -18,15 +20,18 @@ import { appendEvent, settleFromTransaction, touchPayment } from "./store";
  * שער הקריאה הגלובלי ל-GetHistoryJson (נדרים: 20 קריאות בשעה למוסד) + ההתאמה האוטומטית.
  *
  * - שורה יחידה nedarim_sync_state (id=1): נעילה אטומית (UPDATE מותנה – קריאה אחת בכל רגע, גם בין instances), מרווח מינימלי
- *   בין קריאות (SYNC_MIN_INTERVAL_SEC = 4 דק' → ≤15 בשעה), LastId אינקרמנטלי, backoff מעריכי אחרי שגיאה.
- * - polling של מורות ו"שילמתי – בדקי עכשיו" לעולם לא קוראים ישירות ל-API: הם מפעילים refreshHistory, שקורא רק אם עבר המרווח,
- *   ואחרת מחזיר את המצב מה-DB. "שילמתי" מקבל רצפה קצרה יותר (3 דק' → עדיין ≤20 בשעה), מנהלת/CallBack/בדיקת מפתח – דקה.
- * - העסקאות שנקראו נשמרות ב-nedarim_transactions (מנורמל + raw אחרי הסתרת סודות) ומהן נעשית ההתאמה (matchPendingPayments) –
- *   בלי עוד קריאות ל-API. ההתאמה: decideAutoMatches (logic.ts); רק התאמה חד-משמעית משדרגת; ספק → "ממתין לאישור ידני".
+ *   בין קריאות (4 דק' ל-polling; 3 דק' ל"שילמתי"/CallBack; דקה למנהלת/בדיקת מפתח), **מונה שעתי גלובלי ≤ HOURLY_CALL_CAP מכל
+ *   הסיבות** (L3), LastId אינקרמנטלי, backoff מעריכי אחרי שגיאה, cutoff_at = מועד ההדלקה (עסקאות שקדמו לו הן היסטוריות).
+ * - polling של מורות ו"שילמתי" לעולם לא קוראים ישירות ל-API: הם מפעילים refreshHistory, שקורא רק אם השער מרשה, ואחרת
+ *   מחזיר את המצב מה-DB.
+ * - העסקאות נשמרות ב-nedarim_transactions (מנורמל + raw של שדות נבחרים בלבד, אחרי הסתרת סודות; לא-משויכות ישנות מ-30 יום
+ *   נמחקות) ומהן נעשית ההתאמה (matchPendingPayments) – בלי עוד קריאות ל-API. רק התאמה strong חד-משמעית משדרגת; כל השאר
+ *   → "ממתין לאישור ידני" עם מספרי העסקאות המועמדות.
  */
 export const SYNC_MIN_INTERVAL_SEC = 240;
 export const SYNC_USER_FLOOR_SEC = 180;
 export const SYNC_ADMIN_FLOOR_SEC = 60;
+export const HOURLY_CALL_CAP = 18;
 const LOCK_SEC = 90;
 const MAX_ROWS = 2000;
 const MAX_BACKOFF_SEC = 60 * 60;
@@ -50,38 +55,53 @@ export async function getSyncState(): Promise<NedarimSyncState | null> {
   }
 }
 
-/** מתי מותר לקרוא שוב (לתצוגה): המאוחר מבין last_fetch + מרווח ו-next_allowed */
+/** מתי מותר לקרוא שוב (לתצוגה): המאוחר מבין last_fetch + מרווח, next_allowed, וסוף חלון השעה אם המונה מלא */
 export function nextAllowedAt(state: NedarimSyncState | null, minIntervalSec = SYNC_MIN_INTERVAL_SEC): Date | null {
   if (!state) return null;
   const a = state.lastFetchAt ? state.lastFetchAt.getTime() + minIntervalSec * 1000 : 0;
   const b = state.nextAllowedAt?.getTime() ?? 0;
-  const t = Math.max(a, b);
+  const windowOpen = state.hourWindowStart && state.hourWindowStart.getTime() + 3600_000 > Date.now();
+  const c = windowOpen && state.hourCalls >= HOURLY_CALL_CAP ? state.hourWindowStart!.getTime() + 3600_000 : 0;
+  const t = Math.max(a, b, c);
   return t ? new Date(t) : null;
 }
 
+/** כמה קריאות נספרו בחלון השעה הנוכחי (0 אם החלון פג) */
+export function currentHourCalls(state: NedarimSyncState | null, now = Date.now()): number {
+  if (!state?.hourWindowStart) return 0;
+  return state.hourWindowStart.getTime() + 3600_000 > now ? state.hourCalls : 0;
+}
+
 const floorFor = (reason: SyncReason) =>
-  reason === "poll" ? SYNC_MIN_INTERVAL_SEC : reason === "user" ? SYNC_USER_FLOOR_SEC : SYNC_ADMIN_FLOOR_SEC;
+  reason === "poll" ? SYNC_MIN_INTERVAL_SEC : reason === "user" || reason === "callback" ? SYNC_USER_FLOOR_SEC : SYNC_ADMIN_FLOOR_SEC;
 
 /**
- * קריאה אחת ל-GetHistoryJson אם השער מרשה (נעילה + מרווח + backoff). לא זורק.
- * אחרי קריאה מוצלחת – שומר את העסקאות ומריץ matchPendingPayments.
+ * קריאה אחת ל-GetHistoryJson אם השער מרשה (נעילה + מרווח + backoff + מונה שעתי). לא זורק.
+ * אחרי קריאה מוצלחת – שומר את העסקאות, מנקה ישנות, ומריץ matchPendingPayments.
  */
 export async function refreshHistory(reason: SyncReason): Promise<RefreshResult> {
   const minInterval = floorFor(reason);
   let claimed: NedarimSyncState | undefined;
   try {
-    await db.insert(nedarimSyncState).values({ id: 1 }).onConflictDoNothing();
+    await db.insert(nedarimSyncState).values({ id: 1, cutoffAt: new Date() }).onConflictDoNothing();
     const interval = `${minInterval} seconds`;
     const lock = `${LOCK_SEC} seconds`;
     const rows = await db
       .update(nedarimSyncState)
-      .set({ lockUntil: sql`now() + ${lock}::interval`, updatedAt: new Date() })
+      .set({
+        lockUntil: sql`now() + ${lock}::interval`,
+        // המונה השעתי מתעדכן באותו UPDATE אטומי: חלון חדש אם עברה שעה, אחרת +1
+        hourWindowStart: sql`CASE WHEN ${nedarimSyncState.hourWindowStart} IS NULL OR ${nedarimSyncState.hourWindowStart} < now() - interval '1 hour' THEN now() ELSE ${nedarimSyncState.hourWindowStart} END`,
+        hourCalls: sql`CASE WHEN ${nedarimSyncState.hourWindowStart} IS NULL OR ${nedarimSyncState.hourWindowStart} < now() - interval '1 hour' THEN 1 ELSE ${nedarimSyncState.hourCalls} + 1 END`,
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(nedarimSyncState.id, 1),
           sql`(${nedarimSyncState.lockUntil} IS NULL OR ${nedarimSyncState.lockUntil} < now())`,
           sql`(${nedarimSyncState.lastFetchAt} IS NULL OR ${nedarimSyncState.lastFetchAt} < now() - ${interval}::interval)`,
           sql`(${nedarimSyncState.nextAllowedAt} IS NULL OR ${nedarimSyncState.nextAllowedAt} < now())`,
+          sql`(${nedarimSyncState.hourWindowStart} IS NULL OR ${nedarimSyncState.hourWindowStart} < now() - interval '1 hour' OR ${nedarimSyncState.hourCalls} < ${HOURLY_CALL_CAP})`,
         ),
       )
       .returning();
@@ -93,7 +113,13 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
     const state = await getSyncState();
     const next = nextAllowedAt(state, minInterval);
     const wait = next ? Math.max(0, Math.ceil((next.getTime() - Date.now()) / 60000)) : 0;
-    return { ran: false, ok: true, reason: state?.lockUntil && state.lockUntil > new Date() ? "קריאה אחרת רצה כרגע" : `הקריאה האחרונה הייתה לפני פחות מ-${Math.ceil(minInterval / 60)} דק' (עוד ~${wait} דק')`, fetched: 0, state };
+    const capped = !!state?.hourWindowStart && state.hourWindowStart.getTime() + 3600_000 > Date.now() && state.hourCalls >= HOURLY_CALL_CAP;
+    const reasonText = state?.lockUntil && state.lockUntil > new Date()
+      ? "קריאה אחרת רצה כרגע"
+      : capped
+        ? `הגענו למכסת ${HOURLY_CALL_CAP} קריאות בשעה – הקריאה הבאה בעוד ~${wait} דק'`
+        : `הקריאה האחרונה הייתה לפני פחות מ-${Math.ceil(minInterval / 60)} דק' (עוד ~${wait} דק')`;
+    return { ran: false, ok: true, reason: reasonText, fetched: 0, state };
   }
 
   const mosadId = (process.env.NEDARIM_MOSAD_ID ?? "").trim();
@@ -114,11 +140,7 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
   let parsed: ReturnType<typeof parseHistoryRow>[] = [];
   let rawRows: unknown[] = [];
   try {
-    const { json } = await getTransactionHistory({
-      mosadId,
-      lastId: claimed.lastTransactionId ?? undefined,
-      maxId: MAX_ROWS,
-    });
+    const { json } = await getTransactionHistory({ mosadId, lastId: claimed.lastTransactionId ?? undefined, maxId: MAX_ROWS });
     const rows = Array.isArray(json)
       ? json
       : json && typeof json === "object" && Array.isArray((json as { Data?: unknown }).Data)
@@ -152,8 +174,10 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
           comments: t.comments ? redactNedarim(t.comments) : null,
           confirmation: t.confirmation,
           last4: t.last4,
+          status: t.status,
+          approved: t.approved,
           transactionAt: t.transactionAt,
-          raw: redactNedarim(JSON.stringify(rawRows[i] ?? null)).slice(0, 4000),
+          raw: redactNedarim(JSON.stringify(pickRawFields(rawRows[i]))).slice(0, 2000),
           fetchedAt,
         })
         .onConflictDoNothing();
@@ -166,6 +190,15 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
     .set({ lastTransactionId: maxId || null, lastFetchAt: fetchedAt, lastSuccessAt: fetchedAt, lockUntil: null, consecutiveErrors: 0, lastError: null, nextAllowedAt: null, lastFetchCount: parsed.length, updatedAt: fetchedAt })
     .where(eq(nedarimSyncState.id, 1));
 
+  // ניקוי (M6): עסקאות לא-משויכות ישנות מ-TX_RETENTION_DAYS
+  try {
+    await db
+      .delete(nedarimTransactions)
+      .where(and(isNull(nedarimTransactions.matchedPaymentId), lt(nedarimTransactions.fetchedAt, new Date(Date.now() - TX_RETENTION_DAYS * 86400_000))));
+  } catch (e) {
+    console.error("[nedarim sync] cleanup failed", redactNedarim(e instanceof Error ? e.message : "error").slice(0, 200));
+  }
+
   try {
     await matchPendingPayments();
   } catch (e) {
@@ -175,20 +208,21 @@ export async function refreshHistory(reason: SyncReason): Promise<RefreshResult>
 }
 
 /**
- * ההתאמה (DB בלבד, בלי API): בקשות פתוחות מ-INTENT_TTL_HOURS האחרונות מול עסקאות לא-משויכות שנקראו מאז. התאמה חד-משמעית →
- * settleFromTransaction (אידמפוטנטי, תופס קודם את העסקה). ספק → processing + הודעה (אישור ידני במסך הניהול).
+ * ההתאמה (DB בלבד, בלי API): בקשות פתוחות מ-INTENT_TTL_HOURS האחרונות מול עסקאות לא-משויכות. התאמה strong חד-משמעית →
+ * settleFromTransaction. כל השאר → processing + סיבה + מספרי העסקאות (אישור ידני במסך הניהול).
  */
-export async function matchPendingPayments(): Promise<{ settled: number[]; ambiguous: number[] }> {
+export async function matchPendingPayments(): Promise<{ settled: number[]; review: number[] }> {
   const since = new Date(Date.now() - INTENT_TTL_HOURS * 60 * 60 * 1000);
   const open = await db
     .select()
     .from(nedarimPayments)
     .where(and(inArray(nedarimPayments.status, [...OPEN_STATUSES]), gte(nedarimPayments.createdAt, since), isNull(nedarimPayments.assistRequestedAt)));
-  if (!open.length) return { settled: [], ambiguous: [] };
+  if (!open.length) return { settled: [], review: [] };
+  const state = await getSyncState();
   const txs = await db
     .select()
     .from(nedarimTransactions)
-    .where(and(isNull(nedarimTransactions.matchedPaymentId), gte(nedarimTransactions.fetchedAt, new Date(since.getTime() - 60 * 60 * 1000))))
+    .where(and(isNull(nedarimTransactions.matchedPaymentId), eq(nedarimTransactions.approved, true), gte(nedarimTransactions.fetchedAt, new Date(since.getTime() - 60 * 60 * 1000))))
     .orderBy(desc(nedarimTransactions.fetchedAt));
 
   const payments: OpenPaymentForMatch[] = open.map((p) => ({ id: p.id, reference: p.reference, amount: p.amount, phone: p.phone, email: p.email, createdAt: p.createdAt }));
@@ -202,30 +236,33 @@ export async function matchPendingPayments(): Promise<{ settled: number[]; ambig
     comments: t.comments,
     confirmation: t.confirmation,
     last4: t.last4,
+    status: t.status,
+    approved: t.approved,
     transactionAt: t.transactionAt,
     fetchedAt: t.fetchedAt,
     matchedPaymentId: t.matchedPaymentId,
   }));
-  const { matches, ambiguous } = decideAutoMatches(payments, forMatch);
+  const { matches, review } = decideAutoMatches(payments, forMatch, state?.cutoffAt ?? null);
 
   const settled: number[] = [];
   for (const m of matches) {
     const row = open.find((p) => p.id === m.paymentId);
     if (!row) continue;
-    const r = await settleFromTransaction(row, m.tx, m.kind);
+    const r = await settleFromTransaction(row, m.tx);
     if (r.ok && r.status === "paid") settled.push(m.paymentId);
   }
-  const ambiguousIds: number[] = [];
-  for (const a of ambiguous) {
+  const reviewIds: number[] = [];
+  for (const a of review) {
     const row = open.find((p) => p.id === a.paymentId);
     if (!row) continue;
-    ambiguousIds.push(a.paymentId);
-    if (row.status !== "processing" || row.errorMessage !== a.reason) {
-      await touchPayment(row.id, { status: "processing", errorMessage: a.reason });
-      await appendEvent(row.id, "ambiguous", `לא שודרג אוטומטית: ${a.reason} – ממתין לאישור ידני`);
+    reviewIds.push(a.paymentId);
+    const msg = `${a.reason} (עסקאות: ${a.transactionIds.join(", ")})`;
+    if (row.status !== "processing" || row.errorMessage !== msg) {
+      await touchPayment(row.id, { status: "processing", errorMessage: msg });
+      await appendEvent(row.id, "review", `לא שודרג אוטומטית: ${msg} – ממתין לאישור ידני`, { transactionIds: a.transactionIds });
     }
   }
-  return { settled, ambiguous: ambiguousIds };
+  return { settled, review: reviewIds };
 }
 
 /** עסקאות שעדיין לא שויכו לשום בקשה (למסך הניהול) */

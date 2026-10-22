@@ -73,14 +73,16 @@ export type SecretStatus = {
   updatedBy: string | null;
   /** יש גם ערך ב-env שה-DB דורס (מידע למנהלת) */
   envAlsoSet: boolean;
+  /** יש שורה ב-DB אבל אי אפשר לפענח אותה (מפתח ההצפנה הראשי הוחלף) – להזין מחדש */
+  undecryptable: boolean;
 };
 
 export async function getSecretStatus(name: SecretName): Promise<SecretStatus> {
   const def = SECRET_DEFS[name];
-  let row: { last4: string | null; updatedAt: Date; updatedBy: string | null } | null = null;
+  let row: { ciphertext: string; last4: string | null; updatedAt: Date; updatedBy: string | null } | null = null;
   try {
     const [r] = await db
-      .select({ last4: appSecrets.last4, updatedAt: appSecrets.updatedAt, updatedBy: users.name })
+      .select({ ciphertext: appSecrets.ciphertext, last4: appSecrets.last4, updatedAt: appSecrets.updatedAt, updatedBy: users.name })
       .from(appSecrets)
       .leftJoin(users, eq(users.id, appSecrets.updatedById))
       .where(eq(appSecrets.name, name))
@@ -89,17 +91,29 @@ export async function getSecretStatus(name: SecretName): Promise<SecretStatus> {
   } catch {
     /* טבלה חסרה – מוצג כ-env בלבד */
   }
+  // L5: "מוגדר" רק אם באמת ניתן לפענח (הערך עצמו לא יוצא מכאן)
+  let decryptable = false;
+  if (row) {
+    try {
+      decryptSecret(masterKey(), name, row.ciphertext);
+      decryptable = true;
+    } catch {
+      decryptable = false;
+    }
+  }
   const env = !!envValue(name);
+  const usable = !!row && decryptable;
   return {
     name,
     label: def.label,
     hint: def.hint,
-    configured: !!row || env,
-    source: row ? "db" : env ? "env" : null,
-    last4: row?.last4 ?? null,
+    configured: usable || env,
+    source: usable ? "db" : env ? "env" : null,
+    last4: usable ? row!.last4 : null,
     updatedAt: row?.updatedAt ?? null,
     updatedBy: row?.updatedBy ?? null,
-    envAlsoSet: !!row && env,
+    envAlsoSet: usable && env,
+    undecryptable: !!row && !decryptable,
   };
 }
 
