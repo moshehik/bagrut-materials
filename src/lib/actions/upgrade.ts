@@ -7,6 +7,7 @@ import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { purchases, transactions } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { getBool } from "@/lib/settings";
 import { logAudit } from "@/lib/audit";
 import { PLANS, formatPrice } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
@@ -38,6 +39,10 @@ export async function upgradeToYearlyAction(form: FormData) {
     return back(msg);
   };
   if (user.suspended) return deny("user_suspended", "החשבון מושהה – לא ניתן לבצע רכישות");
+  // השדרוג רושם בלי חיוב אמיתי: כשנדרים פלוס דולק הוא מושהה עד שיחובר ל-/pay
+  if (await getBool("nedarim_enabled")) {
+    return deny("mock_disabled", "השדרוג יהיה זמין בקרוב – לפרטים פני אלינו");
+  }
 
   const purchaseId = z.coerce.number().int().positive().safeParse(form.get("purchaseId"));
   if (!purchaseId.success) return deny("invalid_input", "נתונים לא תקינים");

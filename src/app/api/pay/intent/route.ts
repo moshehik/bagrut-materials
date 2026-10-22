@@ -16,6 +16,7 @@ import { MAX_BODY_BYTES, PAYABLE_PLANS, sameIntentParams } from "@/lib/nedarim/l
 import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
+import { hasActiveSamePlan } from "@/lib/purchase-helpers";
 
 /*
  * POST /api/pay/intent – עמוד התשלום (/pay, מחוברות בלבד): יוצר בקשת תשלום 'pending' עם מזהה ייחודי (NP-…) ומחזיר את הקישור
@@ -68,6 +69,11 @@ export async function POST(req: NextRequest) {
     await logAudit({ actorId: user.id, action: "purchase.denied", details: { reason, via: "nedarim", plan: input.plan } });
     return json({ error }, status);
   };
+
+  // כבר יש מנוי פעיל מאותו מסלול – לא נותנים לשלם פעמיים על אותו דבר
+  if (await hasActiveSamePlan(user.id, input.plan)) {
+    return denied("already_subscribed", "כבר יש לך מנוי פעיל במסלול הזה – אין צורך לשלם שוב. אפשר לראות אותו באזור האישי.", 409);
+  }
 
   // --- מקצועות: אותם כללים כמו purchaseAction ---
   const uniq = [...new Set(input.categoryIds)];

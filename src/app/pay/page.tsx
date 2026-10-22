@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getRootSubjects } from "@/lib/data";
 import { getPlanPrices } from "@/lib/pricing";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
+import { hasActiveSamePlan } from "@/lib/purchase-helpers";
 import { PLANS, SUBJECT_ICONS, SUBSTITUTE_MONTHS, subjectDisplayTitle } from "@/lib/constants";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
 import { PAYABLE_PLANS, isPayablePlan, isValidReference, type PayablePlan } from "@/lib/nedarim/logic";
@@ -39,6 +40,29 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
     // התשלום דרך נדרים כבוי – הקופה הישנה (רישום מיידי) עדיין עובדת
     const plan = isPayablePlan(sp.plan) ? sp.plan : "yearly";
     redirect(`/checkout?plan=${plan}${sp.categories ? `&categories=${encodeURIComponent(sp.categories)}` : ""}`);
+  }
+
+  // כבר יש מנוי פעיל מאותו מסלול (ובלי ?ref – ה-ref הוא חזרה מהתשלום/המתנה לבקשה קיימת) – לא מציגות תשלום כפול
+  if (isPayablePlan(sp.plan) && !isValidReference(sp.ref) && (await hasActiveSamePlan(user.id, sp.plan))) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <section className="gate-panel mx-auto mt-8 max-w-2xl text-center sm:!p-8">
+          <span className="gold-ring" aria-hidden="true" />
+          <div className="gate-card">
+            <h1 className="mt-2 text-3xl">כבר יש לך מנוי פעיל במסלול הזה</h1>
+            <p className="gate-soft mt-2 text-lg">אין צורך לשלם שוב. אפשר לראות את המנוי באזור האישי, או לבחור מסלול אחר.</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Link href="/account" className="btn btn-gold btn-gate py-2">
+                לאזור האישי
+              </Link>
+              <Link href="/pricing" className="btn gate-skip py-2">
+                למסלולים ומחירים
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const [prices, roots, coupon] = await Promise.all([getPlanPrices(), getRootSubjects(), getBestPercentCoupon(user)]);

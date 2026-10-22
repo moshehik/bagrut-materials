@@ -131,7 +131,8 @@ export function hostedPaymentUrl(input: {
   if (input.planKey) q.set("groupe", (isPayablePlan(input.planKey) ? PLAN_GROUPE_NAMES[input.planKey] : input.planKey).slice(0, 40));
   if (input.redirectUrl) q.set("Redirect", input.redirectUrl);
   q.set("HideParameters", "1");
-  return `${NEDARIM_HOSTED_BASE}?${q.toString()}`;
+  // רווח כ-%20 ולא כ-+: דף נדרים לא מפענח + ושומר אותו כמות שהוא ("לו״ז+העניין+-+מנוי+שנתי" בהערת העסקה); + אמיתי כבר מקודד ל-%2B
+  return `${NEDARIM_HOSTED_BASE}?${q.toString().replace(/\+/g, "%20")}`;
 }
 
 /** התיאור הקצר שנכנס ל-Comments אחרי המזהה (avour): שם האתר + המסלול – בלי PII */

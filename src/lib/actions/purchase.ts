@@ -10,6 +10,7 @@ import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { PLANS, RETIRED_PLAN_MESSAGE, YEARLY_INCLUDED_SUBJECTS, bundlePriceFor, formatPrice, isRetiredPlan } from "@/lib/constants";
 import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
+import { getBool } from "@/lib/settings";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { chainToHref, getCategoryChain, getDescendantIds } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
@@ -71,6 +72,10 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
     return { error };
   };
   if (user.suspended) return denied("user_suspended", "החשבון מושהה – לא ניתן לבצע רכישות");
+  // הקופה הזו מדומה (רושמת בלי חיוב): כשנדרים פלוס דולק הרכישה מתבצעת רק דרך /pay
+  if (await getBool("nedarim_enabled")) {
+    return denied("mock_disabled", "הרכישה מתבצעת דרך עמוד התשלום – היכנסי למסלולים ומחירים ובחרי מסלול");
+  }
 
   const ids = form.getAll("categoryIds").map(String).filter(Boolean);
   if (ids.length) raw.categoryIds = ids;

@@ -69,6 +69,8 @@ export function CheckoutForm(props: CheckoutFormProps) {
       <form action={action} className="mt-8 space-y-8">
         <input type="hidden" name="kind" value={kind} />
         {plan && <input type="hidden" name="plan" value={plan} />}
+        {materialId && <input type="hidden" name="materialId" value={materialId} />}
+        {kind === "bundle" && categoryId && <input type="hidden" name="categoryId" value={categoryId} />}
         {needsMulti && selected.map((id) => <input key={id} type="hidden" name="categoryIds" value={id} />)}
 
         {state?.error && (
@@ -144,7 +146,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
         <div className="gate-strip gate-total">
           <div className="w-full space-y-1">
             <div className="flex justify-between gap-4">
-              <span>מחיר המסלול</span>
+              <span>{kind === "plan" ? "מחיר המסלול" : kind === "bundle" ? "מחיר התיקייה" : "מחיר ההורדה"}</span>
               <GateShekel agorot={basePrice} />
             </div>
           </div>

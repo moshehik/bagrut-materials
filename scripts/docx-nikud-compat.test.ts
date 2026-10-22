@@ -38,8 +38,33 @@ test("xml: לא נוגעים בטקסט שאינו w:t (instrText / מאפיינ
   assert.equal(normalizeNikudCompatXml(xml), null);
 });
 
+test("xml: טעמי מקרא (U+0591–U+05AF) מוסרים; מתג/מקף/פסק/סוף-פסוק/נו\"ן הפוכה נשארים", () => {
+  // "וַיִּפְתָּ֣ח הַגִּלְעָדִ֗י הָיָה֙ גִּבּ֣וֹר חַ֔יִל" כפי שמגיע מספריא (מונח, רביע, פשטא, זקף קטן)
+  const taamim = "וַיִּפְתָּ֣ח הַגִּלְעָדִ֗י הָיָה֙ גִּבּ֣וֹר חַ֔יִל";
+  const xml = docXml(`<w:p><w:r><w:t xml:space="preserve">${taamim} אָבִֽי ׀ בֶּן־אִישׁ׃ ׆</w:t></w:r></w:p>`);
+  const out = normalizeNikudCompatXml(xml);
+  assert.ok(out);
+  assert.ok(!/[֑-֯]/.test(out));
+  assert.ok(out.includes("וַיִּפְתָּח הַגִּלְעָדִי הָיָה גִּבּוֹר חַיִל אָבִֽי ׀ בֶּן־אִישׁ׃ ׆"));
+  // הניקוד עצמו לא נפגע: אותו מספר סימני ניקוד לפני ואחרי
+  const nikud = (s: string) => (s.match(/[ְ-ֽֿׁׂ]/g) ?? []).length;
+  assert.equal(nikud(out), nikud(xml));
+});
+
+test("xml: כל 31 הטעמים מוסרים, לא רק הנפוצים", () => {
+  let all = "";
+  for (let cp = 0x0591; cp <= 0x05af; cp++) all += "א" + String.fromCharCode(cp);
+  const out = normalizeNikudCompatXml(docXml(`<w:p><w:r><w:t>${all}</w:t></w:r></w:p>`));
+  assert.ok(out);
+  assert.ok(out.includes("<w:t>" + "א".repeat(31) + "</w:t>"));
+});
+
+test("xml: טעם בתוך instrText בלבד - לא נוגעים (מחזיר null)", () => {
+  assert.equal(normalizeNikudCompatXml(docXml(`<w:p><w:r><w:instrText>x֣</w:instrText><w:t>a</w:t></w:r></w:p>`)), null);
+});
+
 test("docx: ההחלפה מתבצעת, שאר הרשומות נשמרות, ובייטים יציבים בין הרצות", async () => {
-  const docx = await makeDocx(`<w:p><w:r><w:t>כ${QQ}ל־אִישׁ</w:t></w:r></w:p>`);
+  const docx = await makeDocx(`<w:p><w:r><w:t>כ${QQ}ל־אִ֣ישׁ</w:t></w:r></w:p>`);
   const a = await normalizeNikudCompat(docx);
   const b = await normalizeNikudCompat(docx);
   assert.notEqual(a, docx);
@@ -47,7 +72,7 @@ test("docx: ההחלפה מתבצעת, שאר הרשומות נשמרות, וב�
   const zip = await JSZip.loadAsync(a);
   assert.deepEqual(Object.keys(zip.files).sort(), ["[Content_Types].xml", "word/document.xml"]);
   const xml = await zip.file("word/document.xml")!.async("string");
-  assert.ok(xml.includes("כָל־אִישׁ") && !xml.includes(QQ));
+  assert.ok(xml.includes("כָל־אִישׁ") && !xml.includes(QQ) && !xml.includes("֣"));
   // קובץ שאין בו מה לתקן חוזר כאותו אובייקט
   const clean = await makeDocx(`<w:p><w:r><w:t>שָׁלוֹם</w:t></w:r></w:p>`);
   assert.equal(await normalizeNikudCompat(clean), clean);

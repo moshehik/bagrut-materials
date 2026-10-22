@@ -1,7 +1,7 @@
 import "server-only";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { materials, type Category, type Plan } from "@/db/schema";
+import { materials, purchases, type Category, type Plan } from "@/db/schema";
 import { PLANS, bundlePriceFor } from "./constants";
 import { getDescendantIds } from "./data";
 import type { PlanPrices } from "./pricing";
@@ -16,6 +16,23 @@ export const FIRST_USE_PLANS: Plan[] = ["subject_monthly", "custom_monthly", "ye
 /** תוקף שורת רכישה חדשה: מנוי שמתחיל בהורדה הראשונה – endsAt ריק + termDays; אחרת תאריך סיום מהיום */
 export function termFields(plan: Plan, days: number): { endsAt: Date | null; termDays: number | null } {
   return FIRST_USE_PLANS.includes(plan) ? { endsAt: null, termDays: days } : { endsAt: addDays(days), termDays: null };
+}
+
+/**
+ * האם למשתמשת כבר יש מנוי פעיל מאותו מסלול (לא פג, לא בוטל/זוכה; ממלאת מקום יומית – עד שמכסת ההורדות נגמרה).
+ * חוסם רכישה כפולה של אותו מסלול דרך /pay ודרך הקופה; מסלול אחר או מנוי שפג – מותר.
+ */
+export async function hasActiveSamePlan(userId: number, plan: Plan): Promise<boolean> {
+  const rows = await db
+    .select({ endsAt: purchases.endsAt, downloadsLimit: purchases.downloadsLimit, downloadsUsed: purchases.downloadsUsed })
+    .from(purchases)
+    .where(and(eq(purchases.userId, userId), eq(purchases.plan, plan), eq(purchases.status, "active")));
+  const now = Date.now();
+  return rows.some((r) => {
+    if (r.endsAt && r.endsAt.getTime() <= now) return false;
+    if (plan === "substitute_daily" && r.downloadsLimit != null && r.downloadsUsed >= r.downloadsLimit) return false;
+    return true;
+  });
 }
 
 /*

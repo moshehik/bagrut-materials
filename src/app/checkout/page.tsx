@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
-import { ShoppingBag, FileText, FolderOpen, CalendarDays, ChevronLeft } from "lucide-react";
+import { ShoppingBag, FolderOpen, CalendarDays, ChevronLeft } from "lucide-react";
 import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
@@ -21,6 +21,7 @@ import { PlanCheckoutView } from "@/components/plan-checkout";
 import { getPlanPrices } from "@/lib/pricing";
 import { getBool } from "@/lib/settings";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
+import { GateShekel } from "@/components/gate-shekel";
 import { CheckoutForm, type CheckoutFormProps, type CheckoutSubject } from "@/components/checkout-form";
 
 export const metadata: Metadata = { title: "השלמת הזמנה" };
@@ -41,7 +42,7 @@ function num(v?: string) {
 
 function Crumbs({ chain }: { chain: { id: number; title: string }[] }) {
   return (
-    <p className="text-xs text-muted flex flex-wrap items-center gap-1">
+    <p className="gate-soft text-base flex flex-wrap items-center gap-1">
       {chain.map((c, i) => (
         <span key={c.id} className="flex items-center gap-1">
           {i > 0 && <ChevronLeft className="h-3 w-3" />}
@@ -49,6 +50,41 @@ function Crumbs({ chain }: { chain: { id: number; title: string }[] }) {
         </span>
       ))}
     </p>
+  );
+}
+
+function CheckoutMessage({
+  title,
+  text,
+  primary,
+  secondary,
+}: {
+  title: string;
+  text: string;
+  primary: { href: string; label: string };
+  secondary: { href: string; label: string };
+}) {
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <section className="gate-panel mx-auto mt-8 max-w-2xl text-center sm:!p-8">
+        <span className="gold-ring" aria-hidden="true" />
+        <div className="gate-card">
+          <span className="gate-icon mx-auto">
+            <ShoppingBag className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+          </span>
+          <h1 className="mt-2 text-3xl">{title}</h1>
+          <p className="gate-soft mt-2 text-lg">{text}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Link href={primary.href} className="btn btn-gold btn-gate py-2">
+              {primary.label}
+            </Link>
+            <Link href={secondary.href} className="btn gate-skip py-2">
+              {secondary.label}
+            </Link>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -82,6 +118,18 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const bundleId = num(sp.bundle);
   const planKey = sp.plan;
 
+  // תשלום אמיתי דרך נדרים פלוס דולק: ב-/pay נמכרים רק מסלולי מנוי, והקופה המדומה (הורדה בודדת / תיקייה) לא רשומה בלי תשלום
+  if ((materialId || bundleId) && (await getBool("nedarim_enabled"))) {
+    return (
+      <CheckoutMessage
+        title="הרכישה הזו עוד לא זמינה"
+        text="הורדה בודדת וקובץ מורחב אינם נמכרים כרגע – אפשר לרכוש מנוי במסלולים ולהוריד את כל החומרים."
+        primary={{ href: "/pricing", label: "למסלולים ומחירים" }}
+        secondary={{ href: "/subjects", label: "למקצועות" }}
+      />
+    );
+  }
+
   if (materialId) {
     const [m] = await db.select().from(materials).where(eq(materials.id, materialId)).limit(1);
     if (!m) redirect("/subjects");
@@ -89,19 +137,17 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     heading = "הורדה בודדת";
     summary = (
       <div className="flex gap-4">
-        <span className="grid place-items-center h-14 w-14 rounded-2xl bg-blue-soft text-blue-deep shrink-0 text-2xl">
-          {MATERIAL_KINDS[m.kind].icon}
-        </span>
+        <span className="gate-icon shrink-0 text-2xl">{MATERIAL_KINDS[m.kind].icon}</span>
         <div className="min-w-0">
           <Crumbs chain={chain} />
-          <h2 className="font-bold text-lg leading-snug mt-1">{m.title}</h2>
-          <p className="text-sm text-muted">{MATERIAL_KINDS[m.kind].label}</p>
-          <Link href={chainToHref(chain)} className="hover-move-x text-xs text-blue-deep hover:underline">
+          <h2 className="mt-1 text-2xl leading-snug">{m.title}</h2>
+          <p className="gate-soft text-base">{MATERIAL_KINDS[m.kind].label}</p>
+          <Link href={chainToHref(chain)} className="text-base underline">
             חזרה לפרק
           </Link>
         </div>
-        <span className="ms-auto font-display font-bold text-xl text-blue-deep whitespace-nowrap">
-          {formatPrice(m.price)}
+        <span className="gate-price ms-auto whitespace-nowrap">
+          <GateShekel agorot={m.price} />
         </span>
       </div>
     );
@@ -118,22 +164,22 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     heading = "קובץ מורחב – תיקייה שלמה";
     summary = (
       <div className="flex gap-4">
-        <span className="grid place-items-center h-14 w-14 rounded-2xl bg-oak-soft text-oak-deep shrink-0">
-          <FolderOpen className="h-7 w-7" />
+        <span className="gate-icon shrink-0">
+          <FolderOpen className="h-6 w-6" strokeWidth={1.5} aria-hidden />
         </span>
         <div className="min-w-0">
           <Crumbs chain={chain.slice(0, -1)} />
-          <h2 className="font-bold text-lg leading-snug mt-1">{c.title}</h2>
-          <p className="text-sm text-muted">
+          <h2 className="mt-1 text-2xl leading-snug">{c.title}</h2>
+          <p className="gate-soft text-base">
             {ms.length} חומרים בתיקייה ובכל תתי-הפרקים שלה
             {!c.bundlePrice && ids.length > 1 && ms.length > 0 && " · 30% הנחה לעומת רכישה בודדת"}
           </p>
-          <Link href={chainToHref(chain)} className="hover-move-x text-xs text-blue-deep hover:underline">
+          <Link href={chainToHref(chain)} className="text-base underline">
             חזרה לתיקייה
           </Link>
         </div>
-        <span className="ms-auto font-display font-bold text-xl text-blue-deep whitespace-nowrap">
-          {formatPrice(price)}
+        <span className="gate-price ms-auto whitespace-nowrap">
+          <GateShekel agorot={price} />
         </span>
       </div>
     );
@@ -141,19 +187,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   } else if (planKey && isRetiredPlan(planKey)) {
     // מסלול חודשי ישן (subject_monthly / custom_monthly) – הוסר מהמכירה; קישורים ישנים מגיעים לכאן
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center space-y-4">
-        <ShoppingBag className="h-12 w-12 mx-auto text-blue" />
-        <h1 className="font-display text-3xl font-bold">המסלול הזה כבר לא קיים</h1>
-        <p className="text-muted">המסלולים החודשיים הישנים הוחלפו במסלולים המעודכנים – בחרי מסלול בעמוד המסלולים.</p>
-        <div className="flex gap-2 justify-center">
-          <Link href="/pricing" className="btn btn-primary">
-            למסלולים ומחירים
-          </Link>
-          <Link href="/subjects" className="btn btn-ghost">
-            למקצועות
-          </Link>
-        </div>
-      </div>
+      <CheckoutMessage
+        title="המסלול הזה כבר לא קיים"
+        text="המסלולים החודשיים הישנים הוחלפו במסלולים המעודכנים – בחרי מסלול בעמוד המסלולים."
+        primary={{ href: "/pricing", label: "למסלולים ומחירים" }}
+        secondary={{ href: "/subjects", label: "למקצועות" }}
+      />
     );
   } else if (planKey === "yearly" || planKey === "substitute_3m" || planKey === "substitute_daily") {
     // תשלום אמיתי דרך נדרים פלוס דולק → מסלולי המנוי נרכשים ב-/pay (הקופה המדומה כאן נשארת רק כשהוא כבוי)
@@ -213,19 +252,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
 
   if (!formProps) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center space-y-4">
-        <ShoppingBag className="h-12 w-12 mx-auto text-blue" />
-        <h1 className="font-display text-3xl font-bold">הסל ריק</h1>
-        <p className="text-muted">בחרי חומר, תיקייה או מסלול כדי להמשיך.</p>
-        <div className="flex gap-2 justify-center">
-          <Link href="/subjects" className="btn btn-primary">
-            למקצועות
-          </Link>
-          <Link href="/pricing" className="btn btn-ghost">
-            למסלולים
-          </Link>
-        </div>
-      </div>
+      <CheckoutMessage
+        title="הסל ריק"
+        text="בחרי חומר, תיקייה או מסלול כדי להמשיך."
+        primary={{ href: "/subjects", label: "למקצועות" }}
+        secondary={{ href: "/pricing", label: "למסלולים" }}
+      />
     );
   }
 
@@ -235,9 +267,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   // קופון הנחה פרטי של המשתמשת (אם יש) – יורד אוטומטית מהסכום בעת האישור
   const coupon = await getBestPercentCoupon(user);
   const couponBanner = coupon ? (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 pt-6">
-      <div className="rounded-xl bg-gold-soft p-3 text-sm text-[#8a6500] font-semibold">
-        🎟️ יש לך קופון «{coupon.label}» – {coupon.percent}% הנחה יורדים אוטומטית מסכום ההזמנה בעת האישור.
+    <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6">
+      <div className="gate-panel mx-auto max-w-2xl !p-3">
+        <div className="gate-strip text-base">
+          🎟️ יש לך קופון «{coupon.label}» – {coupon.percent}% הנחה יורדים אוטומטית מסכום ההזמנה בעת האישור.
+        </div>
       </div>
     </div>
   ) : null;
@@ -262,32 +296,27 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   return (
     <>
     {couponBanner}
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
-      <div className="mb-6 animate-fade-up">
-        <p className="text-sm text-muted flex items-center gap-1">
-          <ShoppingBag className="h-4 w-4" /> השלמת הזמנה
-        </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold">{heading}</h1>
-        <p className="text-muted mt-1">
-          שלום {user.name.split(" ")[0]}, בדקי את פרטי ההזמנה ואשרי.
-        </p>
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
+      <div className="gate-title animate-fade-up flex flex-col items-center justify-center gap-x-8 gap-y-3 text-center sm:flex-row sm:text-start">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/logo-black.png" alt="לו״ז העניין" className="w-44 sm:w-52" />
+        <div>
+          <h1 className="text-4xl md:text-5xl">{heading}</h1>
+          <p className="mt-2 max-w-md">שלום {user.name.split(" ")[0]}, בדקי את פרטי ההזמנה ואשרי.</p>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr] items-start">
-        <section className="card p-5 sm:p-6 animate-fade-up">
-          <h2 className="text-sm font-semibold text-muted mb-4 flex items-center gap-1.5">
-            <FileText className="h-4 w-4" /> סיכום הזמנה
-          </h2>
+      <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-label="סיכום הזמנה">
+        <span className="gold-ring" aria-hidden="true" />
+        <div className="gate-card">
           {summary}
-          <div className="mt-5 rounded-xl bg-oak-soft/50 p-3 text-xs text-oak-deep leading-relaxed">
-            כל קובץ שתורידי יוטבע במספר האישי שלך (<b dir="ltr">{user.personalCode}</b>) – כך אנחנו
-            שומרים על זכויות היוצרים של הכותבות.
-          </div>
-        </section>
-        <section className="card p-5 sm:p-6 animate-fade-up [animation-delay:100ms]">
-          <CheckoutForm {...formProps} />
-        </section>
-      </div>
+          <hr className="gate-divider" />
+          <p className="text-base leading-loose !text-[#6b3f1d]">
+            כל קובץ שתורידי יוטבע במספר האישי שלך (<b dir="ltr">{user.personalCode}</b>) – כך אנחנו שומרים על זכויות היוצרים של הכותבות.
+          </p>
+        </div>
+        <CheckoutForm {...formProps} gate />
+      </section>
     </div>
     </>
   );
