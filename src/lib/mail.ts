@@ -53,11 +53,14 @@ export function adminEmail() {
   return (process.env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim()).filter(Boolean)[0] ?? null;
 }
 
+/** גרסת הטקסט הרגיל: סימן כיוון ימין-לשמאל (RLM) בתחילת כל שורה, כדי שגם היא תוצג מימין לשמאל */
+const rtlPlain = (t: string) => t.split("\n").map((l) => (l.trim() ? "\u200F" + l : l)).join("\n");
+
 async function transportAppsScript(input: SendMailInput): Promise<{ ok: boolean; error?: string }> {
   const url = process.env.MAIL_SCRIPT_URL;
   if (!url) return { ok: false, error: "MAIL_SCRIPT_URL לא מוגדר" };
 
-  // הסקריפט דורש קובץ – אם אין, שולחים קובץ טקסט זעיר (כמו במודל)
+  // הסקריפט מפענח fileName/fileContent תמיד – אם אין קובץ אמיתי שולחים placeholder זעיר, ו-noAttachment:true גורם לסקריפט לא לצרף אותו למייל
   const attachment = input.attachment ?? {
     fileName: "message.txt",
     base64: Buffer.from(`נשלח ממערכת ${SITE_NAME}`).toString("base64"),
@@ -68,7 +71,7 @@ async function transportAppsScript(input: SendMailInput): Promise<{ ok: boolean;
     to: joinAddr(input.to),
     cc: joinAddr(input.cc),
     subject: input.subject,
-    body: input.text,
+    body: rtlPlain(input.text),
     htmlBody: input.html ?? "",
     fromName: process.env.MAIL_FROM_NAME ?? SITE_NAME,
     // הסקריפט המשותף ("מערכת מייל פתוח") מכבד senderName בלבד; בלעדיו השם נשאר 'גמ"ח שמלות'
@@ -76,6 +79,7 @@ async function transportAppsScript(input: SendMailInput): Promise<{ ok: boolean;
     fileName: attachment.fileName,
     fileContent: attachment.base64,
     mimeType: attachment.mimeType ?? "application/octet-stream",
+    ...(input.attachment ? {} : { noAttachment: true }),
   };
 
   try {
@@ -161,21 +165,21 @@ export function layoutHtml(title: string, bodyHtml: string, cta?: { label: strin
   const font = "Assistant,'Segoe UI',Arial,sans-serif";
   const hand = "'Gveret Levin',Assistant,'Segoe UI',Arial,sans-serif";
   return `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Gveret+Levin&display=swap" rel="stylesheet"><style>@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Gveret+Levin&display=swap');</style></head>
-<body style="margin:0;padding:0;background:${MAIL.paper};font-family:${font};color:${MAIL.ink}">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${MAIL.paper}"><tr><td align="center" style="padding:28px 14px">
- <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px">
-  <tr><td style="background:${MAIL.navy};border-radius:16px 16px 0 0;padding:20px 28px;border-bottom:4px solid ${MAIL.mustard}">
+<body dir="rtl" style="margin:0;padding:0;background:${MAIL.paper};font-family:${font};color:${MAIL.ink};direction:rtl;text-align:right">
+<table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${MAIL.paper};direction:rtl"><tr><td align="center" style="padding:28px 14px;direction:rtl">
+ <table role="presentation" dir="rtl" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;direction:rtl;text-align:right">
+  <tr><td dir="rtl" align="right" style="direction:rtl;text-align:right;background:${MAIL.navy};border-radius:16px 16px 0 0;padding:20px 28px;border-bottom:4px solid ${MAIL.mustard}">
     <div style="font-family:${hand};font-size:28px;font-weight:400;color:#ffffff">${esc(SITE_NAME)}</div>
     <div style="font-size:13px;color:#dbe1ee;margin-top:2px">בית לחומרי הבגרות</div>
   </td></tr>
-  <tr><td style="background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};padding:30px 30px 8px;line-height:1.75;font-size:17px;color:${MAIL.ink}">
+  <tr><td dir="rtl" align="right" style="direction:rtl;text-align:right;background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};padding:30px 30px 8px;line-height:1.75;font-size:17px;color:${MAIL.ink}">
     <h2 style="margin:0 0 16px;font-family:${hand};color:${MAIL.navy};font-size:26px;line-height:1.35;font-weight:400">
       <span style="display:inline-block">${esc(title.replace(/[!?.]+$/, ""))}<span style="color:${MAIL.red}">!</span><img src="${site}/images/mail-underline.png" width="100%" height="12" alt="" style="display:block;width:100%;height:12px;margin-top:3px;border:0"></span>
     </h2>
     ${bodyHtml}
     ${
       cta
-        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 10px"><tr><td style="background:${MAIL.navy};border-radius:999px;border-bottom:3px solid ${MAIL.mustard}"><a href="${cta.href}" style="display:inline-block;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:12px 30px">${esc(cta.label)}</a></td></tr></table>`
+        ? `<table role="presentation" dir="rtl" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 10px;direction:rtl"><tr><td style="background:${MAIL.navy};border-radius:999px;border-bottom:3px solid ${MAIL.mustard}"><a href="${cta.href}" style="display:inline-block;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:12px 30px">${esc(cta.label)}</a></td></tr></table>`
         : ""
     }
   </td></tr>
