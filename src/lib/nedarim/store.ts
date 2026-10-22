@@ -27,6 +27,7 @@ import {
   generateReference,
   needsPurchaseRepair,
   settlementPlan,
+  type MatchKind,
   type PayablePlan,
   type TxForMatch,
   type VerifyMethod,
@@ -339,7 +340,7 @@ async function settle(
     action: how.method === "manual" ? "purchase.nedarim_manual" : "purchase.nedarim",
     entityType: "purchase",
     entityId: purchaseId,
-    details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, transactionId: txId, categoryIds: parseCategoryIds(intent), reusedPurchase: plan !== "insert" },
+    details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, matchKind: how.method === "api_weak" ? "weak_auto" : how.method === "api" ? "strong" : null, transactionId: txId, categoryIds: parseCategoryIds(intent), reusedPurchase: plan !== "insert" },
   });
   if (plan === "insert") {
     await step("מייל", async () => {
@@ -366,16 +367,16 @@ async function releaseTx(transactionId: string, paymentId: number) {
  * השלמה מעסקה שנמצאה בהיסטוריית נדרים (sync.ts, התאמה strong בלבד). תופס קודם את העסקה (matched_payment_id IS NULL → id) –
  * עסקה אחת = בקשה אחת גם בין שני רענונים מקבילים; אם הבקשה לא נתפסה ע"י הקריאה הזו (כולל "כבר טופל") – משחררים את העסקה.
  */
-export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMatch): Promise<SettleResult> {
+export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMatch, kind: MatchKind = "strong"): Promise<SettleResult> {
   const claimedTx = await db
     .update(nedarimTransactions)
     .set({ matchedPaymentId: intent.id })
     .where(and(eq(nedarimTransactions.transactionId, tx.transactionId), isNull(nedarimTransactions.matchedPaymentId)))
     .returning({ id: nedarimTransactions.transactionId });
   if (!claimedTx.length) return { ok: false, error: "העסקה כבר שויכה" };
-  const reason = "מזהה הבקשה בהערת העסקה";
-  await appendEvent(intent.id, "matched", `נמצאה עסקה ${tx.transactionId} (${reason})`, { transactionId: tx.transactionId, amount: tx.amount, at: tx.transactionAt, confirmation: tx.confirmation });
-  const r = await settle(intent, { method: "api", verified: true, reason, transactionId: tx.transactionId, confirmation: tx.confirmation, last4: tx.last4 });
+  const reason = kind === "weak" ? "weak_auto: טלפון/מייל + סכום זהה, התאמה ייחודית" : "מזהה הבקשה בהערת העסקה";
+  await appendEvent(intent.id, "matched", `נמצאה עסקה ${tx.transactionId} (${reason})`, { transactionId: tx.transactionId, amount: tx.amount, at: tx.transactionAt, confirmation: tx.confirmation, matchKind: kind === "weak" ? "weak_auto" : "strong" });
+  const r = await settle(intent, { method: kind === "weak" ? "api_weak" : "api", verified: true, reason, transactionId: tx.transactionId, confirmation: tx.confirmation, last4: tx.last4 });
   if (!r.ok || r.status !== "paid" || !r.claimed) await releaseTx(tx.transactionId, intent.id);
   return r;
 }

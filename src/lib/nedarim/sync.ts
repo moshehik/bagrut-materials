@@ -305,7 +305,7 @@ export async function matchPendingPayments(): Promise<{ settled: number[]; revie
   for (const m of matches) {
     const row = open.find((p) => p.id === m.paymentId);
     if (!row) continue;
-    const r = await settleFromTransaction(row, m.tx);
+    const r = await settleFromTransaction(row, m.tx, m.kind);
     if (r.ok && r.status === "paid") settled.push(m.paymentId);
   }
   const reviewIds: number[] = [];

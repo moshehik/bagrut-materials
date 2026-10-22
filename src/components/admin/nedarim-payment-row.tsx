@@ -94,6 +94,9 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
         </td>
         <td className="py-2 pe-3">
           <span className={`chip ${STATUS_CLS[p.status] ?? ""}`}>{label}</span>
+          {p.status === "paid" && p.verifyMethod === "api_weak" && (
+            <span className="chip bg-yellow-100 text-yellow-800 ms-1" title="הותאם לפי טלפון/מייל + סכום זהה (התאמה ייחודית), בלי מזהה הבקשה בהערה">זוהה לפי טלפון/מייל</span>
+          )}
           {p.assistRequestedAt && open && (
             <div className="mt-1 text-xs font-semibold text-red-700">ביקשה עזרה ({fmt(p.assistRequestedAt)}) – לא תותאם אוטומטית</div>
           )}

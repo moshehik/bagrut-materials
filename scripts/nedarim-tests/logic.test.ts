@@ -181,21 +181,86 @@ test("decideAutoMatches: only a unique strong match settles; multiple strong →
   assert.deepEqual(two.review[0].transactionIds, ["1", "2"]);
 });
 
-test("L4: weak (phone/email only) never settles automatically – goes to manual review with the candidate ids", () => {
+test("weak policy: phone/email + exact amount settles automatically only under full uniqueness", () => {
   const p = mkPayment();
-  const weak = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: "0501234567" })]);
-  assert.equal(weak.matches.length, 0);
-  assert.equal(weak.review.length, 1);
-  assert.deepEqual(weak.review[0].transactionIds, ["2"]);
-  // עסקה של מישהי אחרת באותו סכום – לא מועמדת כלל (לא review)
-  const other = decideAutoMatches([p], [mkTx({ transactionId: "5", phone: "0529999999", email: "x@y.com" })]);
-  assert.equal(other.matches.length, 0);
-  assert.equal(other.review.length, 0);
+  // (2) טלפון שווה / מייל שווה – בנרמול
+  const byPhone = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: phoneDigits("+972-50-123-4567") })]);
+  assert.equal(byPhone.matches.length, 1);
+  assert.equal(byPhone.matches[0].kind, "weak");
+  assert.equal(byPhone.review.length, 0);
+  const byMail = decideAutoMatches([p], [mkTx({ transactionId: "3", email: "R@EXAMPLE.com".toLowerCase() })]);
+  assert.equal(byMail.matches.length, 1);
+  assert.equal(byMail.matches[0].kind, "weak");
+  // (1) כל תנאי בסיס שנכשל → לא מועמדת כלל (לא review, לא match)
+  for (const bad of [
+    mkTx({ transactionId: "10", phone: "0501234567", approved: false, confirmation: null }),
+    mkTx({ transactionId: "11", phone: "0501234567", currency: "2" }),
+    mkTx({ transactionId: "12", phone: "0501234567", amount: -58800 }),
+    mkTx({ transactionId: "13", phone: "0501234567", amount: 58700 }),
+    mkTx({ transactionId: "14", phone: "0501234567", transactionAt: new Date(createdAt.getTime() - 60 * 60 * 1000) }),
+    mkTx({ transactionId: "15", phone: "0501234567", transactionAt: null }),
+    mkTx({ transactionId: "16", phone: "0501234567", matchedPaymentId: 99 }),
+    mkTx({ transactionId: "17", phone: "0529999999", email: "x@y.com" }),
+  ]) {
+    const r = decideAutoMatches([p], [bad]);
+    assert.equal(r.matches.length, 0, `tx ${bad.transactionId} must not match`);
+    assert.equal(r.review.length, 0, `tx ${bad.transactionId} must not be a candidate`);
+  }
+  // cutoff אחרי העסקה → לא מועמדת
+  assert.equal(decideAutoMatches([p], [mkTx({ transactionId: "18", phone: "0501234567" })], new Date(now.getTime() + 1000)).matches.length, 0);
+  // (3) שתי עסקאות מועמדות לבקשה → review
+  const twoTx = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: "0501234567" }), mkTx({ transactionId: "3", email: "r@example.com" })]);
+  assert.equal(twoTx.matches.length, 0);
+  assert.equal(twoTx.review.length, 1);
+  assert.deepEqual(twoTx.review[0].transactionIds, ["2", "3"]);
+  // (3) עסקה אחת שמתאימה לשתי בקשות פתוחות (אותה מורה, אותו סכום) → שתיהן review, אף אחת לא נתפסת
+  const p2 = mkPayment({ id: 2, reference: "NP-ZZZZZZZZ" });
+  const twoPayments = decideAutoMatches([p, p2], [mkTx({ transactionId: "2", phone: "0501234567" })]);
+  assert.equal(twoPayments.matches.length, 0);
+  assert.equal(twoPayments.review.length, 2);
+  // (4) strong חלופי לבקשה אחרת: העסקה נושאת את מזהה p2 וגם את הטלפון של p → strong ל-p2, p לא מקבלת אותה
+  const strongElsewhere = decideAutoMatches([p, p2], [mkTx({ transactionId: "9", phone: "0501234567", comments: "NP-ZZZZZZZZ" })]);
+  assert.equal(strongElsewhere.matches.length, 1);
+  assert.equal(strongElsewhere.matches[0].paymentId, 2);
+  assert.equal(strongElsewhere.matches[0].kind, "strong");
+  assert.equal(strongElsewhere.review.length, 0, "p has no other candidate → nothing to review");
+  // strong עדיף על weak לאותה בקשה
+  const both = decideAutoMatches([p], [mkTx({ transactionId: "2", phone: "0501234567" }), mkTx({ transactionId: "1", comments: "NP-ABCDEFGH" })]);
+  assert.equal(both.matches.length, 1);
+  assert.equal(both.matches[0].tx.transactionId, "1");
+  assert.equal(both.matches[0].kind, "strong");
   // אותה עסקה strong לשתי בקשות (לא אמור לקרות) – אף אחת לא נתפסת, שתיהן ל-review
-  const p2 = mkPayment({ id: 2, reference: "NP-ABCDEFGH" });
-  const shared = decideAutoMatches([p, p2], [mkTx({ transactionId: "7", comments: "NP-ABCDEFGH" })]);
+  const p3 = mkPayment({ id: 3, reference: "NP-ABCDEFGH" });
+  const shared = decideAutoMatches([p, p3], [mkTx({ transactionId: "7", comments: "NP-ABCDEFGH" })]);
   assert.equal(shared.matches.length, 0);
   assert.equal(shared.review.length, 2);
+  // weak של p2 תופסת עסקה; weak אחרת של p עם אותו טלפון אבל עסקה שונה – שתיהן ייחודיות → שתיהן מתאימות
+  const pA = mkPayment({ id: 4, reference: "NP-AAAAAAAA", amount: 10000 });
+  const pB = mkPayment({ id: 5, reference: "NP-BBBBBBBB", amount: 20000 });
+  const distinct = decideAutoMatches([pA, pB], [mkTx({ transactionId: "21", phone: "0501234567", amount: 10000 }), mkTx({ transactionId: "22", phone: "0501234567", amount: 20000 })]);
+  assert.equal(distinct.matches.length, 2);
+});
+
+test("realistic GetHistoryJson row (PII neutralized): leading-space Confirmation, no status, dd/MM/yyyy HH:mm:ss, Currency '1', Amount string", () => {
+  const now = new Date("2026-10-22T15:00:00Z");
+  const row = { TransactionId: "7654321", Amount: "10", Currency: "1", Phone: "052-0000000", Mail: "Teacher@Example.com", ClientName: "פלונית אלמונית", Zeout: "000000000", Adresse: "רחוב 0", Comments: "", TransactionTime: "22/10/2026 16:45:12", Confirmation: " 0123456", LastNum: "0000" };
+  const t = parseHistoryRow(row, now)!;
+  assert.ok(t);
+  assert.equal(t.amount, 1000);
+  assert.equal(t.currency, "1");
+  assert.equal(t.confirmation, "0123456", "leading space trimmed");
+  assert.equal(t.status, null, "no status field");
+  assert.equal(t.approved, true);
+  assert.equal(t.phone, "0520000000");
+  assert.equal(t.email, "teacher@example.com");
+  assert.equal(t.comments, null, "empty comment from the plain link");
+  assert.equal(t.transactionAt?.toISOString(), "2026-10-22T13:45:12.000Z", "Jerusalem summer time");
+  assert.ok(!("Zeout" in pickRawFields(row)) && !("ClientName" in pickRawFields(row)));
+  // בלי הערה → רק weak; עם טלפון תואם + סכום + ייחודיות → מנוי
+  const p = mkPayment({ amount: 1000, phone: "0520000000", email: "other@example.com", createdAt: new Date("2026-10-22T13:40:00Z") });
+  const r = decideAutoMatches([p], [{ ...t, fetchedAt: now, matchedPaymentId: null }]);
+  assert.equal(r.matches.length, 1);
+  assert.equal(r.matches[0].kind, "weak");
 });
 
 test("M1: manual settle with a cached transaction requires approved, exact amount, positive, ILS", () => {

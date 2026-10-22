@@ -16,7 +16,8 @@ export const OPEN_STATUSES: readonly NedarimStatus[] = ["pending", "processing"]
 export const isNedarimStatus = (s: unknown): s is NedarimStatus =>
   typeof s === "string" && (NEDARIM_STATUSES as readonly string[]).includes(s);
 
-export type VerifyMethod = "api" | "manual" | "simulated";
+/** api = הותאם לפי מזהה הבקשה בהערה; api_weak = הותאם לפי טלפון/מייל + סכום (ייחודי); manual = המנהלת; simulated = מצב דמה */
+export type VerifyMethod = "api" | "api_weak" | "manual" | "simulated";
 
 /** המסלולים שנמכרים דרך /pay (המסלולים החודשיים הישנים הוסרו – ר' RETIRED_PLANS ב-constants) */
 export const PAYABLE_PLANS = ["yearly", "substitute_3m", "substitute_daily"] as const;
@@ -395,14 +396,18 @@ export function findCandidates(p: OpenPaymentForMatch, txs: TxForMatch[], cutoff
   return { strong, weak };
 }
 
-export type AutoMatch = { paymentId: number; tx: TxForMatch; kind: "strong" };
+export type MatchKind = "strong" | "weak";
+export type AutoMatch = { paymentId: number; tx: TxForMatch; kind: MatchKind };
 export type ReviewItem = { paymentId: number; reason: string; transactionIds: string[] };
 
 /**
- * ההחלטה הגלובלית: רק התאמה strong חד-משמעית (בדיוק עסקה אחת עם מזהה הבקשה, שלא נתפסה לבקשה אחרת) משדרגת אוטומטית.
- * כל השאר → review ("ממתין לאישור ידני") עם מספרי העסקאות המועמדות: כמה strong; או weak (טלפון/מייל + סכום – החלטה L4: לא
- * משדרגים אוטומטית, כי טלפון/מייל ניתנים להזנה ע"י כל אחת בדף של נדרים ושתי מורות מאותו טלפון/מוסד הן תרחיש אמיתי; ההערה
- * הנעולה בקישור שלנו מכסה את המסלול הרגיל). אותה עסקה לעולם לא מוקצית לשתי בקשות.
+ * ההחלטה הגלובלית (מדיניות הבעלים, 22.10.2026):
+ *   strong – מזהה הבקשה בהערת העסקה: בדיוק עסקה אחת כזו לבקשה, שלא טוענת לה בקשה אחרת → מנוי. עדיף תמיד.
+ *   weak  – טלפון/מייל + סכום זהה (findCandidates כבר דורש: מאושרת, ש"ח, חיובית, אחרי cutoff ואחרי createdAt-15 דק', לא
+ *           משויכת) – **משדרג אוטומטית רק בייחודיות מלאה**: (א) לבקשה בדיוק מועמדת אחת (strong+weak, בלי עסקאות שכבר נתפסו);
+ *           (ב) לעסקה הזו בדיוק בקשה פתוחה אחת שהיא יכולה להתאים לה, בכל סוג התאמה (אז גם אין strong חלופי שמצביע לבקשה אחרת).
+ *   כל ספק → review ("ממתין לאישור ידני") עם מספרי העסקאות. אותה עסקה לעולם לא מוקצית לשתי בקשות.
+ * הנימוק: התוקף משלם בעצמו סכום מדויק; הסיכון היחיד הוא שתשלום של מישהי אחרת באותו סכום + טלפון/מייל ייתפס – ולכן הייחודיות.
  */
 export function decideAutoMatches(payments: OpenPaymentForMatch[], txs: TxForMatch[], cutoffAt: Date | null = null): { matches: AutoMatch[]; review: ReviewItem[] } {
   const matches: AutoMatch[] = [];
@@ -410,20 +415,47 @@ export function decideAutoMatches(payments: OpenPaymentForMatch[], txs: TxForMat
   const taken = new Set<string>();
   const cands = new Map<number, ReturnType<typeof findCandidates>>();
   for (const p of payments) cands.set(p.id, findCandidates(p, txs, cutoffAt));
-  // עסקה strong שמופיעה בשתי בקשות (לא אמור לקרות – reference ייחודי) → אף אחת לא נתפסת
+  // כמה בקשות פתוחות "טוענות" לכל עסקה – strong ו-weak יחד (תנאי 3+4)
+  const claimers = new Map<string, number>();
   const strongClaimers = new Map<string, number>();
-  for (const p of payments) for (const t of cands.get(p.id)!.strong) strongClaimers.set(t.transactionId, (strongClaimers.get(t.transactionId) ?? 0) + 1);
-
   for (const p of payments) {
     const c = cands.get(p.id)!;
+    for (const t of c.strong) {
+      claimers.set(t.transactionId, (claimers.get(t.transactionId) ?? 0) + 1);
+      strongClaimers.set(t.transactionId, (strongClaimers.get(t.transactionId) ?? 0) + 1);
+    }
+    for (const t of c.weak) claimers.set(t.transactionId, (claimers.get(t.transactionId) ?? 0) + 1);
+  }
+
+  // strong קודם
+  const decided = new Set<number>();
+  for (const p of payments) {
+    const c = cands.get(p.id)!;
+    if (c.strong.length === 0) continue;
+    decided.add(p.id);
     if (c.strong.length === 1 && strongClaimers.get(c.strong[0].transactionId) === 1 && !taken.has(c.strong[0].transactionId)) {
       taken.add(c.strong[0].transactionId);
       matches.push({ paymentId: p.id, tx: c.strong[0], kind: "strong" });
-    } else if (c.strong.length > 0) {
+    } else {
       review.push({ paymentId: p.id, reason: c.strong.length > 1 ? `נמצאו ${c.strong.length} עסקאות עם מזהה הבקשה` : "העסקה עם מזהה הבקשה מתאימה גם לבקשה אחרת", transactionIds: c.strong.map((t) => t.transactionId) });
-    } else if (c.weak.length > 0) {
-      review.push({ paymentId: p.id, reason: `נמצאה עסקה בסכום הזה עם הטלפון/המייל של המורה אבל בלי מזהה הבקשה – לאישור ידני`, transactionIds: c.weak.map((t) => t.transactionId) });
     }
+  }
+  // weak – רק בייחודיות מלאה
+  for (const p of payments) {
+    if (decided.has(p.id)) continue;
+    const weak = cands.get(p.id)!.weak.filter((t) => !taken.has(t.transactionId));
+    if (weak.length === 0) continue;
+    if (weak.length > 1) {
+      review.push({ paymentId: p.id, reason: `נמצאו ${weak.length} עסקאות בסכום הזה עם הטלפון/המייל של המורה – לאישור ידני`, transactionIds: weak.map((t) => t.transactionId) });
+      continue;
+    }
+    const t = weak[0];
+    if ((claimers.get(t.transactionId) ?? 0) !== 1) {
+      review.push({ paymentId: p.id, reason: "העסקה (טלפון/מייל + סכום) מתאימה גם לבקשה פתוחה אחרת – לאישור ידני", transactionIds: [t.transactionId] });
+      continue;
+    }
+    taken.add(t.transactionId);
+    matches.push({ paymentId: p.id, tx: t, kind: "weak" });
   }
   return { matches, review };
 }
@@ -525,7 +557,8 @@ export const STATUS_LABEL_HE: Record<NedarimStatus, string> = {
 };
 
 export const VERIFY_LABEL_HE: Record<VerifyMethod, string> = {
-  api: "הותאם לעסקה בנדרים פלוס",
+  api: "הותאם לעסקה בנדרים פלוס (מזהה הבקשה)",
+  api_weak: "זוהה לפי טלפון/מייל",
   manual: "אושר ידנית",
   simulated: "סימולציה (פיתוח)",
 };
