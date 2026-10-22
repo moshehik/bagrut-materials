@@ -60,6 +60,23 @@ function norm(s: string) {
     .replace(/[–—־]/g, "-");
 }
 
+/** ניקוד וטעמים (U+0591–U+05C7) */
+const NIKUD = /[֑-ׇ]/;
+/** תווים שמתעלמים מהם בהתאמה הדחוסה: רווחים, ניקוד/טעמים, וסימוני כיווניות */
+const IGNORED_IN_MATCH = /[\s֑-ׇ‎‏‪-‮]/;
+
+/** הטקסט בלי התווים המתעלמים + מיפוי מכל אינדקס בו לאינדקס המקורי (אורך המקור נשמר לעריכה) */
+function compactWithMap(s: string): { out: string; map: number[] } {
+  let out = "";
+  const map: number[] = [];
+  for (let i = 0; i < s.length; i++) {
+    if (IGNORED_IN_MATCH.test(s[i])) continue;
+    out += s[i];
+    map.push(i);
+  }
+  return { out, map };
+}
+
 type Token =
   | { kind: "raw"; xml: string }
   | { kind: "text"; rPr: string; text: string; start: number };
@@ -171,13 +188,26 @@ export async function applyDocxFixes(
   const paraText = paraTokens.map((t) =>
     norm(t.map((x) => (x.kind === "text" ? x.text : "")).join("")),
   );
+  // התאמה "דחוסה": בלי רווחים ובלי ניקוד – הטקסט שמורה מסמנת בתצוגת ה-PDF מגיע משכבת הטקסט של ה-PDF,
+  // שם רווחים, ניקוד וסדר הניקוד לא תמיד זהים ל-docx ("כוונהלמשפחת" מול "כוונה למשפחת")
+  const paraCompact = paraText.map(compactWithMap);
 
   for (const fix of wanted) {
     const needle = norm(fix.originalText.trim());
+    const needleCompact = compactWithMap(needle).out;
     for (let pi = 0; pi < paraText.length; pi++) {
-      const start = paraText[pi].indexOf(needle);
-      if (start < 0) continue;
-      const end = start + needle.length;
+      let start = paraText[pi].indexOf(needle);
+      let end = start + needle.length;
+      if (start < 0) {
+        if (needleCompact.length < 2) continue;
+        const { out, map } = paraCompact[pi];
+        const ci = out.indexOf(needleCompact);
+        if (ci < 0) continue;
+        start = map[ci];
+        end = map[ci + needleCompact.length - 1] + 1;
+        // הניקוד שצמוד לאות האחרונה שייך לה – נכלל בטווח המוחלף
+        while (end < paraText[pi].length && NIKUD.test(paraText[pi][end])) end++;
+      }
       const existing = found.get(pi) ?? [];
       if (existing.some((e) => start < e.end && end > e.start)) continue; // חופף לתיקון אחר – מנסים התאמה אחרת
       existing.push({ fix, start, end });

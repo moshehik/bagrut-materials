@@ -157,6 +157,10 @@ export function PdfViewer({
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       canvas.className = "pdfv-page";
+      // גודל התצוגה ב-CSS = גודל העטיפה. בלי זה הקנבס מוצג ברוחב הפיקסלים שלו (css × devicePixelRatio) –
+      // במסכים עם סקלה (125%/150%) העמוד גדול מהחלון, נחתך בצד, והסימונים/שכבת הטקסט לא מתיישרים איתו
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
       canvas.oncontextmenu = (e) => e.preventDefault();
       const ctx = canvas.getContext("2d");
       if (!ctx) continue;

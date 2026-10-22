@@ -68,6 +68,30 @@ export async function submitFixRequests(input: {
     return { error: "יש כבר כמה בקשות שממתינות לטיפול בקובץ הזה – נחכה שנטפל בהן" };
   }
 
+  // בודקות מראש שהטקסט שסומן באמת נמצא בקובץ – אחרת הבקשה נקלטת "בהצלחה" אבל לא משנה כלום בצפייה/בהורדה.
+  // כשל בקריאת הקובץ לא חוסם את הבקשה (הסוכן/המנהלת יבדקו אותה בכל מקרה)
+  if (isDocxName(material.fileName)) {
+    try {
+      const file = await fetchFile(material.fileUrl);
+      if (file) {
+        const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+        const test = await applyDocxFixes(
+          bytes,
+          items.map((it, i) => ({ id: i + 1, originalText: it.quote, correctedText: it.correction })),
+        );
+        const badIdx = items.findIndex((_, i) => !test.applied.includes(i + 1));
+        if (badIdx >= 0) {
+          const q = items[badIdx].quote;
+          return {
+            error: `הטקסט «${q.length > 40 ? q.slice(0, 40) + "…" : q}» לא נמצא בקובץ כרצף אחד, ולכן התיקון לא היה משתנה בו. סמני קטע קצר יותר מתוך פסקה אחת (בלי לחצות שורות של טבלה או כותרת) ונסי שוב.`,
+          };
+        }
+      }
+    } catch (e) {
+      console.error("submitFixRequests: pre-check failed", e);
+    }
+  }
+
   const inserted = await db
     .insert(materialFixes)
     .values(

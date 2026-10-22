@@ -102,9 +102,17 @@ export function FixRequestButton({
   const [activeId, setActiveId] = useState<number>(() => edits[0].id);
   const [result, setResult] = useState<FixState>(undefined);
   const [pending, startSend] = useTransition();
+  // אחרי שליחה מוצלחת מאפסים את החלון (אחרת הוא נשאר על "הבקשה נשלחה" ואי אפשר להוסיף תיקונים נוספים)
+  const resetAfterSend = () => {
+    const e = newEdit();
+    setEdits([e]);
+    setActiveId(e.id);
+    setResult(undefined);
+  };
   const close = () => {
     setOpen(false);
     setAcknowledged(false);
+    if (result?.ok) resetAfterSend();
   };
   const ref = useDialog(open, close);
 
@@ -200,9 +208,14 @@ export function FixRequestButton({
                 הבקשה נשלחה. כשהשינוי יתווסף לקובץ יופיעו בכרטיסייה האפשרויות &quot;לצפייה בשינויים שכבר נעשו&quot; ו
                 &quot;להורדת הקובץ המתוקן&quot;.
               </p>
-              <button type="button" className="btn btn-gold text-sm py-2" onClick={close}>
-                סגירה
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" className="btn btn-gold text-sm py-2" onClick={resetAfterSend}>
+                  הוספת תיקון נוסף
+                </button>
+                <button type="button" className="btn text-sm py-2" onClick={close}>
+                  סגירה
+                </button>
+              </div>
             </div>
           ) : (
             <div className="fix-inner fix-viewer">
