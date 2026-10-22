@@ -10,11 +10,12 @@ import { createSession, destroySession, getCurrentUser } from "@/lib/session";
 import { sendMailInBackground, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { getBool } from "@/lib/settings";
-import { genPersonalCode, safeNextPath } from "@/lib/auth-utils";
+import { genPersonalCode, isFileRoute, safeNextPath } from "@/lib/auth-utils";
 import { personName, phoneSchema } from "@/lib/profile-validation";
 import { TOO_MANY_MESSAGE, clientIp, limitKey, tooMany } from "@/lib/rate-limit";
 
-export type ActionState = { error?: string } | undefined;
+/** href – נתיב קובץ (/api/download/…) שהלקוח מתחיל להוריד בעצמו במקום redirect() (ר' isFileRoute) */
+export type ActionState = { error?: string; href?: string } | undefined;
 
 const registerSchema = z.object({
   firstName: personName("יש להזין שם פרטי תקין"),
@@ -147,7 +148,10 @@ export async function loginAction(_: ActionState, form: FormData): Promise<Actio
   }
   await createSession(u.id, u.sessionVersion);
   await logAudit({ actorId: u.id, action: "login", entityType: "user", entityId: u.id });
-  redirect(safeNextPath(next));
+  const dest = safeNextPath(next);
+  // next של הורדה (/api/download/…): לא redirect() – הלקוח מתחיל את ההורדה (ר' isFileRoute)
+  if (isFileRoute(dest)) return { href: dest };
+  redirect(dest);
 }
 
 export async function logoutAction() {

@@ -7,6 +7,7 @@ import { loginAction, registerAction } from "@/lib/actions/auth";
 import { requestPasswordReset, resetPassword } from "@/lib/actions/password";
 import { completeProfileAction } from "@/lib/actions/profile";
 import { ISRAEL_CITIES, canonicalCity } from "@/lib/israel-cities";
+import { useFileDownload } from "@/components/download-loader";
 
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
@@ -109,12 +110,14 @@ export function LoginForm({
   notice?: string;
 }) {
   const [state, action, pending] = useActionState(loginAction, undefined);
+  // next של הורדה (/api/download/…): הפעולה מחזירה href והלקוח מתחיל את ההורדה (ר' isFileRoute)
+  useFileDownload(state?.href);
   return (
     <div className="space-y-5">
       <GoogleButton next={next} enabled={googleEnabled} />
       <form action={action} className="space-y-4">
         {next && <input type="hidden" name="next" value={next} />}
-        <SuccessBox message={notice} />
+        <SuccessBox message={state?.href ? "התחברת בהצלחה – הקובץ בהכנה להורדה" : notice} />
         <ErrorBox error={state?.error ?? (urlError ? URL_MESSAGES[urlError] : undefined)} />
         <label className="block">
           <span className="text-sm font-semibold">כתובת מייל</span>
@@ -522,9 +525,12 @@ export function RegisterForm({ next, googleEnabled }: { next?: string; googleEna
 /** השלמת פרטים אחרי הרשמה דרך גוגל: טלפון – חובה (גוגל לא מוסר אותו). עיר ותיכון נשאלים ברכישה הראשונה */
 export function CompleteProfileForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(completeProfileAction, undefined);
+  // next של הורדה (/api/download/…): הפעולה מחזירה href והלקוח מתחיל את ההורדה (ר' isFileRoute)
+  useFileDownload(state?.href);
   return (
     <form action={action} className="space-y-5">
       <input type="hidden" name="next" value={next} />
+      {state?.href && <SuccessBox message={state.message} />}
       {state?.error && (
         <div role="alert" className="gate-strip gate-strip-alert animate-pop">
           <AlertCircle className="h-5 w-5 shrink-0" aria-hidden />

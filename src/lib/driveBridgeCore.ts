@@ -15,6 +15,7 @@
 
 import { createHash } from "node:crypto";
 import { isDocxForBlankLines, relaxJustifiedBlankLines } from "./docx-blank-lines";
+import { normalizeNikudCompat } from "./docx-nikud-compat";
 
 const BRIDGE_TIMEOUT_MS = 55000; // מתחת ל-60s של Vercel
 
@@ -637,13 +638,16 @@ async function convertWithBudget(args: ConvertArgs, budget: Budget): Promise<Uin
 }
 
 /**
- * תיקוני-תוכן שרצים על כל docx לפני ההמרה (לא על pptx/doc): כרגע רק שחרור יישור-לשני-הצדדים
- * מפסקאות קווי-מילוי (ר' docx-blank-lines.ts). קובץ שאין בו מה לתקן חוזר כאותם בייטים בדיוק.
+ * תיקוני-תוכן שרצים על כל docx לפני ההמרה (לא על pptx/doc): שחרור יישור-לשני-הצדדים מפסקאות
+ * קווי-מילוי (ר' docx-blank-lines.ts) והחלפת סימני ניקוד שחסרים בגופני הפסוקים - קמץ קטן/חולם
+ * חסר - בסימנים הקלאסיים (ר' docx-nikud-compat.ts; בלעדיה LibreOffice מצייר אותיות אחת על השנייה).
+ * קובץ שאין בו מה לתקן חוזר כאותם בייטים בדיוק.
  * חייב לרוץ *לפני* חישוב מפתח המטמון (md5) ב-convertOfficeToPdfCached - ר' ההערה שם.
  */
 async function prepareOfficeForConvert(args: ConvertArgs): Promise<ConvertArgs> {
   if (!isDocxForBlankLines(args.mimeType, args.name)) return args;
-  const bytes = await relaxJustifiedBlankLines(args.bytes);
+  let bytes = await relaxJustifiedBlankLines(args.bytes);
+  bytes = await normalizeNikudCompat(bytes);
   return bytes === args.bytes ? args : { ...args, bytes };
 }
 

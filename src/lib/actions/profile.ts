@@ -9,12 +9,13 @@ import { authTokens, purchases, users, userInterests } from "@/db/schema";
 import { createSession, hashAuthToken, requireUser } from "@/lib/session";
 import { sendMail, sendMailInBackground, adminEmail, siteUrl, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
-import { randomToken, safeNextPath } from "@/lib/auth-utils";
+import { isFileRoute, randomToken, safeNextPath } from "@/lib/auth-utils";
 import { PLANS } from "@/lib/constants";
 import { normalizeIsraeliPhone, PHONE_ERROR } from "@/lib/phone";
 import { phoneSchema } from "@/lib/profile-validation";
 
-export type ProfileState = { error?: string; ok?: boolean; message?: string } | undefined;
+/** href – נתיב קובץ (/api/download/…) שהלקוח מתחיל להוריד בעצמו במקום redirect() (ר' isFileRoute) */
+export type ProfileState = { error?: string; ok?: boolean; message?: string; href?: string } | undefined;
 
 const EMAIL_CHANGE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -60,7 +61,11 @@ export async function updatePhoneAction(_: ProfileState, form: FormData): Promis
   });
 
   const next = String(form.get("next") ?? "");
-  if (safeNextPath(next, "") === next) redirect(next);
+  if (safeNextPath(next, "") === next) {
+    // next של הורדה (/api/download/…): לא redirect() – הלקוח מתחיל את ההורדה (ר' isFileRoute)
+    if (isFileRoute(next)) return { ok: true, message: "הטלפון נשמר, ההורדה מתחילה…", href: next };
+    redirect(next);
+  }
   return { ok: true, message: "הטלפון עודכן בהצלחה." };
 }
 
@@ -82,8 +87,10 @@ export async function completeProfileAction(_: ProfileState, form: FormData): Pr
     details: { phone: maskPhone(phone) },
   });
 
-  const next = String(form.get("next") ?? "");
-  redirect(safeNextPath(next));
+  const next = safeNextPath(String(form.get("next") ?? ""));
+  // next של הורדה (/api/download/…): לא redirect() – הלקוח מתחיל את ההורדה (ר' isFileRoute)
+  if (isFileRoute(next)) return { ok: true, message: "הפרטים נשמרו, ההורדה מתחילה…", href: next };
+  redirect(next);
 }
 
 const pwSchema = z

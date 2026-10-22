@@ -45,3 +45,14 @@ export function safeNextPath(next: string | null | undefined, fallback = "/") {
   if (!next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
   return next;
 }
+
+/**
+ * האם next הוא נתיב קובץ (API, למשל /api/download/123) ולא עמוד באתר.
+ * אסור לעשות אליו redirect() מתוך server action: הראוטר מנווט "רך" (fetch עם RSC) → מקבל קובץ
+ * במקום דף → נופל ל-location.assign; נתיב ההורדה רץ עד 3 פעמים (גם מהשרת עצמו), והדף לא נפרק
+ * אחרי הורדת attachment, אז useActionState/useTransition נשארים במצב "טוען" לנצח.
+ * במקום זה מחזירים { href } והלקוח מתחיל את ההורדה בעצמו (useFileDownload).
+ */
+export function isFileRoute(path: string) {
+  return path.startsWith("/api/");
+}

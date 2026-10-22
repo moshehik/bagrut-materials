@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, KeyRound, Mail, Phone, UserRound } from "lucide-react";
+import { useFileDownload } from "@/components/download-loader";
 import {
   updateNameAction,
   updatePhoneAction,
@@ -71,6 +72,8 @@ export function EditNameForm({ currentName }: { currentName: string }) {
 
 export function EditPhoneForm({ currentPhone, next }: { currentPhone?: string | null; next?: string }) {
   const [state, action, pending] = useActionState(updatePhoneAction, undefined);
+  // next של הורדה: הפעולה מחזירה href והלקוח מתחיל את ההורדה (האגוז מופיע ונעלם כרגיל)
+  useFileDownload(state?.href);
   return (
     <form action={action} className="space-y-3">
       {!next && <FormTitle icon={<Phone className="h-5 w-5" aria-hidden />}>מספר טלפון</FormTitle>}

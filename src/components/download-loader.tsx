@@ -1,12 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // כל קישורי ההורדה באתר (חומרים + מאגר שיחות)
 const DOWNLOAD_LINK = /^\/api\/(sichot\/download|download|download-folder)\/\d+/;
 const POLL_MS = 300;
 // רשת ביטחון: המרת Word ל-PDF מוגבלת ל-60 שניות בשרת
 const GIVE_UP_MS = 75_000;
+
+/**
+ * התחלת הורדת קובץ מקוד (לא מלחיצה של המשתמשת על קישור): למשל אחרי שמירת טלפון/התחברות
+ * שהגיעו עם next=/api/download/…. מדמה לחיצה על קישור הורדה, כך שהאגוז מופיע ונעלם כרגיל.
+ * חשוב: לא להשתמש ב-redirect() של server action לנתיב קובץ – הראוטר מנווט "רך", מריץ את
+ * נתיב ההורדה כמה פעמים, ומשאיר את הטופס במצב "טוען" לנצח (הדף לא נפרק אחרי הורדת attachment).
+ */
+export function startFileDownload(href: string) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/** מפעיל startFileDownload פעם אחת כש-href מתקבל (למשל מתוצאת server action) */
+export function useFileDownload(href: string | undefined) {
+  // הגנה מהרצה כפולה של האפקט (StrictMode בפיתוח) – כל href מוריד פעם אחת בלבד
+  const started = useRef<string | null>(null);
+  useEffect(() => {
+    if (!href || started.current === href) return;
+    started.current = href;
+    startFileDownload(href);
+  }, [href]);
+}
 
 function readCookie(name: string) {
   return document.cookie.split("; ").some((c) => c.startsWith(`${name}=`));

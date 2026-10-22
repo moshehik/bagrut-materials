@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 import { claimFreeTrialAction } from "@/lib/actions/free-trial";
+import { startFileDownload } from "@/components/download-loader";
 
 /**
  * כפתור "הורדה אחת חינם": לחיצה פותחת חלונית אישור (זו ההורדה החינמית האחת, שלא תיבזבז בטעות),
@@ -43,7 +44,8 @@ export function FreeTrialDownload({
         return;
       }
       close();
-      window.location.href = r.href;
+      // כמו לחיצה על קישור הורדה – האגוז "מכינים את הקובץ" מופיע ונעלם כשהקובץ מגיע
+      startFileDownload(r.href);
       // הכרטיס עובר למצב "נרכש" אחרי שההורדה התחילה
       setTimeout(() => router.refresh(), 1500);
     });

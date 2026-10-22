@@ -29,9 +29,8 @@ import { termFields } from "@/lib/purchase-helpers";
 const idNum = z.coerce.number().int().positive();
 
 // המסלולים החודשיים הישנים (subject_monthly / custom_monthly) הוסרו מהמכירה – ר' RETIRED_PLANS; הקופה מסרבת להם למטה
-const schema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("single"), materialId: idNum }),
-  z.object({ kind: z.literal("bundle"), categoryId: idNum }),
+// מסלולי המנוי חולקים kind="plan", לכן הם union מקונן לפי "plan" (zod 4 זורק "Duplicate discriminator value" על שלושה אובייקטים עם אותו kind באותו union)
+const planSchema = z.discriminatedUnion("plan", [
   z.object({
     kind: z.literal("plan"),
     plan: z.literal("yearly"),
@@ -47,6 +46,11 @@ const schema = z.discriminatedUnion("kind", [
   }),
   // ממלאת מקום יומית: סל הורדות לכל המקצועות, בלי בחירת מקצוע ובלי הגבלת זמן
   z.object({ kind: z.literal("plan"), plan: z.literal("substitute_daily") }),
+]);
+const schema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("single"), materialId: idNum }),
+  z.object({ kind: z.literal("bundle"), categoryId: idNum }),
+  planSchema,
 ]);
 
 export type PurchaseState = { error?: string } | undefined;
