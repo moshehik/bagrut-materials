@@ -16,7 +16,17 @@ export type DocxFix = {
   correctedText: string;
   /** מספר התיקון כפי שמוצג ברשימה – מודפס ליד התיקון בתצוגה בלבד (mode "marked") */
   number?: number;
+  /**
+   * כשהטקסט מופיע כמה פעמים במסמך: כמה מופעים שלו קדמו למקום שהמורה סימנה (מאפס). חסר/0 = המופע הראשון.
+   * נספר על הטקסט הדחוס (בלי רווחים וניקוד), בסדר הפסקאות של ה-docx.
+   */
+  occurrence?: number;
 };
+
+/** הטקסט בלי רווחים/ניקוד – להשוואה בין מה שהמורה סימנה לטקסט שהסוכן הציע */
+export function compactText(s: string): string {
+  return compactWithMap(norm(s.trim())).out;
+}
 
 export type ApplyFixesResult = {
   bytes: Uint8Array;
@@ -192,9 +202,52 @@ export async function applyDocxFixes(
   // שם רווחים, ניקוד וסדר הניקוד לא תמיד זהים ל-docx ("כוונהלמשפחת" מול "כוונה למשפחת")
   const paraCompact = paraText.map(compactWithMap);
 
+  /** כל ההתאמות (בלי חפיפה) של הטקסט הדחוס בפסקה אחת, בסדר הופעתן */
+  const compactMatches = (pi: number, needleCompact: string) => {
+    const { out, map } = paraCompact[pi];
+    const res: { start: number; end: number }[] = [];
+    let from = 0;
+    for (let ci = out.indexOf(needleCompact, from); ci >= 0; ci = out.indexOf(needleCompact, from)) {
+      const start = map[ci];
+      let end = map[ci + needleCompact.length - 1] + 1;
+      while (end < paraText[pi].length && NIKUD.test(paraText[pi][end])) end++;
+      res.push({ start, end });
+      from = ci + needleCompact.length;
+    }
+    return res;
+  };
+
   for (const fix of wanted) {
     const needle = norm(fix.originalText.trim());
     const needleCompact = compactWithMap(needle).out;
+
+    // המורה סימנה מופע מסוים כשהטקסט חוזר כמה פעמים (occurrence = כמה מופעים קדמו לו, מאפס) – מחליפים אותו ולא את הראשון
+    if ((fix.occurrence ?? 0) > 0 && needleCompact.length >= 2) {
+      let seen = 0;
+      let first: { pi: number; start: number; end: number } | null = null;
+      let chosen: { pi: number; start: number; end: number } | null = null;
+      for (let pi = 0; pi < paraText.length && !chosen; pi++) {
+        for (const m of compactMatches(pi, needleCompact)) {
+          if (!first) first = { pi, ...m };
+          if (seen === fix.occurrence) {
+            chosen = { pi, ...m };
+            break;
+          }
+          seen++;
+        }
+      }
+      const target = chosen ?? first; // פחות מופעים מהצפוי (הקובץ השתנה?) – לפחות הראשון
+      if (target) {
+        const existing = found.get(target.pi) ?? [];
+        if (!existing.some((e) => target.start < e.end && target.end > e.start)) {
+          existing.push({ fix, start: target.start, end: target.end });
+          found.set(target.pi, existing);
+          applied.add(fix.id);
+        }
+      }
+      continue;
+    }
+
     for (let pi = 0; pi < paraText.length; pi++) {
       let start = paraText[pi].indexOf(needle);
       let end = start + needle.length;

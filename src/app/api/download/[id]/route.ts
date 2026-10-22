@@ -264,7 +264,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
           if (chosen.length > 0) {
             const r = await applyDocxFixes(
               raw,
-              chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText })),
+              chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, occurrence: f.occurrence })),
             );
             if (r.applied.length > 0) {
               raw = new Uint8Array(r.bytes);

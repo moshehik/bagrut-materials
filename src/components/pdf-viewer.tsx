@@ -51,7 +51,53 @@ function isWatermarkItem(it: any, pageBottom: number, pageTop: number): boolean 
 
 /** מלבן בשברי העמוד (0-1), כך שהסימון נשאר במקומו בכל זום */
 export type MarkRect = { x: number; y: number; w: number; h: number };
-export type PdfMark = { id: number; page: number; rects: MarkRect[]; text: string };
+export type PdfMark = {
+  id: number;
+  page: number;
+  rects: MarkRect[];
+  text: string;
+  /** כמה מופעים של אותו טקסט (בלי רווחים וניקוד) קדמו לסימון בכל המסמך, מאפס – לבחירת המופע הנכון בקובץ ה-Word */
+  occurrence: number;
+};
+
+const COMPACT_IGNORED = /[\s֑-ׇ‎‏‪-‮]/g;
+/** אותו נרמול כמו docx-fixes.ts (compactText): גרשיים/מקפים אחידים, בלי רווחים וניקוד */
+const compact = (s: string) =>
+  s
+    .replace(/[“”״„]/g, '"')
+    .replace(/[‘’׳]/g, "'")
+    .replace(/[–—־]/g, "-")
+    .replace(COMPACT_IGNORED, "");
+
+/**
+ * כמה מופעים של הטקסט שנבחר מופיעים בשכבת הטקסט לפני נקודת ההתחלה של הבחירה (בסדר המסמך). כשהטקסט חוזר
+ * כמה פעמים בקובץ, זה מאפשר להחיל את התיקון על המופע שהמורה סימנה ולא על הראשון. כשל – 0 (הראשון).
+ */
+function selectionOccurrence(holder: HTMLElement, range: Range, selectedText: string): number {
+  try {
+    const needle = compact(selectedText);
+    if (needle.length < 2) return 0;
+    const leaves = Array.from(holder.querySelectorAll(".textLayer span")).filter((s) => s.children.length === 0);
+    let full = "";
+    let selStart = -1;
+    for (const s of leaves) {
+      const t = s.textContent ?? "";
+      if (selStart < 0 && range.intersectsNode(s)) {
+        let from = 0;
+        const tn = s.firstChild;
+        if (tn && tn.nodeType === 3 && range.startContainer === tn) from = range.startOffset;
+        selStart = full.length + compact(t.slice(0, from)).length;
+      }
+      full += compact(t);
+    }
+    if (selStart < 0) return 0;
+    let count = 0;
+    for (let i = full.indexOf(needle); i >= 0 && i < selStart; i = full.indexOf(needle, i + needle.length)) count++;
+    return count;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * הטקסט שנבחר משכבת הטקסט של ה-PDF. לכל מילה/קטע יש שם `<span>` נפרד בלי תו רווח ביניהם, ולכן
@@ -92,7 +138,7 @@ function selectedTextWithSpaces(range: Range, fallback: string): string {
   }
 }
 
-type PendingSelection = { text: string; page: number; rects: MarkRect[]; left: number; top: number };
+type PendingSelection = { text: string; page: number; rects: MarkRect[]; left: number; top: number; occurrence: number };
 
 export function PdfViewer({
   src,
@@ -312,6 +358,7 @@ export function PdfViewer({
       rects,
       left: Math.min(Math.max(bb.left - rr.left, 8), Math.max(rr.width - 170, 8)),
       top: bb.bottom - rr.top + 8,
+      occurrence: selectionOccurrence(holder, range, text),
     });
   }, [selectable]);
 
@@ -327,7 +374,7 @@ export function PdfViewer({
 
   const confirmMark = () => {
     if (!pending || !onMark) return;
-    onMark({ id: Date.now(), page: pending.page, rects: pending.rects, text: pending.text });
+    onMark({ id: Date.now(), page: pending.page, rects: pending.rects, text: pending.text, occurrence: pending.occurrence });
     window.getSelection()?.removeAllRanges();
     setPending(null);
   };

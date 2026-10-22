@@ -27,6 +27,8 @@ const requestSchema = z.object({
         quote: z.string().trim().min(2, "יש לסמן בקובץ את הטקסט שצריך תיקון").max(1000, "הטקסט המסומן ארוך מדי"),
         /** התיקון שהמורה כתבה */
         correction: z.string().trim().min(1, "יש לכתוב את התיקון").max(2000, "התיקון ארוך מדי"),
+        /** כמה מופעים של הטקסט שסומן קדמו למקום שסומן (מאפס) – כשהטקסט חוזר כמה פעמים בקובץ */
+        occurrence: z.number().int().min(0).max(500).optional(),
       }),
     )
     .min(1, "הוסיפי לפחות תיקון אחד")
@@ -39,7 +41,7 @@ const requestSchema = z.object({
  */
 export async function submitFixRequests(input: {
   materialId: number;
-  items: { quote: string; correction: string }[];
+  items: { quote: string; correction: string; occurrence?: number }[];
 }): Promise<FixState> {
   const user = await getCurrentUser();
   if (!user) return { error: "יש להתחבר כדי לבקש שינוי" };
@@ -77,7 +79,7 @@ export async function submitFixRequests(input: {
         const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
         const test = await applyDocxFixes(
           bytes,
-          items.map((it, i) => ({ id: i + 1, originalText: it.quote, correctedText: it.correction })),
+          items.map((it, i) => ({ id: i + 1, originalText: it.quote, correctedText: it.correction, occurrence: it.occurrence })),
         );
         const badIdx = items.findIndex((_, i) => !test.applied.includes(i + 1));
         if (badIdx >= 0) {
@@ -100,6 +102,7 @@ export async function submitFixRequests(input: {
         userId: user.id,
         requestText: it.correction,
         quoteText: it.quote,
+        occurrence: it.occurrence ?? null,
       })),
     )
     .returning({ id: materialFixes.id });

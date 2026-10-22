@@ -132,7 +132,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       if (chosen.length > 0) {
         const r = await applyDocxFixes(
           raw,
-          chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, number: f.number })),
+          chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, number: f.number, occurrence: f.occurrence })),
           "marked",
         );
         if (r.applied.length > 0) raw = new Uint8Array(r.bytes);

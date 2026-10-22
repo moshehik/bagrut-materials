@@ -2,9 +2,18 @@ import "server-only";
 import { and, asc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/db";
 import { materialFixes } from "@/db/schema";
+import { compactText } from "@/lib/docx-fixes";
 
 /** own = התיקון של המורה עצמה (בקשה שהגישה) – חל אצלה מיד, בלי תלות בהחלטת הסוכן על שאר המורות */
-export type PublicFix = { id: number; number: number; originalText: string; correctedText: string; own: boolean };
+export type PublicFix = {
+  id: number;
+  number: number;
+  originalText: string;
+  correctedText: string;
+  own: boolean;
+  /** כשהטקסט חוזר כמה פעמים: כמה מופעים קדמו למקום שהמורה סימנה (מאפס) – ר' DocxFix.occurrence */
+  occurrence?: number;
+};
 
 /**
  * התיקונים שמוצגים למבקרת: המפורסמים (לכולן) + התיקונים ה"פרטיים" שלה עצמה (status "private" –
@@ -57,7 +66,15 @@ export async function getFixesForViewer(
       }
       if (number == null || !original || !corrected) continue;
       const list = out.get(r.materialId) ?? [];
-      list.push({ id: r.id, number, originalText: original, correctedText: corrected, own: r.status !== "published" });
+      list.push({
+        id: r.id,
+        number,
+        originalText: original,
+        correctedText: corrected,
+        own: r.status !== "published",
+        // המופע נשמר ביחס לטקסט שסומן; אם הסוכן/מנהלת ניסחו טקסט מקורי אחר – לא חל עליו (אין משמעות למספר)
+        occurrence: r.occurrence != null && (r.status === "pending" || compactText(original) === compactText(r.quoteText ?? "")) ? r.occurrence : undefined,
+      });
       out.set(r.materialId, list);
     }
   } catch (e) {

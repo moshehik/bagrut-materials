@@ -26,7 +26,16 @@ import { and, eq, max } from "drizzle-orm";
 import { db } from "../src/db";
 import { materialFixes, materials } from "../src/db/schema";
 import { driveDownload, driveIdFromUrl } from "../src/lib/driveBridgeCore";
-import { applyDocxFixes, isDocxName } from "../src/lib/docx-fixes";
+import { applyDocxFixes, compactText, isDocxName } from "../src/lib/docx-fixes";
+
+/**
+ * כשהטקסט שסומן חוזר כמה פעמים בקובץ, המורה סימנה מופע מסוים (`occurrence`, מאפס). המספר תקף רק כשהטקסט המקורי שהסוכן
+ * מציין זהה (בלי רווחים וניקוד) לטקסט שהמורה סימנה; אם הסוכן בחר ניסוח אחר – אין משמעות למספר והמופע הראשון יוחלף.
+ */
+function occurrenceFor(fix: { quoteText: string | null; occurrence: number | null }, original: string): number | undefined {
+  if (fix.occurrence == null || !fix.quoteText) return undefined;
+  return compactText(fix.quoteText) === compactText(original) ? fix.occurrence : undefined;
+}
 import { logAgentEvent } from "../src/lib/agentEvents";
 import { replaceDocxInPlace } from "../src/lib/agentFileReplace";
 
@@ -110,7 +119,7 @@ async function get() {
   await logAgentEvent({ source: "claude", kind: "cli", summary: `agent-fix-suggest --get fix#${fixId} material#${m.id} "${m.fileName}"` });
   console.log(
     JSON.stringify(
-      { fixId, materialId: m.id, fileName: m.fileName, marked: fix.quoteText, requested: fix.requestText, savedTo: path.join(dir, "original.docx"), matchingParagraphs: hits.slice(0, 6) },
+      { fixId, materialId: m.id, fileName: m.fileName, marked: fix.quoteText, markedOccurrence: fix.occurrence == null ? "לא ידוע/ראשון" : `מופע מספר ${fix.occurrence + 1} של הטקסט המסומן (ספירה מההתחלה, בלי רווחים וניקוד)`, requested: fix.requestText, savedTo: path.join(dir, "original.docx"), matchingParagraphs: hits.slice(0, 6) },
       null,
       1,
     ),
@@ -126,7 +135,7 @@ async function suggest() {
   const { fix, m, driveId } = await loadFix(fixId);
   if (fix.status !== "pending") throw new Error(`בקשה ${fixId} במצב ${fix.status}, לא pending — לא נוגעים`);
   const dl = await driveDownload(driveId);
-  const test = await applyDocxFixes(new Uint8Array(dl.bytes), [{ id: fixId, originalText: original, correctedText: corrected }]);
+  const test = await applyDocxFixes(new Uint8Array(dl.bytes), [{ id: fixId, originalText: original, correctedText: corrected, occurrence: occurrenceFor(fix, original) }]);
   if (!test.applied.includes(fixId)) {
     console.error("הטקסט המקורי לא נמצא בקובץ החי (חייב להיות רצף מדויק בתוך פסקה אחת). לא נשמר כלום. הריצי --get ובחרי ניסוח מהפסקאות.");
     process.exit(2);
@@ -185,7 +194,7 @@ async function prepareDecision(fixIdRaw: string | undefined) {
   if (loaded.fix.status !== "pending") throw new Error(`בקשה ${fixId} במצב ${loaded.fix.status}, לא pending — לא נוגעים`);
   const dl = await driveDownload(loaded.driveId);
   const before = new Uint8Array(dl.bytes);
-  const test = await applyDocxFixes(before, [{ id: fixId, originalText: original, correctedText: corrected }]);
+  const test = await applyDocxFixes(before, [{ id: fixId, originalText: original, correctedText: corrected, occurrence: occurrenceFor(loaded.fix, original) }]);
   if (!test.applied.includes(fixId)) {
     console.error("הטקסט המקורי לא נמצא בקובץ החי (חייב להיות רצף מדויק בתוך פסקה אחת). לא נעשה כלום. הריצי --get ובחרי ניסוח מהפסקאות.");
     process.exit(2);

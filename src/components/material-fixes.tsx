@@ -156,7 +156,12 @@ export function FixRequestButton({
     startSend(async () => {
       const res = await submitFixRequests({
         materialId,
-        items: ready.map((e) => ({ quote: e.quote.trim(), correction: e.correction.trim() })),
+        items: ready.map((e) => ({
+          quote: e.quote.trim(),
+          correction: e.correction.trim(),
+          // המופע שסומן (כשהטקסט חוזר כמה פעמים) – רק אם הטקסט לא נערך ידנית אחרי הסימון
+          occurrence: e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined,
+        })),
       });
       setResult(res);
       // התיקון חל אצלה מיד – מרעננים כדי ש"לצפייה בשינויים"/"להורדת הקובץ המתוקן" יופיעו בכרטיסייה

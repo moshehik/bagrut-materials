@@ -199,6 +199,8 @@ export const materialFixes = pgTable(
     userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
     requestText: text("request_text").notNull(),
     quoteText: text("quote_text"),
+    /** כשהטקסט שסומן חוזר כמה פעמים בקובץ: כמה מופעים שלו קדמו למקום שהמורה סימנה (מאפס); null = הראשון */
+    occurrence: integer("occurrence"),
     /**
      * pending = ממתינה לבדיקה, published = תיקון מפורסם (מוצג לכל מי שיש לה גישה לקובץ),
      * merged = שולב בקובץ המקורי (לא מוצג יותר), rejected = נדחתה,
