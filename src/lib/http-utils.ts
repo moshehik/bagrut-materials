@@ -9,6 +9,26 @@ export function contentDisposition(fileName: string) {
 }
 
 /**
+ * הגנת CSRF ל-route handlers שמשנים מצב (כמו הבדיקה המובנית של Next ל-server actions): הבקשה חייבת להגיע מהאתר עצמו –
+ * Sec-Fetch-Site (דפדפן מודרני) חייב להיות same-origin/same-site/none, ואם יש כותרת Origin היא חייבת להתאים ל-Host
+ * (או X-Forwarded-Host ב-Vercel). בקשה בלי שתי הכותרות (לקוח ישן/לא-דפדפן) נדחית כשהיא מביאה cookies – אין דרך לוודא.
+ */
+export function isSameOriginRequest(req: Request): boolean {
+  const fetchSite = req.headers.get("sec-fetch-site");
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) return false;
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (origin) {
+    try {
+      return !!host && new URL(origin).host === host;
+    } catch {
+      return false;
+    }
+  }
+  return !!fetchSite;
+}
+
+/**
  * שגיאה למשתמשת מ-route של קובץ (הורדה/תצוגה): כשהדפדפן ניווט ישירות לקישור (Accept: text/html) מחזירים דף
  * עברי קטן במקום JSON גולמי על המסך; ל-fetch/JS (Accept: application/json או כל דבר אחר) – JSON כמו קודם.
  */

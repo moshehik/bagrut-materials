@@ -30,6 +30,7 @@ export const SETTING_DEFS = {
   substitute_daily_launch_price: { label: "ממלאת מקום יומית – מחיר מבצע לסל (₪)", type: "number", default: "160", group: "מחירים" },
   substitute_daily_downloads: { label: "ממלאת מקום יומית – מספר צפיות/הורדות בסל (בלי הגבלת זמן)", type: "number", default: "20", group: "מחירים" },
   vat_percent: { label: 'מע"מ (%) לקבלות', type: "number", default: "18", group: "מחירים" },
+  nedarim_enabled: { label: "תשלום בכרטיס אשראי דרך נדרים פלוס (/pay). דורש גם את משתני הסביבה NEDARIM_* – ר' /admin/payments. כבוי = הקופה הישנה (רישום מיידי בלי תשלום)", type: "boolean", default: "false", group: "תשלומים" },
   forum_enabled: { label: "פורום פעיל", type: "boolean", default: "true", group: "תכונות" },
   sell_enabled: { label: "מכירת חומרים לאתר פעילה", type: "boolean", default: "true", group: "תכונות" },
   free_trial_enabled: { label: "הורדה חינמית אחת לכל מורה (על כל חומר שתבחר)", type: "boolean", default: "true", group: "תכונות" },

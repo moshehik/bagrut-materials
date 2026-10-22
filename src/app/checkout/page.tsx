@@ -19,6 +19,7 @@ import {
 } from "@/lib/constants";
 import { PlanCheckoutView } from "@/components/plan-checkout";
 import { getPlanPrices } from "@/lib/pricing";
+import { getBool } from "@/lib/settings";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { CheckoutForm, type CheckoutFormProps, type CheckoutSubject } from "@/components/checkout-form";
 
@@ -155,6 +156,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       </div>
     );
   } else if (planKey === "yearly" || planKey === "substitute_3m" || planKey === "substitute_daily") {
+    // תשלום אמיתי דרך נדרים פלוס דולק → מסלולי המנוי נרכשים ב-/pay (הקופה המדומה כאן נשארת רק כשהוא כבוי)
+    if (await getBool("nedarim_enabled")) {
+      const q = new URLSearchParams({ plan: planKey });
+      if (sp.categories) q.set("categories", sp.categories);
+      if (sp.category) q.set("category", sp.category);
+      redirect(`/pay?${q.toString()}`);
+    }
     const def = PLANS[planKey];
     const planPrice = prices.plans[planKey];
     const days = def.days ?? 30;
