@@ -97,7 +97,7 @@ test("hosted payment URL uses only the parameters verified in practice (Analytic
   assert.equal(u.searchParams.get("AmountLock"), "1");
   assert.equal(u.searchParams.get("Payment"), "1");
   assert.equal(u.searchParams.get("Analytic"), "NP-ABCDEFGH", "the reliable identifier");
-  assert.equal(u.searchParams.get("groupe"), "yearly");
+  assert.equal(u.searchParams.get("groupe"), "מנוי שנתי");
   assert.ok(!u.searchParams.get("avour")!.includes("רחל"), "no PII in avour");
   assert.equal(u.searchParams.get("Redirect"), "https://example.com/pay?ref=NP-ABCDEFGH");
   // ה-Comments שנדרים יוצרים: "<Analytic> | <avour>" – המזהה מחולץ גם עם טקסט אחריו

@@ -25,6 +25,16 @@ export type PayablePlan = (typeof PAYABLE_PLANS)[number];
 export const isPayablePlan = (p: unknown): p is PayablePlan =>
   typeof p === "string" && (PAYABLE_PLANS as readonly string[]).includes(p);
 
+/**
+ * שמות הקטגוריות ב-Nedarim Plus (נוצרו במוסד דרך SaveEditGroupe) – הקישור מעביר את השם כ-`groupe`, כך
+ * שהעסקה והדוחות שלהם מסווגים לפי המסלול. הזיהוי עצמו לא נשען על זה (ר' Analytic).
+ */
+export const PLAN_GROUPE_NAMES: Record<PayablePlan, string> = {
+  yearly: "מנוי שנתי",
+  substitute_3m: "ממלאת מקום 3 חודשים",
+  substitute_daily: "ממלאת מקום יומית",
+};
+
 export const REFERENCE_PREFIX = "NP-";
 export const REFERENCE_RE = /^NP-[A-HJ-NP-Z2-9]{8}$/; // בלי I/O/0/1 (קריא בטלפון)
 const REFERENCE_IN_TEXT_RE = /NP-[A-HJ-NP-Z2-9]{8}/;
@@ -118,7 +128,7 @@ export function hostedPaymentUrl(input: {
   if (input.email) q.set("Email", input.email.slice(0, 120));
   q.set("Analytic", input.reference);
   if (input.description) q.set("avour", input.description.slice(0, 100));
-  if (input.planKey) q.set("groupe", input.planKey.slice(0, 40));
+  if (input.planKey) q.set("groupe", (isPayablePlan(input.planKey) ? PLAN_GROUPE_NAMES[input.planKey] : input.planKey).slice(0, 40));
   if (input.redirectUrl) q.set("Redirect", input.redirectUrl);
   q.set("HideParameters", "1");
   return `${NEDARIM_HOSTED_BASE}?${q.toString()}`;
