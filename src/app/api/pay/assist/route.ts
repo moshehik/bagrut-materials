@@ -4,7 +4,7 @@ import { isSameOriginRequest } from "@/lib/http-utils";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { adminEmail } from "@/lib/mail";
 import { getSetting } from "@/lib/settings";
-import { customerStatusText, isValidReference } from "@/lib/nedarim/logic";
+import { customerStatusText, isValidReference, orderKindOf } from "@/lib/nedarim/logic";
 import { getByReference, requestAssist } from "@/lib/nedarim/store";
 
 /*
@@ -34,5 +34,5 @@ export async function POST(req: NextRequest) {
   const to = adminEmail() ?? (await getSetting("admin_email")).trim();
   const r = await requestAssist(row, to || null);
   if (!r.ok) return json({ error: r.error }, 409);
-  return json({ ok: true, reference: row.reference, status: row.status, text: customerStatusText(row.status, true) });
+  return json({ ok: true, reference: row.reference, status: row.status, text: customerStatusText(row.status, true, false, orderKindOf(row.plan)), kind: orderKindOf(row.plan) });
 }

@@ -118,16 +118,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const bundleId = num(sp.bundle);
   const planKey = sp.plan;
 
-  // תשלום אמיתי דרך נדרים פלוס דולק: ב-/pay נמכרים רק מסלולי מנוי, והקופה המדומה (הורדה בודדת / תיקייה) לא רשומה בלי תשלום
+  // תשלום אמיתי דרך נדרים פלוס דולק → הורדה בודדת / קובץ מורחב נרכשים ב-/pay (הקופה המדומה כאן נשארת רק כשהוא כבוי)
   if ((materialId || bundleId) && (await getBool("nedarim_enabled"))) {
-    return (
-      <CheckoutMessage
-        title="הרכישה הזו עוד לא זמינה"
-        text="הורדה בודדת וקובץ מורחב אינם נמכרים כרגע – אפשר לרכוש מנוי במסלולים ולהוריד את כל החומרים."
-        primary={{ href: "/pricing", label: "למסלולים ומחירים" }}
-        secondary={{ href: "/subjects", label: "למקצועות" }}
-      />
-    );
+    redirect(materialId ? `/pay?material=${materialId}` : `/pay?bundle=${bundleId}`);
   }
 
   if (materialId) {

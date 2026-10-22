@@ -8,7 +8,7 @@ import { buildTransactionComment, hostedPaymentUrl } from "./logic";
  * הקישור לדף התשלום המתארח של נדרים לבקשה נתונה (נבנה מחדש בכל פעם – אין צורך לשמור אותו; הפרמטרים ב-logic.ts).
  * הזיהוי: Analytic = מזהה הבקשה (נכנס ל-Comments). שם/טלפון/מייל נשלחים כנוחות בלבד – המשלמת מזינה אותם בעצמה.
  */
-export function hostedUrlFor(row: Pick<NedarimPayment, "reference" | "amount" | "plan" | "firstName" | "lastName" | "phone" | "email">, mosadId: string): string {
+export function hostedUrlFor(row: Pick<NedarimPayment, "reference" | "amount" | "plan" | "firstName" | "lastName" | "phone" | "email"> & { itemTitle?: string | null }, mosadId: string): string {
   return hostedPaymentUrl({
     mosadId,
     amountAgorot: row.amount,
@@ -17,7 +17,8 @@ export function hostedUrlFor(row: Pick<NedarimPayment, "reference" | "amount" | 
     phone: row.phone ?? "",
     email: row.email ?? "",
     planKey: row.plan,
-    description: buildTransactionComment(SITE_NAME, PLANS[row.plan].label),
+    // avour: שם האתר + המסלול (+ שם החומר/התיקייה ברכישת פריט) – בלי PII
+    description: buildTransactionComment(SITE_NAME, PLANS[row.plan].label, row.itemTitle ?? ""),
     redirectUrl: `${siteUrl()}/pay?ref=${encodeURIComponent(row.reference)}`,
   });
 }

@@ -35,6 +35,30 @@ export const PLAN_GROUPE_NAMES: Record<PayablePlan, string> = {
   substitute_daily: "ממלאת מקום יומית",
 };
 
+/**
+ * רכישות פריט בודד דרך /pay (בנוסף למסלולי המנוי): "single" = הורדה בודדת של חומר אחד (מחיר = materials.price),
+ * "bundle" = קובץ מורחב – תיקייה שלמה (מחיר = bundleAmountFor). אותן שורות purchases שהקופה הישנה יצרה (itemPurchaseRow).
+ */
+export const PAYABLE_ITEM_KINDS = ["single", "bundle"] as const;
+export type PayableItemKind = (typeof PAYABLE_ITEM_KINDS)[number];
+export const isPayableItemKind = (p: unknown): p is PayableItemKind =>
+  typeof p === "string" && (PAYABLE_ITEM_KINDS as readonly string[]).includes(p);
+/** כל מה שנמכר דרך /pay: מסלול מנוי או פריט */
+export type PayKey = PayablePlan | PayableItemKind;
+export const PAY_KEYS = [...PAYABLE_PLANS, ...PAYABLE_ITEM_KINDS] as const;
+export const isPayKey = (p: unknown): p is PayKey => isPayablePlan(p) || isPayableItemKind(p);
+/** "plan" = מסלול מנוי; אחרת סוג הפריט – לטקסטים ולהחלטות שתלויות בסוג ההזמנה */
+export const orderKindOf = (plan: string): "plan" | PayableItemKind => (isPayableItemKind(plan) ? plan : "plan");
+
+/** שמות הקטגוריות בנדרים לרכישות פריט (לדוחות – כמו PLAN_GROUPE_NAMES; המחיר משתנה, אז בלי סכום מינימלי) */
+export const ITEM_GROUPE_NAMES: Record<PayableItemKind, string> = {
+  single: "הורדה בודדת",
+  bundle: "קובץ מורחב",
+};
+export const GROUPE_NAMES: Record<PayKey, string> = { ...PLAN_GROUPE_NAMES, ...ITEM_GROUPE_NAMES };
+/** שם הקטגוריה בנדרים למפתח ההזמנה; מפתח לא מוכר מועבר כפי שהוא (לדוחות בלבד – לא לזיהוי) */
+export const groupeNameFor = (key: string): string => (isPayKey(key) ? GROUPE_NAMES[key] : key);
+
 export const REFERENCE_PREFIX = "NP-";
 export const REFERENCE_RE = /^NP-[A-HJ-NP-Z2-9]{8}$/; // בלי I/O/0/1 (קריא בטלפון)
 const REFERENCE_IN_TEXT_RE = /NP-[A-HJ-NP-Z2-9]{8}/;
@@ -109,7 +133,7 @@ export function hostedPaymentUrl(input: {
   clientName: string;
   phone: string;
   email: string;
-  /** מפתח המסלול (yearly / substitute_3m / substitute_daily) – לשדה Groupe בדוחות נדרים */
+  /** מפתח ההזמנה (yearly / substitute_3m / substitute_daily / single / bundle) – לשדה Groupe בדוחות נדרים */
   planKey: string;
   /** תיאור קצר (בלי PII) – נכנס ל-Comments אחרי המזהה */
   description: string;
@@ -128,17 +152,93 @@ export function hostedPaymentUrl(input: {
   if (input.email) q.set("Email", input.email.slice(0, 120));
   q.set("Analytic", input.reference);
   if (input.description) q.set("avour", input.description.slice(0, 100));
-  if (input.planKey) q.set("groupe", (isPayablePlan(input.planKey) ? PLAN_GROUPE_NAMES[input.planKey] : input.planKey).slice(0, 40));
+  if (input.planKey) q.set("groupe", groupeNameFor(input.planKey).slice(0, 40));
   if (input.redirectUrl) q.set("Redirect", input.redirectUrl);
   q.set("HideParameters", "1");
   // רווח כ-%20 ולא כ-+: דף נדרים לא מפענח + ושומר אותו כמות שהוא ("לו״ז+העניין+-+מנוי+שנתי" בהערת העסקה); + אמיתי כבר מקודד ל-%2B
   return `${NEDARIM_HOSTED_BASE}?${q.toString().replace(/\+/g, "%20")}`;
 }
 
-/** התיאור הקצר שנכנס ל-Comments אחרי המזהה (avour): שם האתר + המסלול – בלי PII */
-export function buildTransactionComment(siteName: string, planLabel: string): string {
-  return [siteName.trim(), planLabel.trim()].filter(Boolean).join(" - ").slice(0, 100);
+/**
+ * התיאור הקצר שנכנס ל-Comments אחרי המזהה (avour): שם האתר + המסלול (+ שם הפריט ברכישת חומר/תיקייה) – בלי PII.
+ * שם של חומר/תיקייה הוא תוכן ציבורי של האתר, לא פרט אישי. נחתך ל-100 תווים (avour).
+ */
+export function buildTransactionComment(siteName: string, planLabel: string, itemTitle = ""): string {
+  const title = itemTitle.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  return [siteName.trim(), planLabel.trim(), title].filter(Boolean).join(" - ").slice(0, 100);
 }
+
+// ---------------------------------------------------------------------------------------------------------------- רכישות פריט (single / bundle)
+
+/** תיאור ההזמנה של פריט (למייל / לתנועה הכספית / למנהלת) */
+export function describeItem(kind: PayableItemKind, title: string | null | undefined): string {
+  const t = (title ?? "").trim();
+  if (kind === "single") return t ? `הורדה בודדת – ${t}` : "הורדה בודדת";
+  return t ? `קובץ מורחב – תיקייה «${t}»` : "קובץ מורחב (תיקייה שלמה)";
+}
+
+/** השורה ב-purchases לרכישת פריט – בדיוק כמו purchaseAction הישן: בלי מכסה, בלי תוקף, הסכום אחרי קופון */
+export function itemPurchaseRow(intent: { userId: number; plan: PayableItemKind; materialId: number | null; itemCategoryId: number | null; amount: number; reference: string }) {
+  if (intent.plan === "single") {
+    if (!intent.materialId) throw new Error("לבקשת הורדה בודדת אין מזהה חומר");
+    return { userId: intent.userId, plan: "single" as const, materialId: intent.materialId, categoryId: intent.itemCategoryId, amount: intent.amount, downloadsLimit: null, endsAt: null, termDays: null, paymentRef: intent.reference, status: "active" as const };
+  }
+  if (!intent.itemCategoryId) throw new Error("לבקשת קובץ מורחב אין מזהה תיקייה");
+  return { userId: intent.userId, plan: "bundle" as const, materialId: null, categoryId: intent.itemCategoryId, amount: intent.amount, downloadsLimit: null, endsAt: null, termDays: null, paymentRef: intent.reference, status: "active" as const };
+}
+
+/** לאן מפנים אחרי תשלום מוצלח על פריט: תיקייה → הדף שלה עם הורדת כל הקבצים (?dlall=1, כמו בקופה הישנה); חומר → דף הפרק */
+export function itemSuccessHref(kind: PayableItemKind, folderHref: string): string {
+  return kind === "bundle" ? `${folderHref}?dlall=1` : folderHref;
+}
+
+/** שורת רכישה פעילה (לא פגה, status active) – מה שצריך כדי להחליט אם הפריט כבר "שלה" */
+export type ActivePurchaseLite = {
+  plan: string;
+  materialId: number | null;
+  categoryId: number | null;
+  subjectsPending: boolean;
+  downloadsLimit: number | null;
+  downloadsUsed: number;
+};
+export type ItemCoverage = "owned" | "bundle" | "subscription";
+const SUBSCRIPTION_PLANS = ["subject_monthly", "custom_monthly", "yearly", "substitute_3m", "substitute_daily"];
+
+/**
+ * האם המורה כבר מחזיקה גישה לפריט – אז לא נותנים לה לשלם עליו שוב (כמו hasActiveSamePlan למסלולים):
+ *   owned        – אותו חומר נרכש בודד / אותה תיקייה נרכשה כקובץ מורחב.
+ *   bundle       – תיקיית-אב של הפריט נרכשה כקובץ מורחב (מכסה את כל מה שבתוכה).
+ *   subscription – מנוי פעיל שמכסה את הפריט (מקצוע בשרשרת, או מנוי לכל המקצועות), עם מקצועות נבחרים ומכסה שלא נגמרה.
+ *                  לתיקייה: ממלאת מקום יומית (סל של 20 הורדות) לא חוסמת – ייתכן שהתיקייה גדולה מהסל.
+ * chainIds = שרשרת הקטגוריות של הפריט (מהמקצוע עד התיקייה עצמה / התיקייה של החומר). אותם כללים כמו checkEntitlement.
+ */
+export function itemAlreadyCovered(
+  kind: PayableItemKind,
+  target: { materialId?: number | null; categoryId: number; chainIds: number[] },
+  active: ActivePurchaseLite[],
+): ItemCoverage | null {
+  const chain = new Set(target.chainIds);
+  chain.add(target.categoryId);
+  if (kind === "single" && target.materialId && active.some((p) => p.plan === "single" && p.materialId === target.materialId)) return "owned";
+  for (const p of active) {
+    if (p.plan !== "bundle" || p.categoryId === null || !chain.has(p.categoryId)) continue;
+    return kind === "bundle" && p.categoryId === target.categoryId ? "owned" : "bundle";
+  }
+  for (const p of active) {
+    if (!SUBSCRIPTION_PLANS.includes(p.plan) || p.subjectsPending) continue;
+    if (kind === "bundle" && p.plan === "substitute_daily") continue;
+    if (p.categoryId !== null && !chain.has(p.categoryId)) continue;
+    if (p.downloadsLimit !== null && p.downloadsUsed >= p.downloadsLimit) continue;
+    return "subscription";
+  }
+  return null;
+}
+
+export const ITEM_COVERED_TEXT: Record<ItemCoverage, string> = {
+  owned: "כבר רכשת את הפריט הזה – אין צורך לשלם שוב. אפשר להוריד אותו מהדף שלו או מהאזור האישי.",
+  bundle: "התיקייה שהפריט הזה נמצא בה כבר שלך (קובץ מורחב) – אין צורך לשלם שוב.",
+  subscription: "המנוי הפעיל שלך כבר כולל את הפריט הזה – אין צורך לשלם עליו בנפרד.",
+};
 
 // ---------------------------------------------------------------------------------------------------------------- היסטוריית העסקאות (GetHistoryJson)
 
@@ -351,14 +451,19 @@ export function advanceLastId(ids: string[], failedIndex: number, current: numbe
   return max || null;
 }
 
-/** האם שתי בקשות "אותה הזמנה" (N2) – מסלול, מקצועות (ללא סדר), דלג, סכום */
-export function sameIntentParams(
-  a: { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number },
-  b: { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number },
-): boolean {
+/** האם שתי בקשות "אותה הזמנה" (N2) – מסלול, מקצועות (ללא סדר), דלג, סכום; ולפריט – אותו חומר / אותה תיקייה */
+type IntentParams = { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number; materialId?: number | null; itemCategoryId?: number | null };
+export function sameIntentParams(a: IntentParams, b: IntentParams): boolean {
   const sa = [...new Set(a.categoryIds)].sort((x, y) => x - y).join(",");
   const sb = [...new Set(b.categoryIds)].sort((x, y) => x - y).join(",");
-  return a.plan === b.plan && a.subjectsPending === b.subjectsPending && a.amount === b.amount && sa === sb;
+  return (
+    a.plan === b.plan &&
+    a.subjectsPending === b.subjectsPending &&
+    a.amount === b.amount &&
+    sa === sb &&
+    (a.materialId ?? null) === (b.materialId ?? null) &&
+    (a.itemCategoryId ?? null) === (b.itemCategoryId ?? null)
+  );
 }
 
 /** בקשה "תקועה": processing (אישור ידני) מעבר ל-INTENT_TTL_HOURS – דורשת טיפול (N10) */
@@ -540,10 +645,15 @@ export function extractCallbackFields(obj: unknown): { reference: string | null;
 
 // ---------------------------------------------------------------------------------------------------------------- טקסטים
 
-/** הטקסט שהמורה רואה לפי הסטטוס – פנייה בלשון נוכחת. stale = processing מעל 48 שעות (N10) */
-export function customerStatusText(status: string, assistRequested = false, stale = false): string {
+/**
+ * הטקסט שהמורה רואה לפי הסטטוס – פנייה בלשון נוכחת. stale = processing מעל 48 שעות (N10).
+ * kind = סוג ההזמנה (orderKindOf): ברכישת פריט "שולם" מדבר על הקובץ/התיקייה ולא על מנוי.
+ */
+export function customerStatusText(status: string, assistRequested = false, stale = false, kind: "plan" | PayableItemKind = "plan"): string {
   switch (status) {
     case "paid":
+      if (kind === "single") return "התשלום זוהה והקובץ זמין להורדה. תודה!";
+      if (kind === "bundle") return "התשלום זוהה – כל קבצי התיקייה זמינים להורדה. תודה!";
       return "התשלום זוהה והמנוי שלך פעיל. תודה!";
     case "processing":
       if (stale) return "הבקשה ממתינה לטיפול המנהלת כבר יותר מיומיים. אם שילמת – אין צורך לשלם שוב; כתבי לנו ונסדיר את זה.";

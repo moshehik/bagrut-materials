@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { privateCoupons } from "@/db/schema";
 import { getPlanPrices } from "@/lib/pricing";
 import { getNedarimApiPassword, redactNedarim } from "./secrets";
-import { PAYABLE_PLANS, PLAN_GROUPE_NAMES, type PayablePlan } from "./logic";
+import { GROUPE_NAMES, PAYABLE_ITEM_KINDS, PAYABLE_PLANS, type PayKey } from "./logic";
 import { createGroupeClient, planSyncRows, type NedarimCategory, type SyncPlanRow } from "./groupe-logic";
 
 /**
@@ -53,10 +53,16 @@ export async function getMaxActiveCouponPercent(): Promise<number> {
   }
 }
 
-/** מחירי המסלולים כפי שנגבים ב-/api/pay/intent (getPlanPrices – מחיר השקה/הגדרות), בשמות הקטגוריות בנדרים */
-export async function planPriceRows(): Promise<{ plan: PayablePlan; name: string; priceAgorot: number }[]> {
+/**
+ * מחירי המסלולים כפי שנגבים ב-/api/pay/intent (getPlanPrices – מחיר השקה/הגדרות), בשמות הקטגוריות בנדרים; ואחריהם שתי
+ * קטגוריות הפריטים (הורדה בודדת / קובץ מורחב) – מחיר משתנה (priceAgorot = null): רק צריכות להתקיים, בלי סכום מינימלי.
+ */
+export async function planPriceRows(): Promise<{ plan: PayKey; name: string; priceAgorot: number | null }[]> {
   const prices = await getPlanPrices();
-  return PAYABLE_PLANS.map((plan) => ({ plan, name: PLAN_GROUPE_NAMES[plan], priceAgorot: prices.plans[plan] }));
+  return [
+    ...PAYABLE_PLANS.map((plan) => ({ plan: plan as PayKey, name: GROUPE_NAMES[plan], priceAgorot: prices.plans[plan] as number | null })),
+    ...PAYABLE_ITEM_KINDS.map((plan) => ({ plan: plan as PayKey, name: GROUPE_NAMES[plan], priceAgorot: null })),
+  ];
 }
 
 /** מצב הסנכרון (בלי לשנות דבר) */
@@ -64,22 +70,25 @@ export async function planSyncStatus(categories: NedarimCategory[], maxDiscountP
   return planSyncRows(categories, await planPriceRows(), maxDiscountPercent);
 }
 
+export type SyncAction = { plan: PayKey; name: string; action: "created" | "updated" | "unchanged"; amountAgorot: number | null };
+
 /**
  * "סנכרן סכומים עם מחירי האתר": לכל מסלול – הקטגוריה לפי שם (נוצרת אם חסרה), Amount = המינימום (מחיר, או אחרי ההנחה
- * המקסימלית שמאפשרים). רק בלחיצה. מחזיר מה נעשה לכל מסלול.
+ * המקסימלית שמאפשרים); לקטגוריות הפריטים (מחיר משתנה) – יצירה בלי Amount אם חסרות, אחרת ללא שינוי. רק בלחיצה.
  */
-export async function syncPlanAmounts(maxDiscountPercent: number): Promise<{ plan: PayablePlan; name: string; action: "created" | "updated" | "unchanged"; amountAgorot: number }[]> {
+export async function syncPlanAmounts(maxDiscountPercent: number): Promise<SyncAction[]> {
   const c = await client();
   const categories = await c.list();
   const rows = planSyncRows(categories, await planPriceRows(), maxDiscountPercent);
-  const out: { plan: PayablePlan; name: string; action: "created" | "updated" | "unchanged"; amountAgorot: number }[] = [];
+  const out: SyncAction[] = [];
   for (const r of rows) {
+    const plan = r.plan as PayKey;
     if (r.inSync && r.category) {
-      out.push({ plan: r.plan as PayablePlan, name: r.name, action: "unchanged", amountAgorot: r.targetAgorot });
+      out.push({ plan, name: r.name, action: "unchanged", amountAgorot: r.targetAgorot });
       continue;
     }
     await c.save(r.category, { name: r.category?.name ?? r.name, amount: r.targetAgorot });
-    out.push({ plan: r.plan as PayablePlan, name: r.name, action: r.category ? "updated" : "created", amountAgorot: r.targetAgorot });
+    out.push({ plan, name: r.name, action: r.category ? "updated" : "created", amountAgorot: r.targetAgorot });
   }
   return out;
 }

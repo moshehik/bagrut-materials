@@ -3,8 +3,9 @@ import { getCurrentUser } from "@/lib/session";
 import { isSameOriginRequest } from "@/lib/http-utils";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { loadNedarimConfig, simulateAllowed } from "@/lib/nedarim/config";
-import { customerStatusText, isValidReference, OPEN_STATUSES } from "@/lib/nedarim/logic";
-import { getByReference, simulatedSettle } from "@/lib/nedarim/store";
+import { customerStatusText, isValidReference, orderKindOf, OPEN_STATUSES } from "@/lib/nedarim/logic";
+import { describeIntent, getByReference, simulatedSettle } from "@/lib/nedarim/store";
+import { successHrefFor } from "@/lib/nedarim/items";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { SYNC_USER_FLOOR_SEC, getSyncState, matchPendingPayments, nextAllowedAt, refreshHistory } from "@/lib/nedarim/sync";
 
@@ -64,7 +65,10 @@ export async function POST(req: NextRequest) {
       status: row.status,
       verified: row.verified,
       assistRequested: !!row.assistRequestedAt,
-      text: customerStatusText(row.status, !!row.assistRequestedAt),
+      text: customerStatusText(row.status, !!row.assistRequestedAt, false, orderKindOf(row.plan)),
+      kind: orderKindOf(row.plan),
+      label: describeIntent(row),
+      successHref: row.status === "paid" ? await successHrefFor(row) : null,
       note,
       lastCheckedAt: state?.lastSuccessAt ?? null,
       nextCheckAt: nextAllowedAt(state, SYNC_USER_FLOOR_SEC),

@@ -131,6 +131,17 @@ test("planSyncRows: finds by name (ignoring the * prefix), computes target and i
   const withCoupon = planSyncRows(cats, [{ plan: "yearly", name: "מנוי שנתי", priceAgorot: 58800 }], 20);
   assert.equal(withCoupon[0].targetAgorot, 47040);
   assert.equal(withCoupon[0].inSync, false);
+  // פריטים (הורדה בודדת / קובץ מורחב): מחיר משתנה → בלי יעד; "מסונכרן" = הקטגוריה קיימת, ה-Amount שלה לא משנה
+  const itemCats = parseGroupeList([...sample, { id: 249090, Name: "הורדה בודדת", Amount: "12", Goal: "", Cumule: "" }])!;
+  const items = planSyncRows(itemCats, [
+    { plan: "single", name: "הורדה בודדת", priceAgorot: null },
+    { plan: "bundle", name: "קובץ מורחב", priceAgorot: null },
+  ], 20);
+  assert.equal(items[0].targetAgorot, null);
+  assert.equal(items[0].category?.id, 249090);
+  assert.equal(items[0].inSync, true, "exists → in sync even with a manual Amount");
+  assert.equal(items[1].category, null);
+  assert.equal(items[1].inSync, false, "missing → will be created (without Amount)");
 });
 
 test("client: list / create / update (all fields) / delete / errors / redaction, key only in the POST body", async () => {

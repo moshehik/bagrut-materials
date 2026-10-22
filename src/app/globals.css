@@ -3022,7 +3022,7 @@ button.underline {
   background: #16244e;
   color: #ffd45a;
 }
-/* כפתור "דלג" בעמוד הרכישה (הטולטיפ – ה-data-tip הכללי של האתר) */
+/* כפתור "דלג" בעמוד הרכישה (הטולטיפ – ה-data-tip הכללי של האתר): זהב על הרקע הכהה של הפאנל */
 .gate-panel .gate-skip {
   background: transparent;
   border: 2px solid #ffd45a;
@@ -3030,6 +3030,14 @@ button.underline {
 }
 .gate-panel .gate-skip:hover:not(:disabled) {
   background: rgba(255, 212, 90, 0.12);
+}
+/* בתוך כרטיס בהיר (gate-card, רקע קרם) זהב בהיר על קרם כמעט לא נראה – שם הכפתור המשני כהה (כמו "שילמתי – בדקי עכשיו") */
+.gate-panel .gate-card .gate-skip {
+  border-color: #0a0a0a;
+  color: #0a0a0a;
+}
+.gate-panel .gate-card .gate-skip:hover:not(:disabled) {
+  background: rgba(10, 10, 10, 0.08);
 }
 /* רשימת הערים הנגללת בהרשמה: כרטיס זהב בהיר במסגרת שחורה, פס גלילה דק בצד ימין (ה-dir=ltr של העוטף) */
 .city-combo {

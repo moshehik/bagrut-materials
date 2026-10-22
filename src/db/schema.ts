@@ -748,6 +748,13 @@ export const nedarimPayments = pgTable(
     categoryIds: text("category_ids").notNull().default("[]"),
     /** מנוי שנתי עם "דלג" – המקצועות ייבחרו אחר כך (purchases.subjects_pending) */
     subjectsPending: boolean("subjects_pending").notNull().default(false),
+    /**
+     * רכישת פריט (plan = single / bundle; scripts/add-nedarim-item-columns.ts): החומר (single), התיקייה (bundle; ב-single –
+     * התיקייה של החומר, כמו purchases.category_id) ושם הפריט בזמן יצירת הבקשה (למייל/לאדמין/ל-avour). null במסלולי מנוי.
+     */
+    materialId: integer("material_id").references(() => materials.id, { onDelete: "set null" }),
+    itemCategoryId: integer("item_category_id").references(() => categories.id, { onDelete: "set null" }),
+    itemTitle: varchar("item_title", { length: 200 }),
     /** הסכום לחיוב באגורות (אחרי קופון) */
     amount: integer("amount").notNull(),
     /** מחיר המסלול לפני קופון (באגורות) */

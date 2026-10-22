@@ -2,21 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, CalendarDays, Check, CreditCard, Crown, ExternalLink, Loader2, Lock, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, Check, ChevronLeft, CreditCard, Crown, ExternalLink, FileText, FolderOpen, Loader2, Lock, RefreshCw } from "lucide-react";
 import { GateShekel } from "@/components/gate-shekel";
 import { GateField, LocationFields } from "@/components/auth-forms";
 import { SUBJECT_HOUSES, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
-import type { PayablePlan } from "@/lib/nedarim/logic";
+import type { PayableItemKind, PayablePlan } from "@/lib/nedarim/logic";
 
 /*
  * דף התשלום (/pay) – צד הדפדפן. ארבעה שלבים:
- *   plan    – בחירת מסלול (מדולג כשהגיעו עם ?plan=).
- *   details – מקצועות (שנתי 1–3 / ממלאת מקום 3 חודשים = 1 / יומית = בלי), פרטים חסרים (טלפון, עיר, תיכון), סיכום →
+ *   plan    – בחירת מסלול (מדולג כשהגיעו עם ?plan=, ולא קיים ברכישת פריט – ?material= / ?bundle=).
+ *   details – מקצועות (שנתי 1–3 / ממלאת מקום 3 חודשים = 1 / יומית = בלי; פריט = בלי), פרטים חסרים (טלפון, עיר, תיכון), סיכום →
  *             POST /api/pay/intent (יוצר בקשה NP-… ומחזיר את הקישור לדף התשלום המתארח של נדרים פלוס).
  *   waiting – הקישור לדף התשלום (נפתח בלשונית חדשה), "שילמתי – בדקי עכשיו" (POST /api/pay/check), polling רגוע של
  *             GET /api/pay/status (השרת קורא לנדרים לכל היותר פעם ב-4 דק' – לכולן ביחד), "לפתוח שוב את דף התשלום", ופנייה למנהלת.
- *   done    – המנוי פעיל / נכשל / ממתין לאישור ידני.
- * האתר לא מקבל פרטי כרטיס בשום שלב – ההקלדה היא בדף של נדרים (matara.pro).
+ *   done    – המנוי פעיל / הקובץ זמין (פריט: קישור לפרק / לתיקייה עם הורדת כל הקבצים) / נכשל / ממתין לאישור ידני.
+ * האתר לא מקבל פרטי כרטיס בשום שלב – ההקלדה היא בדף של נדרים (matara.pro). הסכום תמיד מהשרת.
  */
 
 export type PayPlanOption = {
@@ -28,9 +28,25 @@ export type PayPlanOption = {
   downloadsLimit: number | null;
   days: number | null;
 };
+/** פריט לרכישה (הורדה בודדת / קובץ מורחב) – נטען ואומת בשרת (/pay?material= / ?bundle=) */
+export type PayItemOption = {
+  kind: PayableItemKind;
+  /** מזהה החומר (single) / התיקייה (bundle) */
+  id: number;
+  title: string;
+  subtitle: string;
+  crumbs: string[];
+  /** דף הפרק / התיקייה */
+  href: string;
+  /** מחיר מחירון באגורות (מהשרת) */
+  price: number;
+  /** "הורדה בודדת" / "קובץ מורחב" */
+  label: string;
+};
 type Subject = { id: number; title: string; slug: string; icon: string };
 type Step = "plan" | "details" | "waiting" | "done";
-type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean };
+type OrderKind = "plan" | PayableItemKind;
+type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean; kind?: OrderKind; itemTitle?: string | null };
 type StatusInfo = {
   status: string;
   text: string;
@@ -39,6 +55,14 @@ type StatusInfo = {
   lastCheckedAt?: string | null;
   nextCheckAt?: string | null;
   note?: string;
+  /** סוג ההזמנה + תיאור + סכומים (מהשרת – חשוב אחרי רענון עם ?ref= בלבד) */
+  kind?: OrderKind;
+  label?: string;
+  amount?: number;
+  listAmount?: number;
+  couponPercent?: number | null;
+  /** לאן ממשיכים אחרי "שולם": מנוי → /account; חומר → דף הפרק; תיקייה → דף התיקייה עם ?dlall=1 */
+  successHref?: string | null;
 };
 
 const POLL_MS = 30_000;
@@ -49,6 +73,8 @@ const fmtTime = (iso: string | null | undefined) => (iso ? new Date(iso).toLocal
 
 export function PayClient(props: {
   plans: PayPlanOption[];
+  /** רכישת פריט (במקום מסלול) – שלב המסלול מדולג, בלי מקצועות */
+  item: PayItemOption | null;
   initialPlan: PayablePlan | null;
   subjects: Subject[];
   preselected: number[];
@@ -62,8 +88,8 @@ export function PayClient(props: {
   yearlyListMonthly: number;
   substituteMonthly: number;
 }) {
-  const { plans, subjects, user, coupon } = props;
-  const [step, setStep] = useState<Step>(props.initialRef ? "waiting" : props.initialPlan ? "details" : "plan");
+  const { plans, subjects, user, coupon, item } = props;
+  const [step, setStep] = useState<Step>(props.initialRef ? "waiting" : item || props.initialPlan ? "details" : "plan");
   const [planKey, setPlanKey] = useState<PayablePlan>(props.initialPlan ?? "yearly");
   const [selected, setSelected] = useState<number[]>(props.preselected.slice(0, YEARLY_INCLUDED_SUBJECTS));
   const [skip, setSkip] = useState(false);
@@ -75,13 +101,19 @@ export function PayClient(props: {
   const [startedAt] = useState(() => Date.now());
 
   const plan = useMemo(() => plans.find((p) => p.key === planKey) ?? plans[0], [plans, planKey]);
-  const isYearly = plan.key === "yearly";
-  const isSub3 = plan.key === "substitute_3m";
-  const isDaily = plan.key === "substitute_daily";
+  const isYearly = !item && plan.key === "yearly";
+  const isSub3 = !item && plan.key === "substitute_3m";
+  const isDaily = !item && plan.key === "substitute_daily";
   const needsSubjects = isYearly || isSub3;
   const maxPick = isSub3 ? 1 : YEARLY_INCLUDED_SUBJECTS;
-  const discounted = coupon ? Math.round((plan.price * (100 - coupon.percent)) / 100) : plan.price;
+  /** מחיר המחירון להצגה – מהשרת (פריט: המחיר שנטען בדף; מסלול: מההגדרות). הסכום הנגבה נקבע בשרת ב-/api/pay/intent */
+  const basePrice = item ? item.price : plan.price;
+  const discounted = coupon ? Math.round((basePrice * (100 - coupon.percent)) / 100) : basePrice;
   const canSubmit = !needsSubjects || skip || (selected.length >= 1 && selected.length <= maxPick);
+  /** סוג ההזמנה: מהדף (פריט), או מהשרת (אחרי רענון עם ?ref= בלבד) */
+  const orderKind: OrderKind = item ? item.kind : (info?.kind ?? intent?.kind ?? "plan");
+  const orderLabel = item ? `${item.label} – ${item.title}` : (info?.label ?? plan.label);
+  const itemHome = item ? `/pay?${item.kind === "single" ? "material" : "bundle"}=${item.id}` : "/pay";
   const check = <Check className="mt-1 h-4 w-4 shrink-0" aria-hidden />;
   const arrow = <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />;
 
@@ -179,14 +211,15 @@ export function PayClient(props: {
     setBusy(true);
     try {
       const fd = new FormData(e.currentTarget);
-      const body = {
-        plan: plan.key,
-        categoryIds: needsSubjects && !skip ? selected : [],
-        skipSubjects: isYearly && skip,
+      const profile = {
         phone: props.needsPhone ? String(fd.get("phone") ?? "") : undefined,
         city: props.needsLocation ? String(fd.get("city") ?? "") : undefined,
         school: props.needsLocation ? String(fd.get("school") ?? "") : undefined,
       };
+      // פריט: רק המזהה – המחיר נקבע בשרת; מסלול: מקצועות/דלג
+      const body = item
+        ? { plan: item.kind, ...(item.kind === "single" ? { materialId: item.id } : { categoryId: item.id }), ...profile }
+        : { plan: plan.key, categoryIds: needsSubjects && !skip ? selected : [], skipSubjects: isYearly && skip, ...profile };
       const res = await fetch("/api/pay/intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -211,12 +244,70 @@ export function PayClient(props: {
   }
 
   const restart = () => {
-    setStep(props.initialPlan ? "details" : "plan");
+    setStep(item || props.initialPlan ? "details" : "plan");
     setIntent(null);
     setInfo(null);
     setError("");
-    window.history.replaceState(null, "", "/pay");
+    window.history.replaceState(null, "", itemHome);
   };
+
+  /* ---------- כרטיס הפריט (הורדה בודדת / קובץ מורחב) – כמו הסיכום בקופה הישנה ---------- */
+  const itemCard = item ? (
+    <div className="gate-card">
+      <div className="flex gap-4">
+        <span className="gate-icon shrink-0">
+          {item.kind === "bundle" ? <FolderOpen className="h-6 w-6" strokeWidth={1.5} aria-hidden /> : <FileText className="h-6 w-6" strokeWidth={1.5} aria-hidden />}
+        </span>
+        <div className="min-w-0">
+          {item.crumbs.length > 0 && (
+            <p className="gate-soft flex flex-wrap items-center gap-1 text-base">
+              {item.crumbs.map((c, i) => (
+                <span key={`${i}-${c}`} className="flex items-center gap-1">
+                  {i > 0 && <ChevronLeft className="h-3 w-3" aria-hidden />}
+                  {c}
+                </span>
+              ))}
+            </p>
+          )}
+          <h2 className="mt-1 text-2xl leading-snug">{item.title}</h2>
+          <p className="gate-soft text-base">{item.subtitle}</p>
+          <Link href={item.href} className="text-base underline">
+            {item.kind === "bundle" ? "חזרה לתיקייה" : "חזרה לפרק"}
+          </Link>
+        </div>
+        <span className="gate-price ms-auto whitespace-nowrap">
+          <GateShekel agorot={item.price} />
+        </span>
+      </div>
+      <hr className="gate-divider" />
+      <ul className="space-y-1 text-start">
+        <li className="flex gap-2">
+          {check}
+          <span>{item.kind === "bundle" ? "כל הקבצים בתיקייה ובכל תתי-הפרקים שלה – להורדה בלי הגבלת זמן" : "הקובץ נשאר זמין לך להורדה בלי הגבלת זמן"}</span>
+        </li>
+        <li className="flex gap-2">
+          {check}
+          <span>{item.kind === "bundle" ? "אחרי התשלום תועברי לתיקייה וכל הקבצים יירדו אוטומטית" : "אחרי התשלום תועברי לדף הפרק להורדה"}</span>
+        </li>
+      </ul>
+      <div className="mt-5 space-y-2 text-start text-base leading-loose !text-[#6b3f1d]">
+        <p className="font-bold">כל קובץ שתורידי יוטבע:</p>
+        <ul className="space-y-1">
+          <li>
+            בשמך (<b>{user.fullName}</b>)
+          </li>
+          <li>
+            בכתובת המייל שלך (<b dir="ltr">{user.email}</b>)
+          </li>
+          <li>{user.phone ? <>במספר הטלפון שלך (<b dir="ltr">{user.phone}</b>)</> : "במספר הטלפון שלך"}</li>
+          <li>
+            ובמספר האישי שלך (<b dir="ltr">{user.personalCode}</b>)
+          </li>
+        </ul>
+        <p>כך אנחנו שומרים על זכויות היוצרים של הכותבות.</p>
+      </div>
+    </div>
+  ) : null;
 
   /* ---------- כרטיס המסלול (כמו בעמוד השלמת הרשמה) ---------- */
   const planCard = (
@@ -336,6 +427,10 @@ export function PayClient(props: {
   if (step === "done" && intent && info) {
     const paid = info.status === "paid";
     const failed = info.status === "failed" || info.status === "cancelled" || info.status === "expired";
+    const kind = info.kind ?? orderKind;
+    const paidTitle = kind === "single" ? "הקובץ שלך מוכן להורדה!" : kind === "bundle" ? "התיקייה שלך מוכנה להורדה!" : "המנוי שלך פעיל!";
+    const successHref = info.successHref || (kind === "plan" ? "/account" : item?.href || "/account");
+    const successLabel = kind === "single" ? "לפרק ולהורדת הקובץ" : kind === "bundle" ? "לתיקייה – הורדת כל הקבצים" : "לאזור האישי ולהורדות";
     return (
       <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-live="polite">
         <span className="gold-ring" aria-hidden="true" />
@@ -343,15 +438,21 @@ export function PayClient(props: {
           <span className="gate-icon mx-auto">
             {paid ? <Check className="h-6 w-6" strokeWidth={2} aria-hidden /> : failed ? <AlertCircle className="h-6 w-6" aria-hidden /> : <Loader2 className="h-6 w-6 animate-spin" aria-hidden />}
           </span>
-          <h2 className="mt-2 text-2xl">{paid ? "המנוי שלך פעיל!" : failed ? "התשלום לא הושלם" : "הבקשה בטיפול"}</h2>
+          <h2 className="mt-2 text-2xl">{paid ? paidTitle : failed ? "התשלום לא הושלם" : "הבקשה בטיפול"}</h2>
           <p className="gate-soft mt-2 text-lg">{info.text}</p>
+          {info.label && <p className="mt-1 text-base">{info.label}</p>}
           <p className="mt-3 text-base">
             מזהה הבקשה: <b dir="ltr">{intent.reference}</b> – כדאי לשמור אותו לכל פנייה.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {paid && (
-              <Link href="/account" className="btn btn-gold btn-gate py-2">
-                לאזור האישי ולהורדות {arrow}
+              <Link href={successHref} className="btn btn-gold btn-gate py-2">
+                {successLabel} {arrow}
+              </Link>
+            )}
+            {paid && kind !== "plan" && (
+              <Link href="/account" className="btn gate-skip py-2">
+                לאזור האישי
               </Link>
             )}
             {failed && (
@@ -373,16 +474,20 @@ export function PayClient(props: {
   /* ---------- שלב ההמתנה (אחרי יצירת הבקשה / חזרה מנדרים) ---------- */
   if (step === "waiting" && intent) {
     const hostedUrl = info?.hostedUrl ?? intent.hostedUrl;
-    const amount = intent.amount || 0;
+    // הסכומים מהשרת: מהבקשה שנוצרה עכשיו, או מהסטטוס (אחרי רענון / חזרה מנדרים עם ?ref= בלבד)
+    const amount = intent.amount || info?.amount || 0;
+    const listAmount = intent.listAmount || info?.listAmount || 0;
+    const couponPercent = intent.couponPercent ?? info?.couponPercent ?? null;
     const last = fmtTime(info?.lastCheckedAt);
     const next = fmtTime(info?.nextCheckAt);
+    const opens = orderKind === "single" ? "הקובץ ייפתח להורדה" : orderKind === "bundle" ? "קבצי התיקייה ייפתחו להורדה" : "המנוי ייפתח";
     return (
       <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8" aria-labelledby="pay-h" aria-live="polite">
         <span className="gold-ring" aria-hidden="true" />
         <div className="gate-strip gate-total">
           <div className="flex w-full items-baseline justify-between gap-4">
             <span id="pay-h" className="text-2xl">
-              {amount ? `לתשלום – ${plan.label}` : "בקשת התשלום שלך"}
+              {amount ? `לתשלום – ${orderLabel}` : "בקשת התשלום שלך"}
             </span>
             {amount > 0 && (
               <span className="gate-price">
@@ -390,9 +495,9 @@ export function PayClient(props: {
               </span>
             )}
           </div>
-          {intent.couponPercent ? (
+          {couponPercent && listAmount ? (
             <div className="w-full text-base">
-              כולל {intent.couponPercent}% הנחה מהקופון שלך (במקום <GateShekel agorot={intent.listAmount} />)
+              כולל {couponPercent}% הנחה מהקופון שלך (במקום <GateShekel agorot={listAmount} />)
             </div>
           ) : null}
         </div>
@@ -401,7 +506,7 @@ export function PayClient(props: {
           <h3 className="text-xl">{opened ? "שילמת? נבדוק מול נדרים פלוס" : "שלב 1 – התשלום בדף המאובטח של נדרים פלוס"}</h3>
           <p className="gate-soft text-base leading-relaxed">
             הדף נפתח בלשונית חדשה עם הסכום נעול והפרטים שלך כבר ממולאים. <b>אין צורך להעתיק או להקליד שום פרט – רק לשלם.</b> אחרי
-            התשלום חזרי לכאן – המנוי ייפתח אוטומטית ברגע שהתשלום יזוהה. <b>הבדיקה מול נדרים פלוס מתבצעת פעם בכמה דקות</b>, אז ייתכן שתצטרכי להמתין קצת. אין צורך לשלם פעמיים.
+            התשלום חזרי לכאן – {opens} אוטומטית ברגע שהתשלום יזוהה. <b>הבדיקה מול נדרים פלוס מתבצעת פעם בכמה דקות</b>, אז ייתכן שתצטרכי להמתין קצת. אין צורך לשלם פעמיים.
           </p>
           <div className="flex flex-wrap gap-2">
             {hostedUrl ? (
@@ -449,8 +554,8 @@ export function PayClient(props: {
     );
   }
 
-  /* ---------- שלב בחירת מסלול ---------- */
-  if (step === "plan") {
+  /* ---------- שלב בחירת מסלול (לא קיים ברכישת פריט) ---------- */
+  if (step === "plan" && !item) {
     return (
       <section className="gate-panel mx-auto mt-8 max-w-3xl sm:!p-8" aria-labelledby="plan-h">
         <span className="gold-ring" aria-hidden="true" />
@@ -492,11 +597,11 @@ export function PayClient(props: {
           🎟️ יש לך קופון «{coupon.label}» – {coupon.percent}% הנחה יורדים אוטומטית מהסכום.
         </div>
       )}
-      {planCard}
+      {item ? itemCard : planCard}
       <form onSubmit={submitDetails} className="mt-8 space-y-8">
         {errorStrip}
 
-        {needsSubjects && (
+        {needsSubjects && !item && (
           <section aria-labelledby="pick-h">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 id="pick-h" className="text-3xl">
@@ -575,14 +680,14 @@ export function PayClient(props: {
         <div className="gate-strip gate-total">
           <div className="w-full space-y-1">
             <div className="flex justify-between gap-4">
-              <span>מחיר המסלול</span>
-              <GateShekel agorot={plan.price} />
+              <span>{item ? (item.kind === "bundle" ? "מחיר התיקייה" : "מחיר הקובץ") : "מחיר המסלול"}</span>
+              <GateShekel agorot={basePrice} />
             </div>
             {coupon && (
               <div className="flex justify-between gap-4">
                 <span>קופון {coupon.percent}% הנחה</span>
                 <span>
-                  −<GateShekel agorot={plan.price - discounted} />
+                  −<GateShekel agorot={basePrice - discounted} />
                 </span>
               </div>
             )}
@@ -601,7 +706,7 @@ export function PayClient(props: {
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" aria-hidden />}
               המשך לתשלום מאובטח {arrow}
             </button>
-            {!props.initialPlan && (
+            {!props.initialPlan && !item && (
               <button type="button" className="btn gate-skip py-2" onClick={() => setStep("plan")} disabled={busy}>
                 החלפת מסלול
               </button>

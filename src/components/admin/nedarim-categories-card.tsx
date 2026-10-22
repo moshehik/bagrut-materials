@@ -112,8 +112,9 @@ export function NedarimCategoriesCard({
         </button>
       </div>
       <p className="text-xs text-muted">
-        הקטגוריות שמופיעות בדף התשלום של נדרים. הקישור מהאתר מעביר את שם המסלול כקטגוריה (<code>groupe</code>) – לדוחות בלבד, הזיהוי
-        לא נשען על זה. «סכום מינימלי» הוא ה-Amount של נדרים: הסכום הנמוך ביותר שהדף שלהם מקבל לקטגוריה.
+        הקטגוריות שמופיעות בדף התשלום של נדרים. הקישור מהאתר מעביר את שם המסלול (או «הורדה בודדת» / «קובץ מורחב») כקטגוריה
+        (<code>groupe</code>) – לדוחות בלבד, הזיהוי לא נשען על זה. «סכום מינימלי» הוא ה-Amount של נדרים: הסכום הנמוך ביותר שהדף שלהם
+        מקבל לקטגוריה; לקטגוריות הפריטים המחיר משתנה, לכן הן נוצרות בלי מינימום.
       </p>
       {loadError && (
         <p className="text-red-700 text-xs">
@@ -145,8 +146,8 @@ export function NedarimCategoriesCard({
             {sync.map((r) => (
               <tr key={r.plan} className="border-t border-yellow-200/60">
                 <td className="py-1 pe-2">{r.name}{!r.category && <span className="text-muted"> (תיווצר)</span>}</td>
-                <td className="py-1 pe-2 whitespace-nowrap">{money(r.priceAgorot)}</td>
-                <td className="py-1 pe-2 whitespace-nowrap">{money(r.targetAgorot)}</td>
+                <td className="py-1 pe-2 whitespace-nowrap">{r.priceAgorot === null ? <span className="text-muted">לפי הפריט</span> : money(r.priceAgorot)}</td>
+                <td className="py-1 pe-2 whitespace-nowrap">{r.targetAgorot === null ? <span className="text-muted">בלי מינימום</span> : money(r.targetAgorot)}</td>
                 <td className="py-1 pe-2 whitespace-nowrap">{r.category ? money(r.category.amount) : "—"}</td>
                 <td className="py-1 pe-2">
                   {r.inSync ? <span className="chip bg-green-100 text-green-800">מסונכרן</span> : <span className="chip bg-red-100 text-red-700">לא מסונכרן</span>}

@@ -169,7 +169,7 @@ export async function syncNedarimPlanAmounts(_prev: GroupeActionState, form: For
     const r = await syncPlanAmounts(pct);
     await logAudit({ actorId: me.id, action: "nedarim.groupe_sync", details: { mode, percent: pct, result: r } });
     revalidatePath("/admin/payments");
-    const parts = r.map((x) => `${x.name}: ${x.action === "created" ? "נוצרה" : x.action === "updated" ? "עודכנה" : "ללא שינוי"} (₪${(x.amountAgorot / 100).toLocaleString("he-IL")})`);
+    const parts = r.map((x) => `${x.name}: ${x.action === "created" ? "נוצרה" : x.action === "updated" ? "עודכנה" : "ללא שינוי"} (${x.amountAgorot === null ? "בלי מינימום – מחיר לפי הפריט" : `₪${(x.amountAgorot / 100).toLocaleString("he-IL")}`})`);
     return { ok: true, message: `סונכרן${pct ? ` (מינימום אחרי ${pct}% הנחה)` : ""}: ${parts.join(" · ")}` };
   } catch (e) {
     await logAudit({ actorId: me.id, action: "nedarim.groupe_sync_failed", details: { mode, percent: pct, error: groupeErr(e) } });

@@ -171,17 +171,22 @@ export function minimumAmountAgorot(planPriceAgorot: number, maxDiscountPercent:
   return Math.max(0, discounted);
 }
 
-export type SyncPlanRow = { plan: string; name: string; priceAgorot: number; targetAgorot: number; category: NedarimCategory | null; inSync: boolean };
+/**
+ * priceAgorot = null → מחיר משתנה (הורדה בודדת / קובץ מורחב: לכל חומר/תיקייה מחיר משלו), אז אין סכום יעד; הקטגוריה
+ * רק צריכה להתקיים בנדרים (targetAgorot = null, inSync = קיימת). ה-Amount שלה (אם הוגדר ידנית) לא נוגעים בו.
+ */
+export type SyncPlanRow = { plan: string; name: string; priceAgorot: number | null; targetAgorot: number | null; category: NedarimCategory | null; inSync: boolean };
 
-/** מצב הסנכרון לכל מסלול: הקטגוריה לפי שם (בלי *), הסכום היעד, והאם Amount הנוכחי שווה לו */
+/** מצב הסנכרון לכל מסלול/פריט: הקטגוריה לפי שם (בלי *), הסכום היעד, והאם Amount הנוכחי שווה לו */
 export function planSyncRows(
   categories: NedarimCategory[],
-  plans: { plan: string; name: string; priceAgorot: number }[],
+  plans: { plan: string; name: string; priceAgorot: number | null }[],
   maxDiscountPercent: number,
 ): SyncPlanRow[] {
   const byName = new Map(categories.map((c) => [c.name.replace(/^\*/, "").trim(), c]));
   return plans.map((p) => {
     const category = byName.get(p.name.trim()) ?? null;
+    if (p.priceAgorot === null) return { ...p, targetAgorot: null, category, inSync: !!category };
     const targetAgorot = minimumAmountAgorot(p.priceAgorot, maxDiscountPercent);
     return { ...p, targetAgorot, category, inSync: !!category && category.amount === targetAgorot };
   });

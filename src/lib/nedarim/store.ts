@@ -23,12 +23,15 @@ import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
   checkManualTransaction,
+  describeItem,
   extractCallbackFields,
   generateReference,
+  isPayableItemKind,
+  itemPurchaseRow,
   needsPurchaseRepair,
   settlementPlan,
   type MatchKind,
-  type PayablePlan,
+  type PayKey,
   type TxForMatch,
   type VerifyMethod,
 } from "./logic";
@@ -87,11 +90,12 @@ export function parseCategoryIds(row: Pick<NedarimPayment, "categoryIds">): numb
   }
 }
 
-/** תיאור קצר של מה נרכש (למייל / לתנועה הכספית / למנהלת) */
-export function describeIntent(row: Pick<NedarimPayment, "plan" | "subjectsPending" | "couponPercent">, subjectTitles: string[] = []) {
+/** תיאור קצר של מה נרכש (למייל / לתנועה הכספית / למנהלת). פריט: "הורדה בודדת – <שם>" / "קובץ מורחב – תיקייה «<שם>»" */
+export function describeIntent(row: Pick<NedarimPayment, "plan" | "subjectsPending" | "couponPercent"> & { itemTitle?: string | null }, subjectTitles: string[] = []) {
+  const coupon = row.couponPercent ? ` (קופון ${row.couponPercent}% הנחה)` : "";
+  if (isPayableItemKind(row.plan)) return `${describeItem(row.plan, row.itemTitle)}${coupon}`;
   const label = PLANS[row.plan].label;
   const subjects = subjectTitles.length ? ` – ${subjectTitles.join(", ")}` : row.subjectsPending ? " – המקצועות ייבחרו בחשבון" : "";
-  const coupon = row.couponPercent ? ` (קופון ${row.couponPercent}% הנחה)` : "";
   return `${label}${subjects}${coupon}`;
 }
 
@@ -106,12 +110,18 @@ export async function findOpenWithCoupon(userId: number, couponId: number): Prom
   return row ?? null;
 }
 
-/** יצירת בקשת תשלום חדשה (status pending). המקצועות כבר אומתו ע"י הקורא (מקצועות ראשיים, 1–3). */
+/**
+ * יצירת בקשת תשלום חדשה (status pending). המקצועות כבר אומתו ע"י הקורא (מקצועות ראשיים, 1–3); לפריט (single/bundle) –
+ * החומר/התיקייה כבר נטענו ואומתו (loadPayableItem) ו-materialId/itemCategoryId/itemTitle מגיעים משם.
+ */
 export async function createIntent(input: {
   userId: number;
-  plan: PayablePlan;
+  plan: PayKey;
   categoryIds: number[];
   subjectsPending: boolean;
+  materialId?: number | null;
+  itemCategoryId?: number | null;
+  itemTitle?: string | null;
   listAmount: number;
   amount: number;
   coupon: { id: number; percent: number } | null;
@@ -136,6 +146,9 @@ export async function createIntent(input: {
           plan: input.plan,
           categoryIds: JSON.stringify(input.categoryIds),
           subjectsPending: input.subjectsPending,
+          materialId: input.materialId ?? null,
+          itemCategoryId: input.itemCategoryId ?? null,
+          itemTitle: input.itemTitle ? input.itemTitle.slice(0, 200) : null,
           amount: input.amount,
           listAmount: input.listAmount,
           couponId: input.coupon?.id ?? null,
@@ -152,6 +165,9 @@ export async function createIntent(input: {
       await appendEvent(row.id, "created", `בקשה נוצרה: ${formatPrice(row.amount)} (${row.plan})`, {
         categoryIds: input.categoryIds,
         subjectsPending: input.subjectsPending,
+        materialId: input.materialId ?? null,
+        itemCategoryId: input.itemCategoryId ?? null,
+        itemTitle: input.itemTitle ?? null,
         coupon: input.coupon,
       });
       return row;
@@ -175,12 +191,19 @@ export async function touchPayment(id: number, patch: Partial<typeof nedarimPaym
     .where(eq(nedarimPayments.id, id));
 }
 
-/** שורות ה-purchases שהתשלום מייצר – אותם כללים כמו purchaseAction (src/lib/actions/purchase.ts) */
+/**
+ * שורות ה-purchases שהתשלום מייצר – אותם כללים כמו purchaseAction (src/lib/actions/purchase.ts): מסלול מנוי – שורה לכל
+ * מקצוע, הסכום על הראשונה; פריט (single/bundle) – שורה אחת בלי מכסה ובלי תוקף (itemPurchaseRow). שורות ישנות (לפני
+ * העמודות material_id/item_category_id) הן תמיד מסלולי מנוי, אז השדות החסרים לא משנים דבר.
+ */
 export function buildPurchaseRows(
-  intent: Pick<NedarimPayment, "userId" | "plan" | "categoryIds" | "subjectsPending" | "amount" | "reference">,
+  intent: Pick<NedarimPayment, "userId" | "plan" | "categoryIds" | "subjectsPending" | "amount" | "reference"> & { materialId?: number | null; itemCategoryId?: number | null },
   prices: Pick<PlanPrices, "substituteDailyDownloads">,
 ): (typeof purchases.$inferInsert)[] {
   const plan = intent.plan as Plan;
+  if (isPayableItemKind(plan)) {
+    return [itemPurchaseRow({ userId: intent.userId, plan, materialId: intent.materialId ?? null, itemCategoryId: intent.itemCategoryId ?? null, amount: intent.amount, reference: intent.reference })];
+  }
   const def = PLANS[plan];
   const days = def.days ?? 30;
   const base = { userId: intent.userId, plan, paymentRef: intent.reference, status: "active" as const };
@@ -340,7 +363,7 @@ async function settle(
     action: how.method === "manual" ? "purchase.nedarim_manual" : "purchase.nedarim",
     entityType: "purchase",
     entityId: purchaseId,
-    details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, matchKind: how.method === "api_weak" ? "weak_auto" : how.method === "api" ? "strong" : null, transactionId: txId, categoryIds: parseCategoryIds(intent), reusedPurchase: plan !== "insert" },
+    details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, verified: how.verified, method: how.method, matchKind: how.method === "api_weak" ? "weak_auto" : how.method === "api" ? "strong" : null, transactionId: txId, categoryIds: parseCategoryIds(intent), materialId: intent.materialId ?? null, itemCategoryId: intent.itemCategoryId ?? null, reusedPurchase: plan !== "insert" },
   });
   if (plan === "insert") {
     await step("מייל", async () => {
@@ -417,7 +440,7 @@ export async function ensurePurchasesForPaid(intent: NedarimPayment, adminId: nu
       await appendEvent(intent.id, "error", `תנועה כספית בתיקון נכשלה: ${errText(e)}`);
     }
     await appendEvent(intent.id, "repaired", `נוצר המנוי החסר לבקשה ששולמה (#${purchaseId})`, { purchaseId, rows: rows.length, adminId });
-    await logAudit({ actorId: adminId ?? intent.userId, action: "purchase.nedarim_repair", entityType: "purchase", entityId: purchaseId, details: { reference: intent.reference, plan: intent.plan, amount: intent.amount } });
+    await logAudit({ actorId: adminId ?? intent.userId, action: "purchase.nedarim_repair", entityType: "purchase", entityId: purchaseId, details: { reference: intent.reference, plan: intent.plan, amount: intent.amount, materialId: intent.materialId ?? null, itemCategoryId: intent.itemCategoryId ?? null } });
     return { ok: true, status: "paid", verified: intent.verified, reason: "המנוי החסר נוצר", purchaseId, claimed: false };
   } catch (e) {
     const msg = errText(e);
@@ -532,7 +555,7 @@ export async function requestAssist(row: NedarimPayment, adminMail: string | nul
         email: user.email,
         phone: row.phone ?? user.phone,
         reference: row.reference,
-        planLabel: PLANS[row.plan].label,
+        planLabel: describeIntent(row),
         amountText: formatPrice(row.amount),
       });
       const send = () => sendMail({ to: adminMail, ...t, kind: "pay_assist", userId: user.id }).catch((e) => console.error("[nedarim] assist mail", errText(e)));

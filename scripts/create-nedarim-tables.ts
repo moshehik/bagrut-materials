@@ -48,6 +48,10 @@ export const NEDARIM_TABLES_SQL = [
     created_at timestamp NOT NULL DEFAULT now(),
     updated_at timestamp NOT NULL DEFAULT now()
   )`,
+  // רכישת פריט דרך /pay (הורדה בודדת / קובץ מורחב) – נוספו אחרי הגרסה הראשונה (ר' גם scripts/add-nedarim-item-columns.ts)
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS material_id integer REFERENCES materials(id) ON DELETE SET NULL`,
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS item_category_id integer REFERENCES categories(id) ON DELETE SET NULL`,
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS item_title varchar(200)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS nedarim_payments_reference_idx ON nedarim_payments (reference)`,
   `CREATE INDEX IF NOT EXISTS nedarim_payments_user_idx ON nedarim_payments (user_id)`,
   `CREATE INDEX IF NOT EXISTS nedarim_payments_status_idx ON nedarim_payments (status, created_at)`,

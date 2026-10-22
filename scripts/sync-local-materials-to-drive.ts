@@ -35,7 +35,7 @@ import { getRootFolderId } from "../src/lib/driveBridgeCore";
 const makeResolver = require("./local-category-resolver.cjs") as (cats: unknown[]) => { resolve: (rel: string) => { cat?: number; why?: string; path?: string } };
 
 const ROOT = path.resolve("חומרים מוכנים מחדש");
-const DATE = "2026-10-05";
+const DATE = "2026-10-22";
 const PLAN = path.join(ROOT, "_ייבוא-לאתר", `תוכנית-סנכרון-${DATE}.json`);
 const LOG = path.join(ROOT, "_ייבוא-לאתר", `יומן-סנכרון-${DATE}.json`);
 const BACKUP = path.join(ROOT, `_גיבוי-דרייב-לפני-עדכון-${DATE}`);

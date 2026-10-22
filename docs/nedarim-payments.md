@@ -14,6 +14,52 @@
 > תיקון תיעוד: גרסאות קודמות של המסמך (ושל השיחה) טענו שאין ב-API של נדרים פעולה ליצירת קטגוריות. זה **שגוי** – בגרסה המלאה של
 > התיעוד שלהם יש `GetNewGroupe` / `SaveEditGroupe` / `DeleteEditGroupe` (ר' "קטגוריות"). הטעות נבעה מקריאה חלקית של המסמך.
 
+## רכישת פריט בודד דרך נדרים – הורדה בודדת / קובץ מורחב (נוסף 22.10.2026, **לא פרוס, לא נבדק מול נדרים**)
+
+בנוסף למסלולי המנוי, `/pay` מוכר גם **פריטים**: `?material=ID` = הורדה בודדת (plan `single`, מחיר = `materials.price`) ו-`?bundle=ID` =
+קובץ מורחב – תיקייה שלמה (plan `bundle`, מחיר = `bundleAmountFor` ב-`purchase-helpers.ts`: מחיר ידני / 15 ₪ ליחידה / 70% מסכום
+החומרים – בדיוק כמו הקופה הישנה). אותה זרימה בדיוק: `POST /api/pay/intent` → `NP-…` → הדף המתארח (סכום נעול, `Analytic` =
+המזהה) → polling → `sync.ts` (אותו שער 20/שעה) → `matchPendingPayments` → `settleFromTransaction` → **אותה שורת `purchases` שהקופה
+הישנה (`purchaseAction`) יצרה**: `single` = `{plan:"single", materialId, categoryId: התיקייה של החומר, amount, downloadsLimit:null,
+endsAt:null}`, `bundle` = `{plan:"bundle", categoryId, amount, downloadsLimit:null, endsAt:null}` (`itemPurchaseRow` ב-`logic.ts`,
+נקרא מ-`buildPurchaseRows`). אישור ידני / "תקן מנוי" / סימולציה עובדים לפריטים דרך אותו `settle`.
+
+- **מסך המעבר:** `/checkout?material=ID` ו-`/checkout?bundle=ID` מפנים ל-`/pay?material=` / `/pay?bundle=` כשההגדרה דולקת (במקום
+  הודעת "עוד לא זמינה"); כבויה → הקופה המדומה כמו קודם. `/pay` כבוי → חזרה ל-`/checkout`. קישורי ההורדה (`/api/download/[id]`
+  → `/checkout?material=`, `download-folder` → `/checkout?bundle=`, כרטיסי החומר, באנר התיקייה) לא שונו.
+- **DB (`nedarim_payments`):** `plan` הוא ה-enum `plan` שכבר מכיל `single`/`bundle` (אומת ב-Neon, קריאה בלבד – אין צורך ב-DDL ל-enum).
+  נוספו 3 עמודות **nullable**: `material_id` (REFERENCES materials, SET NULL), `item_category_id` (REFERENCES categories, SET NULL;
+  ב-single = התיקייה של החומר, כמו `purchases.category_id`), `item_title varchar(200)` (שם הפריט בזמן הבקשה – למייל/לאדמין/ל-avour).
+  **DDL: `npx tsx scripts/add-nedarim-item-columns.ts` (dry-run) → `--apply` – חייב לרוץ ב-Neon לפני ה-push** (drizzle בוחר את כל
+  העמודות; בלעדיהן כל SELECT מ-`nedarim_payments` ייכשל, כולל למסלולי המנוי). אותן פקודות גם ב-`create-nedarim-tables.ts`. שורות
+  ישנות (מנויים) נשארות עם NULL והקוד מתייחס אליהן כמסלול.
+- **כללים (כמו `purchaseAction` הישן + "כבר שלך"):** חומר חייב להיות `active`, השרשרת שלו לא מושהית, לא `free`, מחיר > 0; תיקייה
+  `active`, שרשרת לא מושהית, יש בה חומרים והמחיר > 0 (`loadPayableItem` ב-`src/lib/nedarim/items.ts`). **חסימת תשלום כפול**
+  (`itemAlreadyCovered` ב-`logic.ts`, על הרכישות הפעילות של `getActivePurchases`): `owned` – אותו חומר/אותה תיקייה כבר נרכשו;
+  `bundle` – תיקיית-אב נרכשה כקובץ מורחב; `subscription` – מנוי פעיל שמכסה (מקצוע בשרשרת או מנוי לכל המקצועות, לא "ממתין לבחירה",
+  מכסה לא נגמרה). לתיקייה – ממלאת מקום יומית (סל 20 הורדות) **לא** חוסמת. נבדק גם בדף (`/pay` מציג "הפריט הזה כבר שלך" עם קישור לפרק)
+  וגם ב-`/api/pay/intent` (409, `purchase.denied` עם `item_owned`/`item_bundle`/`item_subscription`). סכום תמיד מהשרת.
+- **קופון** (`getBestPercentCoupon`): אותה נוסחה כמו למסלולים – `round(list × (100−pct)/100)`; N2 (בקשה פתוחה עם אותו קופון)
+  משווה גם `materialId`/`itemCategoryId` (`sameIntentParams`). פרופיל חסר (טלפון/עיר/תיכון) – אותו קוד.
+- **נדרים:** `groupe` = "הורדה בודדת" / "קובץ מורחב" (`ITEM_GROUPE_NAMES`, `GROUPE_NAMES`, `groupeNameFor`); `avour` =
+  `"לו״ז העניין - הורדה בודדת - <שם החומר>"` (שם חומר/תיקייה = תוכן ציבורי, לא PII; ≤100 תווים). כרטיס "קטגוריות בנדרים פלוס"
+  מציג גם את שתי קטגוריות הפריטים ("לפי הפריט" / "בלי מינימום"), ו"סנכרן סכומים" **יוצר אותן אם חסרות – בלי `Amount`** (מחיר משתנה;
+  מינימום היה חוסם פריטים זולים); אם קיימות – לא נוגע בהן (`planSyncRows` עם `priceAgorot: null`). **הן עדיין לא נוצרו במוסד** –
+  ללחוץ "סנכרן סכומים" (או ליצור ידנית בשמות המדויקים) לפני ההפעלה; בלי קטגוריה `groupe` עדיין נרשם בעסקה כטקסט (אומת 22.10 – "נכנס
+  לשדה Groupe גם בלי שהוגדר בפורטל"), רק לא יופיע כקטגוריה בדוחות.
+- **אחרי "שולם":** `GET /api/pay/status` / `POST /api/pay/check` מחזירים `kind` (`plan`/`single`/`bundle`), `label`, סכומים ו-`successHref`
+  (`successHrefFor`): חומר → דף הפרק (`chainToHref`), תיקייה → דף התיקייה עם `?dlall=1` (הורדת כל הקבצים, כמו ה-redirect של הקופה
+  הישנה), מנוי → `/account`. דף הסיום: "הקובץ שלך מוכן להורדה!" / "התיקייה שלך מוכנה להורדה!" + כפתור. `customerStatusText` מקבל
+  `kind`. מייל `templates.purchase` עם `describeIntent` ("הורדה בודדת – <שם>" / "קובץ מורחב – תיקייה «<שם>»"); תנועה כספית
+  `method="nedarim"`; אודיט `purchase.nedarim` עם `materialId`/`itemCategoryId`.
+- **UI:** `/pay?material=` / `?bundle=` – בלי שלב מסלול ובלי מקצועות: כרטיס הפריט (פירורי לחם, שם, סוג/מספר חומרים, מחיר, "חזרה
+  לפרק/לתיקייה", הטבעת סימן המים) → פרטים חסרים → סיכום → נדרים. הטקסט "אין צורך להעתיק או להקליד שום פרט" נשאר. אדמין: עמודת
+  "מסלול" מציגה את שם הפריט + `#id`.
+- **בדיקות:** `scripts/nedarim-tests/items.test.ts` (7 בדיקות: מפתחות/שמות קטגוריה, קישור מתארח לפריט, avour בלי PII, שורת purchases,
+  N2 לפריט, כיסוי כפול על כל המקרים, טקסטים) + הרחבת `groupe.test.ts`. **לא אומת:** זרימה מלאה מול נדרים (תשלום אמיתי על פריט),
+  התנהגות הדף המתארח עם `groupe` שעוד לא קיים במוסד, דף ההמתנה/הסיום בדפדפן (אין DB בדיקה – `.env.local` = פרודקשן, לא הורצה
+  סימולציה), ו-`?dlall=1` אחרי החזרה. **שדרוג ממלאת מקום→שנתי** (`upgrade.ts`) עדיין בקופה המדומה (חסום כשההגדרה דולקת).
+
 ## עקרונות
 
 1. **אין iframe ואין ApiValid.** הניווט לדף של נדרים הוא ניווט רגיל של הדפדפן (לשונית חדשה). matara.pro פתוח בנטפרי (אומת ע"י משה).
@@ -168,7 +214,8 @@ Confirmation, LastNum, …`. עסקאות מבוטלות = `Amount` 0; זיכו�
 | `src/lib/nedarim/sync.ts` | שער הקריאה הגלובלי + מטמון העסקאות + `matchPendingPayments` |
 | `src/lib/nedarim/store.ts` | DB: יצירת בקשה, `settleFromTransaction` / `manualSettle` / `simulatedSettle` (השלמה אידמפוטנטית, `buildPurchaseRows`), ביטול, סיוע, CallBack, פקיעה |
 | `src/lib/nedarim/manage.ts` | `GetHistoryJson` (Manage3) – נקרא רק מהשער |
-| `src/lib/nedarim/config.ts`, `hosted.ts` | קונפיגורציה (env + הגדרה + סודות), בניית הקישור לבקשה |
+| `src/lib/nedarim/config.ts`, `hosted.ts` | קונפיגורציה (env + הגדרה + סודות), בניית הקישור לבקשה (groupe/avour לפי `groupeNameFor` / `buildTransactionComment`) |
+| `src/lib/nedarim/items.ts`, `scripts/add-nedarim-item-columns.ts`, `scripts/nedarim-tests/items.test.ts` | רכישת פריט (הורדה בודדת / קובץ מורחב): `loadPayableItem` (כללים + מחיר בשרת), `itemCoverageFor` ("כבר שלך"), `successHrefFor`; ה-DDL של 3 העמודות; הבדיקות |
 | `src/lib/nedarim/secret-crypto.ts`, `secrets.ts` | הצפנת סודות (AES-256-GCM, HKDF), `getNedarimApiPassword`, `redactNedarim`; `getSecretStatus` מנסה לפענח ומציג "לא ניתן לפענוח – להזין מחדש" (L5). נבדק ב-`secret-crypto.test.ts` |
 | `src/app/pay/page.tsx`, `src/components/pay/pay-client.tsx` | העמוד (מסלול → פרטים → המתנה → סיום) |
 | `src/app/api/pay/{intent,status,check,assist,callback}/route.ts` | ה-API (מחוברות + בעלות על הבקשה + same-origin; callback מוגן בסוד) |
@@ -235,7 +282,9 @@ AES-256-GCM, מפתח 32 בתים מ-HKDF-SHA256(master, salt "app_secrets", inf
 4. **תשלומים (Tashlumim):** `Payment=1` נעול. אם רוצים לאפשר פריסה – להסיר את `PaymentLock` (ההיסטוריה מראה את הסכום המלא בשורה אחת).
 5. הפעלה תקופתית (cron) – לא נוספה (ל-Hobby אין cron חופשי); הזיהוי קורה כשמורה בדף ההמתנה / מנהלת לוחצת "רענון". מורה שסגרה
    את הדף – התשלום יזוהה בפעם הבאה שמישהי/המנהלת מפעילה רענון (או CallBack אם יוגדר).
-6. שדרוג ממלאת מקום→שנתי, רכישה בודדת/תיקייה – עדיין בקופה המדומה.
+6. שדרוג ממלאת מקום→שנתי – עדיין בקופה המדומה (חסום כשההגדרה דולקת). ~~רכישה בודדת/תיקייה~~ – **נבנה (22.10.2026, ר' "רכישת פריט
+   בודד" למעלה), לא פרוס:** לפני ה-push להריץ `scripts/add-nedarim-item-columns.ts --apply`; אחרי הפריסה – "סנכרן סכומים" בכרטיס
+   הקטגוריות (יוצר "הורדה בודדת" ו"קובץ מורחב" במוסד) ותשלום בדיקה על חומר זול.
 7. לבדוק קופון: `Amount` של קטגוריה הוא **מינימום תרומה**; קופון מוריד את הסכום הנגבה מתחת למחיר המסלול ועלול להיחסם בדף של נדרים
    (לא נבדק). הסנכרון בכרטיס הקטגוריות מחשב מינימום אחרי ההנחה הגבוהה ביותר מקופון פעיל – לסנכרן מחדש אחרי יצירת קופון גבוה יותר.
 8. `.github/workflows/deploy-vercel.yml` (שינוי ישן שלא נשמר ב-commit) ועותק עבודה זמני `.claude/worktrees/agent-*` – לא קשורים; לנקות.

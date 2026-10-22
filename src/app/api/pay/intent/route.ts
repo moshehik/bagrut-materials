@@ -12,17 +12,18 @@ import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
-import { MAX_BODY_BYTES, PAYABLE_PLANS, sameIntentParams } from "@/lib/nedarim/logic";
+import { MAX_BODY_BYTES, PAY_KEYS, isPayableItemKind, orderKindOf, sameIntentParams, type PayKey } from "@/lib/nedarim/logic";
 import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
+import { itemCoverageFor, loadPayableItem, successHrefFor } from "@/lib/nedarim/items";
 import { hasActiveSamePlan } from "@/lib/purchase-helpers";
 
 /*
  * POST /api/pay/intent – עמוד התשלום (/pay, מחוברות בלבד): יוצר בקשת תשלום 'pending' עם מזהה ייחודי (NP-…) ומחזיר את הקישור
- * לדף התשלום המתארח של נדרים פלוס (סכום נעול, פרטי המורה ממולאים, מזהה הבקשה בהערה). הסכום נקבע כאן מההגדרות (getPlanPrices)
- * ומהקופון של המשתמשת – לעולם לא מהדפדפן, ואי אפשר לשנות אותו אחרי היצירה. מספר הכרטיס לא מגיע לכאן אף פעם.
- * docs/nedarim-payments.md
+ * לדף התשלום המתארח של נדרים פלוס (סכום נעול, פרטי המורה ממולאים, מזהה הבקשה בהערה). הסכום נקבע כאן – מסלול מנוי: מההגדרות
+ * (getPlanPrices); הורדה בודדת: materials.price; קובץ מורחב: bundleAmountFor – ומהקופון של המשתמשת; לעולם לא מהדפדפן, ואי אפשר
+ * לשנות אותו אחרי היצירה. מספר הכרטיס לא מגיע לכאן אף פעם. docs/nedarim-payments.md
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,14 +32,30 @@ const json = (body: unknown, status = 200) => NextResponse.json(body, { status, 
 
 const idNum = z.number().int().positive();
 const bodySchema = z.object({
-  plan: z.enum(PAYABLE_PLANS),
+  /** מסלול מנוי (yearly / substitute_3m / substitute_daily) או פריט (single / bundle) */
+  plan: z.enum(PAY_KEYS),
   categoryIds: z.array(idNum).max(YEARLY_INCLUDED_SUBJECTS).default([]),
   skipSubjects: z.boolean().optional(),
+  /** הורדה בודדת: החומר */
+  materialId: idNum.optional(),
+  /** קובץ מורחב: התיקייה */
+  categoryId: idNum.optional(),
   /** פרטי פרופיל חסרים (טלפון / עיר / תיכון) – נשמרים על המשתמשת, כמו ברכישה הראשונה בקופה */
   phone: z.string().max(30).optional(),
   city: z.string().max(80).optional(),
   school: z.string().max(120).optional(),
 });
+
+/** מה שנקבע בשרת לפי סוג ההזמנה, לפני החלק המשותף (קופון, פרופיל, יצירת הבקשה) */
+type Order = {
+  plan: PayKey;
+  categoryIds: number[];
+  subjectsPending: boolean;
+  listAmount: number;
+  materialId: number | null;
+  itemCategoryId: number | null;
+  itemTitle: string | null;
+};
 
 export async function POST(req: NextRequest) {
   if (!isSameOriginRequest(req)) return json({ error: "בקשה לא מהאתר" }, 403);
@@ -64,36 +81,61 @@ export async function POST(req: NextRequest) {
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "נתוני הזמנה לא תקינים" }, 400);
   const input = parsed.data;
+  const kind = orderKindOf(input.plan);
 
-  const denied = async (reason: string, error: string, status = 400) => {
-    await logAudit({ actorId: user.id, action: "purchase.denied", details: { reason, via: "nedarim", plan: input.plan } });
+  const denied = async (reason: string, error: string, status = 400, extra: Record<string, unknown> = {}) => {
+    await logAudit({ actorId: user.id, action: "purchase.denied", details: { reason, via: "nedarim", plan: input.plan, ...extra } });
     return json({ error }, status);
   };
 
-  // כבר יש מנוי פעיל מאותו מסלול – לא נותנים לשלם פעמיים על אותו דבר
-  if (await hasActiveSamePlan(user.id, input.plan)) {
-    return denied("already_subscribed", "כבר יש לך מנוי פעיל במסלול הזה – אין צורך לשלם שוב. אפשר לראות אותו באזור האישי.", 409);
-  }
-
-  // --- מקצועות: אותם כללים כמו purchaseAction ---
-  const uniq = [...new Set(input.categoryIds)];
-  let subjectsPending = false;
-  if (input.plan === "substitute_daily") {
-    uniq.length = 0;
-  } else if (input.plan === "yearly" && input.skipSubjects) {
-    subjectsPending = true;
-    uniq.length = 0;
+  let order: Order;
+  if (isPayableItemKind(input.plan)) {
+    // --- פריט: הורדה בודדת / קובץ מורחב – אותם כללים ומחירים כמו purchaseAction הישן (loadPayableItem) ---
+    const ref = input.plan === "single" ? { kind: "single" as const, materialId: input.materialId ?? 0 } : { kind: "bundle" as const, categoryId: input.categoryId ?? 0 };
+    if (!("materialId" in ref ? ref.materialId : ref.categoryId)) return denied("item_missing", input.plan === "single" ? "חסר מזהה חומר" : "חסר מזהה תיקייה");
+    const loaded = await loadPayableItem(ref);
+    if (!loaded.ok) return denied(loaded.reason, loaded.error, 400, ref);
+    const covered = await itemCoverageFor(user.id, loaded.item);
+    if (covered) return denied(`item_${covered.coverage}`, covered.text, 409, { materialId: loaded.item.materialId, categoryId: loaded.item.categoryId });
+    order = {
+      plan: input.plan,
+      categoryIds: [],
+      subjectsPending: false,
+      listAmount: loaded.item.listAmount,
+      materialId: loaded.item.materialId,
+      itemCategoryId: loaded.item.categoryId,
+      itemTitle: loaded.item.title,
+    };
   } else {
-    if (uniq.length < 1) return denied("no_subjects", "יש לבחור לפחות מקצוע אחד");
-    if (input.plan === "substitute_3m" && uniq.length > 1) return denied("sub3_too_many", "ממלאת מקום כוללת מקצוע אחד בלבד");
-    if (input.plan === "yearly" && uniq.length > YEARLY_INCLUDED_SUBJECTS) {
-      return denied("yearly_too_many_subjects", `המנוי כולל עד ${YEARLY_INCLUDED_SUBJECTS} מקצועות`);
+    // --- מסלול מנוי ---
+    // כבר יש מנוי פעיל מאותו מסלול – לא נותנים לשלם פעמיים על אותו דבר
+    if (await hasActiveSamePlan(user.id, input.plan)) {
+      return denied("already_subscribed", "כבר יש לך מנוי פעיל במסלול הזה – אין צורך לשלם שוב. אפשר לראות אותו באזור האישי.", 409);
     }
-    const roots = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(and(inArray(categories.id, uniq), isNull(categories.parentId), eq(categories.status, "active")));
-    if (roots.length !== uniq.length) return denied("not_root_subject", "יש לבחור מקצועות ראשיים בלבד");
+    // מקצועות: אותם כללים כמו purchaseAction
+    const uniq = [...new Set(input.categoryIds)];
+    let subjectsPending = false;
+    if (input.plan === "substitute_daily") {
+      uniq.length = 0;
+    } else if (input.plan === "yearly" && input.skipSubjects) {
+      subjectsPending = true;
+      uniq.length = 0;
+    } else {
+      if (uniq.length < 1) return denied("no_subjects", "יש לבחור לפחות מקצוע אחד");
+      if (input.plan === "substitute_3m" && uniq.length > 1) return denied("sub3_too_many", "ממלאת מקום כוללת מקצוע אחד בלבד");
+      if (input.plan === "yearly" && uniq.length > YEARLY_INCLUDED_SUBJECTS) {
+        return denied("yearly_too_many_subjects", `המנוי כולל עד ${YEARLY_INCLUDED_SUBJECTS} מקצועות`);
+      }
+      const roots = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(inArray(categories.id, uniq), isNull(categories.parentId), eq(categories.status, "active")));
+      if (roots.length !== uniq.length) return denied("not_root_subject", "יש לבחור מקצועות ראשיים בלבד");
+    }
+    const prices = await getPlanPrices();
+    const listAmount = prices.plans[input.plan];
+    if (!(listAmount > 0)) return denied("no_price", "למסלול הזה אין מחיר מוגדר", 500);
+    order = { plan: input.plan, categoryIds: uniq, subjectsPending, listAmount, materialId: null, itemCategoryId: null, itemTitle: null };
   }
 
   // --- פרטי פרופיל חסרים: טלפון (מוטבע בסימן המים + מזהה את התשלום), עיר ותיכון (רכישה ראשונה) ---
@@ -110,10 +152,8 @@ export async function POST(req: NextRequest) {
     profile.school = loc.data.school;
   }
 
-  // --- סכום: מההגדרות + קופון הנחה פרטי (ייתפס רק בהשלמה) ---
-  const prices = await getPlanPrices();
-  const listAmount = prices.plans[input.plan];
-  if (!(listAmount > 0)) return denied("no_price", "למסלול הזה אין מחיר מוגדר", 500);
+  // --- סכום: מחיר המחירון (מסלול/פריט – נקבע למעלה בשרת) + קופון הנחה פרטי (ייתפס רק בהשלמה), כמו purchaseAction ---
+  const { listAmount } = order;
   const coupon = await getBestPercentCoupon(user);
   const pct = coupon?.percent ?? 0;
   const amount = pct > 0 ? Math.round((listAmount * (100 - pct)) / 100) : listAmount;
@@ -124,24 +164,31 @@ export async function POST(req: NextRequest) {
     await logAudit({ actorId: user.id, action: "profile.complete", entityType: "user", entityId: user.id, details: profile });
   }
 
+  const params = { plan: order.plan, categoryIds: order.categoryIds, subjectsPending: order.subjectsPending, amount, materialId: order.materialId, itemCategoryId: order.itemCategoryId };
+  const respond = async (row: Awaited<ReturnType<typeof createIntent>>, reused: boolean) =>
+    json({
+      ok: true,
+      reused,
+      reference: row.reference,
+      amount: row.amount,
+      listAmount: row.listAmount,
+      couponPercent: row.couponPercent,
+      hostedUrl: hostedUrlFor(row, cfg.mosadId),
+      simulate: cfg.simulate,
+      kind,
+      itemTitle: row.itemTitle ?? null,
+      successHref: await successHrefFor(row),
+    });
+
   // M2/N2: בקשה פתוחה עם אותו קופון – לא יוצרים שנייה (הקופון חד-פעמי): אם אותה הזמנה בדיוק – מחזירים אותה; אחרת מבטלים
   // את הישנה ("replaced") ויוצרים חדשה (עסקה שתשולם על הישנה תישאר לא-משויכת וגלויה למנהלת)
   let replaced: { id: number } | null = null;
   if (coupon && pct > 0) {
     const existing = await findOpenWithCoupon(user.id, coupon.id);
-    if (existing && !sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount }, { plan: input.plan, categoryIds: uniq, subjectsPending, amount })) {
+    if (existing && !sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount, materialId: existing.materialId, itemCategoryId: existing.itemCategoryId }, params)) {
       if (await cancelReplaced(existing, "(חדשה)")) replaced = { id: existing.id };
     } else if (existing) {
-      return json({
-        ok: true,
-        reused: true,
-        reference: existing.reference,
-        amount: existing.amount,
-        listAmount: existing.listAmount,
-        couponPercent: existing.couponPercent,
-        hostedUrl: hostedUrlFor(existing, cfg.mosadId),
-        simulate: cfg.simulate,
-      });
+      return respond(existing, true);
     }
   }
 
@@ -154,9 +201,12 @@ export async function POST(req: NextRequest) {
   try {
     const row = await createIntent({
       userId: user.id,
-      plan: input.plan,
-      categoryIds: uniq,
-      subjectsPending,
+      plan: order.plan,
+      categoryIds: order.categoryIds,
+      subjectsPending: order.subjectsPending,
+      materialId: order.materialId,
+      itemCategoryId: order.itemCategoryId,
+      itemTitle: order.itemTitle,
       listAmount,
       amount,
       coupon: coupon && pct > 0 ? { id: coupon.id, percent: pct } : null,
@@ -169,15 +219,7 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
     if (replaced) await appendEvent(replaced.id, "replaced_by", `הבקשה החדשה: ${row.reference}`, { newReference: row.reference });
-    return json({
-      ok: true,
-      reference: row.reference,
-      amount: row.amount,
-      listAmount: row.listAmount,
-      couponPercent: row.couponPercent,
-      hostedUrl: hostedUrlFor(row, cfg.mosadId),
-      simulate: cfg.simulate,
-    });
+    return respond(row, false);
   } catch (e) {
     console.error("[pay intent] create failed", redactNedarim(e instanceof Error ? e.message : String(e)));
     return json({ error: "לא הצלחנו ליצור את בקשת התשלום. נסי שוב בעוד רגע." }, 500);

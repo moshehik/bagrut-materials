@@ -15,6 +15,10 @@ export type NedarimPaymentRowData = {
   plan: Plan;
   subjectTitles: string[];
   subjectsPending: boolean;
+  /** רכישת פריט (single/bundle): שם החומר/התיקייה בזמן הבקשה */
+  itemTitle: string | null;
+  materialId: number | null;
+  itemCategoryId: number | null;
   amount: number;
   listAmount: number;
   couponPercent: number | null;
@@ -85,7 +89,11 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
         <td className="py-2 pe-3">
           <div>{PLANS[p.plan].label}</div>
           <div className="text-xs text-muted">
-            {p.subjectsPending ? "המקצועות ייבחרו בחשבון" : p.subjectTitles.join(", ") || (p.plan === "substitute_daily" ? "כל המקצועות" : "—")}
+            {p.plan === "single" || p.plan === "bundle"
+              ? `${p.itemTitle ?? "—"}${p.plan === "single" && p.materialId ? ` (חומר #${p.materialId})` : p.itemCategoryId ? ` (תיקייה #${p.itemCategoryId})` : ""}`
+              : p.subjectsPending
+                ? "המקצועות ייבחרו בחשבון"
+                : p.subjectTitles.join(", ") || (p.plan === "substitute_daily" ? "כל המקצועות" : "—")}
           </div>
         </td>
         <td className="py-2 pe-3 whitespace-nowrap">
