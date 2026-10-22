@@ -399,6 +399,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                         myDownloadCount={downloadCounts.get(item.m.id) ?? 0}
                         freeTrial={freeTrial}
                         fixes={fixesByMaterial.get(item.m.id)?.map((f) => ({
+                          id: f.id,
                           number: f.number,
                           originalText: f.originalText,
                           correctedText: f.correctedText,

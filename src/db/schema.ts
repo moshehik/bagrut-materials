@@ -205,6 +205,7 @@ export const materialFixes = pgTable(
      * pending = ממתינה לבדיקה, published = תיקון מפורסם (מוצג לכל מי שיש לה גישה לקובץ),
      * merged = שולב בקובץ המקורי (לא מוצג יותר), rejected = נדחתה,
      * private = הסוכן בדק ולא שילב בקובץ המקורי – התיקון מוצג רק למבקרת (userId)
+     * cancelled = המורה ביטלה את התיקון שלה (cancelOwnFix) – לא מוצג ולא מטופל
      */
     status: varchar("status", { length: 12 }).notNull().default("pending"),
     fixNumber: integer("fix_number"),

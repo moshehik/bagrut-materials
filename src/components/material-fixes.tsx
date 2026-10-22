@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Download, Plus, Send, X } from "lucide-react";
-import { submitFixRequests, type FixState } from "@/lib/actions/fixes";
+import { cancelOwnFix, submitFixRequests, type FixState } from "@/lib/actions/fixes";
 import { PdfViewer, type PdfMark } from "@/components/pdf-viewer";
 
 /** own = התיקון של המורה עצמה: חל אצלה מיד (מסומן מראש), בלי תלות בהחלטה על שאר המורות */
-export type CardFix = { number: number; originalText: string; correctedText: string; own?: boolean };
+export type CardFix = { id?: number; number: number; originalText: string; correctedText: string; own?: boolean };
 
 /** נוסחי הטולטיפ של שלושת אגוזי התיקונים (כתב גברת לוין, מוצג במעבר עכבר / מיקוד) */
 export const FIX_TIPS = {
@@ -369,6 +369,27 @@ export function FixViewer({
     setAcknowledged(false);
   };
   const ref = useDialog(open, close);
+  const router = useRouter();
+  const [cancelling, startCancel] = useTransition();
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  /** ביטול תיקון שהמורה עצמה ביקשה (מוסתר מהצפייה וההורדה שלה) */
+  const cancelMine = (f: CardFix) => {
+    if (!f.id) return;
+    if (!window.confirm("לבטל את התיקון שלך? הוא יוסר מהצפייה ומההורדה שלך.")) return;
+    setCancelError(null);
+    startCancel(async () => {
+      const res = await cancelOwnFix(f.id!);
+      if (res?.error) setCancelError(res.error);
+      else {
+        setPicked((prev) => {
+          const next = new Set(prev);
+          next.delete(f.number);
+          return next;
+        });
+        router.refresh();
+      }
+    });
+  };
 
   const toggle = (n: number) =>
     setPicked((prev) => {
@@ -429,9 +450,20 @@ export function FixViewer({
                           <span className="fix-blue">{f.correctedText}</span>
                         </span>
                       </label>
+                      {f.own && f.id ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost text-sm py-1"
+                          disabled={cancelling}
+                          onClick={() => cancelMine(f)}
+                        >
+                          ביטול התיקון שלי
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
+                {cancelError ? <p className="fix-dialog-sub" role="alert">{cancelError}</p> : null}
                 <div className="fix-actions">
                   <button
                     type="button"

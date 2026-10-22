@@ -256,6 +256,31 @@ export async function markFixMerged(id: number): Promise<void> {
   await setStatus(id, "merged", "fix.merge");
 }
 
+/**
+ * מורה מבטלת תיקון שהיא עצמה ביקשה (ממתין או פרטי) – הוא נעלם מהצפייה וההורדה שלה. תיקון ששולב כבר בקובץ
+ * המשותף (merged) או שפורסם לכולן לא מתבטל מכאן – זו החלטה של המנהלת.
+ */
+export async function cancelOwnFix(id: number): Promise<FixState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "יש להתחבר" };
+  const [fix] = await db.select().from(materialFixes).where(eq(materialFixes.id, id)).limit(1);
+  if (!fix || fix.userId !== user.id) return { error: "התיקון לא נמצא" };
+  if (fix.status !== "pending" && fix.status !== "private") {
+    return { error: "התיקון כבר שולב בקובץ המשותף ואי אפשר לבטל אותו מכאן. כתבי לנו ונטפל." };
+  }
+  await db.update(materialFixes).set({ status: "cancelled" }).where(and(eq(materialFixes.id, id), eq(materialFixes.userId, user.id)));
+  await logAudit({
+    actorId: user.id,
+    action: "fix.cancel_own",
+    entityType: "material",
+    entityId: fix.materialId,
+    details: { fixId: id, from: fix.status },
+  });
+  revalidatePath("/admin/fixes");
+  revalidatePath("/subjects", "layout");
+  return { ok: true };
+}
+
 export async function unpublishFix(id: number): Promise<void> {
   await setStatus(id, "pending", "fix.unpublish");
 }
