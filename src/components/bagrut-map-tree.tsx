@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2 } from "lucide-react";
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, ArrowUpLeft, Undo2, Feather, Scissors, Check, Link2 } from "lucide-react";
 import { SUBJECT_COLORS } from "@/lib/constants";
 import { getExplainer, codesOf, buildGenericExplainer, GENERIC_TEXT } from "@/lib/bagrut-explainers";
 import { WINDOW_TEXT } from "@/lib/bagrut-window-texts";
@@ -409,7 +409,8 @@ function ChoiceGroup({
   accent: string;
   ctx: TreeCtx;
 }) {
-  const openMember = members.find((m) => ctx.isOpen(m.cat.id)) ?? null;
+  // בדרך כלל פתוח ריבוע אחד; כמה פתוחים רק אחרי "פתיחת כל המפה"
+  const openMembers = members.filter((m) => ctx.isOpen(m.cat.id));
   const pick = (m: MapNode) => {
     for (const other of members)
       if (other !== m && ctx.isOpen(other.cat.id)) ctx.toggle(other.cat.id);
@@ -439,14 +440,14 @@ function ChoiceGroup({
           </div>
         ))}
       </div>
-      {openMember && (
-        <ChildrenBelow
-          node={openMember}
-          level={level}
-          accent={openMember.cat.color || accent}
-          ctx={ctx}
-        />
-      )}
+      {openMembers.map((m) => (
+        <div key={m.cat.id} className="flex flex-col items-start">
+          {openMembers.length > 1 && (
+            <span className="ms-6 mt-2 text-sm font-bold text-muted">{m.cat.title}:</span>
+          )}
+          <ChildrenBelow node={m} level={level} accent={m.cat.color || accent} ctx={ctx} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -600,7 +601,27 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
 
   const rootGroups = useMemo(() => groupRoots(tree), [tree]);
 
+  // כל הצמתים שיש להם ילדים — לפתיחה/סגירה של כל המפה בלחיצה אחת
+  const allOpenableIds = useMemo(() => {
+    const ids: number[] = [];
+    const walk = (n: MapNode) => {
+      if (n.children.length > 0) ids.push(n.cat.id);
+      n.children.forEach(walk);
+    };
+    tree.forEach(walk);
+    return ids;
+  }, [tree]);
+  const allOpen = allOpenableIds.every((id) => openIds.has(id));
+  const toggleAll = () => setOpenIds(allOpen ? new Set() : new Set(allOpenableIds));
+
   return (
+    <>
+    <div className="flex">
+      <button type="button" onClick={toggleAll} aria-pressed={allOpen} className="btn btn-ghost">
+        {allOpen ? <ChevronsDownUp className="h-4 w-4" aria-hidden /> : <ChevronsUpDown className="h-4 w-4" aria-hidden />}
+        {allOpen ? "סגירת כל מפת הבגרויות" : "פתיחת כל מפת הבגרויות"}
+      </button>
+    </div>
     <div data-map-scroll-x="" className="flex flex-col gap-16 overflow-x-auto pb-2 pt-12">
       {rootGroups.map((group) =>
         group.length > 1 ? (
@@ -622,5 +643,6 @@ export function BagrutMapTree({ tree }: { tree: MapNode[] }) {
         ),
       )}
     </div>
+    </>
   );
 }
