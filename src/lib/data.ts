@@ -250,6 +250,8 @@ async function loadSearchIndex(isAdmin: boolean): Promise<SearchIndex> {
     const chain = chainOf(m.categoryId);
     if (visible(chain)) mats.push({ m, chain });
   }
+  // אינדקס ריק = תקלה (שאילתה שנכשלה בשקט / סינון שגוי), לא קטלוג ריק – נכשלים בקול כדי שיופעל הגיבוי ויירשם ללוג
+  if (cats.length === 0 || mats.length === 0) throw new Error(`empty search index (cats=${cats.length}, mats=${mats.length}, catRows=${catRows.length}, matRows=${matRows.length})`);
   const data = { cats, mats };
   searchIndexCache.set(isAdmin, { at: Date.now(), data });
   return data;
@@ -269,6 +271,19 @@ const pathOf = (chain: ChainNode[], includeLast: boolean) =>
  * למנהלת מחזיר גם טיוטות/מושהים; למשתמשת מסנן גם שרשרת אבות מושהית (chainSuspended).
  */
 export async function searchCatalog(query: string, isAdmin = false): Promise<SearchResult[]> {
+  try {
+    const smart = await searchCatalogSmart(query, isAdmin);
+    if (smart.length > 0) return smart;
+    // אין תוצאה חכמה: הישן עדיין עשוי למצוא (למשל תיאור/תת-מחרוזת), כך שהחיפוש אף פעם לא גרוע מקודם
+    return await searchCatalogLegacy(query, isAdmin);
+  } catch (e) {
+    // לעולם לא משאירים את החיפוש ריק בגלל כשל באינדקס: רושמים ללוג וחוזרים לחיפוש ה-SQL הישן
+    console.error("[search] smart search failed, falling back to legacy:", e instanceof Error ? e.stack ?? e.message : e);
+    return searchCatalogLegacy(query, isAdmin);
+  }
+}
+
+async function searchCatalogSmart(query: string, isAdmin: boolean): Promise<SearchResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
   const index = await loadSearchIndex(isAdmin);
@@ -321,6 +336,116 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
   }
   return results;
 }
+
+/** חיפוש ה-SQL הישן (כותרת/תיאור) – גיבוי כשהחיפוש החכם נכשל (ר' searchCatalog). */
+async function searchCatalogLegacy(query: string, isAdmin = false): Promise<SearchResult[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  // % ו-_ הם תווי-כלליות ב-LIKE – מבריחים אותם כדי שמונח כמו "_" לא יתאים להכול (ולא יהפוך לסריקה יקרה)
+  const likeOf = (s: string) => `%${s.replace(/[\\%_]/g, "\\export function chainToHref")}%`;
+  // חיפוש רב-מילים ("ישעיה פרק ו", "תהלים נא"): כל מילה חייבת להופיע בכותרת/תיאור או באחת מקטגוריות-האב,
+  // כי "ישעיה" ו-"פרק ו'" יושבים בצמתים שונים של העץ. מילה בודדת = חיפוש ביטוי כמו קודם.
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const multi = tokens.length > 1;
+  // ל-SQL נכנסות רק מילים באורך 2+ (מילה של אות אחת כמו "ו" הייתה מחזירה את כל הטבלה); הסינון המלא נעשה אחר כך
+  const sqlTerms = multi ? tokens.filter((t) => t.length >= 2) : [q];
+  if (sqlTerms.length === 0) return [];
+  const likes = sqlTerms.map(likeOf);
+  const limitCats = multi ? 200 : 6;
+  const limitMats = multi ? 200 : 8;
+
+  const [catRows, matRows] = await Promise.all([
+    db
+      .select()
+      .from(categories)
+      .where(
+        and(
+          or(...likes.flatMap((like) => [ilike(categories.title, like), ilike(categories.description, like)])),
+          isAdmin ? undefined : eq(categories.status, "active"),
+        ),
+      )
+      .orderBy(asc(categories.sort))
+      .limit(limitCats),
+    db
+      .select()
+      .from(materials)
+      .where(
+        and(
+          or(...likes.flatMap((like) => [ilike(materials.title, like), ilike(materials.description, like)])),
+          isAdmin ? undefined : and(eq(materials.status, "active"), materialServable),
+        ),
+      )
+      .orderBy(desc(materials.downloads))
+      .limit(limitMats),
+  ]);
+
+  if (catRows.length === 0 && matRows.length === 0) return [];
+
+  const chains = await getChainsFor([
+    ...new Set([...catRows.map((c) => c.id), ...matRows.map((m) => m.categoryId)]),
+  ]);
+
+  // השוואה בלי גרש/גרשיים ובלי רגישות לאותיות, כדי ש-"פרק ו" ימצא את "פרק ו'"
+  const norm = (s: string | null | undefined) => (s ?? "").replace(/["'״׳]/g, "").toLowerCase();
+  const normTokens = tokens.map(norm).filter(Boolean);
+  // מילה קצרה (אות-שתיים, בדרך כלל מספר פרק כמו "ו" / "נא") חייבת להופיע כמילה שלמה, אחרת "ו" מתאים להכול
+  const tokenHits = (t: string, hay: string) =>
+    t.length <= 2 ? new RegExp(`(^|[\\s\\-–(])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\export function chainToHref")}(?=$|[\\s\\-–),:])`).test(hay) : hay.includes(t);
+  const matchesAll = (hay: string) => normTokens.every((t) => tokenHits(t, hay));
+  const inTitle = (title: string) => normTokens.filter((t) => tokenHits(t, norm(title))).length;
+
+  const results: SearchResult[] = [];
+
+  const cats = catRows
+    .map((c) => ({ c, chain: chains.get(c.id) }))
+    .filter(({ c, chain }) => {
+      if (!chain || (!isAdmin && chainSuspended(chain))) return false;
+      if (!multi) return true;
+      return matchesAll(norm([...chain.map((n) => n.title), c.description ?? ""].join(" ")));
+    })
+    .sort((a, b) => inTitle(b.c.title) - inTitle(a.c.title))
+    .slice(0, 6);
+  for (const { c, chain } of cats) {
+    if (!chain) continue;
+    results.push({
+      type: "category",
+      path: "",
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      questionnaireCode: c.questionnaireCode,
+      href: chainToHref(chain),
+    });
+  }
+
+  const mats = matRows
+    .map((m) => ({ m, chain: chains.get(m.categoryId) }))
+    .filter(({ m, chain }) => {
+      if (!chain || (!isAdmin && chainSuspended(chain))) return false;
+      if (!multi) return true;
+      return matchesAll(norm([m.title, m.description ?? "", ...chain.map((n) => n.title)].join(" ")));
+    })
+    .sort((a, b) => inTitle(b.m.title) - inTitle(a.m.title))
+    .slice(0, 8);
+  for (const { m, chain } of mats) {
+    if (!chain) continue;
+    results.push({
+      type: "material",
+      path: "",
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      kind: m.kind,
+      access: m.access,
+      price: m.price,
+      categoryTitle: chain[chain.length - 1].title,
+      href: `${chainToHref(chain)}#material-${m.id}`,
+    });
+  }
+
+  return results;
+}
+
 
 export function chainToHref(chain: Pick<Category, "slug">[]) {
   return "/subjects/" + chain.map((c) => encodeURIComponent(c.slug)).join("/");
