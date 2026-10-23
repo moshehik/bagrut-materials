@@ -12,8 +12,8 @@ import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
-import { MAX_BODY_BYTES, PAY_KEYS, isPayableItemKind, orderKindOf, sameIntentParams, type PayKey } from "@/lib/nedarim/logic";
-import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds } from "@/lib/nedarim/store";
+import { MAX_BODY_BYTES, PAY_KEYS, isPayableItemKind, orderKindOf, pickDistinctAmount, sameIntentParams, type PayKey } from "@/lib/nedarim/logic";
+import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds, sameDayAmountsOfOtherOrders } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
 import { itemCoverageFor, loadPayableItem, successHrefFor } from "@/lib/nedarim/items";
@@ -156,7 +156,21 @@ export async function POST(req: NextRequest) {
   const { listAmount } = order;
   const coupon = await getBestPercentCoupon(user);
   const pct = coupon?.percent ?? 0;
-  const amount = pct > 0 ? Math.round((listAmount * (100 - pct)) / 100) : listAmount;
+  const baseAmount = pct > 0 ? Math.round((listAmount * (100 - pct)) / 100) : listAmount;
+  // נדרים לא מאפשרים שני חיובים באותו סכום לאותו כרטיס באותו יום: בקנייה של כמה תיקיות/קבצים באותו סכום באותו יום – 10 אג' פחות לכל נוספת
+  let amount = baseAmount;
+  let sameDayAdjust = 0;
+  if (isPayableItemKind(order.plan) && baseAmount > 0) {
+    try {
+      const others = await sameDayAmountsOfOtherOrders(user.id, { plan: order.plan, materialId: order.materialId, itemCategoryId: order.itemCategoryId });
+      const picked = pickDistinctAmount(baseAmount, others);
+      amount = picked.amount;
+      sameDayAdjust = Math.max(0, picked.adjustedBy);
+    } catch (e) {
+      // כשל בבדיקה לא חוסם תשלום – ממשיכים בסכום המקורי (במקרה הגרוע נדרים יסרבו לחיוב הכפול והמורה תפנה אלינו)
+      console.error("[pay intent] same-day amount check failed", redactNedarim(e instanceof Error ? e.message : String(e)));
+    }
+  }
   if (!(amount > 0)) return denied("zero_amount", "הסכום לתשלום הוא 0 – פני אלינו להפעלה ידנית", 400);
 
   if (Object.keys(profile).length) {
@@ -177,6 +191,8 @@ export async function POST(req: NextRequest) {
       simulate: cfg.simulate,
       kind,
       itemTitle: row.itemTitle ?? null,
+      /** כמה אגורות הורדנו כי כבר יש לה בקשה באותו סכום היום (נדרים חוסמים חיוב כפול זהה) */
+      sameDayAdjust,
       successHref: await successHrefFor(row),
     });
 

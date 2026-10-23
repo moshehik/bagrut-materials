@@ -122,7 +122,9 @@ export default async function HomePage({
                     מסלולים ומחירים
                   </Link>
                 )}
-                <TourLaunchButton className="btn btn-ghost btn-plans text-base">
+                {/* שורה משלו: כפתור שלישי באותה שורה היה מרחיב אותה שמאלה אל איור הלוגו */}
+                <span className={s.actsBreak} aria-hidden />
+                <TourLaunchButton className="btn btn-ghost btn-plans btn-hand">
                   <Compass className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
                   סיור באתר
                 </TourLaunchButton>

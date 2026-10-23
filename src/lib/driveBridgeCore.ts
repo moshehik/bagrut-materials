@@ -109,7 +109,7 @@ async function fetchOnceThroughRedirect(url: string, body: string, signal: Abort
   return last!;
 }
 
-async function callBridge(action: string, payload: Record<string, unknown> = {}) {
+async function callBridge(action: string, payload: Record<string, unknown> = {}, opts: { timeoutMs?: number } = {}) {
   const { url, secret, root } = cfg();
   if (!url || !secret) {
     throw new Error("גשר הדרייב לא מוגדר (חסרים DRIVE_BRIDGE_URL / DRIVE_BRIDGE_SECRET)");
@@ -118,7 +118,7 @@ async function callBridge(action: string, payload: Record<string, unknown> = {})
   const idempotent = IDEMPOTENT_BRIDGE_ACTIONS.has(action);
   const maxPosts = idempotent ? 3 : 1;
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), BRIDGE_TIMEOUT_MS);
+  const t = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? BRIDGE_TIMEOUT_MS);
   try {
     let lastErr: Error | null = null;
     for (let attempt = 1; attempt <= maxPosts; attempt++) {
@@ -173,16 +173,127 @@ async function uploadSmall({ name, mimeType, bytes }: { name: string; mimeType: 
 
 // --- מסלול ישיר מול Drive REST (קבצים גדולים, עוקף תקרת ~50MB של GAS) ---
 let tokenCache: { token: string; exp: number } | null = null;
+/** אחרי 401 – הטוקן המשותף ב-DB חשוד: בפעם הבאה לא קוראים אותו אלא שולפים חדש מהגשר (ושוכתבים אותו) */
+let skipSharedToken = false;
+let tokenInflight: Promise<string> | null = null;
 /** מאלץ שליפת טוקן חדש (אחרי 401 בריצה ארוכה) */
 export function resetAccessToken() {
   tokenCache = null;
+  skipSharedToken = true;
 }
+
+/*
+ * הטוקן ל-Drive נשלף מהגשר (Apps Script): בדרך כלל 1-3 שניות, אבל נמדד (2026-10-23) גם 7 ו-49 שניות בקריאה אחת מ-8, וכל מופע שרת
+ * "קר" (פריסה, scale-out, ~15 דק' בלי תנועה) שילם אותו מחדש – זו הסיבה העיקרית ל"הורדה איטית לפעמים". לכן:
+ *  1. הטוקן משותף בין המופעים דרך app_secrets (מוצפן AES-GCM כמו סודות נדרים, בלי להציג ב-UI): מופע קר קורא אותו מה-DB (~50ms).
+ *  2. כשצריך לשלוף מהגשר – קריאה "מגובה" (hedged): אם אין תשובה אחרי HEDGE_MS נשלחת קריאה שנייה במקביל והראשונה מנצחת; כל קריאה
+ *     עם timeout קצר (TOKEN_CALL_TIMEOUT_MS) במקום 55 שניות.
+ * כל כשל בשיתוף (אין DB / אין מפתח הצפנה / טבלה חסרה) נבלע – נופלים לשליפה רגילה מהגשר.
+ */
+const SHARED_TOKEN_NAME = "drive_access_token";
+/** תוקף הטוקן המשותף: שמרני (טוקן גוגל חי שעה, והגשר עשוי להחזיר טוקן שכבר בן כמה דקות) */
+const SHARED_TOKEN_TTL_MS = 30 * 60 * 1000;
+export const TOKEN_HEDGE_MS = 5_000;
+export const TOKEN_CALL_TIMEOUT_MS = 15_000;
+
+async function sharedTokenKey(): Promise<Buffer | null> {
+  const master = (process.env.NEDARIM_SECRETS_KEY ?? "").trim() || (process.env.SESSION_SECRET ?? "").trim();
+  if (master.length < 32) return null;
+  try {
+    // ייבוא עצל: סקריפטים שלא נוגעים ב-DB לא טוענים את ההצפנה/drizzle
+    const { deriveSecretsKey } = await import("./nedarim/secret-crypto");
+    return deriveSecretsKey(master);
+  } catch {
+    return null;
+  }
+}
+
+async function readSharedToken(): Promise<{ token: string; exp: number } | null> {
+  try {
+    const key = await sharedTokenKey();
+    if (!key || !process.env.DATABASE_URL) return null;
+    const { db } = await import("../db");
+    const { appSecrets } = await import("../db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { decryptSecret } = await import("./nedarim/secret-crypto");
+    const [row] = await db.select({ ciphertext: appSecrets.ciphertext }).from(appSecrets).where(eq(appSecrets.name, SHARED_TOKEN_NAME)).limit(1);
+    if (!row) return null;
+    const parsed = JSON.parse(decryptSecret(key, SHARED_TOKEN_NAME, row.ciphertext)) as { token?: string; exp?: number };
+    // לפחות דקה תוקף שנותרה, אחרת שולפים חדש
+    return parsed.token && typeof parsed.exp === "number" && parsed.exp - Date.now() > 60_000 ? { token: parsed.token, exp: parsed.exp } : null;
+  } catch (e) {
+    console.warn("[drive-token] קריאת הטוקן המשותף נכשלה (שולפים מהגשר):", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+async function writeSharedToken(token: string, exp: number): Promise<void> {
+  try {
+    const key = await sharedTokenKey();
+    if (!key || !process.env.DATABASE_URL) return;
+    const { db } = await import("../db");
+    const { appSecrets } = await import("../db/schema");
+    const { encryptSecret } = await import("./nedarim/secret-crypto");
+    const ciphertext = encryptSecret(key, SHARED_TOKEN_NAME, JSON.stringify({ token, exp }));
+    await db
+      .insert(appSecrets)
+      .values({ name: SHARED_TOKEN_NAME, ciphertext, last4: null })
+      .onConflictDoUpdate({ target: appSecrets.name, set: { ciphertext, updatedAt: new Date() } });
+  } catch (e) {
+    console.warn("[drive-token] שמירת הטוקן המשותף נכשלה (לא משפיע):", e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * קריאה "מגובה": מתחילים קריאה; אם נכשלה מהר – מנסים שוב מיד; אם עדיין תלויה אחרי hedgeMs – מפעילים קריאה שנייה במקביל,
+ * והראשונה שמצליחה מנצחת. מחזיר את התוצאה, או זורק את שגיאת הניסיון האחרון אם שני הניסיונות נכשלו.
+ */
+export async function hedged<T>(call: () => Promise<T>, hedgeMs: number): Promise<T> {
+  const first = call();
+  const early = await Promise.race([
+    first.then(
+      (v) => ({ ok: true as const, v }),
+      (e) => ({ ok: false as const, e }),
+    ),
+    new Promise<"slow">((r) => setTimeout(() => r("slow"), hedgeMs)),
+  ]);
+  if (early !== "slow") {
+    if (early.ok) return early.v;
+    return call(); // נכשל מהר – ניסיון חוזר אחד
+  }
+  const second = call();
+  // שניהם רצים; אם הראשון נכשל והשני עדיין רץ – מחכים לשני
+  return Promise.any([first, second]).catch((agg: AggregateError) => {
+    throw agg.errors?.[agg.errors.length - 1] ?? agg;
+  });
+}
+
 export async function getAccessToken() {
   if (tokenCache && Date.now() < tokenCache.exp) return tokenCache.token;
-  const r = await callBridge("archive_token", {});
-  if (!r.token) throw new Error("הגשר לא החזיר טוקן גישה לדרייב");
-  tokenCache = { token: r.token as string, exp: Date.now() + 50 * 60 * 1000 };
-  return tokenCache.token;
+  if (tokenInflight) return tokenInflight; // כמה קריאות באותו מופע בו-זמנית – שליפה אחת
+  tokenInflight = (async () => {
+    try {
+      if (!skipSharedToken) {
+        const shared = await readSharedToken();
+        if (shared) {
+          tokenCache = { token: shared.token, exp: shared.exp };
+          return shared.token;
+        }
+      }
+      const token = await hedged(async () => {
+        const r = await callBridge("archive_token", {}, { timeoutMs: TOKEN_CALL_TIMEOUT_MS });
+        if (!r.token) throw new Error("הגשר לא החזיר טוקן גישה לדרייב");
+        return r.token as string;
+      }, TOKEN_HEDGE_MS);
+      skipSharedToken = false;
+      tokenCache = { token, exp: Date.now() + 50 * 60 * 1000 };
+      await writeSharedToken(token, Date.now() + SHARED_TOKEN_TTL_MS);
+      return token;
+    } finally {
+      tokenInflight = null;
+    }
+  })();
+  return tokenInflight;
 }
 
 /* ------------------------------ קריאה מאומתת ל-Drive REST ------------------------------ */

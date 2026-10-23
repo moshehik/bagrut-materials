@@ -6,6 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  pickDistinctAmount,
   advanceLastId,
   agorotToAmountString,
   checkManualTransaction,
@@ -423,4 +424,34 @@ test("hostedPaymentUrl: כתובת החזרה עם from=nedarim נשמרת של�
   );
   assert.equal(u.searchParams.get("Redirect"), "https://example.com/pay?ref=NP-ABCDEFGH&from=nedarim");
   assert.equal(new URL(u.searchParams.get("Redirect")!).searchParams.get("from"), "nedarim");
+});
+
+test("pickDistinctAmount: סכום שלא תפוס נשאר; תפוס - 10 אג' פחות לכל נוספת באותו סכום", () => {
+  assert.deepEqual(pickDistinctAmount(1500, []), { amount: 1500, adjustedBy: 0 });
+  assert.deepEqual(pickDistinctAmount(1500, [900, 2000]), { amount: 1500, adjustedBy: 0 });
+  assert.deepEqual(pickDistinctAmount(1500, [1500]), { amount: 1490, adjustedBy: 10 });
+  assert.deepEqual(pickDistinctAmount(1500, [1500, 1490]), { amount: 1480, adjustedBy: 20 });
+  assert.deepEqual(pickDistinctAmount(1500, [1500, 1490, 1480, 1470]), { amount: 1460, adjustedBy: 40 });
+});
+
+test("pickDistinctAmount: מדלג על סכום מופחת שכבר תפוס, גם אם הסכום המקורי לא", () => {
+  // 1500 לא תפוס, אז נשאר - גם כשיש 1490
+  assert.equal(pickDistinctAmount(1500, [1490]).amount, 1500);
+  // 1490 תפוס כשהמקורי 1490
+  assert.equal(pickDistinctAmount(1490, [1490]).amount, 1480);
+});
+
+test("pickDistinctAmount: לא יורדים מתחת למינימום - מוסיפים במקום", () => {
+  assert.deepEqual(pickDistinctAmount(100, [100]), { amount: 110, adjustedBy: -10 });
+  assert.deepEqual(pickDistinctAmount(110, [110, 100]), { amount: 120, adjustedBy: -10 });
+});
+
+test("pickDistinctAmount: תמיד מסתיים ומחזיר סכום שאינו בקבוצה", () => {
+  const used = new Set<number>();
+  for (let i = 0; i < 25; i++) {
+    const r = pickDistinctAmount(1500, used);
+    assert.ok(!used.has(r.amount) && r.amount > 0);
+    used.add(r.amount);
+  }
+  assert.equal(used.size, 25);
 });

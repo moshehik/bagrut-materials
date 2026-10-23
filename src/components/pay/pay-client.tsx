@@ -46,7 +46,7 @@ export type PayItemOption = {
 type Subject = { id: number; title: string; slug: string; icon: string };
 type Step = "plan" | "details" | "waiting" | "done";
 type OrderKind = "plan" | PayableItemKind;
-type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean; kind?: OrderKind; itemTitle?: string | null };
+type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean; kind?: OrderKind; itemTitle?: string | null; sameDayAdjust?: number };
 type StatusInfo = {
   status: string;
   text: string;
@@ -507,6 +507,8 @@ export function PayClient(props: {
     const amount = intent.amount || info?.amount || 0;
     const listAmount = intent.listAmount || info?.listAmount || 0;
     const couponPercent = intent.couponPercent ?? info?.couponPercent ?? null;
+    // הנחה של 10 אג' (ואילך) על רכישה נוספת באותו סכום באותו יום: נדרים לא מאפשרים שני חיובים זהים לאותו כרטיס ביום אחד
+    const sameDayAdjust = intent.sameDayAdjust ?? (!couponPercent && listAmount > amount ? listAmount - amount : 0);
     const last = fmtTime(info?.lastCheckedAt);
     const next = fmtTime(info?.nextCheckAt);
     const opens = orderKind === "single" ? "הקובץ ייפתח להורדה" : orderKind === "bundle" ? "קבצי התיקייה ייפתחו להורדה" : "המנוי ייפתח";
@@ -527,6 +529,11 @@ export function PayClient(props: {
           {couponPercent && listAmount ? (
             <div className="w-full text-base">
               כולל {couponPercent}% הנחה מהקופון שלך (במקום <GateShekel agorot={listAmount} />)
+            </div>
+          ) : null}
+          {sameDayAdjust > 0 ? (
+            <div className="w-full text-base">
+              הורדנו <GateShekel agorot={sameDayAdjust} /> מהמחיר: כבר יש לך היום רכישה באותו סכום, ונדרים פלוס לא מאפשרים שני חיובים זהים לאותו כרטיס ביום אחד.
             </div>
           ) : null}
         </div>

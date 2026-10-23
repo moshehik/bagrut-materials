@@ -451,6 +451,26 @@ export function advanceLastId(ids: string[], failedIndex: number, current: numbe
   return max || null;
 }
 
+/**
+ * נדרים פלוס לא מאפשרים שני חיובים באותו סכום, לאותו כרטיס, באותו יום. לקוחה שקונה כמה תיקיות/קבצים באותו סכום באותו יום
+ * מקבלת על כל רכישה נוספת הנחה של `step` אגורות (10, 20, ...) – הסכום הראשון הפנוי שאין לה בו עדיין בקשה היום.
+ * `used` = הסכומים (באגורות) של הבקשות האחרות שלה באותו יום. סכום שלא תפוס – נשאר כמו שהוא. לא יורדים מתחת ל-`minAmount`;
+ * אם אין מקום מטה (מחיר נמוך מאוד) – מוסיפים `step` במקום להוריד. `adjustedBy` = כמה הורדנו (שלילי = הוספנו).
+ */
+export const SAME_DAY_STEP_AGOROT = 10;
+export function pickDistinctAmount(amount: number, used: Iterable<number>, step = SAME_DAY_STEP_AGOROT, minAmount = 100): { amount: number; adjustedBy: number } {
+  const taken = new Set(used);
+  if (!taken.has(amount)) return { amount, adjustedBy: 0 };
+  for (let k = 1; amount - step * k >= minAmount; k++) {
+    const c = amount - step * k;
+    if (!taken.has(c)) return { amount: c, adjustedBy: amount - c };
+  }
+  for (let k = 1; ; k++) {
+    const c = amount + step * k;
+    if (!taken.has(c)) return { amount: c, adjustedBy: amount - c };
+  }
+}
+
 /** האם שתי בקשות "אותה הזמנה" (N2) – מסלול, מקצועות (ללא סדר), דלג, סכום; ולפריט – אותו חומר / אותה תיקייה */
 type IntentParams = { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number; materialId?: number | null; itemCategoryId?: number | null };
 export function sameIntentParams(a: IntentParams, b: IntentParams): boolean {

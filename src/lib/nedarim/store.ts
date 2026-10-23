@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
-import { and, desc, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   nedarimPaymentEvents,
@@ -127,6 +127,30 @@ export async function findOpenWithCoupon(userId: number, couponId: number): Prom
     .orderBy(desc(nedarimPayments.createdAt))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * הסכומים (באגורות) של הבקשות האחרות של המשתמשת ב-24 השעות האחרונות שעשויות להיות מחויבות (ממתינה / ממתינה לאישור / שולמה) –
+ * בלי הבקשה של אותה הזמנה עצמה (ניסיון חוזר על אותו פריט לא נחשב רכישה נוספת). משמש ל-pickDistinctAmount: נדרים לא מאפשרים שני
+ * חיובים זהים לאותו כרטיס באותו יום. חלון נע של 24 שעות (גדול מיום קלנדרי) ומחושב בשעון ה-DB עצמו, כדי לא להיתלות באזור זמן.
+ */
+export async function sameDayAmountsOfOtherOrders(
+  userId: number,
+  order: { plan: string; materialId: number | null; itemCategoryId: number | null },
+): Promise<number[]> {
+  const rows = await db
+    .select({ amount: nedarimPayments.amount, plan: nedarimPayments.plan, materialId: nedarimPayments.materialId, itemCategoryId: nedarimPayments.itemCategoryId })
+    .from(nedarimPayments)
+    .where(
+      and(
+        eq(nedarimPayments.userId, userId),
+        inArray(nedarimPayments.status, ["pending", "processing", "paid"]),
+        sql`${nedarimPayments.createdAt} > now() - interval '24 hours'`,
+      ),
+    );
+  return rows
+    .filter((r) => !(r.plan === order.plan && (r.materialId ?? null) === order.materialId && (r.itemCategoryId ?? null) === order.itemCategoryId))
+    .map((r) => r.amount);
 }
 
 /**
