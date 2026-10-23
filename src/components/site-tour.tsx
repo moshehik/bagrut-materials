@@ -20,13 +20,44 @@ type Step = {
   title: string;
   body: string;
   cta?: { label: string; href: string };
+  /** במפת הבגרות: פותח את כל הריבועים (כאילו נלחץ ״פתיחת כל מפת הבגרויות״) ומרכז את האלמנט המודגש גם לרוחב */
+  mapOpen?: boolean;
+  /** מעבר אוטומטי בין אלמנטים (בלי ללחוץ ״הבאה״): מדגיש כל אחד לפי הסדר עם משפט קצר לפי הערך של data-lesson, ובסוף עובר לתחנה הבאה */
+  auto?: { selector: string; texts: Record<string, string>; ms: number };
+};
+
+const LESSON_TEXTS: Record<string, string> = {
+  student: "דף עבודה לתלמידה, עם מקומות למילוי.",
+  teacher: "אותו דף עם התשובות, למורה.",
+  quiz: "בוחן קצר על הפרק, מוכן להדפסה.",
+  "quiz-answers": "התשובות לבוחן.",
+  exam: "שאלות מבגרויות קודמות על הפרק.",
+  "exam-answers": "התשובות לשאלות מהבגרויות.",
+  dictation: "סיכום קצר להכתבה בכיתה.",
+  discussions: "דיונים ופעילויות לשיעור.",
+  enrichment: "דף העשרה עם ידיעות מעניינות.",
+  skills: "מיומנויות למידה לפרק.",
+  prep: "דף הכנה ובקיאות לפני הבוחן.",
+  presentation: "מצגת לליווי השיעור. בקרוב.",
 };
 
 const STEPS: Step[] = [
   {
     path: "/",
     title: "ברוכה הבאה ללו״ז העניין",
-    body: "זה סיור קצר באתר עצמו: אני מראה לך איפה הכול נמצא, ואת לוחצת ״הבאה״. לוקח בערך דקה, ואפשר לצאת בכל רגע.",
+    body: "זה סיור קצר באתר עצמו: אני מראה לך איפה הכול נמצא, ואת לוחצת ״הבאה״. לוקח בערך שתי דקות, ואפשר לצאת בכל רגע.",
+  },
+  {
+    path: "/",
+    target: ['[data-tour="hero-clock"]'],
+    title: "השעון שבלוגו חי",
+    body: "המחוגים בלוגו מראים את השעה האמיתית אצלך ונעים בזמן אמת, כולל מחוג השניות הזהוב.",
+  },
+  {
+    path: "/",
+    auto: { selector: '[data-tour="lesson-spec"] [data-lesson]', texts: LESSON_TEXTS, ms: 1500 },
+    title: "מה יש בשיעור",
+    body: "לכל שיעור מחכה מעטפת מלאה. עוברים על הקבצים אחד אחד, והמפרט משתנה לפי סוג השיעור.",
   },
   {
     path: "/",
@@ -44,7 +75,33 @@ const STEPS: Step[] = [
     path: "/map",
     target: [".map-guide", "main h1"],
     title: "מפת הבגרות",
-    body: "רואים בבת אחת מה צריך ללמד בכל בגרות, לפי סמל השאלון. ריבוע שמסומן בו וי כבר מוכן, ואפשר להיכנס ממנו ישר לחומרים.",
+    body: "רואים בבת אחת מה צריך ללמד בכל בגרות, לפי סמל השאלון. כל בגרות היא תרשים של ריבועים, ומהריבוע אפשר להגיע ישר לחומרים.",
+  },
+  {
+    path: "/map",
+    target: ["[data-map-scroll-x] .flow-node--open", "[data-map-scroll-x] .flow-node"],
+    title: "לוחצים על ריבוע ונפתח הבא",
+    body: "לחיצה על ריבוע פותחת את הריבוע הבא אחריו, וכך יורדים צעד אחר צעד עד לפרק המדויק. לחיצה נוספת על אותו ריבוע סוגרת אותו.",
+  },
+  {
+    path: "/map",
+    mapOpen: true,
+    target: [".flow-node button[aria-label^='קטעי מפרשים']"],
+    title: "סימון הנוצה: קטעי מפרשים",
+    body: "פרק שמסומן בנוצה כולל קטעי מפרשים. לחיצה על הנוצה פותחת בועה שמפרטת אילו מפרשים נלמדים בפרק הזה.",
+  },
+  {
+    path: "/map",
+    mapOpen: true,
+    target: [".flow-node .flow-ready-mark"],
+    title: "הוי: החומר כבר מוכן",
+    body: "ריבוע שמסומן בוי ורוד בפינה כבר הוכן לו חומר, ואפשר ללחוץ על החץ הקטן שלידו ולהיכנס ישר לחומרים.",
+  },
+  {
+    path: SAMPLE_CHAPTER,
+    target: [".chapter-login .fa-wrap", ".fa-wrap", ".coupon-stub"],
+    title: "מורידות את כל התיקייה בבת אחת",
+    body: "בראש כל תיקייה יש כפתור ״הורידי את כל החומרים״. עומדות עליו, ונפתחות שתי אפשרויות: להוריד את כל הקבצים כקובץ זיפ אחד, או לשלוח אותם למייל.",
   },
   {
     path: SAMPLE_CHAPTER,
@@ -63,6 +120,24 @@ const STEPS: Step[] = [
     target: ["article.mtc .mtc-lower"],
     title: "מצאת טעות? תקני בעצמך",
     body: "מסמנות את הטקסט, כותבות את התיקון, והוא מופיע אצלך מיד. אנחנו בודקות, ואם הוא נכון מעדכנות את הקובץ לכל המורות.",
+  },
+  {
+    path: SAMPLE_CHAPTER,
+    target: ["#unit-forum-h"],
+    title: "פורום לכל יחידה",
+    body: "בתחתית כל יחידה יש פורום שמוקדש רק לה. שואלות שאלה, כותבות הערה או משתפות טיפ, ומורות שכבר לימדו את היחידה עונות. המורות מופיעות לפי מספר אישי ולא לפי שם, ובפורום כותבות מנויות ומי שרכשה קובץ ביחידה.",
+  },
+  {
+    path: "/tour-demo/calendar",
+    target: ['section[aria-label^="לוח שנה"]'],
+    title: "לוח ההורדות שלך",
+    body: "באזור האישי, ב״ההורדות שלי״, יש לוח שנה עברי של כל מה שהורדת. בכל יום מופיעות התיקיות שהורדת מהן ומספר ההורדות, בשבתות מופיעה פרשת השבוע, ומסומנים חגים וצומות. עוברות בין חודשים בכפתורים שמעל הלוח. מה שמופיע כאן הוא דוגמה.",
+  },
+  {
+    path: "/tour-demo/calendar",
+    target: ["#day-list"],
+    title: "לוחצות על יום ונפתח הפירוט",
+    body: "בלוח האמיתי לחיצה על יום שיש בו הורדות פותחת למטה חלון עם הפירוט: מה הורדת, באיזו שעה, אם הורדת את כל התיקייה או חלק ממנה, ואפשר גם להוריד שוב.",
   },
   {
     path: "/pricing",
@@ -136,6 +211,7 @@ export function SiteTour() {
   const [rect, setRect] = useState<Rect | null>(null);
   const [view, setView] = useState({ w: 1024, h: 768 });
   const [cardH, setCardH] = useState(200);
+  const [autoNow, setAutoNow] = useState<{ label: string; text: string } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const pending = useRef<string | null>(null);
@@ -194,6 +270,68 @@ export function SiteTour() {
     if (pending.current === null) close();
   }, [pathname, step, close]);
 
+  // תחנה אוטומטית (מפרט השיעור): מדגישה כל פריט לפי הסדר ועוברת הלאה בסופה, בלי ללחוץ ״הבאה״
+  useEffect(() => {
+    setAutoNow(null);
+    if (step === null || pathname !== STEPS[step].path) return;
+    const auto = STEPS[step].auto;
+    if (!auto) return;
+    let poll = 0;
+    let next = 0;
+    let tries = 0;
+    const run = (els: HTMLElement[]) => {
+      let i = 0;
+      const show = () => {
+        const el = els[i];
+        const key = el.dataset.lesson ?? "";
+        setAutoNow({ label: el.querySelector("b")?.textContent ?? "", text: auto.texts[key] ?? "" });
+        setTargetEl(el);
+        const r = el.getBoundingClientRect();
+        window.scrollTo({
+          top: Math.max(0, window.scrollY + r.top - (window.innerHeight - r.height) / 2),
+          behavior: "smooth",
+        });
+        next = window.setTimeout(() => {
+          i += 1;
+          if (i < els.length) show();
+          else goTo(step + 1);
+        }, auto.ms);
+      };
+      show();
+    };
+    poll = window.setInterval(() => {
+      const els = Array.from(document.querySelectorAll<HTMLElement>(auto.selector));
+      if (els.length) {
+        window.clearInterval(poll);
+        run(els);
+      } else if (++tries >= 100) {
+        window.clearInterval(poll);
+      }
+    }, 150);
+    return () => {
+      window.clearInterval(poll);
+      window.clearTimeout(next);
+    };
+  }, [step, pathname, goTo]);
+
+  // בתחנות הנוצה/הוי במפה: לוחצים בשבילה על ״פתיחת כל מפת הבגרויות״ (פעם אחת), כדי שהסימנים יהיו גלויים
+  useEffect(() => {
+    if (step === null || pathname !== STEPS[step].path || !STEPS[step].mapOpen) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const btn = Array.from(document.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")).find((b) =>
+        b.textContent?.includes("פתיחת כל"),
+      );
+      if (btn) {
+        window.clearInterval(timer);
+        btn.click();
+      } else if (++tries >= 40) {
+        window.clearInterval(timer);
+      }
+    }, 150);
+    return () => window.clearInterval(timer);
+  }, [step, pathname]);
+
   // מציאת האלמנט המודגש (אחרי טעינת העמוד) וגלילה אליו
   useEffect(() => {
     if (step === null || pathname !== STEPS[step].path) return;
@@ -207,6 +345,11 @@ export function SiteTour() {
         window.clearInterval(timer);
         // מיישרים את האלמנט במסך; פעם שנייה אחרי שהעמוד נרגע (תמונות/גופנים משנים גובה)
         const align = () => {
+          // בתרשים המפה האלמנט יכול להיות מחוץ למסך גם לרוחב (גלילה אופקית בתוך התרשים)
+          if (STEPS[step].mapOpen) {
+            el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+            return;
+          }
           const r = el.getBoundingClientRect();
           const mobile = window.innerWidth < 640;
           const desired = mobile || r.height > window.innerHeight * 0.5 ? HEADER_H : (window.innerHeight - r.height) / 2;
@@ -338,9 +481,9 @@ export function SiteTour() {
           תחנה {step + 1} מתוך {STEPS.length}
         </div>
         <h2 className="mt-1 text-2xl font-normal text-sun" style={{ fontFamily: "var(--font-hand)" }}>
-          {s.title}
+          {autoNow?.label || s.title}
         </h2>
-        <p className="mt-2 text-base leading-relaxed text-white/95">{s.body}</p>
+        <p className="mt-2 text-base leading-relaxed text-white/95">{autoNow?.text || s.body}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {last && s.cta ? (

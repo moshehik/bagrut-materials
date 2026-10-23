@@ -122,12 +122,6 @@ export default async function HomePage({
                     מסלולים ומחירים
                   </Link>
                 )}
-                {/* שורה משלו: כפתור שלישי באותה שורה היה מרחיב אותה שמאלה אל איור הלוגו */}
-                <span className={s.actsBreak} aria-hidden />
-                <TourLaunchButton className="btn btn-ghost btn-plans btn-hand">
-                  <Compass className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
-                  סיור באתר
-                </TourLaunchButton>
               </div>
             </div>
           </div>
@@ -135,6 +129,14 @@ export default async function HomePage({
       </div>
 
       <div className={s.wrap}>
+        {/* כפתור הסיור: מתחת לפתיח ולפני נתוני האתר, באותו סגנון של "הבנתי" */}
+        <div className={s.tourRow}>
+          <TourLaunchButton className="btn btn-gold btn-gate">
+            <Compass className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            סיור באתר
+            <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
+          </TourLaunchButton>
+        </div>
         {/* ================= KINDS — נתוני האתר (קופצים מ-0 בכל כניסה). ההורדות והכניסות הוסתרו בכוונה עד שהמספרים יגדלו — stats.downloads/visits עדיין מחושבים ב-getHomeStats ================= */}
         <AnimatedGrid className={s.kinds}>
           <div className={s.kind}>
@@ -169,6 +171,7 @@ export default async function HomePage({
             מה לו״ז השיעור שלנו?
           </h2>
         </Reveal>
+        <div data-tour="lesson-spec">
         <AnimatedGrid className={s.lessonItems}>
           {LESSON_ITEMS.map((t) => {
             const st = CARD_STYLES[t];
@@ -178,6 +181,7 @@ export default async function HomePage({
             return (
               <div
                 key={t}
+                data-lesson={t}
                 className={s.lessonItem}
                 style={{ "--chk": chk } as CSSProperties}
               >
@@ -198,6 +202,7 @@ export default async function HomePage({
             );
           })}
         </AnimatedGrid>
+        </div>
         <p className={s.lessonNote}>המפרט מתעדכן לפי סוג השיעור</p>
 
         {/* ================= STEPS ================= */}

@@ -20,7 +20,7 @@ export function HeroClock() {
   const hour = now ? (now.getHours() % 12) + min / 60 : 0;
 
   return (
-    <span className={s.heroClock} aria-hidden data-ready={now ? "true" : undefined}>
+    <span className={s.heroClock} aria-hidden data-tour="hero-clock" data-ready={now ? "true" : undefined}>
       <svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
         <g className={s.clockHand} style={{ transform: `rotate(${hour * 30}deg)` }}>
           <line x1="130" y1="140" x2="130" y2="66" stroke="#26344a" strokeWidth="6" strokeLinecap="round" />
