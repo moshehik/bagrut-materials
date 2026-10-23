@@ -406,3 +406,21 @@ test("callback body parsing (optional webhook)", () => {
   assert.equal(j.reference, "NP-ABCDEFGH");
   assert.deepEqual(parseCallbackBody(null, ""), {});
 });
+
+test("hostedPaymentUrl: כתובת החזרה עם from=nedarim נשמרת שלמה (הקידוד לא שובר את הפרמטר השני)", () => {
+  const u = new URL(
+    hostedPaymentUrl({
+      mosadId: "1",
+      amountAgorot: 100,
+      reference: "NP-ABCDEFGH",
+      clientName: "",
+      phone: "",
+      email: "",
+      planKey: "yearly",
+      description: "",
+      redirectUrl: "https://example.com/pay?ref=NP-ABCDEFGH&from=nedarim",
+    }),
+  );
+  assert.equal(u.searchParams.get("Redirect"), "https://example.com/pay?ref=NP-ABCDEFGH&from=nedarim");
+  assert.equal(new URL(u.searchParams.get("Redirect")!).searchParams.get("from"), "nedarim");
+});

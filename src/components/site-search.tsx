@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FolderOpen, Loader2, Search, X } from "lucide-react";
 import { MATERIAL_KINDS, formatPrice } from "@/lib/constants";
 import type { SearchResult } from "@/lib/data";
+import { RECENT_FOLDERS_EVENT, clearRecentFolders, readRecentFolders, type RecentFolder } from "@/lib/recent-folders";
 
 const SEARCH_OPEN_EVENT = "site-search:open";
 
@@ -32,7 +33,8 @@ export function SearchTriggerButton({
         openSiteSearch();
       }}
       aria-label="חיפוש באתר"
-      title="חיפוש (/)"
+      data-tip="חיפוש (/)"
+      data-tip-side="below"
       className={className}
     >
       <Search className="h-5 w-5" aria-hidden />
@@ -47,6 +49,7 @@ export function SiteSearchOverlay() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [recents, setRecents] = useState<RecentFolder[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const close = useCallback(() => {
@@ -81,6 +84,15 @@ export function SiteSearchOverlay() {
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  // "ביקרת לאחרונה": תיקיות הקבצים האחרונות מהדפדפן (ר' recent-folders.ts)
+  useEffect(() => {
+    if (!open) return;
+    const load = () => setRecents(readRecentFolders().slice(0, 5));
+    load();
+    window.addEventListener(RECENT_FOLDERS_EVENT, load);
+    return () => window.removeEventListener(RECENT_FOLDERS_EVENT, load);
   }, [open]);
 
   // שהיה קצרה + ביטול בקשה קודמת, כדי לא להציף את השרת בכל הקשה
@@ -148,7 +160,38 @@ export function SiteSearchOverlay() {
 
         <div className="max-h-[65vh] overflow-y-auto p-2">
           {q.trim().length < 2 ? (
-            <p className="px-3 py-6 text-center text-sm text-muted">הקלידי לפחות 2 תווים כדי לחפש</p>
+            recents.length > 0 ? (
+              <div className="mb-1">
+                <div className="flex items-center justify-between px-3 pb-1 pt-2">
+                  <p className="text-xs font-semibold text-muted">ביקרת לאחרונה</p>
+                  <button type="button" onClick={clearRecentFolders} className="text-xs text-muted underline-offset-2 hover:underline">
+                    ניקוי
+                  </button>
+                </div>
+                <ul>
+                  {recents.map((r) => (
+                    <li key={r.href}>
+                      <Link
+                        href={r.href}
+                        onClick={close}
+                        className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-blue-soft/60"
+                      >
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-soft" aria-hidden>
+                          <FolderOpen className="h-4 w-4 text-blue-deep" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold leading-snug">{r.title}</span>
+                          {r.path && <span className="block truncate text-xs text-muted">{r.path}</span>}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <p className="px-3 pb-1 pt-2 text-center text-xs text-muted">או הקלידי כדי לחפש, למשל: פרשת בא פרק יג לתלמידה</p>
+              </div>
+            ) : (
+              <p className="px-3 py-6 text-center text-sm text-muted">הקלידי לפחות 2 תווים כדי לחפש, למשל: פרשת בא פרק יג לתלמידה</p>
+            )
           ) : results === null ? (
             <p className="px-3 py-6 text-center text-sm text-muted">מחפשת…</p>
           ) : results.length === 0 ? (
@@ -157,6 +200,9 @@ export function SiteSearchOverlay() {
             </p>
           ) : (
             <>
+              {results.some((r) => r.approx) && (
+                <p className="px-3 pb-1 pt-2 text-xs text-muted">לא נמצאה התאמה מלאה – אלה התוצאות הקרובות ביותר</p>
+              )}
               {categoryResults.length > 0 && (
                 <ResultGroup title="מקצועות ותיקיות" items={categoryResults} onNavigate={close} />
               )}
@@ -200,7 +246,7 @@ function ResultGroup({
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold leading-snug">{r.title}</span>
                 <span className="block truncate text-xs text-muted">
-                  {r.type === "category" ? "תיקייה" : r.categoryTitle}
+                  {r.path || (r.type === "category" ? "תיקייה" : r.categoryTitle)}
                 </span>
               </span>
               {r.type === "material" && (

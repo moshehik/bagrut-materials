@@ -23,7 +23,7 @@ import { PayClient, type PayItemOption, type PayPlanOption } from "@/components/
 export const metadata: Metadata = { title: "תשלום מאובטח" };
 export const dynamic = "force-dynamic";
 
-type SP = { plan?: string; categories?: string; category?: string; ref?: string; material?: string; bundle?: string };
+type SP = { plan?: string; categories?: string; category?: string; ref?: string; material?: string; bundle?: string; from?: string };
 
 function num(v?: string) {
   const n = Number(v);
@@ -190,6 +190,7 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
           user={{ firstName: user.name.split(" ")[0], fullName: user.name, email: user.email, phone: user.phone, personalCode: user.personalCode }}
           coupon={coupon && coupon.percent ? { label: coupon.label, percent: coupon.percent } : null}
           initialRef={isValidReference(sp.ref) ? sp.ref : null}
+          returned={sp.from === "nedarim"}
           substituteMonths={SUBSTITUTE_MONTHS}
           substituteDailyDownloads={prices.substituteDailyDownloads}
           yearlyListMonthly={prices.yearlyListMonthly}

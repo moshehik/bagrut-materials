@@ -55,28 +55,41 @@ export function FreeTrialDownload({
       <button type="button" className={`${className ?? ""} cursor-pointer`} onClick={open}>
         {children}
       </button>
-      <dialog ref={ref} className="fix-dialog" aria-label="הורדה חינמית">
+      {/* אותו עיצוב כמו חלונית "שימי לב" של שינויים בקובץ: מסגרת כחולה עם ניצוץ זהב ולוח זהב בהיר */}
+      <dialog
+        ref={ref}
+        className="fix-dialog fix-dialog-dark"
+        aria-label="הורדה חינמית"
+        onClick={(e) => {
+          if (e.target === ref.current) close();
+        }}
+      >
         <div className="fix-dialog-box">
           <div className="fix-dialog-head">
             <h3>{state === "available" ? "ההורדה החינמית שלך" : "עוד רגע ההורדה החינמית שלך"}</h3>
             <button type="button" className="fix-close" aria-label="סגירה" onClick={close}>
-              <X className="h-4 w-4" aria-hidden />
+              <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
           {state === "available" ? (
-            <>
+            <div className="fix-inner fix-done">
               <p className="fix-dialog-sub">
                 זו ההורדה החינמית האחת שלך, על כל חומר שתבחרי. להוריד את <b>{title}</b>?
                 <br />
                 החומר יישאר שלך, ותוכלי להוריד אותו שוב בכל פעם.
               </p>
               {error && (
-                <p role="alert" className="mb-3 text-sm text-red-700">
+                <p role="alert" className="fix-error">
                   {error}
                 </p>
               )}
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn btn-gold text-sm py-2" onClick={claim} disabled={pending}>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="btn btn-gold text-sm py-2 fix-gate-btn"
+                  onClick={claim}
+                  disabled={pending}
+                >
                   {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
                   כן, להורדה
                 </button>
@@ -84,16 +97,16 @@ export function FreeTrialDownload({
                   לא, אבחר חומר אחר
                 </button>
               </div>
-            </>
+            </div>
           ) : (
-            <>
+            <div className="fix-inner fix-done">
               <p className="fix-dialog-sub">
                 כדי לקבל את ההורדה החינמית צריך קודם לאמת את כתובת המייל. זה לוקח דקה: נשלח אלייך קישור, ולוחצים עליו.
               </p>
-              <Link href="/account" className="btn btn-gold text-sm py-2">
+              <Link href="/account" className="btn btn-gold text-sm py-2 fix-gate-btn">
                 לאימות המייל
               </Link>
-            </>
+            </div>
           )}
         </div>
       </dialog>

@@ -83,6 +83,8 @@ export function PayClient(props: {
   user: { firstName: string; fullName: string; email: string; phone: string | null; personalCode: string };
   coupon: { label: string; percent: number } | null;
   initialRef: string | null;
+  /** חזרה מדף התשלום של נדרים (?from=nedarim): מריצים מיד בדיקה מול ה-API, ועוד ניסיון או שניים אחרי כמה שניות */
+  returned?: boolean;
   substituteMonths: number;
   substituteDailyDownloads: number;
   yearlyListMonthly: number;
@@ -157,6 +159,33 @@ export function PayClient(props: {
       clearInterval(timer);
     };
   }, [step, intent, fetchStatus, startedAt]);
+
+  // חזרה מנדרים: הדפדפן חזר לפני שהתשלום מופיע אצלנו – בודקים מיד מול ה-API (השרת מגביל ל-3 בדיקות כאלה לבקשה), ושוב אחרי 12 ו-30 שנ'.
+  // ההפניה עצמה לא מוכיחה תשלום; היא רק מזרזת את הבדיקה. אם עדיין לא זוהה – ממשיכים בבדיקה הרגילה כל 30 שנ'.
+  useEffect(() => {
+    if (!props.returned || step !== "waiting" || !intent) return;
+    const reference = intent.reference;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/pay/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference, returned: true }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) applyInfo(data);
+      } catch {
+        /* הבדיקה הרגילה תנסה שוב */
+      }
+    };
+    const timers = [0, 12_000, 30_000].map((ms) => setTimeout(() => void run(), ms));
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+    // רק פעם אחת בטעינת העמוד: ה-step משתנה ל-"done" אחרי שזוהה, והניקוי עוצר את הניסיונות הבאים
+  }, [props.returned, step, intent, applyInfo]);
 
   const checkNow = async (simulate = false) => {
     if (!intent || busy) return;

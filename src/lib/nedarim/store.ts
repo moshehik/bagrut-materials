@@ -72,6 +72,25 @@ export async function appendEvent(paymentId: number, kind: string, message = "",
   }
 }
 
+/** כמה בדיקות-חזרה מיידיות מותרות לבקשה אחת (הראשונה מיד, ועוד שתיים אחרי כמה שניות – העסקה עשויה להופיע בהיסטוריה באיחור קל) */
+export const RETURN_CHECK_BUDGET = 3;
+
+/**
+ * "תופס" בדיקה מיידית אחת בחזרה מנדרים לבקשה פתוחה (אירוע return_check ביומן). false = המכסה של הבקשה נוצלה → הבדיקה הרגילה (רצפה 3 דק').
+ * הסימון `from=nedarim` בכתובת החזרה ניתן לזיוף, ולכן הוא רק פותח *קריאה* ל-API (עד RETURN_CHECK_BUDGET לבקשה, בכפוף למונה השעתי הגלובלי);
+ * "שולם" נקבע אך ורק לפי ההיסטוריה של נדרים.
+ */
+export async function takeReturnCheck(paymentId: number): Promise<boolean> {
+  const rows = await db
+    .select({ id: nedarimPaymentEvents.id })
+    .from(nedarimPaymentEvents)
+    .where(and(eq(nedarimPaymentEvents.paymentId, paymentId), eq(nedarimPaymentEvents.kind, "return_check")))
+    .limit(RETURN_CHECK_BUDGET);
+  if (rows.length >= RETURN_CHECK_BUDGET) return false;
+  await appendEvent(paymentId, "return_check", "בדיקה מיידית בחזרה מנדרים");
+  return true;
+}
+
 export const getByReference = async (reference: string): Promise<NedarimPayment | null> => {
   const [row] = await db.select().from(nedarimPayments).where(eq(nedarimPayments.reference, reference)).limit(1);
   return row ?? null;

@@ -16,6 +16,9 @@
 import { createHash } from "node:crypto";
 import { isDocxForBlankLines, relaxJustifiedBlankLines } from "./docx-blank-lines";
 import { normalizeNikudCompat } from "./docx-nikud-compat";
+import { fitTablesToPage } from "./docx-table-fit";
+import { separateLineBorders } from "./docx-line-borders";
+import { clearHeaderLogo } from "./docx-header-clearance";
 
 const BRIDGE_TIMEOUT_MS = 55000; // מתחת ל-60s של Vercel
 
@@ -640,7 +643,10 @@ async function convertWithBudget(args: ConvertArgs, budget: Budget): Promise<Uin
 /**
  * תיקוני-תוכן שרצים על כל docx לפני ההמרה (לא על pptx/doc): שחרור יישור-לשני-הצדדים מפסקאות
  * קווי-מילוי (ר' docx-blank-lines.ts) והחלפת סימני ניקוד שחסרים בגופני הפסוקים - קמץ קטן/חולם
- * חסר - בסימנים הקלאסיים (ר' docx-nikud-compat.ts; בלעדיה LibreOffice מצייר אותיות אחת על השנייה).
+ * חסר - בסימנים הקלאסיים (ר' docx-nikud-compat.ts; בלעדיה LibreOffice מצייר אותיות אחת על השנייה),
+ * וכיווץ טבלאות שרחבות מאזור הטקסט של הדף ("בורחות מהשוליים", ר' docx-table-fit.ts), והפרדת שורות
+ * כתיבה סמוכות שמתמזגות לקו אחד (ר' docx-line-borders.ts), והגדלת שוליים עליונים כשהלוגו הצף של הכותרת
+ * נחתך על ידי גוף הדף (ר' docx-header-clearance.ts).
  * קובץ שאין בו מה לתקן חוזר כאותם בייטים בדיוק.
  * חייב לרוץ *לפני* חישוב מפתח המטמון (md5) ב-convertOfficeToPdfCached - ר' ההערה שם.
  */
@@ -648,6 +654,9 @@ async function prepareOfficeForConvert(args: ConvertArgs): Promise<ConvertArgs> 
   if (!isDocxForBlankLines(args.mimeType, args.name)) return args;
   let bytes = await relaxJustifiedBlankLines(args.bytes);
   bytes = await normalizeNikudCompat(bytes);
+  bytes = await fitTablesToPage(bytes);
+  bytes = await separateLineBorders(bytes);
+  bytes = await clearHeaderLogo(bytes);
   return bytes === args.bytes ? args : { ...args, bytes };
 }
 

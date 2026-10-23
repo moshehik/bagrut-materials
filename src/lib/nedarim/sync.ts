@@ -33,6 +33,8 @@ import { appendEvent, settleFromTransaction, touchPayment } from "./store";
 export const SYNC_MIN_INTERVAL_SEC = 240;
 export const SYNC_USER_FLOOR_SEC = 180;
 export const SYNC_ADMIN_FLOOR_SEC = 60;
+/** חזרה מדף התשלום של נדרים: כמעט בלי רצפה (נשארת רק למנוע שתי קריאות באותן שניות); המונה השעתי והנעילה נשארים */
+export const SYNC_RETURN_FLOOR_SEC = 8;
 export const HOURLY_CALL_CAP = 18;
 const LOCK_SEC = 90;
 /** שורות לקריאה (N1): קטן, כדי שהסבב יסתיים בתוך 60 שנ' של ה-route גם עם שמירה ל-DB */
@@ -40,7 +42,7 @@ export const MAX_ROWS = 500;
 const INSERT_CHUNK = 150;
 const MAX_BACKOFF_SEC = 60 * 60;
 
-export type SyncReason = "poll" | "user" | "admin" | "callback" | "test";
+export type SyncReason = "poll" | "user" | "admin" | "callback" | "test" | "return";
 export type RefreshResult = {
   /** האם בוצעה קריאה ל-API בפועל */
   ran: boolean;
@@ -76,8 +78,14 @@ export function currentHourCalls(state: NedarimSyncState | null, now = Date.now(
   return state.hourWindowStart.getTime() + 3600_000 > now ? state.hourCalls : 0;
 }
 
-const floorFor = (reason: SyncReason) =>
-  reason === "poll" ? SYNC_MIN_INTERVAL_SEC : reason === "user" || reason === "callback" ? SYNC_USER_FLOOR_SEC : SYNC_ADMIN_FLOOR_SEC;
+export const floorFor = (reason: SyncReason) =>
+  reason === "poll"
+    ? SYNC_MIN_INTERVAL_SEC
+    : reason === "user" || reason === "callback"
+      ? SYNC_USER_FLOOR_SEC
+      : reason === "return"
+        ? SYNC_RETURN_FLOOR_SEC
+        : SYNC_ADMIN_FLOOR_SEC;
 
 /**
  * קריאה אחת ל-GetHistoryJson אם השער מרשה (נעילה + מרווח + backoff + מונה שעתי). לא זורק.

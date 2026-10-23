@@ -13,6 +13,7 @@ import {
   type User,
 } from "@/db/schema";
 import { getBool } from "./settings";
+import { rankItems, scoreItem, tokenize } from "./search-match";
 
 /**
  * מקצועות שורש. כברירת מחדל מוסתרים המושהים/טיוטות (למשתמשות);
@@ -169,6 +170,10 @@ export type SearchResult =
       description: string | null;
       questionnaireCode: string | null;
       href: string;
+      /** מסלול התיקייה בעץ (בלי המקצוע השורשי), להצגה כהקשר: "בגרות 3 יחידות › בא" */
+      path: string;
+      /** התאמה חלקית (חסרה מילה אחת מהשאילתה) */
+      approx?: boolean;
     }
   | {
       type: "material";
@@ -180,79 +185,114 @@ export type SearchResult =
       price: number;
       categoryTitle: string;
       href: string;
+      /** מסלול התיקייה שבה הקובץ נמצא (בלי המקצוע השורשי) */
+      path: string;
+      approx?: boolean;
     };
 
-/** חיפוש מהיר בקטלוג (קטגוריות + חומרים) לפי כותרת/תיאור.
- * למנהלת מחזיר גם טיוטות/מושהים; למשתמשת מסנן גם שרשרת אבות מושהית (chainSuspended). */
+/** אינדקס החיפוש בזיכרון: כל הקטגוריות והחומרים הניתנים להגשה, עם שרשראות-האבות. ~2.5K שורות קלות – נטען פעם ב-5 דקות לכל instance. */
+type SearchCat = { c: Pick<Category, "id" | "title" | "description" | "questionnaireCode">; chain: ChainNode[] };
+type SearchMat = {
+  m: Pick<Material, "id" | "title" | "description" | "kind" | "access" | "price" | "downloads">;
+  chain: ChainNode[];
+};
+type SearchIndex = { cats: SearchCat[]; mats: SearchMat[] };
+const SEARCH_INDEX_TTL_MS = 5 * 60_000;
+const searchIndexCache = new Map<boolean, { at: number; data: SearchIndex }>();
+
+async function loadSearchIndex(isAdmin: boolean): Promise<SearchIndex> {
+  const hit = searchIndexCache.get(isAdmin);
+  if (hit && Date.now() - hit.at < SEARCH_INDEX_TTL_MS) return hit.data;
+  const [catRows, matRows] = await Promise.all([
+    db
+      .select({
+        id: categories.id,
+        parentId: categories.parentId,
+        slug: categories.slug,
+        title: categories.title,
+        status: categories.status,
+        description: categories.description,
+        questionnaireCode: categories.questionnaireCode,
+      })
+      .from(categories),
+    db
+      .select({
+        id: materials.id,
+        categoryId: materials.categoryId,
+        title: materials.title,
+        description: materials.description,
+        kind: materials.kind,
+        access: materials.access,
+        price: materials.price,
+        downloads: materials.downloads,
+      })
+      .from(materials)
+      .where(isAdmin ? undefined : and(eq(materials.status, "active"), materialServable)),
+  ]);
+  const byId = new Map(catRows.map((c) => [c.id, c]));
+  const chainOf = (id: number): ChainNode[] => {
+    const chain: ChainNode[] = [];
+    let cur = byId.get(id);
+    for (let i = 0; cur && i < 12; i++) {
+      chain.unshift({ id: cur.id, parentId: cur.parentId, slug: cur.slug, title: cur.title, status: cur.status });
+      cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+    }
+    return chain;
+  };
+  const visible = (chain: ChainNode[]) => chain.length > 0 && (isAdmin || !chainSuspended(chain));
+  const cats: SearchCat[] = [];
+  for (const c of catRows) {
+    const chain = chainOf(c.id);
+    if (visible(chain)) cats.push({ c, chain });
+  }
+  const mats: SearchMat[] = [];
+  for (const m of matRows) {
+    const chain = chainOf(m.categoryId);
+    if (visible(chain)) mats.push({ m, chain });
+  }
+  const data = { cats, mats };
+  searchIndexCache.set(isAdmin, { at: Date.now(), data });
+  return data;
+}
+
+/** מסלול להצגה: שרשרת הכותרות בלי המקצוע השורשי ובלי הפריט עצמו (לקטגוריה) */
+const pathOf = (chain: ChainNode[], includeLast: boolean) =>
+  chain
+    .slice(1, includeLast ? undefined : -1)
+    .map((n) => n.title)
+    .join(" › ");
+
+/**
+ * חיפוש חכם בקטלוג (קטגוריות + חומרים) – ר' search-match.ts: מילים חופשיות בכל סדר, מספרים ("13" = "יג"), אותיות שימוש,
+ * מילות הקשר אופציונליות ("פרשת"), סוג קובץ ("לתלמידה"), ותוצאות קרובות כשאין התאמה מלאה.
+ * "פרשת בא פרק יג לתלמידה" מוצא את "דף לתלמידה - פרק יג" שבתיקיית פרק י"ג שבתוך "בא".
+ * למנהלת מחזיר גם טיוטות/מושהים; למשתמשת מסנן גם שרשרת אבות מושהית (chainSuspended).
+ */
 export async function searchCatalog(query: string, isAdmin = false): Promise<SearchResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  // % ו-_ הם תווי-כלליות ב-LIKE – מבריחים אותם כדי שמונח כמו "_" לא יתאים להכול (ולא יהפוך לסריקה יקרה)
-  const likeOf = (s: string) => `%${s.replace(/[\\%_]/g, "\\$&")}%`;
-  // חיפוש רב-מילים ("ישעיה פרק ו", "תהלים נא"): כל מילה חייבת להופיע בכותרת/תיאור או באחת מקטגוריות-האב,
-  // כי "ישעיה" ו-"פרק ו'" יושבים בצמתים שונים של העץ. מילה בודדת = חיפוש ביטוי כמו קודם.
-  const tokens = q.split(/\s+/).filter(Boolean);
-  const multi = tokens.length > 1;
-  // ל-SQL נכנסות רק מילים באורך 2+ (מילה של אות אחת כמו "ו" הייתה מחזירה את כל הטבלה); הסינון המלא נעשה אחר כך
-  const sqlTerms = multi ? tokens.filter((t) => t.length >= 2) : [q];
-  if (sqlTerms.length === 0) return [];
-  const likes = sqlTerms.map(likeOf);
-  const limitCats = multi ? 200 : 6;
-  const limitMats = multi ? 200 : 8;
+  const index = await loadSearchIndex(isAdmin);
 
-  const [catRows, matRows] = await Promise.all([
-    db
-      .select()
-      .from(categories)
-      .where(
-        and(
-          or(...likes.flatMap((like) => [ilike(categories.title, like), ilike(categories.description, like)])),
-          isAdmin ? undefined : eq(categories.status, "active"),
-        ),
-      )
-      .orderBy(asc(categories.sort))
-      .limit(limitCats),
-    db
-      .select()
-      .from(materials)
-      .where(
-        and(
-          or(...likes.flatMap((like) => [ilike(materials.title, like), ilike(materials.description, like)])),
-          isAdmin ? undefined : and(eq(materials.status, "active"), materialServable),
-        ),
-      )
-      .orderBy(desc(materials.downloads))
-      .limit(limitMats),
-  ]);
-
-  if (catRows.length === 0 && matRows.length === 0) return [];
-
-  const chains = await getChainsFor([
-    ...new Set([...catRows.map((c) => c.id), ...matRows.map((m) => m.categoryId)]),
-  ]);
-
-  // השוואה בלי גרש/גרשיים ובלי רגישות לאותיות, כדי ש-"פרק ו" ימצא את "פרק ו'"
-  const norm = (s: string | null | undefined) => (s ?? "").replace(/["'״׳]/g, "").toLowerCase();
-  const normTokens = tokens.map(norm).filter(Boolean);
-  // מילה קצרה (אות-שתיים, בדרך כלל מספר פרק כמו "ו" / "נא") חייבת להופיע כמילה שלמה, אחרת "ו" מתאים להכול
-  const tokenHits = (t: string, hay: string) =>
-    t.length <= 2 ? new RegExp(`(^|[\\s\\-–(])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[\\s\\-–),:])`).test(hay) : hay.includes(t);
-  const matchesAll = (hay: string) => normTokens.every((t) => tokenHits(t, hay));
-  const inTitle = (title: string) => normTokens.filter((t) => tokenHits(t, norm(title))).length;
+  // קטגוריות: מילים שאינן מופיעות באף קטגוריה (סוג קובץ כמו "לתלמידה", "העשרה") מתייחסים אליהן כהקשר של החומרים בלבד,
+  // כדי שהתיקייה תימצא כהתאמה מלאה ("פרשת בא פרק יג לתלמידה" ← התיקייה בא › פרק י"ג) ולא כ"קרובה"
+  const catItemOf = ({ c, chain }: SearchCat) => ({ title: c.title, ancestors: chain.slice(0, -1).map((n) => n.title), description: c.description });
+  const catQuery = tokenize(q)
+    .filter((t) => index.cats.some((x) => scoreItem([t], catItemOf(x), new Set()).matched > 0))
+    .join(" ");
+  const catRank = rankItems(
+    catQuery,
+    index.cats,
+    catItemOf,
+  );
+  const matRank = rankItems(
+    q,
+    index.mats,
+    ({ m, chain }) => ({ title: m.title, ancestors: chain.map((n) => n.title), description: m.description, kind: m.kind }),
+    ({ m }) => m.downloads,
+  );
 
   const results: SearchResult[] = [];
-
-  const cats = catRows
-    .map((c) => ({ c, chain: chains.get(c.id) }))
-    .filter(({ c, chain }) => {
-      if (!chain || (!isAdmin && chainSuspended(chain))) return false;
-      if (!multi) return true;
-      return matchesAll(norm([...chain.map((n) => n.title), c.description ?? ""].join(" ")));
-    })
-    .sort((a, b) => inTitle(b.c.title) - inTitle(a.c.title))
-    .slice(0, 6);
-  for (const { c, chain } of cats) {
-    if (!chain) continue;
+  for (const { c, chain } of catRank.items.slice(0, 6)) {
     results.push({
       type: "category",
       id: c.id,
@@ -260,20 +300,11 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
       description: c.description,
       questionnaireCode: c.questionnaireCode,
       href: chainToHref(chain),
+      path: pathOf(chain, false),
+      ...(catRank.approx ? { approx: true } : {}),
     });
   }
-
-  const mats = matRows
-    .map((m) => ({ m, chain: chains.get(m.categoryId) }))
-    .filter(({ m, chain }) => {
-      if (!chain || (!isAdmin && chainSuspended(chain))) return false;
-      if (!multi) return true;
-      return matchesAll(norm([m.title, m.description ?? "", ...chain.map((n) => n.title)].join(" ")));
-    })
-    .sort((a, b) => inTitle(b.m.title) - inTitle(a.m.title))
-    .slice(0, 8);
-  for (const { m, chain } of mats) {
-    if (!chain) continue;
+  for (const { m, chain } of matRank.items.slice(0, 10)) {
     results.push({
       type: "material",
       id: m.id,
@@ -284,9 +315,10 @@ export async function searchCatalog(query: string, isAdmin = false): Promise<Sea
       price: m.price,
       categoryTitle: chain[chain.length - 1].title,
       href: `${chainToHref(chain)}#material-${m.id}`,
+      path: pathOf(chain, true),
+      ...(matRank.approx ? { approx: true } : {}),
     });
   }
-
   return results;
 }
 

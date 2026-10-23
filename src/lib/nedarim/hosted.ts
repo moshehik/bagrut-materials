@@ -19,6 +19,7 @@ export function hostedUrlFor(row: Pick<NedarimPayment, "reference" | "amount" | 
     planKey: row.plan,
     // avour: שם האתר + המסלול (+ שם החומר/התיקייה ברכישת פריט) – בלי PII
     description: buildTransactionComment(SITE_NAME, PLANS[row.plan].label, row.itemTitle ?? ""),
-    redirectUrl: `${siteUrl()}/pay?ref=${encodeURIComponent(row.reference)}`,
+    // from=nedarim: סימון החזרה מדף התשלום – רק מפעיל בדיקה מיידית אחת מול ה-API (ר' RETURN_CHECK_BUDGET); התשלום נקבע לפי ה-API בלבד
+    redirectUrl: `${siteUrl()}/pay?ref=${encodeURIComponent(row.reference)}&from=nedarim`,
   });
 }

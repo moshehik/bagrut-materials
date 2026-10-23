@@ -26,6 +26,7 @@ import { BackRowEnd } from "@/components/back-row-end";
 import { AutoFolderDownload } from "@/components/auto-folder-download";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
+import { RememberFolder } from "@/components/remember-folder";
 import { getFixesForViewer } from "@/lib/fixes";
 import { getFreeTrialState } from "@/lib/free-trial";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
@@ -208,6 +209,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      {/* תיקיית קבצים (לא תיקיית-אב): נרשמת ברשימת "ביקרת לאחרונה" של חלון החיפוש */}
+      {isUnit && mats.length > 0 && (
+        <RememberFolder
+          href={chainToHref(chain)}
+          title={category.title}
+          path={chain.slice(1, -1).map((c) => c.title).join(" › ")}
+        />
+      )}
       {/* אורחת: "התחברי כדי להוריד קבצים" – ללא רקע (רקע רק בעמידה עליו), בצד שמאל של שורת "חזרה" */}
       {showGuestLogin && (
         <BackRowEnd>

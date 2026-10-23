@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { SITE_NAME } from "./constants";
+import { DIAGONAL_DEG, diagonalOrigin, fitDiagonalSize } from "./watermark-geometry";
 
 let fontBytes: Uint8Array | null = null;
 async function loadFont() {
@@ -55,17 +56,36 @@ function escapeXmlText(text: string): string {
 
 /** רסטר PNG שקוף של אותו סימן מים אלכסוני, בצבע כמעט-לבן זהה לגרסת הטקסט - שכבה
  * כפולה מכוונת ונפרדת לגמרי (אובייקט תמונה מוטבע, לא ריצת טקסט ב-content stream).
- * מי שמנקה רק את אחת מהשכבות (למשל לפי חיפוש טקסט) משאיר את השנייה על כנה. */
-async function makeDiagonalWatermarkPng(pageWidth: number, pageHeight: number, text: string) {
+ * מי שמנקה רק את אחת מהשכבות (למשל לפי חיפוש טקסט) משאיר את השנייה על כנה.
+ *
+ * האותיות מצוירות כ**נתיבי SVG מתוך הגופן Alef עצמו** (fontkit), ולא כאלמנט <text>: בשרת אין גופני מערכת, ו-<text> ב-Arial
+ * הוצג כשורה של ריבועים ריקים (.notdef) – ולכן השכבה לא נשאה שום זיהוי (תוקן 2026-10-23). `size` הוא אותו גודל גופן
+ * (בנקודות) כמו בשכבת הטקסט, כך ששתי השכבות חופפות. */
+export async function makeDiagonalWatermarkPng(pageWidth: number, pageHeight: number, text: string, size: number) {
   const scale = 3;
   const w = Math.round(pageWidth * scale);
   const h = Math.round(pageHeight * scale);
-  const fontSize = Math.max(18, Math.min(pageWidth, pageHeight) / 18) * scale;
+  const fk = fontkit.create(Buffer.from(await loadFont()));
+  const run = fk.layout(text);
+  const px = (size * scale) / fk.unitsPerEm;
+  let penX = 0;
+  const paths: string[] = [];
+  run.glyphs.forEach((g, i) => {
+    const pos = run.positions[i];
+    const d = g.path.toSVG();
+    if (d) {
+      const x = (penX + pos.xOffset * px).toFixed(2);
+      const y = (-pos.yOffset * px).toFixed(2);
+      paths.push(`<path transform="translate(${x} ${y}) scale(${px} ${-px})" d="${d}"/>`);
+    }
+    penX += pos.xAdvance * px;
+  });
+  if (paths.length === 0) throw new Error("watermark: no glyph paths");
+  // מרכוז: האמצע האופקי של השורה והאמצע האנכי (~0.35 מגודל הגופן מעל קו הבסיס) על מרכז העמוד, ואז סיבוב -DIAGONAL_DEG (נגד כיוון השעון)
   const svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
-      transform="rotate(-32 ${w / 2} ${h / 2})"
-      font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}"
-      fill="#fafafa" fill-opacity="0.09">${escapeXmlText(text)}</text>
+    <g transform="translate(${w / 2} ${h / 2}) rotate(${-DIAGONAL_DEG})">
+      <g transform="translate(${-penX / 2} ${size * scale * 0.35})" fill="#fafafa" fill-opacity="0.09">${paths.join("")}</g>
+    </g>
   </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
@@ -152,16 +172,18 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
     // אימייל + שם) נשאר טקסט אמיתי וניתן לחילוץ בתוך ה-content stream של ה-PDF (חיפוש
     // טקסט / pdftotext / העתקה מהמסמך יחשפו אותו מיידית), ולכן אין דרך "לצבוע מעליו"
     // או להסיר אותו בלי לערוך את ה-PDF הגולמי ולמצוא את אובייקט הטקסט הספציפי הזה.
-    const dfs = Math.max(18, Math.min(width, height) / 18);
+    // גודל הגופן מתכווץ כך שכל השורה (מספר + אימייל + טלפון) נכנסת בעמוד, והיא ממורכזת על מרכז העמוד (watermark-geometry.ts)
+    const dfs = fitDiagonalSize(width, height, font.widthOfTextAtSize(diagonal, 1));
     const dw = font.widthOfTextAtSize(diagonal, dfs);
+    const dOrigin = diagonalOrigin(width, height, dw, dfs);
     page.drawText(diagonal, {
-      x: width / 2 - dw / 2.6,
-      y: height / 2 - dfs,
+      x: dOrigin.x,
+      y: dOrigin.y,
       size: dfs,
       font,
       color: rgb(0.98, 0.98, 0.98),
       opacity: 0.09,
-      rotate: degrees(32),
+      rotate: degrees(DIAGONAL_DEG),
     });
 
     // שם המורידה - שורה אלכסונית נפרדת מתחת לשורת מספר+אימייל (ולא באותה מחרוזת,
@@ -171,16 +193,15 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
       try {
         const nameText = info.userName.trim();
         const nw = font.widthOfTextAtSize(nameText, dfs);
-        const step = dfs * 1.5;
-        const rad = (32 * Math.PI) / 180;
+        const nOrigin = diagonalOrigin(width, height, nw, dfs, dfs * 1.5);
         page.drawText(nameText, {
-          x: width / 2 - nw / 2.6 + step * Math.sin(rad),
-          y: height / 2 - dfs - step * Math.cos(rad),
+          x: nOrigin.x,
+          y: nOrigin.y,
           size: dfs,
           font,
           color: rgb(0.98, 0.98, 0.98),
           opacity: 0.09,
-          rotate: degrees(32),
+          rotate: degrees(DIAGONAL_DEG),
         });
       } catch (e) {
         console.error("watermark: failed to draw user name", e);
@@ -189,14 +210,19 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
 
     // אותו סימן מים אלכסוני, כשכבת תמונה נפרדת לגמרי (לא טקסט) - ר' התיעוד על
     // makeDiagonalWatermarkPng. כפילות מכוונת מול השכבה הטקסטואלית שמעל.
-    const sizeKey = `${Math.round(width)}x${Math.round(height)}`;
-    let diagonalImage = diagonalImageCache.get(sizeKey);
-    if (!diagonalImage) {
-      const png = await makeDiagonalWatermarkPng(width, height, diagonal);
-      diagonalImage = await pdf.embedPng(png);
-      diagonalImageCache.set(sizeKey, diagonalImage);
+    try {
+      const sizeKey = `${Math.round(width)}x${Math.round(height)}`;
+      let diagonalImage = diagonalImageCache.get(sizeKey);
+      if (!diagonalImage) {
+        const png = await makeDiagonalWatermarkPng(width, height, diagonal, dfs);
+        diagonalImage = await pdf.embedPng(png);
+        diagonalImageCache.set(sizeKey, diagonalImage);
+      }
+      page.drawImage(diagonalImage, { x: 0, y: 0, width, height });
+    } catch (e) {
+      // שכבת התמונה היא כפילות מגן – כשלה לא מפילה את ההורדה (שכבת הטקסט כבר על העמוד)
+      console.error("watermark: image layer failed", e instanceof Error ? e.message : e);
     }
-    page.drawImage(diagonalImage, { x: 0, y: 0, width, height });
 
     // מספר אישי קטן בפינה העליונה - שקוף, מאותה סיבה
     page.drawText(`#${info.personalCode}`, {

@@ -77,7 +77,7 @@ export function Header({ user }: { user: HeaderUser }) {
                   <ShieldCheck className="h-4 w-4" /> ניהול
                 </Link>
               )}
-              <Link href="/account" title="האזור האישי" className="btn btn-line-white text-sm py-2">
+              <Link href="/account" data-tip="האזור האישי" data-tip-side="below" className="btn btn-line-white text-sm py-2">
                 <UserRound className="h-4 w-4" /> {user.name.split(" ")[0]}
               </Link>
               <form action={logoutAction}>

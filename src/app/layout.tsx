@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Assistant, Gveret_Levin, Rubik } from "next/font/google";
+import { Gveret_Levin } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
@@ -14,22 +15,23 @@ import { GlobalBackButton } from "@/components/global-back-button";
 import { Tracker } from "@/components/tracker";
 import { Suspense } from "react";
 
-const assistant = Assistant({
-  variable: "--font-heebo",
-  subsets: ["hebrew", "latin"],
-  weight: ["300", "400", "600", "700", "800"],
+// הכתב המרובע של האתר (גוף, תפריטים, כותרות מודגשות, חותמות) - אותו גופן כמו באתר "אימון פונקציונלי בבית".
+// משקלים: 200-300 Light, 400-500 Regular, 600-700 Bold, 800-900 Black. כתב היד נשאר גברת לוין.
+const asparagos = localFont({
+  variable: "--font-asparagos",
+  display: "swap",
+  src: [
+    { path: "./fonts/AsparagosLight.ttf", weight: "200 300" },
+    { path: "./fonts/AsparagosRegular.ttf", weight: "400 500" },
+    { path: "./fonts/AsparagosBold.ttf", weight: "600 700" },
+    { path: "./fonts/AsparagosBlack.ttf", weight: "800 900" },
+  ],
 });
 
 const gveretLevin = Gveret_Levin({
   variable: "--font-gveret",
   subsets: ["hebrew", "latin"],
   weight: ["400"],
-});
-
-const rubik = Rubik({
-  variable: "--font-rubik",
-  subsets: ["hebrew", "latin"],
-  weight: ["900"],
 });
 
 export const metadata: Metadata = {
@@ -43,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="he"
       dir="rtl"
-      className={`${assistant.variable} ${gveretLevin.variable} ${rubik.variable} h-full antialiased`}
+      className={`${asparagos.variable} ${gveretLevin.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a href="#main" className="skip-link">

@@ -4,7 +4,7 @@ import { isSameOriginRequest } from "@/lib/http-utils";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { loadNedarimConfig, simulateAllowed } from "@/lib/nedarim/config";
 import { customerStatusText, isValidReference, orderKindOf, OPEN_STATUSES } from "@/lib/nedarim/logic";
-import { describeIntent, getByReference, simulatedSettle } from "@/lib/nedarim/store";
+import { describeIntent, getByReference, simulatedSettle, takeReturnCheck } from "@/lib/nedarim/store";
 import { successHrefFor } from "@/lib/nedarim/items";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { SYNC_USER_FLOOR_SEC, getSyncState, matchPendingPayments, nextAllowedAt, refreshHistory } from "@/lib/nedarim/sync";
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const rl = await rateLimit({ key: limitKey("pay-check", "user", user.id), limit: 8, windowSec: 600 });
   if (!rl.ok) return json({ error: TOO_MANY_MESSAGE }, 429);
 
-  let body: { reference?: unknown; simulate?: unknown } = {};
+  let body: { reference?: unknown; simulate?: unknown; returned?: unknown } = {};
   try {
     body = await req.json();
   } catch {
@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
     } else if (open && !row.assistRequestedAt) {
       const cfg = await loadNedarimConfig();
       if (cfg.hasApiPassword) {
-        const r = await refreshHistory("user");
+        // חזרה מדף התשלום של נדרים: עד 3 בדיקות מיידיות לבקשה (בלי רצפת 3 הדק'); התשלום עדיין נקבע רק לפי ה-API
+        const instant = body.returned === true && (await takeReturnCheck(row.id));
+        const r = await refreshHistory(instant ? "return" : "user");
         if (!r.ran) {
           await matchPendingPayments(); // התאמה מול מה שכבר במטמון
           note = r.reason;
