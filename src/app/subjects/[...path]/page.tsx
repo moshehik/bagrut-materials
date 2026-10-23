@@ -13,6 +13,7 @@ import {
   checkEntitlement,
   getUserDownloadCounts,
   type Entitlement,
+  getFreeCategoryIds,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
 import { UNIT_BUNDLE_PRICE, formatPrice } from "@/lib/constants";
@@ -130,6 +131,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const childCounts = await Promise.all(
     children.map((c) => countMaterialsUnder(c.id, isAdmin).catch(() => 0)),
   );
+
+  // תיקיות שכל חומריהן חינמיים – מדבקת "חינם" בכרטיס
+  const freeIds = children.length > 0 ? await getFreeCategoryIds() : new Set<number>();
 
   const entitlements: Entitlement[] = await Promise.all(
     mats.map((m) => checkEntitlement(user, m)),
@@ -339,6 +343,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 color={c.color || accent}
                 nutKey={root.slug}
                 nutDepth={depth + 1}
+                free={freeIds.has(c.id)}
               />
             ))}
           </AnimatedGrid>

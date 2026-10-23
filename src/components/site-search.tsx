@@ -125,143 +125,137 @@ export function SiteSearchOverlay() {
   const categoryResults = results?.filter((r) => r.type === "category") ?? [];
   const materialResults = results?.filter((r) => r.type === "material") ?? [];
 
+  const words = q
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
+
   return (
-    <div
-      dir="rtl"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-20 backdrop-blur-sm sm:pt-28"
-      onMouseDown={close}
-    >
+    <div dir="rtl" className="ss-backdrop" onMouseDown={close}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="חיפוש באתר"
-        className="card w-full max-w-lg animate-pop overflow-hidden p-0"
+        className="ss-panel"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-black/10 px-4 py-3">
-          <Search className="h-5 w-5 shrink-0 text-muted" aria-hidden />
-          <input
-            ref={inputRef}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="חיפוש חומרים, מקצועות, פרקים..."
-            className="min-w-0 flex-1 bg-transparent text-base outline-none"
-          />
-          {loading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted" aria-hidden />}
-          <button
-            type="button"
-            onClick={close}
-            aria-label="סגירת חיפוש"
-            className="shrink-0 rounded-full p-1 transition-transform hover:scale-110 hover:bg-blue-soft"
-          >
-            <X className="h-4 w-4" />
+        <div className="ss-head">
+          <h2>חיפוש באתר</h2>
+          <button type="button" onClick={close} aria-label="סגירת חיפוש" className="ss-close">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="max-h-[65vh] overflow-y-auto p-2">
-          {q.trim().length < 2 ? (
-            recents.length > 0 ? (
-              <div className="mb-1">
-                <div className="flex items-center justify-between px-3 pb-1 pt-2">
-                  <p className="text-xs font-semibold text-muted">ביקרת לאחרונה</p>
-                  <button type="button" onClick={clearRecentFolders} className="text-xs text-muted underline-offset-2 hover:underline">
-                    ניקוי
-                  </button>
-                </div>
-                <ul>
+        <div className="ss-inner">
+          <label className="ss-field">
+            <Search className="ss-mag" aria-hidden />
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="חיפוש חומרים, מקצועות, פרקים..."
+              className="ss-input"
+              autoComplete="off"
+            />
+            {loading && <Loader2 className="ss-spin" aria-hidden />}
+          </label>
+
+          <div className="ss-results">
+            {q.trim().length < 2 ? (
+              recents.length > 0 ? (
+                <div className="ss-group">
+                  <div className="ss-group-head">
+                    <h3>ביקרת לאחרונה</h3>
+                    <button type="button" onClick={clearRecentFolders} className="ss-clear">
+                      ניקוי
+                    </button>
+                  </div>
                   {recents.map((r) => (
-                    <li key={r.href}>
-                      <Link
-                        href={r.href}
-                        onClick={close}
-                        className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-blue-soft/60"
-                      >
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-soft" aria-hidden>
-                          <FolderOpen className="h-4 w-4 text-blue-deep" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold leading-snug">{r.title}</span>
-                          {r.path && <span className="block truncate text-xs text-muted">{r.path}</span>}
-                        </span>
-                      </Link>
-                    </li>
+                    <Link key={r.href} href={r.href} onClick={close} className="ss-row">
+                      <span className="ss-ico" aria-hidden>
+                        <FolderOpen className="h-4 w-4" />
+                      </span>
+                      <span className="ss-txt">
+                        <span className="ss-title">{r.title}</span>
+                        {r.path && <span className="ss-sub">{r.path}</span>}
+                      </span>
+                    </Link>
                   ))}
-                </ul>
-                <p className="px-3 pb-1 pt-2 text-center text-xs text-muted">או הקלידי כדי לחפש, למשל: פרשת בא פרק יג לתלמידה</p>
-              </div>
+                  <p className="ss-note">או הקלידי כדי לחפש, למשל: פרשת בא פרק יג לתלמידה</p>
+                </div>
+              ) : (
+                <p className="ss-note">הקלידי לפחות 2 תווים כדי לחפש, למשל: פרשת בא פרק יג לתלמידה</p>
+              )
+            ) : results === null ? (
+              <p className="ss-note">מחפשת…</p>
+            ) : results.length === 0 ? (
+              <p className="ss-note">לא נמצאו תוצאות עבור &quot;{q.trim()}&quot;</p>
             ) : (
-              <p className="px-3 py-6 text-center text-sm text-muted">הקלידי לפחות 2 תווים כדי לחפש, למשל: פרשת בא פרק יג לתלמידה</p>
-            )
-          ) : results === null ? (
-            <p className="px-3 py-6 text-center text-sm text-muted">מחפשת…</p>
-          ) : results.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-muted">
-              לא נמצאו תוצאות עבור &quot;{q.trim()}&quot;
-            </p>
-          ) : (
-            <>
-              {results.some((r) => r.approx) && (
-                <p className="px-3 pb-1 pt-2 text-xs text-muted">לא נמצאה התאמה מלאה – אלה התוצאות הקרובות ביותר</p>
-              )}
-              {categoryResults.length > 0 && (
-                <ResultGroup title="מקצועות ותיקיות" items={categoryResults} onNavigate={close} />
-              )}
-              {materialResults.length > 0 && (
-                <ResultGroup title="חומרים" items={materialResults} onNavigate={close} />
-              )}
-            </>
-          )}
+              <>
+                {results.some((r) => r.approx) && <p className="ss-approx">לא נמצאה התאמה מלאה – אלה התוצאות הקרובות ביותר</p>}
+                {categoryResults.length > 0 && (
+                  <ResultGroup title="מקצועות ותיקיות" items={categoryResults} words={words} onNavigate={close} />
+                )}
+                {materialResults.length > 0 && (
+                  <ResultGroup title="חומרים" items={materialResults} words={words} onNavigate={close} />
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="ss-foot">
+            קיצור מהיר לפתיחה: <kbd>/</kbd> · לסגירה: <kbd>Esc</kbd>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+/** מסמן בזהב את המילים שחיפשו בתוך הכותרת (התאמה פשוטה, לפי הטקסט כמות שהוא) */
+function Highlight({ text, words }: { text: string; words: string[] }) {
+  if (words.length === 0) return <>{text}</>;
+  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const parts = text.split(new RegExp(`(${escaped.join("|")})`, "gi"));
+  return (
+    <>
+      {parts.map((p, i) => (i % 2 === 1 ? <mark key={i}>{p}</mark> : <span key={i}>{p}</span>))}
+    </>
+  );
+}
+
 function ResultGroup({
   title,
   items,
+  words,
   onNavigate,
 }: {
   title: string;
   items: SearchResult[];
+  words: string[];
   onNavigate: () => void;
 }) {
   return (
-    <div className="mb-1 last:mb-0">
-      <p className="px-3 pb-1 pt-2 text-xs font-semibold text-muted">{title}</p>
-      <ul>
-        {items.map((r) => (
-          <li key={`${r.type}-${r.id}`}>
-            <Link
-              href={r.href}
-              onClick={onNavigate}
-              className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-blue-soft/60"
-            >
-              <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-soft text-lg"
-                aria-hidden
-              >
-                {r.type === "category" ? <FolderOpen className="h-4 w-4 text-blue-deep" /> : MATERIAL_KINDS[r.kind].icon}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold leading-snug">{r.title}</span>
-                <span className="block truncate text-xs text-muted">
-                  {r.path || (r.type === "category" ? "תיקייה" : r.categoryTitle)}
-                </span>
-              </span>
-              {r.type === "material" && (
-                <span
-                  className={`chip shrink-0 text-[11px] ${
-                    r.access === "free" ? "bg-green-100 text-green-800" : "bg-gold-soft text-[#7a5b00]"
-                  }`}
-                >
-                  {r.access === "free" ? "חינם" : formatPrice(r.price)}
-                </span>
-              )}
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <div className="ss-group">
+      <h3>{title}</h3>
+      {items.map((r) => (
+        <Link key={`${r.type}-${r.id}`} href={r.href} onClick={onNavigate} className="ss-row">
+          <span className="ss-ico" aria-hidden>
+            {r.type === "category" ? <FolderOpen className="h-4 w-4" /> : MATERIAL_KINDS[r.kind].icon}
+          </span>
+          <span className="ss-txt">
+            <span className="ss-title">
+              <Highlight text={r.title} words={words} />
+            </span>
+            <span className="ss-sub">{r.path || (r.type === "category" ? "תיקייה" : r.categoryTitle)}</span>
+          </span>
+          {r.type === "material" && (
+            <span className={`ss-chip ${r.access === "free" ? "free" : "price"}`}>
+              {r.access === "free" ? "חינם" : formatPrice(r.price)}
+            </span>
+          )}
+        </Link>
+      ))}
     </div>
   );
 }

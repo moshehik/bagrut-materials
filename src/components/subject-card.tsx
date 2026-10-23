@@ -22,6 +22,8 @@ type Props = {
   nutKey?: string;
   /** עומק התיקייה בעץ (0 = מקצוע) — כל התיקיות באותה רמה ובאותו מקצוע מקבלות אותה תמונה */
   nutDepth?: number;
+  /** תיקייה שכל חומריה חינמיים – מדבקת "חינם" בפינה */
+  free?: boolean;
 };
 
 /**
@@ -41,6 +43,7 @@ export function SubjectCard({
   size = "md",
   nutKey,
   nutDepth = 0,
+  free = false,
 }: Props) {
   // בית מאויר רק לכרטיס של מקצוע ברמה הראשית (nutDepth === 0). תיקייה פנימית תמיד מקבלת אגוז,
   // גם אם ה-slug שלה מתנגש בשם של מקצוע שיש לו בית (למשל "mishlei" שבתוך חלופות כתובים).
@@ -57,6 +60,12 @@ export function SubjectCard({
       {questionnaireCode && (
         <span className={`q-code-tag ${s.codeTag}`} aria-label={`סמל שאלון ${questionnaireCode}`}>
           שאלון {questionnaireCode}
+        </span>
+      )}
+      {free && (
+        <span className={s.freeTag} aria-label="תיקייה חינמית">
+          <span className={s.freeSpark} aria-hidden>✦</span>
+          חינם
         </span>
       )}
       {house && slug === "kishurei-chaim" && (

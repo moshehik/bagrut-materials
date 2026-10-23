@@ -342,7 +342,7 @@ async function searchCatalogLegacy(query: string, isAdmin = false): Promise<Sear
   const q = query.trim();
   if (q.length < 2) return [];
   // % ו-_ הם תווי-כלליות ב-LIKE – מבריחים אותם כדי שמונח כמו "_" לא יתאים להכול (ולא יהפוך לסריקה יקרה)
-  const likeOf = (s: string) => `%${s.replace(/[\\%_]/g, "\\export function chainToHref")}%`;
+  const likeOf = (s: string) => `%${s.replace(/[\\%_]/g, "\\$&")}%`;
   // חיפוש רב-מילים ("ישעיה פרק ו", "תהלים נא"): כל מילה חייבת להופיע בכותרת/תיאור או באחת מקטגוריות-האב,
   // כי "ישעיה" ו-"פרק ו'" יושבים בצמתים שונים של העץ. מילה בודדת = חיפוש ביטוי כמו קודם.
   const tokens = q.split(/\s+/).filter(Boolean);
@@ -390,7 +390,7 @@ async function searchCatalogLegacy(query: string, isAdmin = false): Promise<Sear
   const normTokens = tokens.map(norm).filter(Boolean);
   // מילה קצרה (אות-שתיים, בדרך כלל מספר פרק כמו "ו" / "נא") חייבת להופיע כמילה שלמה, אחרת "ו" מתאים להכול
   const tokenHits = (t: string, hay: string) =>
-    t.length <= 2 ? new RegExp(`(^|[\\s\\-–(])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\export function chainToHref")}(?=$|[\\s\\-–),:])`).test(hay) : hay.includes(t);
+    t.length <= 2 ? new RegExp(`(^|[\\s\\-–(])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[\\s\\-–),:])`).test(hay) : hay.includes(t);
   const matchesAll = (hay: string) => normTokens.every((t) => tokenHits(t, hay));
   const inTitle = (title: string) => normTokens.filter((t) => tokenHits(t, norm(title))).length;
 
@@ -446,6 +446,34 @@ async function searchCatalogLegacy(query: string, isAdmin = false): Promise<Sear
   return results;
 }
 
+
+/**
+ * תיקיות "חינם": יש בהן (בכל עומק) לפחות חומר אחד פעיל שניתן להגשה, וכל החומרים שבהן חינמיים – מקבלות תגית "חינם" בכרטיס.
+ * שאילתה רקורסיבית אחת, במטמון 5 דקות לכל instance (אותה תדירות כמו אינדקס החיפוש). כשל = קבוצה ריקה (בלי תגיות), לא שגיאה בעמוד.
+ */
+let freeIdsCache: { at: number; ids: Set<number> } | null = null;
+export async function getFreeCategoryIds(): Promise<Set<number>> {
+  if (freeIdsCache && Date.now() - freeIdsCache.at < SEARCH_INDEX_TTL_MS) return freeIdsCache.ids;
+  try {
+    const rows = await db.execute<{ cid: number }>(sql`
+      WITH RECURSIVE anc AS (
+        SELECT m.id AS mid, m.access, c.id AS cid, c.parent_id
+        FROM materials m JOIN categories c ON c.id = m.category_id
+        WHERE m.status = 'active' AND m.file_url LIKE 'drive://%'
+        UNION ALL
+        SELECT anc.mid, anc.access, c.id, c.parent_id
+        FROM anc JOIN categories c ON c.id = anc.parent_id
+      )
+      SELECT cid FROM anc GROUP BY cid HAVING bool_and(access = 'free')
+    `);
+    const ids = new Set(rows.rows.map((r) => Number(r.cid)));
+    freeIdsCache = { at: Date.now(), ids };
+    return ids;
+  } catch (e) {
+    console.error("[free-folders] failed:", e instanceof Error ? e.message : e);
+    return new Set();
+  }
+}
 
 export function chainToHref(chain: Pick<Category, "slug">[]) {
   return "/subjects/" + chain.map((c) => encodeURIComponent(c.slug)).join("/");
