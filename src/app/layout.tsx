@@ -13,6 +13,7 @@ import { NutTooltip } from "@/components/nut-tooltip";
 import { SiteNotices } from "@/components/site-notices";
 import { GlobalBackButton } from "@/components/global-back-button";
 import { Tracker } from "@/components/tracker";
+import { SiteTour } from "@/components/site-tour";
 import { Suspense } from "react";
 
 // הכתב המרובע של האתר (גוף, תפריטים, כותרות מודגשות, חותמות) - אותו גופן כמו באתר "אימון פונקציונלי בבית".
@@ -65,6 +66,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <NutTooltip />
         <Suspense fallback={null}>
           <Tracker />
+        </Suspense>
+        <Suspense fallback={null}>
+          <SiteTour />
         </Suspense>
       </body>
     </html>

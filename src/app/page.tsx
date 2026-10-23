@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Gift, Tags } from "lucide-react";
+import { ArrowLeft, BookOpen, Compass, Gift, Tags } from "lucide-react";
+import { TourLaunchButton } from "@/components/site-tour";
 import { getFreeTrialState } from "@/lib/free-trial";
 import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
@@ -121,6 +122,10 @@ export default async function HomePage({
                     מסלולים ומחירים
                   </Link>
                 )}
+                <TourLaunchButton className="btn btn-ghost btn-plans text-base">
+                  <Compass className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
+                  סיור באתר
+                </TourLaunchButton>
               </div>
             </div>
           </div>
