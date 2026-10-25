@@ -1121,6 +1121,24 @@ body {
     opacity: 0;
   }
 }
+/* הקובץ הגיע: הודעה קצרה בלי רקע מחשיך, שלא חוסמת לחיצות */
+.download-loader-done {
+  background: none;
+  pointer-events: none;
+}
+.download-loader-nut-still {
+  animation: download-loader-pop 0.35s ease-out;
+}
+.download-loader-ready {
+  font-size: 1.6rem;
+  animation: download-loader-pop 0.35s ease-out, download-loader-text-out 0.5s ease 2.6s forwards;
+}
+@keyframes download-loader-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
 /* הכיתוב נעלם אחרי כמה שניות; האגוז ממשיך להסתובב עד שהקובץ מגיע */
 .download-loader-text {
   animation: download-loader-text-out 0.5s ease 3s forwards;
@@ -1638,6 +1656,11 @@ svg.mtc-rownut {
   color: var(--ink);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   margin: auto;
+}
+/* הדגמה בסיור: החלון פתוח בלי שכבת מודאלי, מתחת לשכבת הסיור */
+.fix-dialog.fix-dialog-demo {
+  position: fixed;
+  z-index: 9000;
 }
 .fix-dialog::backdrop {
   background: rgba(30, 25, 15, 0.5);
@@ -4046,6 +4069,14 @@ button.underline {
 .hp-text p {
   margin: 0;
 }
+/* כפתור "סיור באתר" בכרטיס: פינה ימנית-תחתונה (הלוגו בשמאל) */
+.hp-tour {
+  position: absolute;
+  right: 5.5%;
+  bottom: 7%;
+  z-index: 2;
+  font-size: clamp(0.8rem, 2.4cqw, 1.05rem);
+}
 .hp-title {
   font-size: 5.2cqw;
   line-height: 1.15;
@@ -4246,6 +4277,37 @@ button.underline {
 .cal-cell.cal-selected {
   outline: 3px solid #fff;
   outline-offset: 2px;
+}
+
+/* ההורדות ברשימת היום: ריבועים קטנים (אייקון, שם, שעה) */
+.cal-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.6rem, 1fr));
+  gap: 0.45rem;
+}
+.cal-tile {
+  display: flex;
+  min-height: 6.2rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  overflow: hidden;
+  padding: 0.4rem 0.35rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 0.6rem;
+  background: #fff8dc;
+  text-align: center;
+  line-height: 1.15;
+}
+.cal-tile-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.95rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.cal-tile-sub {
+  font-size: 0.8rem;
 }
 
 /* מתג תצוגה: רשימה / לוח שנה (כמו הלחצנים והריבועים של האתר) */

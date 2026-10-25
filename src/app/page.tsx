@@ -112,7 +112,11 @@ export default async function HomePage({
                 {personal ? (
                   <NextLessonButton options={mySubjects} />
                 ) : trialCta ? (
-                  <Link href={user ? "/subjects" : "/register"} className="btn btn-ghost btn-plans btn-hand">
+                  <Link
+                    href={user ? "/subjects" : "/register"}
+                    className="btn btn-ghost btn-plans btn-hand"
+                    data-tip={"הורדה אחת בחינם, על כל חומר שתבחרי!\nנרשמות, מאמתות מייל, בוחרות חומר – והוא שלך.\nבלי כרטיס אשראי ובלי התחייבות."}
+                  >
                     <Gift className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
                     נסי שיעור אחד בחינם
                   </Link>

@@ -276,10 +276,10 @@ export function DownloadsCalendar({
                   ) : (
                     <ul className="acc-list mt-1">
                       {dayGroups.map((g, j) => (
-                        <li key={j} className="py-3">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <FolderOpen className="h-5 w-5 shrink-0 text-[#16244e]" aria-hidden />
-                            <span className="min-w-0 flex-1 text-xl leading-snug">
+                        <li key={j} className="py-2.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <FolderOpen className="h-4 w-4 shrink-0 text-[#16244e]" aria-hidden />
+                            <span className="min-w-0 flex-1 text-lg leading-snug">
                               {g.forum && g.href ? (
                                 <Link href={g.href} className="acc-link">
                                   פורום · {g.chain}
@@ -300,22 +300,20 @@ export function DownloadsCalendar({
                             )}
                           </div>
                           {(g.forum || !g.whole) && (
-                            <ul className="mt-2 space-y-1.5 ps-8">
+                            <ul className="cal-tiles mt-2">
                               {g.items.map((it, k) => (
-                                <li key={k} className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                                  <TypeIcon type={it.type ?? "other"} className="h-7 w-7" />
-                                  <span className="min-w-0 flex-1 text-lg">
-                                    {it.title}
-                                    {it.sub && <span className="gate-soft block text-base">{it.sub}</span>}
-                                  </span>
-                                  <span className="gate-soft text-base tabular-nums">{it.time}</span>
+                                <li key={k} className="cal-tile">
+                                  <TypeIcon type={it.type ?? "other"} className="h-6 w-6" />
+                                  <span className="cal-tile-title">{it.title}</span>
+                                  {it.sub && <span className="gate-soft cal-tile-sub">{it.sub}</span>}
+                                  <span className="gate-soft cal-tile-sub tabular-nums">{it.time}</span>
                                   {it.href && (
-                                    <Link href={it.href} className="acc-link text-base">
+                                    <Link href={it.href} className="acc-link cal-tile-sub">
                                       לפתיחה בפורום
                                     </Link>
                                   )}
                                   {showRedownload && !g.forum && (
-                                    <a href={`/api/download/${it.materialId}`} className="acc-link text-base">
+                                    <a href={`/api/download/${it.materialId}`} className="acc-link cal-tile-sub">
                                       הורידי שוב
                                     </a>
                                   )}

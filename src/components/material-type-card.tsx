@@ -25,6 +25,8 @@ type Props = {
   fixesViewSrc?: string;
   /** רק לדוגמאות פיתוח: PDF נקי (בלי סימונים) בחלון העריכה */
   plainViewSrc?: string;
+  /** הדגמה לסיור באתר: חלון עריכת השינויים עובד על המסך בלבד ולא שולח לשרת */
+  fixDemo?: boolean;
   /** מנויה במסלול "ממלאת מקום יומית" (סל צפיות/הורדות) – רק לה מוצג הטולטיפ על ספירת הצפיות. המסלול עוד לא נבנה, לכן ברירת המחדל false */
   isDailySubstitute?: boolean;
   /** מצב ההורדה החינמית האחת של המשתמשת (ר' src/lib/free-trial.ts) – כשזמינה, על קובץ בתשלום מוצג "הורדה אחת חינם" */
@@ -74,6 +76,7 @@ export function MaterialTypeCard({
   fixes = [],
   fixesViewSrc,
   plainViewSrc,
+  fixDemo = false,
   isDailySubstitute = false,
   freeTrial = "off",
 }: Props) {
@@ -264,6 +267,7 @@ export function MaterialTypeCard({
             lockedHref={lockedHref}
             nutSrc="/images/nuts/one-02.webp"
             viewSrc={plainViewSrc}
+            demo={fixDemo}
           />
           {canFix && (
             <>

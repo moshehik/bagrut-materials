@@ -73,12 +73,30 @@ export default async function TourDemoCalendarPage({ searchParams }: { searchPar
   const link = (y: number, m: string) => `/tour-demo/calendar?y=${y}&m=${encodeURIComponent(m)}`;
 
   return (
-    <div className="acc-glass mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div className="acc-glass mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <AccountTitle
         title="ההורדות שלי"
         subtitle="דוגמה: כך נראה הלוח באזור האישי, אחרי שנרשמת ומורידה חומרים."
       />
-      <DownloadsCalendar year={year} monthKey={monthKey} groups={groups} hrefFor={link} />
+      {/* הלוח מוקטן, ולידו חלון פירוט היום שנבחר: כך רואים בבת אחת גם את הלוח וגם מה נפתח כשלוחצים על יום */}
+      <style>{`
+        .tour-cal{zoom:.5}
+        @media (min-width:640px){.tour-cal{zoom:.55}}
+        @media (min-width:1024px){.tour-cal{zoom:.55;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:1.25rem;align-items:start}}
+        .tour-cal > section{margin-top:1.25rem !important;max-width:none !important}
+        @media (min-width:1024px){.tour-cal > section{margin-top:0 !important}}
+      `}</style>
+      <div className="tour-cal mt-6">
+        <DownloadsCalendar
+          year={year}
+          monthKey={monthKey}
+          groups={groups}
+          hrefFor={link}
+          mode="select"
+          selectedIso={dayIso(7)}
+          dayHref={(iso) => `${link(year, monthKey)}&d=${iso}`}
+        />
+      </div>
     </div>
   );
 }

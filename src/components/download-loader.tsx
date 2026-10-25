@@ -7,6 +7,8 @@ const DOWNLOAD_LINK = /^\/api\/(sichot\/download|download|download-folder)\/\d+/
 const POLL_MS = 300;
 // רשת ביטחון: המרת Word ל-PDF מוגבלת ל-60 שניות בשרת
 const GIVE_UP_MS = 75_000;
+// כמה זמן ההודעה "החומר שלך מחכה לך!" נשארת על המסך אחרי שהקובץ הגיע
+const DONE_MS = 3200;
 
 /**
  * התחלת הורדת קובץ מקוד (לא מלחיצה של המשתמשת על קישור): למשל אחרי שמירת טלפון/התחברות
@@ -49,6 +51,8 @@ function clearCookie(name: string) {
  */
 export function DownloadLoader() {
   const [token, setToken] = useState<string | null>(null);
+  // הקובץ הגיע: במקום האגוז המסתובב מופיעה הודעת "החומר שלך מחכה לך!" לכמה שניות
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -63,11 +67,13 @@ export function DownloadLoader() {
       url.searchParams.set("dlt", t);
       // הניווט ברירת המחדל קורה אחרי המאזין, כך שהוא כבר ישתמש בכתובת המעודכנת
       a.href = url.pathname + url.search;
+      setDone(false);
       setToken(t);
     }
     // חזרה לדף מה-bfcache (למשל אחרי הפניה להתחברות) – לא להשאיר אגוז תקוע
     function onPageShow() {
       setToken(null);
+      setDone(false);
     }
     document.addEventListener("click", onClick, true);
     window.addEventListener("pageshow", onPageShow);
@@ -82,15 +88,39 @@ export function DownloadLoader() {
     const name = `dl_${token}`;
     const started = Date.now();
     const id = window.setInterval(() => {
-      if (readCookie(name) || Date.now() - started > GIVE_UP_MS) {
+      const ready = readCookie(name);
+      if (ready || Date.now() - started > GIVE_UP_MS) {
         clearCookie(name);
-        setToken(null);
+        window.clearInterval(id);
+        if (ready) setDone(true);
+        else setToken(null);
       }
     }, POLL_MS);
     return () => window.clearInterval(id);
   }, [token]);
 
+  useEffect(() => {
+    if (!done) return;
+    const id = window.setTimeout(() => {
+      setDone(false);
+      setToken(null);
+    }, DONE_MS);
+    return () => window.clearTimeout(id);
+  }, [done]);
+
   if (!token) return null;
+
+  if (done) {
+    return (
+      <div className="download-loader download-loader-done" role="status" aria-live="polite">
+        <div className="download-loader-card">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/nut-loader.webp" alt="" width={40} height={40} className="download-loader-nut download-loader-nut-still" />
+          <span className="download-loader-ready">החומר שלך מחכה לך!</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="download-loader" role="status" aria-live="polite">

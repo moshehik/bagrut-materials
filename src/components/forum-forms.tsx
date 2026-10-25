@@ -35,7 +35,16 @@ const PLACEHOLDER: Record<ForumKind, string> = {
 };
 
 /** הלחצנים שלפני הפורום: שאלה / הערה / טיפ. בלחיצה נפתחת תיבת כתיבה בצבע הסוג, ומה שנכתב מופיע בפורום */
-export function ForumComposer({ categoryId, demo = false }: { categoryId: number; demo?: boolean }) {
+export function ForumComposer({
+  categoryId,
+  demo = false,
+  onDemoPost,
+}: {
+  categoryId: number;
+  demo?: boolean;
+  /** בעמוד הדוגמה של הסיור: מקבלת את מה שנכתב כדי להציג אותו ברשימה (שום דבר לא נשלח) */
+  onDemoPost?: (kind: ForumKind, body: string) => void;
+}) {
   const [kind, setKind] = useState<ForumKind | null>(null);
   const [demoSent, setDemoSent] = useState(false);
   // אחרי פרסום מוצלח התיבה נסגרת (והטופס מתאפס עם הסגירה)
@@ -47,7 +56,7 @@ export function ForumComposer({ categoryId, demo = false }: { categoryId: number
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <div className="space-y-3">
+    <div className="forum-composer space-y-3">
       <p className="text-xl">מה תרצי לכתוב בפורום?</p>
       <div className="flex flex-wrap gap-3" role="group" aria-label="סוג ההודעה">
         {FORUM_KINDS.map((k) => (
@@ -74,7 +83,12 @@ export function ForumComposer({ categoryId, demo = false }: { categoryId: number
           onSubmit={(e) => {
             if (!demo) return;
             e.preventDefault();
-            setDemoSent(true);
+            if (onDemoPost && kind) {
+              const body = new FormData(e.currentTarget).get("body");
+              onDemoPost(kind, typeof body === "string" ? body : "");
+            } else {
+              setDemoSent(true);
+            }
             setKind(null);
           }}
           className={`fk-${kind} animate-fade-up`}

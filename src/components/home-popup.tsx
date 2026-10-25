@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Compass } from "lucide-react";
+import { TourLaunchButton } from "@/components/site-tour";
 
 /** רגע קצר אחרי שהכיתוב הזהב של דף הבית נגמר, לפני שההודעה מופיעה */
 const AFTER_ANIM_MS = 600;
@@ -57,7 +59,11 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
     let timer = 0;
     const arm = (ms: number) => {
       if (timer) return;
-      timer = window.setTimeout(() => setShown(true), ms);
+      // בזמן "סיור באתר" ההודעה לא קופצת: היא הייתה מסתירה את מה שהסיור מראה
+      timer = window.setTimeout(() => {
+        if (document.documentElement.dataset.siteTour) setGone(true);
+        else setShown(true);
+      }, ms);
     };
     const stopListening = () => {
       clearInterval(poll);
@@ -108,6 +114,15 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
     setTimeout(() => setGone(true), FADE_MS);
   }, []);
 
+  // אם הסיור מתחיל בזמן שההודעה כבר מוצגת (או עוד לפני שהופיעה) – סוגרים אותה מיד
+  useEffect(() => {
+    if (gone) return;
+    const t = window.setInterval(() => {
+      if (document.documentElement.dataset.siteTour) setGone(true);
+    }, 200);
+    return () => window.clearInterval(t);
+  }, [gone]);
+
   // ההודעה מופיעה במלואה; אחרי זמן קריאה (לפי אורך הטקסט) היא נעלמת
   useEffect(() => {
     if (!shown || leaving) return;
@@ -155,6 +170,14 @@ export function HomePopup({ data, children }: { data: HomePopupData; children: R
                   {s.text}
                 </p>
               ))}
+            </div>
+            {/* כפתור הסיור: פינה ימנית-תחתונה, מול הלוגו; סוגר את ההודעה ופותח את הסיור */}
+            <div className="hp-tour">
+              <TourLaunchButton className="btn btn-gold btn-gate" onLaunch={() => setGone(true)}>
+                <Compass className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                סיור באתר
+                <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
+              </TourLaunchButton>
             </div>
           </div>
         </div>
