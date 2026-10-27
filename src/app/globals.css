@@ -1164,11 +1164,11 @@ body {
     gap: 3.25rem;
   }
 }
-/* תגית "חינם בהרשמה" בפינת כרטיס קובץ חינמי שאורחת רואה (material-type-card.tsx) */
+/* תגית "חינם" בפינה הימנית-עליונה של כל כרטיס קובץ חינמי; אורחת רואה "חינם בהרשמה" (material-type-card.tsx) */
 .mtc-free {
   position: absolute;
   top: -11px;
-  left: 14px;
+  right: 14px;
   z-index: 3;
   padding: 0.12rem 0.7rem;
   border-radius: 999px;

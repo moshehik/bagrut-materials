@@ -108,7 +108,7 @@ export function MaterialTypeCard({
       className="mtc relative scroll-mt-24"
       style={{ "--mtc-body": s.body, "--mtc-strip": s.strip } as React.CSSProperties}
     >
-      {guestFree && <span className="mtc-free">חינם בהרשמה</span>}
+      {m.access === "free" && <span className="mtc-free">{guestFree ? "חינם בהרשמה" : "חינם"}</span>}
       <header className="mtc-head">
         <Image
           src={`/images/mat-cards/art4/${s.art}.${s.extra ? "svg" : "webp"}`}

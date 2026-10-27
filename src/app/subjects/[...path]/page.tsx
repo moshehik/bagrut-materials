@@ -133,7 +133,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   );
 
   // תיקיות שכל חומריהן חינמיים – מדבקת "חינם" בכרטיס
-  const freeIds = await getFreeCategoryIds();
+  const freeIds = children.length > 0 ? await getFreeCategoryIds() : new Set<number>();
 
   const entitlements: Entitlement[] = await Promise.all(
     mats.map((m) => checkEntitlement(user, m)),
@@ -273,9 +273,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 )}
                 {category.questionnaireCode && !categoryExplainer && (
                   <span className="gate-badge">סמל שאלון {category.questionnaireCode}</span>
-                )}
-                {mats.length > 0 && freeIds.has(category.id) && (
-                  <span className="gate-badge" aria-label="תיקייה חינמית">✦ חינם</span>
                 )}
               </div>
               {category.contentModule !== "sichot" && (
