@@ -274,6 +274,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 {category.questionnaireCode && !categoryExplainer && (
                   <span className="gate-badge">סמל שאלון {category.questionnaireCode}</span>
                 )}
+                {isUnit && mats.length > 0 && !hasPaid && (
+                  <span className="gate-badge" aria-label="תיקייה חינמית">✦ חינם</span>
+                )}
               </div>
               {category.contentModule !== "sichot" && (
                 <div className="mt-3 flex flex-wrap gap-2">
