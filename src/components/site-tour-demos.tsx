@@ -170,7 +170,6 @@ export function TourScript({
   onDone?: () => void;
 }) {
   const [cur, setCur] = useState<Pt | null>(null);
-  const [ripple, setRipple] = useState(0);
 
   useEffect(() => {
     let dead = false;
@@ -191,6 +190,21 @@ export function TourScript({
       setCur(centerOf(el));
       await sleep(950);
     };
+    // מגלל את העמוד כך שהאלמנט יהיה באזור הפנוי: מתחת לכרטיס ההסבר (--tour-top) ומעל כפתור ״המשך״
+    const reveal = async (el: HTMLElement) => {
+      if (el.closest("dialog")) {
+        el.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tour-top")) || 100;
+      const bottom = window.innerHeight - 100;
+      const r = el.getBoundingClientRect();
+      if (r.top >= top && r.bottom <= bottom) return;
+      const want = r.height > bottom - top ? top : top + (bottom - top - r.height) / 2;
+      window.scrollBy({ top: r.top - want, behavior: "smooth" });
+      await sleep(600);
+    };
+    // ריצה שכבר בוטלה (למשל הרצה כפולה של האפקט במצב פיתוח) לא נוגעת יותר בעמוד: אחרת שתי ריצות לוחצות על אותו כפתור ומבטלות זו את זו
     (async () => {
       for (const a of acts) {
         if (dead) return;
@@ -200,31 +214,33 @@ export function TourScript({
           if (a.spot === null) onSpot(null);
           else {
             const el = await find(a.spot);
-            if (el) {
-              // אלמנט שמחוץ לאזור הנראה (או צמוד לקצה) – מגללים אותו למרכז כדי שיהיה ברור מה מוצג
-              const r = el.getBoundingClientRect();
-              if (r.top < 100 || r.bottom > window.innerHeight - 100) {
-                el.scrollIntoView({ behavior: "smooth", block: r.height > window.innerHeight * 0.5 ? "start" : "center" });
-              }
+            if (el && !dead) {
+              // אלמנט שמחוץ לאזור הנראה (או צמוד לקצה) – מגללים אותו לאזור הפנוי כדי שיהיה ברור מה מוצג
+              await reveal(el);
+              if (dead) return;
               onSpot(el);
             }
           }
         } else if ("move" in a) {
           const el = await find(a.move);
-          if (el) await moveTo(el);
+          if (el && !dead) await moveTo(el);
         } else if ("click" in a) {
           const el = await find(a.click, true, a.optional ? 4000 : 30000);
-          if (!el) continue;
+          if (!el || dead) continue;
+          await reveal(el);
           await moveTo(el);
-          setRipple((n) => n + 1);
+          if (dead) return;
           await sleep(250);
+          if (dead) return;
           el.click();
           await sleep(600);
         } else if ("type" in a) {
           const el = await find(a.type[0], true);
-          if (!el) continue;
+          if (!el || dead) continue;
+          await reveal(el);
           await moveTo(el);
-          el.focus();
+          if (dead) return;
+          el.focus({ preventScroll: true });
           const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
           const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
           let v = "";
@@ -238,7 +254,7 @@ export function TourScript({
         } else if ("ensure" in a) {
           // אם הסימון בקובץ לא הצליח (למשל הקובץ עדיין נטען), ממלאים את שדה הציטוט ישירות
           const el = await find(a.ensure[0], true, 4000);
-          if (!el || (el as HTMLTextAreaElement).value) continue;
+          if (!el || dead || (el as HTMLTextAreaElement).value) continue;
           const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
           setter?.call(el, a.ensure[1]);
           el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -246,7 +262,7 @@ export function TourScript({
         } else if ("select" in a) {
           // מסמנת קטע טקסט בקובץ שנפתח בחלון, בדיוק כמו שהמורה מסמנת בעכבר
           const box = await find(a.select);
-          if (!box) continue;
+          if (!box || dead) continue;
           let span: HTMLElement | undefined;
           for (let i = 0; i < 300 && !dead && !span; i++) {
             const spans = Array.from(box.querySelectorAll<HTMLElement>(".textLayer span")).filter(
@@ -255,8 +271,9 @@ export function TourScript({
             span = spans[Math.min(2, spans.length - 1)];
             if (!span) await sleep(150);
           }
-          if (!span || !span.firstChild) continue;
+          if (!span || !span.firstChild || dead) continue;
           await moveTo(span);
+          if (dead) return;
           const range = document.createRange();
           range.selectNodeContents(span);
           const sel = window.getSelection();
@@ -277,14 +294,6 @@ export function TourScript({
   if (!cur) return null;
   return (
     <div className="pointer-events-none fixed inset-0" aria-hidden>
-      <style>{`@keyframes td-ripple2{0%{transform:translate(-50%,-50%) scale(.3);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}`}</style>
-      {ripple > 0 && (
-        <span
-          key={ripple}
-          className="absolute h-14 w-14 rounded-full border-4 border-sun"
-          style={{ left: cur.x, top: cur.y, animation: "td-ripple2 .45s ease-out" }}
-        />
-      )}
       <svg
         className="absolute drop-shadow-lg"
         width="26"

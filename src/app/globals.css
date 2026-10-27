@@ -137,6 +137,8 @@ body {
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
+  /* בהדגמה רצה של הסיור כרטיס ההסבר עומד בצד שמאל והעמוד זז ימינה (--tour-side); מחוץ לסיור המשתנה לא מוגדר */
+  padding-left: var(--tour-side, 0px);
 }
 
 /* כותרות "מוצקות" — sans מודגש, קריא בכל מקום כולל טבלאות וסכומים */
@@ -1661,6 +1663,20 @@ svg.mtc-rownut {
 .fix-dialog.fix-dialog-demo {
   position: fixed;
   z-index: 9000;
+  /* מחוץ לכרטיס ההסבר של הסיור (בצד: --tour-side, או למעלה: --tour-top) ומעל כפתור ״המשך״ (--tour-bot) */
+  top: var(--tour-top, 0px);
+  bottom: var(--tour-bot, 0px);
+  left: var(--tour-side, 0px);
+  max-height: calc(100vh - var(--tour-top, 0px) - var(--tour-bot, 0px) - 1.5rem);
+}
+.fix-dialog.fix-dialog-demo {
+  width: min(34rem, calc(100vw - var(--tour-side, 0px) - 2rem));
+}
+.fix-dialog.fix-dialog-demo.fix-dialog-wide {
+  width: min(70rem, calc(100vw - var(--tour-side, 0px) - 2rem));
+}
+.fix-dialog.fix-dialog-demo .fix-dialog-box {
+  max-height: calc(100vh - var(--tour-top, 0px) - var(--tour-bot, 0px) - 1.5rem);
 }
 .fix-dialog::backdrop {
   background: rgba(30, 25, 15, 0.5);

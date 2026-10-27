@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, X } from "lucide-react";
+import { X } from "lucide-react";
 import { TourScript, TourStage, type Act, type TourDemoKind } from "./site-tour-demos";
 
 /** מפעיל סיור מודרך באתר האמיתי: מדגיש אלמנט אמיתי בכל עמוד ומסביר לידו. נפתח מכפתור, או מהקישור /?tour=1 */
@@ -117,16 +117,10 @@ const STEPS: Step[] = [
     body: "בראש כל תיקייה מחכה הסבר קצר על החומר שבתוכה, ולידו כמה יחידות וחומרים יש בה. ככה את יודעת איפה את נמצאת לפני שאת ממשיכה.",
   },
   {
-    path: SAMPLE_SUBJECT,
-    target: ['a[href^="/subjects/"][aria-label^="פתיחת"]'],
-    title: "בתוך הבית: תיקיות",
-    body: "בתוך כל מקצוע מחכות לך תיקיות, למשל בגרות 3 יחידות או 5 יחידות. כשאת לוחצת על תיקייה, את נכנסת עוד שלב פנימה.",
-  },
-  {
     path: SAMPLE_TOPIC,
     target: ['a[href^="/subjects/"][aria-label^="פתיחת"]'],
     title: "יורדת עד הפרק",
-    body: "כך את יורדת תיקייה אחרי תיקייה, עד שאת מגיעה לפרק עצמו. בכל כרטיס כתוב כמה חומרים יש בו, ותיקייה חינמית מסומנת ב״חינם״.",
+    body: "בכל כרטיס כתוב כמה חומרים יש בו, ותיקייה חינמית מסומנת ב״חינם״.",
   },
   {
     path: SAMPLE_CHAPTER,
@@ -134,19 +128,6 @@ const STEPS: Step[] = [
     title: "מורידה את כל התיקייה בבת אחת",
     demo: "zip",
     body: "בראש כל תיקייה יש כפתור ״הורידי את כל החומרים״. כשאת עומדת עליו, נפתחות שתי אפשרויות: להוריד את כל הקבצים כקובץ זיפ אחד, או לשלוח אותם למייל.",
-  },
-  {
-    path: SAMPLE_CHAPTER,
-    target: ["article.mtc"],
-    title: "כרטיס לכל קובץ",
-    body: "בכל פרק מחכים לך שכפול לתלמידה, שכפול למורה, בוחן ועוד. כל קובץ בכרטיס משלו, מוכן ללימוד.",
-  },
-  {
-    path: SAMPLE_CHAPTER,
-    target: ["article.mtc .mtc-body"],
-    title: "מורידה, צופה או שולחת למייל",
-    demo: "download",
-    body: "את יכולה להוריד, לצפות באתר בלי להוריד, או לשלוח את הקובץ ישר לתיבת המייל שלך. לפני ההורדה הראשונה את נרשמת פעם אחת, בחינם.",
   },
   {
     path: SAMPLE_CHAPTER,
@@ -285,6 +266,9 @@ const EDGE = 12;
 const HEADER_H = 96;
 /** גובה האזור בתחתית המסך שמור לכפתור ״המשך״ הקבוע */
 const NEXT_AREA = 88;
+/** בהדגמה רצה במסך רחב מספיק: כרטיס ההסבר צר ועומד בצד שמאל, והעמוד זז ימינה */
+const SIDE_W = 320;
+const SIDE_MIN_VIEW = 900;
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(Math.max(n, lo), Math.max(lo, hi));
@@ -493,6 +477,12 @@ export function SiteTour() {
             return;
           }
           const r = el.getBoundingClientRect();
+          // בהדגמה רצה הכרטיס בראש המסך: מציבים את האלמנט ישר מתחתיו
+          if (STEPS[step].script && window.innerWidth < SIDE_MIN_VIEW) {
+            const below = (cardRef.current?.offsetHeight ?? 260) + EDGE * 2;
+            window.scrollTo({ top: Math.max(0, window.scrollY + r.top - below), behavior: "smooth" });
+            return;
+          }
           const mobile = window.innerWidth < 640;
           let desired = mobile || r.height > window.innerHeight * 0.5 ? HEADER_H : (window.innerHeight - r.height) / 2;
           // אם במרכז המסך כרטיס ההסבר לא ייכנס מתחת לאלמנט – מצמידים את האלמנט לראש המסך (כשכך הכרטיס כן נכנס), כדי שלא יכסה אותו
@@ -578,6 +568,21 @@ export function SiteTour() {
     setDemoDone(false);
   }, [step]);
 
+  // גובה הכרטיס (הגבוה ביותר שהיה בתחנה, כדי שהחלון לא יקפוץ כשההסבר מתחלף) מועבר ל-CSS ולתרחיש
+  const maxCardH = useRef({ step: -1, h: 0 });
+  useEffect(() => {
+    if (step === null || !STEPS[step].script) return;
+    if (maxCardH.current.step !== step) maxCardH.current = { step, h: 0 };
+    maxCardH.current.h = Math.max(maxCardH.current.h, cardH);
+    const root = document.documentElement;
+    root.style.setProperty("--tour-bot", `${NEXT_AREA + EDGE}px`);
+    if (view.w >= SIDE_MIN_VIEW) root.style.setProperty("--tour-side", `${SIDE_W + EDGE * 2}px`);
+    else root.style.setProperty("--tour-top", `${maxCardH.current.h + EDGE * 2}px`);
+    return () => {
+      for (const v of ["--tour-top", "--tour-side", "--tour-bot"]) root.style.removeProperty(v);
+    };
+  }, [step, cardH, view.w]);
+
   useEffect(() => {
     setWaited(false);
     if (!onStepPage) return;
@@ -589,6 +594,7 @@ export function SiteTour() {
   const s = STEPS[step];
   const last = step === STEPS.length - 1;
 
+  const sideMode = !!s.script && view.w >= SIDE_MIN_VIEW;
   const cardW = Math.min(380, view.w - 24);
   const mobile = view.w < 640;
   // בתחתית המסך, תמיד באותו מקום, עומד כפתור ״המשך״: הכרטיס לא נכנס לאזור שלו
@@ -619,6 +625,13 @@ export function SiteTour() {
     else if (!hits(centerLeft, availH - 16 - cardH)) cardStyle = { bottom: NEXT_AREA + 16, left: "50%", transform: "translateX(-50%)", width: cardW };
     else if (!hits(centerLeft, 12)) cardStyle = { top: 12, left: "50%", transform: "translateX(-50%)", width: cardW };
     else cardStyle = { bottom: NEXT_AREA + 16, left: "50%", transform: "translateX(-50%)", width: cardW };
+  }
+  // בהדגמה רצה הכרטיס לא מסתיר את מה שהסמן עושה: במסך רחב הוא עומד בצד שמאל והעמוד/החלון זזים ימינה (--tour-side);
+  // במסך צר הוא קבוע בראש המסך והם זזים אל מתחתיו (--tour-top)
+  if (s.script) {
+    cardStyle = sideMode
+      ? { top: 72, left: EDGE, width: SIDE_W }
+      : { top: EDGE, left: "50%", transform: "translateX(-50%)", width: cardW };
   }
 
   return (
@@ -667,20 +680,8 @@ export function SiteTour() {
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
-        <div className="flex items-center gap-2">
-          {step > 0 && (
-            <button
-              type="button"
-              onClick={() => goTo(step - 1)}
-              aria-label="חזרה לתחנה הקודמת"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
-            >
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </button>
-          )}
-          <div className="text-xs font-semibold text-white/60">
-            תחנה {step + 1} מתוך {STEPS.length}
-          </div>
+        <div className="text-xs font-semibold text-white/60">
+          תחנה {step + 1} מתוך {STEPS.length}
         </div>
         <h2 className="mt-1 text-2xl font-normal text-sun" style={{ fontFamily: "var(--font-hand)" }}>
           {s.title}

@@ -10,5 +10,10 @@ export function TourFixSwap({ before, after }: { before: React.ReactNode; after:
     window.addEventListener("tour-fix-applied", on);
     return () => window.removeEventListener("tour-fix-applied", on);
   }, []);
-  return <div className="mtc-grid">{applied ? after : before}</div>;
+  // עמודה אחת ברוחב כרטיס רגיל (25rem): ברשת של שתי עמודות בתוך מיכל צר הכרטיס מצטמצם ל-240px ושורת האגוזים והכיתובים נדחסת
+  return (
+    <div className="mtc-grid" style={{ gridTemplateColumns: "minmax(0, 25rem)" }}>
+      {applied ? after : before}
+    </div>
+  );
 }
