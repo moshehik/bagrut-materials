@@ -759,6 +759,15 @@ export const nedarimPayments = pgTable(
     amount: integer("amount").notNull(),
     /** מחיר המסלול לפני קופון (באגורות) */
     listAmount: integer("list_amount").notNull(),
+    /**
+     * תנאי התשלום שננעלו בקישור לנדרים ושנבדקים מול העסקה שחזרה (scripts/add-nedarim-terms-columns.ts): charge_mode = normal (עסקה
+     * רגילה ב-installments תשלומים) | keva (הוראת קבע אשראי של installments חיובים חודשיים, בלי תפיסת מסגרת); charge_amount =
+     * הסכום שצפוי ב-Amount של העסקה בהיסטוריה (normal: הסכום המלא; keva: החיוב החודשי; null = amount); keva_id = מזהה ההוראה אצל נדרים.
+     */
+    chargeMode: varchar("charge_mode", { length: 8 }).notNull().default("normal"),
+    installments: integer("installments").notNull().default(1),
+    chargeAmount: integer("charge_amount"),
+    kevaId: varchar("keva_id", { length: 40 }),
     couponId: integer("coupon_id").references(() => privateCoupons.id, { onDelete: "set null" }),
     couponPercent: integer("coupon_percent"),
     /** הפרטים שנשלחו לדף התשלום של נדרים ומשמשים להתאמה (תמונת מצב בזמן יצירת הבקשה) */

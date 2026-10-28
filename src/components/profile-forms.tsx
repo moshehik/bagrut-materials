@@ -9,6 +9,7 @@ import {
   changePasswordAction,
   requestEmailChangeAction,
 } from "@/lib/actions/profile";
+import { requestPasswordSetupAction } from "@/lib/actions/password";
 
 /* הטפסים יושבים בתוך חלונית כחולה כהה (.gate-panel): שדות זהב בהיר במסגרת שחורה, לחצני זהב */
 
@@ -141,6 +142,26 @@ export function ChangePasswordForm() {
         />
       </div>
       <SubmitBtn pending={pending}>עדכני סיסמה</SubmitBtn>
+    </form>
+  );
+}
+
+/**
+ * "הגדרת סיסמה" לחשבון שנכנס דרך גוגל: אין סיסמה נוכחית להזין, אז שולחים קישור חד-פעמי לכתובת המייל של החשבון
+ * (requestPasswordSetupAction). אותו כרטיס משמש גם מי שכבר הגדירה ורוצה לשנות – הקישור פותח את דף בחירת הסיסמה.
+ */
+export function SetPasswordByEmailForm({ email }: { email: string }) {
+  const [state, action, pending] = useActionState(requestPasswordSetupAction, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <FormTitle icon={<KeyRound className="h-5 w-5" aria-hidden />}>סיסמה לחשבון</FormTitle>
+      <p className="gate-soft text-base leading-snug">
+        נכנסת לאתר עם Google, ולכן אין לך סיסמה באתר. כדי שתוכלי להתחבר גם עם מייל וסיסמה (וגם לשנות סיסמה שהגדרת בעבר), נשלח קישור חד-פעמי
+        אל <span dir="ltr">{email}</span>. ההתחברות עם Google תמשיך לעבוד כרגיל.
+      </p>
+      <ErrorBox error={state?.error} />
+      <SuccessBox message={state?.ok ? state.message : undefined} />
+      <SubmitBtn pending={pending}>שלחי לי קישור להגדרת סיסמה</SubmitBtn>
     </form>
   );
 }

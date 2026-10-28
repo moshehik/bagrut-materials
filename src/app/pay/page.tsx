@@ -7,6 +7,7 @@ import { getPlanPrices } from "@/lib/pricing";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { hasActiveSamePlan } from "@/lib/purchase-helpers";
 import { PLANS, SUBJECT_ICONS, SUBSTITUTE_MONTHS, subjectDisplayTitle } from "@/lib/constants";
+import { getBool } from "@/lib/settings";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
 import { PAYABLE_PLANS, isPayablePlan, isValidReference, type PayablePlan } from "@/lib/nedarim/logic";
 import { itemCoverageFor, loadPayableItem } from "@/lib/nedarim/items";
@@ -122,7 +123,7 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
     };
   }
 
-  const [prices, roots, coupon] = await Promise.all([getPlanPrices(), getRootSubjects(), getBestPercentCoupon(user)]);
+  const [prices, roots, coupon, kevaEnabled] = await Promise.all([getPlanPrices(), getRootSubjects(), getBestPercentCoupon(user), getBool("nedarim_keva_enabled").catch(() => false)]);
   const subjects = roots.map((r) => ({
     id: r.id,
     title: subjectDisplayTitle(r.slug, r.title),
@@ -195,6 +196,7 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
           substituteDailyDownloads={prices.substituteDailyDownloads}
           yearlyListMonthly={prices.yearlyListMonthly}
           substituteMonthly={prices.substituteMonthly}
+          kevaEnabled={kevaEnabled}
         />
       )}
     </div>

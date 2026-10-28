@@ -4,7 +4,7 @@ import { requireAdminPage } from "@/lib/session";
 import { db } from "@/db";
 import { categories, nedarimPaymentEvents, nedarimPayments, nedarimTransactions, users } from "@/db/schema";
 import { callbackUrl, loadNedarimConfig } from "@/lib/nedarim/config";
-import { NEDARIM_STATUSES, STATUS_LABEL_HE, isNedarimStatus, isStaleProcessing } from "@/lib/nedarim/logic";
+import { NEDARIM_STATUSES, STATUS_LABEL_HE, describeTerms, isNedarimStatus, isStaleProcessing, termsOfPayment } from "@/lib/nedarim/logic";
 import { expireStale, parseCategoryIds } from "@/lib/nedarim/store";
 import { SECRET_NAMES, getSecretStatus } from "@/lib/nedarim/secrets";
 import { HOURLY_CALL_CAP, MAX_ROWS, SYNC_MIN_INTERVAL_SEC, countTxWithoutDate, currentHourCalls, getSyncState, listUnmatchedTransactions, nextAllowedAt } from "@/lib/nedarim/sync";
@@ -101,6 +101,8 @@ export default async function AdminNedarimPaymentsPage({ searchParams }: { searc
     itemCategoryId: p.itemCategoryId ?? null,
     amount: p.amount,
     listAmount: p.listAmount,
+    termsText: describeTerms(termsOfPayment(p)),
+    kevaId: p.kevaId ?? null,
     couponPercent: p.couponPercent,
     userId: p.userId,
     userName,

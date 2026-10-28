@@ -52,6 +52,11 @@ export const NEDARIM_TABLES_SQL = [
   `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS material_id integer REFERENCES materials(id) ON DELETE SET NULL`,
   `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS item_category_id integer REFERENCES categories(id) ON DELETE SET NULL`,
   `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS item_title varchar(200)`,
+  // תנאי תשלום (תשלומים / הוראת קבע) – ר' scripts/add-nedarim-terms-columns.ts
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS charge_mode varchar(8) NOT NULL DEFAULT 'normal'`,
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS installments integer NOT NULL DEFAULT 1`,
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS charge_amount integer`,
+  `ALTER TABLE nedarim_payments ADD COLUMN IF NOT EXISTS keva_id varchar(40)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS nedarim_payments_reference_idx ON nedarim_payments (reference)`,
   `CREATE INDEX IF NOT EXISTS nedarim_payments_user_idx ON nedarim_payments (user_id)`,
   `CREATE INDEX IF NOT EXISTS nedarim_payments_status_idx ON nedarim_payments (status, created_at)`,

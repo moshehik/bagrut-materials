@@ -12,7 +12,8 @@ import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
 import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
-import { MAX_BODY_BYTES, PAY_KEYS, isPayableItemKind, orderKindOf, pickDistinctAmount, sameIntentParams, type PayKey } from "@/lib/nedarim/logic";
+import { MAX_BODY_BYTES, PAY_KEYS, chargeTermsFor, describeTerms, isPayableItemKind, orderKindOf, pickDistinctAmount, sameIntentParams, type PayKey } from "@/lib/nedarim/logic";
+import { getBool } from "@/lib/settings";
 import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds, sameDayAmountsOfOtherOrders } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
@@ -36,6 +37,8 @@ const bodySchema = z.object({
   plan: z.enum(PAY_KEYS),
   categoryIds: z.array(idNum).max(YEARLY_INCLUDED_SUBJECTS).default([]),
   skipSubjects: z.boolean().optional(),
+  /** אופן התשלום: normal = תשלום רגיל (שנתי – אחד; ממלאת מקום 3 חודשים – 3 תשלומים); keva = הוראת קבע אשראי בלי תפיסת מסגרת (רק למסלולים שמאפשרים, כשההגדרה דולקת) */
+  payMode: z.enum(["normal", "keva"]).optional(),
   /** הורדה בודדת: החומר */
   materialId: idNum.optional(),
   /** קובץ מורחב: התיקייה */
@@ -173,12 +176,18 @@ export async function POST(req: NextRequest) {
   }
   if (!(amount > 0)) return denied("zero_amount", "הסכום לתשלום הוא 0 – פני אלינו להפעלה ידנית", 400);
 
+  // --- תנאי התשלום: נקבעים בשרת לפי המסלול ונעולים בקישור לנדרים; כל עסקה שתחזור נבדקת מולם (סכום, מספר תשלומים, הוראת קבע) ---
+  const wantKeva = input.payMode === "keva";
+  if (wantKeva && !(await getBool("nedarim_keva_enabled"))) return denied("keva_disabled", "הוראת קבע אינה זמינה כרגע – אפשר לשלם בתשלום רגיל.");
+  const terms = chargeTermsFor(order.plan, wantKeva ? "keva" : "normal", amount);
+  if (!terms) return denied(wantKeva ? "keva_unavailable" : "no_terms", wantKeva ? "הוראת קבע אינה זמינה למסלול הזה או לסכום הזה – אפשר לשלם בתשלום רגיל." : "לא ניתן לקבוע את תנאי התשלום", 400);
+
   if (Object.keys(profile).length) {
     await db.update(users).set(profile).where(eq(users.id, user.id));
     await logAudit({ actorId: user.id, action: "profile.complete", entityType: "user", entityId: user.id, details: profile });
   }
 
-  const params = { plan: order.plan, categoryIds: order.categoryIds, subjectsPending: order.subjectsPending, amount, materialId: order.materialId, itemCategoryId: order.itemCategoryId };
+  const params = { plan: order.plan, categoryIds: order.categoryIds, subjectsPending: order.subjectsPending, amount, materialId: order.materialId, itemCategoryId: order.itemCategoryId, chargeMode: terms.mode, installments: terms.installments };
   const respond = async (row: Awaited<ReturnType<typeof createIntent>>, reused: boolean) =>
     json({
       ok: true,
@@ -187,6 +196,11 @@ export async function POST(req: NextRequest) {
       amount: row.amount,
       listAmount: row.listAmount,
       couponPercent: row.couponPercent,
+      /** תנאי התשלום שננעלו (להצגה בדף ההמתנה) */
+      chargeMode: row.chargeMode,
+      installments: row.installments,
+      chargeAmount: row.chargeAmount ?? row.amount,
+      termsText: describeTerms({ mode: row.chargeMode === "keva" ? "keva" : "normal", installments: row.installments, chargeAmount: row.chargeAmount ?? row.amount, total: row.amount }),
       hostedUrl: hostedUrlFor(row, cfg.mosadId),
       simulate: cfg.simulate,
       kind,
@@ -201,7 +215,7 @@ export async function POST(req: NextRequest) {
   let replaced: { id: number } | null = null;
   if (coupon && pct > 0) {
     const existing = await findOpenWithCoupon(user.id, coupon.id);
-    if (existing && !sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount, materialId: existing.materialId, itemCategoryId: existing.itemCategoryId }, params)) {
+    if (existing && !sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount, materialId: existing.materialId, itemCategoryId: existing.itemCategoryId, chargeMode: existing.chargeMode, installments: existing.installments }, params)) {
       if (await cancelReplaced(existing, "(חדשה)")) replaced = { id: existing.id };
     } else if (existing) {
       return respond(existing, true);
@@ -225,6 +239,7 @@ export async function POST(req: NextRequest) {
       itemTitle: order.itemTitle,
       listAmount,
       amount,
+      terms,
       coupon: coupon && pct > 0 ? { id: coupon.id, percent: pct } : null,
       firstName,
       lastName,

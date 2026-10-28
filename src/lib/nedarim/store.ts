@@ -23,13 +23,18 @@ import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
   checkManualTransaction,
+  checkTxTerms,
   describeItem,
+  describeTerms,
   extractCallbackFields,
   generateReference,
   isPayableItemKind,
   itemPurchaseRow,
   needsPurchaseRepair,
   settlementPlan,
+  termsOfPayment,
+  txTermsFromRaw,
+  type ChargeTerms,
   type MatchKind,
   type PayKey,
   type TxForMatch,
@@ -167,6 +172,8 @@ export async function createIntent(input: {
   itemTitle?: string | null;
   listAmount: number;
   amount: number;
+  /** תנאי התשלום שננעלו בקישור לנדרים (ברירת מחדל: תשלום אחד בסכום המלא) */
+  terms?: ChargeTerms;
   coupon: { id: number; percent: number } | null;
   firstName: string;
   lastName: string;
@@ -194,6 +201,9 @@ export async function createIntent(input: {
           itemTitle: input.itemTitle ? input.itemTitle.slice(0, 200) : null,
           amount: input.amount,
           listAmount: input.listAmount,
+          chargeMode: input.terms?.mode ?? "normal",
+          installments: input.terms?.installments ?? 1,
+          chargeAmount: input.terms?.chargeAmount ?? input.amount,
           couponId: input.coupon?.id ?? null,
           couponPercent: input.coupon?.percent ?? null,
           firstName: input.firstName.slice(0, 60),
@@ -205,7 +215,8 @@ export async function createIntent(input: {
           userAgent: input.userAgent ? input.userAgent.slice(0, 300) : null,
         })
         .returning();
-      await appendEvent(row.id, "created", `בקשה נוצרה: ${formatPrice(row.amount)} (${row.plan})`, {
+      await appendEvent(row.id, "created", `בקשה נוצרה: ${formatPrice(row.amount)} (${row.plan}) – ${describeTerms(termsOfPayment(row))}`, {
+        terms: { mode: row.chargeMode, installments: row.installments, chargeAmount: row.chargeAmount },
         categoryIds: input.categoryIds,
         subjectsPending: input.subjectsPending,
         materialId: input.materialId ?? null,
@@ -442,8 +453,16 @@ export async function settleFromTransaction(intent: NedarimPayment, tx: TxForMat
   if (!claimedTx.length) return { ok: false, error: "העסקה כבר שויכה" };
   const reason = kind === "weak" ? "weak_auto: טלפון/מייל + סכום זהה, התאמה ייחודית" : "מזהה הבקשה בהערת העסקה";
   await appendEvent(intent.id, "matched", `נמצאה עסקה ${tx.transactionId} (${reason})`, { transactionId: tx.transactionId, amount: tx.amount, at: tx.transactionAt, confirmation: tx.confirmation, matchKind: kind === "weak" ? "weak_auto" : "strong" });
+  // כלל הברזל: לא פותחים מנוי על עסקה שאינה בתנאים שננעלו בבקשה (סכום / מספר תשלומים / הוראת קבע) – גם אם ההתאמה כבר "עברה" למעלה
+  const termsCheck = checkTxTerms(termsOfPayment(intent), tx);
+  if (!termsCheck.ok) {
+    await releaseTx(tx.transactionId, intent.id);
+    await appendEvent(intent.id, "terms_mismatch", `העסקה ${tx.transactionId} לא תואמת את תנאי הבקשה: ${termsCheck.reason}`, { transactionId: tx.transactionId });
+    return { ok: false, error: `העסקה לא תואמת את תנאי הבקשה: ${termsCheck.reason}` };
+  }
   const r = await settle(intent, { method: kind === "weak" ? "api_weak" : "api", verified: true, reason, transactionId: tx.transactionId, confirmation: tx.confirmation, last4: tx.last4 });
   if (!r.ok || r.status !== "paid" || !r.claimed) await releaseTx(tx.transactionId, intent.id);
+  else if (tx.kevaId) await touchPayment(intent.id, { kevaId: tx.kevaId.slice(0, 40) });
   return r;
 }
 
@@ -511,7 +530,7 @@ export async function manualSettle(id: number, adminId: number, transactionId?: 
     const [cached] = await db.select().from(nedarimTransactions).where(eq(nedarimTransactions.transactionId, tid)).limit(1);
     if (cached) {
       if (cached.matchedPaymentId && cached.matchedPaymentId !== intent.id) return { ok: false, error: `עסקה ${tid} כבר שויכה לבקשה אחרת` };
-      const check = checkManualTransaction(intent, { amount: cached.amount, currency: cached.currency, approved: cached.approved, confirmation: cached.confirmation });
+      const check = checkManualTransaction(intent, { amount: cached.amount, currency: cached.currency, approved: cached.approved, confirmation: cached.confirmation, ...txTermsFromRaw(cached.raw) });
       if (!check.ok && !force) return { ok: false, error: `${check.reason} – לאישור חריג יש לאשר במפורש`, mismatch: check.reason };
       if (!check.ok) {
         reason = `אישור ידני חריג: ${check.reason}`;

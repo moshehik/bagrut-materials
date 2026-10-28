@@ -77,3 +77,6 @@ next-env.d.ts
 
 # דוגמאות פיתוח בלבד (card-preview) – לא עולות לאתר
 public/_demo/
+
+# עותק מקומי של מסמך ה-API של נדרים פלוס (docs/nedarim-payments.md)
+/_nedarim-api/

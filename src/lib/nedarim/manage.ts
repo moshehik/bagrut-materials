@@ -18,11 +18,27 @@ export async function getTransactionHistory(params: {
   lastId?: number;
   maxId?: number;
 }): Promise<{ raw: string; json: unknown }> {
+  const extra: Record<string, string> = {};
+  if (params.lastId !== undefined && params.lastId !== null) extra.LastId = String(params.lastId);
+  if (params.maxId !== undefined) extra.MaxId = String(params.maxId);
+  return manageCall("GetHistoryJson", params.mosadId, extra);
+}
+
+/**
+ * פירוט הוראת קבע בודדת (`GetKevaId`, קריאה בלבד): סטטוס, סכום חודשי, חיובים שבוצעו ויתרה, תדירות – לאימות ההוראה מול התנאים
+ * שנקבעו לפני שפותחים מנוי על חיוב ראשון (logic.ts checkKevaRecord). בתיעוד אין לה מגבלת 20 בשעה, ובכל זאת נקראת רק כשחיוב
+ * של הוראת קבע הותאם לבקשה (נדיר), ושגיאה/היעדר תשובה אף פעם לא פותחים מנוי.
+ */
+export async function getKevaDetails(params: { mosadId: string; kevaId: string }): Promise<unknown> {
+  if (!/^\d{1,20}$/.test(params.kevaId)) throw new Error("מזהה הוראת קבע לא תקין");
+  const { json } = await manageCall("GetKevaId", params.mosadId, { KevaId: params.kevaId });
+  return json;
+}
+
+async function manageCall(action: string, mosadId: string, extra: Record<string, string>): Promise<{ raw: string; json: unknown }> {
   const pw = await getNedarimApiPassword();
   if (!pw) throw new Error("מפתח ה-API של נדרים אינו מוגדר");
-  const body = new URLSearchParams({ Action: "GetHistoryJson", ApiPassword: pw, MosadId: params.mosadId });
-  if (params.lastId !== undefined && params.lastId !== null) body.set("LastId", String(params.lastId));
-  if (params.maxId !== undefined) body.set("MaxId", String(params.maxId));
+  const body = new URLSearchParams({ Action: action, ApiPassword: pw, MosadId: mosadId, ...extra });
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

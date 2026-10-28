@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { authTokens, users } from "@/db/schema";
 import { getCurrentUser, hashAuthToken } from "@/lib/session";
@@ -61,6 +61,41 @@ export async function requestPasswordReset(_: PasswordState, form: FormData): Pr
   return { ok: true, message: "אם הכתובת רשומה אצלנו – שלחנו אלייך מייל עם קישור לאיפוס הסיסמה." };
 }
 
+/**
+ * "הגדרת סיסמה" מהאזור האישי – למי שנכנסת עם גוגל ואין לה סיסמה שהיא מכירה (ה-hash בחשבון אקראי): אין סיסמה נוכחית להזין, ולכן
+ * ההוכחה היא שליטה בתיבת המייל של החשבון – קישור חד-פעמי בתוקף שעה, אל הכתובת הרשומה בלבד (לא כתובת מהטופס). הקישור מוביל לאותו
+ * דף "בחירת סיסמה חדשה" של האיפוס (`purpose = set_password`); בניגוד לאיפוס, הוא לא מנתק את הסשנים הקיימים (היא מחוברת כרגע).
+ */
+export async function requestPasswordSetupAction(_: PasswordState): Promise<PasswordState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "יש להתחבר" };
+  if (!user.googleId) return { error: "בחשבון שלך כבר יש סיסמה – אפשר לשנות אותה בטופס שינוי הסיסמה." };
+  if ((await tooMany(limitKey("pw-setup", "user", user.id), 3, 3600)) || (await tooMany(limitKey("pw-setup", "ip", await clientIp()), 10, 3600))) {
+    return { error: TOO_MANY_MESSAGE };
+  }
+  // קישור חדש מבטל קישורי הגדרה קודמים שטרם נוצלו
+  await db
+    .update(authTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(authTokens.userId, user.id), eq(authTokens.purpose, "set_password"), isNull(authTokens.usedAt)));
+  const token = randomToken(24);
+  await db.insert(authTokens).values({
+    userId: user.id,
+    token: hashAuthToken(token),
+    purpose: "set_password",
+    expiresAt: new Date(Date.now() + RESET_TTL_MS),
+  });
+  const r = await sendMail({
+    to: user.email,
+    ...templates.passwordSetup(user.name, `${siteUrl()}/reset-password?token=${token}`),
+    kind: "password_setup",
+    userId: user.id,
+  });
+  if (!r.ok) return { error: "שליחת המייל נכשלה. נסי שוב מאוחר יותר." };
+  await logAudit({ actorId: user.id, action: "password.setup_request", entityType: "user", entityId: user.id });
+  return { ok: true, message: `שלחנו קישור להגדרת סיסמה אל ${user.email}. בדקי גם בתיקיית הספאם.` };
+}
+
 const resetSchema = z
   .object({
     token: z.string().min(10, "קישור לא תקין"),
@@ -82,7 +117,8 @@ export async function resetPassword(_: PasswordState, form: FormData): Promise<P
       and(
         // טוקנים חדשים נשמרים כ-SHA-256; הערך הגולמי נבדק גם הוא רק לטוקנים שהונפקו לפני המעבר (תוקף שעה)
         or(eq(authTokens.token, hashAuthToken(token)), eq(authTokens.token, token)),
-        eq(authTokens.purpose, "reset"),
+        // reset = איפוס ("שכחתי סיסמה"); set_password = הגדרת סיסמה מהאזור האישי (requestPasswordSetupAction)
+        inArray(authTokens.purpose, ["reset", "set_password"]),
         isNull(authTokens.usedAt),
         gt(authTokens.expiresAt, new Date()),
       ),
@@ -94,14 +130,16 @@ export async function resetPassword(_: PasswordState, form: FormData): Promise<P
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  // session_version+1 – איפוס סיסמה מנתק כל סשן קיים (גם של מי שהשתלט על החשבון)
+  // session_version+1 – איפוס סיסמה מנתק כל סשן קיים (גם של מי שהשתלט על החשבון). הגדרת סיסמה מהאזור האישי (set_password)
+  // לא מנתקת: היא מחוברת כרגע, והקישור הגיע רק לתיבת המייל של החשבון
+  const kickSessions = t.purpose !== "set_password";
   await db
     .update(users)
-    .set({ passwordHash, sessionVersion: sql`${users.sessionVersion} + 1` })
+    .set(kickSessions ? { passwordHash, sessionVersion: sql`${users.sessionVersion} + 1` } : { passwordHash })
     .where(eq(users.id, t.userId));
   await db.update(authTokens).set({ usedAt: new Date() }).where(eq(authTokens.id, t.id));
-  await logAudit({ actorId: t.userId, action: "password.reset", entityType: "user", entityId: t.userId });
-  return { ok: true, message: "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה." };
+  await logAudit({ actorId: t.userId, action: kickSessions ? "password.reset" : "password.setup", entityType: "user", entityId: t.userId });
+  return { ok: true, message: kickSessions ? "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה." : "הסיסמה הוגדרה בהצלחה. מעכשיו אפשר להתחבר גם עם המייל והסיסמה." };
 }
 
 /** שליחת מייל אימות למשתמשת המחוברת */

@@ -6,7 +6,7 @@ import { AlertCircle, ArrowLeft, CalendarDays, Check, ChevronLeft, CreditCard, C
 import { GateShekel } from "@/components/gate-shekel";
 import { GateField, LocationFields } from "@/components/auth-forms";
 import { SUBJECT_HOUSES, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
-import type { PayableItemKind, PayablePlan } from "@/lib/nedarim/logic";
+import { agorotToAmountString, chargeTermsFor, type ChargeMode, type PayableItemKind, type PayablePlan } from "@/lib/nedarim/logic";
 
 /*
  * דף התשלום (/pay) – צד הדפדפן. ארבעה שלבים:
@@ -46,7 +46,7 @@ export type PayItemOption = {
 type Subject = { id: number; title: string; slug: string; icon: string };
 type Step = "plan" | "details" | "waiting" | "done";
 type OrderKind = "plan" | PayableItemKind;
-type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean; kind?: OrderKind; itemTitle?: string | null; sameDayAdjust?: number };
+type Intent = { reference: string; amount: number; listAmount: number; couponPercent: number | null; hostedUrl: string | null; simulate: boolean; kind?: OrderKind; itemTitle?: string | null; sameDayAdjust?: number; termsText?: string; chargeMode?: ChargeMode };
 type StatusInfo = {
   status: string;
   text: string;
@@ -63,6 +63,8 @@ type StatusInfo = {
   couponPercent?: number | null;
   /** לאן ממשיכים אחרי "שולם": מנוי → /account; חומר → דף הפרק; תיקייה → דף התיקייה עם ?dlall=1 */
   successHref?: string | null;
+  /** תנאי התשלום שננעלו ("3 תשלומים" / "הוראת קבע – 12 חיובים חודשיים של ₪49") */
+  termsText?: string;
 };
 
 const POLL_MS = 30_000;
@@ -89,8 +91,11 @@ export function PayClient(props: {
   substituteDailyDownloads: number;
   yearlyListMonthly: number;
   substituteMonthly: number;
+  /** ההגדרה nedarim_keva_enabled: להציג בחירה בין תשלום רגיל להוראת קבע (בלי תפיסת מסגרת) במסלולים שמאפשרים */
+  kevaEnabled?: boolean;
 }) {
   const { plans, subjects, user, coupon, item } = props;
+  const [payMode, setPayMode] = useState<ChargeMode>("normal");
   const [step, setStep] = useState<Step>(props.initialRef ? "waiting" : item || props.initialPlan ? "details" : "plan");
   const [planKey, setPlanKey] = useState<PayablePlan>(props.initialPlan ?? "yearly");
   const [selected, setSelected] = useState<number[]>(props.preselected.slice(0, YEARLY_INCLUDED_SUBJECTS));
@@ -112,6 +117,12 @@ export function PayClient(props: {
   const basePrice = item ? item.price : plan.price;
   const discounted = coupon ? Math.round((basePrice * (100 - coupon.percent)) / 100) : basePrice;
   const canSubmit = !needsSubjects || skip || (selected.length >= 1 && selected.length <= maxPick);
+  // תנאי התשלום (אותו חישוב כמו בשרת – chargeTermsFor; השרת קובע בפועל): תשלום רגיל לפי המסלול, והוראת קבע כשמותרת והסכום מתחלק בשווה
+  const key = item ? item.kind : plan.key;
+  const normalTerms = chargeTermsFor(key, "normal", discounted);
+  const kevaTerms = props.kevaEnabled && !item ? chargeTermsFor(key, "keva", discounted) : null;
+  const effectiveMode: ChargeMode = payMode === "keva" && kevaTerms ? "keva" : "normal";
+  const shownTerms = effectiveMode === "keva" ? kevaTerms : normalTerms;
   /** סוג ההזמנה: מהדף (פריט), או מהשרת (אחרי רענון עם ?ref= בלבד) */
   const orderKind: OrderKind = item ? item.kind : (info?.kind ?? intent?.kind ?? "plan");
   const orderLabel = item ? `${item.label} – ${item.title}` : (info?.label ?? plan.label);
@@ -248,7 +259,7 @@ export function PayClient(props: {
       // פריט: רק המזהה – המחיר נקבע בשרת; מסלול: מקצועות/דלג
       const body = item
         ? { plan: item.kind, ...(item.kind === "single" ? { materialId: item.id } : { categoryId: item.id }), ...profile }
-        : { plan: plan.key, categoryIds: needsSubjects && !skip ? selected : [], skipSubjects: isYearly && skip, ...profile };
+        : { plan: plan.key, categoryIds: needsSubjects && !skip ? selected : [], skipSubjects: isYearly && skip, payMode: effectiveMode, ...profile };
       const res = await fetch("/api/pay/intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -531,6 +542,9 @@ export function PayClient(props: {
               כולל {couponPercent}% הנחה מהקופון שלך (במקום <GateShekel agorot={listAmount} />)
             </div>
           ) : null}
+          {(intent.termsText ?? info?.termsText) && (intent.termsText ?? info?.termsText) !== "תשלום אחד" ? (
+            <div className="w-full text-base">אופן התשלום: {intent.termsText ?? info?.termsText}. הסכום ומספר התשלומים נעולים בדף של נדרים פלוס.</div>
+          ) : null}
           {sameDayAdjust > 0 ? (
             <div className="w-full text-base">
               הורדנו <GateShekel agorot={sameDayAdjust} /> מהמחיר: כבר יש לך היום רכישה באותו סכום, ונדרים פלוס לא מאפשרים שני חיובים זהים לאותו כרטיס ביום אחד.
@@ -734,7 +748,37 @@ export function PayClient(props: {
               <GateShekel agorot={discounted} />
             </span>
           </div>
+          {shownTerms && (shownTerms.installments > 1 || shownTerms.mode === "keva") && (
+            <div className="w-full text-base" aria-live="polite">
+              {shownTerms.mode === "keva"
+                ? `הוראת קבע באשראי: ${shownTerms.installments} חיובים חודשיים של ₪${agorotToAmountString(shownTerms.chargeAmount)} – בלי תפיסת מסגרת האשראי.`
+                : `${shownTerms.installments} תשלומים בכרטיס האשראי${discounted % shownTerms.installments === 0 ? ` – ₪${agorotToAmountString(discounted / shownTerms.installments)} בכל תשלום` : ""}.`}
+            </div>
+          )}
         </div>
+
+        {kevaTerms && normalTerms && (
+          <fieldset className="space-y-3">
+            <legend className="text-2xl">איך לשלם?</legend>
+            {(
+              [
+                { mode: "normal" as const, terms: normalTerms, title: normalTerms.installments > 1 ? `${normalTerms.installments} תשלומים בכרטיס אשראי` : "תשלום אחד בכרטיס אשראי", text: normalTerms.installments > 1 ? "התשלומים נגבים אחד לחודש; הסכום כולו נתפס במסגרת האשראי של הכרטיס." : "חיוב אחד של הסכום כולו." },
+                { mode: "keva" as const, terms: kevaTerms, title: `הוראת קבע – ${kevaTerms.installments} חיובים חודשיים של ₪${agorotToAmountString(kevaTerms.chargeAmount)}`, text: "בלי תפיסת מסגרת: בכל חודש יורד רק הסכום החודשי. המנוי נפתח עם החיוב הראשון." },
+              ] as const
+            ).map((o) => (
+              <label key={o.mode} className={`gate-card gate-pick ${effectiveMode === o.mode ? "gate-pick-on" : ""}`}>
+                <input type="radio" name="payMode" className="sr-only" checked={effectiveMode === o.mode} onChange={() => setPayMode(o.mode)} />
+                <span className="gate-check" aria-hidden>
+                  {effectiveMode === o.mode && <Check className="h-5 w-5" strokeWidth={3} />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xl">{o.title}</span>
+                  <span className="gate-soft block text-base">{o.text}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
 
         <div className="text-center">
           <div className="flex flex-wrap items-center justify-center gap-3">

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { UserRound, Fingerprint, ShieldCheck, Settings2, ChevronDown } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { AccountTitle, Panel, fmtDate } from "@/components/account-ui";
-import { EditNameForm, EditPhoneForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
+import { EditNameForm, EditPhoneForm, ChangePasswordForm, ChangeEmailForm, SetPasswordByEmailForm } from "@/components/profile-forms";
 
 export const metadata: Metadata = { title: "הנתונים שלי" };
 export const dynamic = "force-dynamic";
@@ -84,7 +84,21 @@ export default async function AccountDetailsPage() {
               passwordRequired={!user.googleId}
             />
             <hr className="gate-divider !border-[#ffd45a]/40" />
-            <ChangePasswordForm />
+            {/* נכנסה עם גוגל: אין סיסמה נוכחית להזין – מקבלת קישור להגדרת סיסמה למייל (requestPasswordSetupAction). חשבון שהיה קיים עם סיסמה
+                וחובר לגוגל מכיר את הסיסמה שלו, ולכן הטופס הרגיל (עם הסיסמה הנוכחית) נשאר זמין מתחת */}
+            {user.googleId ? (
+              <>
+                <SetPasswordByEmailForm email={user.email} />
+                <details className="gate-soft">
+                  <summary className="cursor-pointer text-base underline">כבר יש לי סיסמה ואני רוצה לשנות אותה (עם הסיסמה הנוכחית)</summary>
+                  <div className="mt-3">
+                    <ChangePasswordForm />
+                  </div>
+                </details>
+              </>
+            ) : (
+              <ChangePasswordForm />
+            )}
           </div>
         </details>
       </Panel>

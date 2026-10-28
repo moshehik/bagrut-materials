@@ -59,6 +59,70 @@ export const GROUPE_NAMES: Record<PayKey, string> = { ...PLAN_GROUPE_NAMES, ...I
 /** שם הקטגוריה בנדרים למפתח ההזמנה; מפתח לא מוכר מועבר כפי שהוא (לדוחות בלבד – לא לזיהוי) */
 export const groupeNameFor = (key: string): string => (isPayKey(key) ? GROUPE_NAMES[key] : key);
 
+// ---------------------------------------------------------------------------------------------------------------- תנאי תשלום: תשלומים / הוראת קבע
+
+/**
+ * normal = עסקת אשראי רגילה: החיוב מלא על מסגרת הכרטיס, מפוצל ל-N תשלומים (נדרים: `Payment` בדף המתארח, `Tashloumim` בהיסטוריה;
+ *          `Amount` בהיסטוריה = הסכום המלא, שורה אחת).
+ * keva   = הוראת קבע באשראי (`OnlyKeva=1`): חיוב חודשי קבוע, **בלי תפיסת מסגרת**; `Amount` בדף = סכום החיוב החודשי, `Payment` = כמה
+ *          חודשים; בהיסטוריה כל חיוב הוא שורה נפרדת בסכום החודשי עם `KevaId` (תיעוד נדרים, "דף תשלום – קישור ישיר").
+ */
+export const CHARGE_MODES = ["normal", "keva"] as const;
+export type ChargeMode = (typeof CHARGE_MODES)[number];
+export const isChargeMode = (m: unknown): m is ChargeMode => m === "normal" || m === "keva";
+
+/** כמה תשלומים/חיובים לכל מסלול. keva=null: אין הוראת קבע למסלול (יומית ופריטים – תשלום אחד בלבד). שנתי: 12 תשלומים (החלטת הבעלים 28.10.2026 – לא תשלום אחד); ממלאת מקום 3 חודשים: 3. */
+export const PAYMENT_TERMS: Record<PayKey, { normal: number; keva: number | null }> = {
+  yearly: { normal: 12, keva: 12 },
+  substitute_3m: { normal: 3, keva: 3 },
+  substitute_daily: { normal: 1, keva: null },
+  single: { normal: 1, keva: null },
+  bundle: { normal: 1, keva: null },
+};
+/** מינימום נדרים לכל תשלום בעסקת תשלומים / חיוב בהוראת קבע (5 ₪) */
+export const MIN_CHARGE_AGOROT = 500;
+
+export type ChargeTerms = {
+  mode: ChargeMode;
+  /** מספר התשלומים (normal) / מספר החיובים החודשיים (keva) */
+  installments: number;
+  /** הסכום שיופיע ב-`Amount` של העסקה בהיסטוריית נדרים: normal = הסכום המלא; keva = החיוב החודשי */
+  chargeAmount: number;
+  /** סך כל מה שהמורה משלמת (אגורות) */
+  total: number;
+};
+
+/**
+ * התנאים למסלול ולמצב תשלום, או null אם המצב אינו זמין: הו"ק רק למסלולים שמגדירים אותה ורק כשהסכום (אחרי קופון) מתחלק בשווה
+ * באגורות וכל חיוב ≥ 5 ₪ (הסכום נעול – אין עיגול כלפי מעלה/מטה). normal: אם הסכום קטן מכדי לפצל (<5 ₪ לתשלום) – תשלום אחד.
+ */
+export function chargeTermsFor(plan: string, mode: ChargeMode, totalAgorot: number): ChargeTerms | null {
+  if (!Number.isSafeInteger(totalAgorot) || totalAgorot <= 0) return null;
+  const t = isPayKey(plan) ? PAYMENT_TERMS[plan] : { normal: 1, keva: null };
+  if (mode === "keva") {
+    const n = t.keva;
+    if (!n || n < 2 || totalAgorot % n !== 0) return null;
+    const monthly = totalAgorot / n;
+    return monthly >= MIN_CHARGE_AGOROT ? { mode, installments: n, chargeAmount: monthly, total: totalAgorot } : null;
+  }
+  const n = totalAgorot >= t.normal * MIN_CHARGE_AGOROT ? t.normal : 1;
+  return { mode, installments: n, chargeAmount: totalAgorot, total: totalAgorot };
+}
+
+/** התנאים כפי ששמורים על בקשה (עמודות charge_mode / installments / charge_amount; בקשות ישנות = תשלום אחד בסכום המלא) */
+export function termsOfPayment(row: { amount: number; chargeMode?: string | null; installments?: number | null; chargeAmount?: number | null }): ChargeTerms {
+  const mode: ChargeMode = row.chargeMode === "keva" ? "keva" : "normal";
+  const installments = Number.isInteger(row.installments) && (row.installments ?? 0) >= 1 ? (row.installments as number) : 1;
+  const chargeAmount = Number.isInteger(row.chargeAmount) && (row.chargeAmount ?? 0) > 0 ? (row.chargeAmount as number) : mode === "keva" && installments > 0 ? Math.round(row.amount / installments) : row.amount;
+  return { mode, installments, chargeAmount, total: row.amount };
+}
+
+/** תיאור התנאים למורה / למנהלת: "תשלום אחד", "3 תשלומים", "הוראת קבע – 12 חיובים חודשיים של ₪49" */
+export function describeTerms(terms: ChargeTerms): string {
+  if (terms.mode === "keva") return `הוראת קבע – ${terms.installments} חיובים חודשיים של ₪${agorotToAmountString(terms.chargeAmount)}`;
+  return terms.installments <= 1 ? "תשלום אחד" : `${terms.installments} תשלומים`;
+}
+
 export const REFERENCE_PREFIX = "NP-";
 export const REFERENCE_RE = /^NP-[A-HJ-NP-Z2-9]{8}$/; // בלי I/O/0/1 (קריא בטלפון)
 const REFERENCE_IN_TEXT_RE = /NP-[A-HJ-NP-Z2-9]{8}/;
@@ -138,21 +202,31 @@ export function hostedPaymentUrl(input: {
   /** תיאור קצר (בלי PII) – נכנס ל-Comments אחרי המזהה */
   description: string;
   redirectUrl: string;
+  /** normal (ברירת מחדל) = עסקה רגילה ב-`installments` תשלומים; keva = הוראת קבע אשראי של `installments` חיובים חודשיים (בלי תפיסת מסגרת) */
+  mode?: ChargeMode;
+  installments?: number;
+  /** keva: סכום החיוב החודשי (אגורות) – נשלח ב-Amount. normal: לא בשימוש (Amount = amountAgorot, הסכום המלא) */
+  chargeAgorot?: number;
 }): string {
+  const keva = input.mode === "keva";
+  const installments = Math.max(1, Math.floor(input.installments ?? 1));
   const q = new URLSearchParams();
   q.set("mosad", input.mosadId);
-  q.set("Amount", agorotToAmountString(input.amountAgorot));
+  // הסכום ומספר התשלומים נעולים בקישור (AmountLock/PaymentLock). בהוראת קבע: Amount = החיוב החודשי, Payment = מספר החודשים
+  q.set("Amount", agorotToAmountString(keva ? (input.chargeAgorot ?? Math.round(input.amountAgorot / installments)) : input.amountAgorot));
   q.set("AmountLock", "1");
-  q.set("Payment", "1");
+  q.set("Payment", String(installments));
   q.set("PaymentLock", "1");
-  q.set("OnlyNormal", "1");
+  q.set(keva ? "OnlyKeva" : "OnlyNormal", "1");
   q.set("OnlyShekel", "1");
   if (input.clientName) q.set("ClientName", input.clientName.slice(0, 60));
   if (input.phone) q.set("Phone", input.phone.slice(0, 20));
   if (input.email) q.set("Email", input.email.slice(0, 120));
   q.set("Analytic", input.reference);
   if (input.description) q.set("avour", input.description.slice(0, 100));
-  if (input.planKey) q.set("groupe", groupeNameFor(input.planKey).slice(0, 40));
+  // הוראת קבע בקטגוריה נפרדת (שם חופשי, לא קיים ברשימת הקטגוריות): ל-Amount של קטגוריה בנדרים יש תפקיד של *מינימום תרומה*,
+  // וחיוב חודשי של ₪49 היה נחסם מול המינימום של "מנוי שנתי" (₪588). גם הדוחות מפרידים בין שני האופנים.
+  if (input.planKey) q.set("groupe", `${groupeNameFor(input.planKey)}${keva ? " – הוראת קבע" : ""}`.slice(0, 40));
   if (input.redirectUrl) q.set("Redirect", input.redirectUrl);
   q.set("HideParameters", "1");
   // רווח כ-%20 ולא כ-+: דף נדרים לא מפענח + ושומר אותו כמות שהוא ("לו״ז+העניין+-+מנוי+שנתי" בהערת העסקה); + אמיתי כבר מקודד ל-%2B
@@ -372,10 +446,103 @@ export type NormalizedTx = {
   /** isApprovedTx – יש אישור ואין סטטוס כישלון */
   approved: boolean;
   transactionAt: Date | null;
+  /** `Tashloumim` – מספר התשלומים שהעסקה חולקה אליהם (עסקה רגילה: 1; הסכום ב-Amount הוא הכולל). undefined/null = לא ידוע */
+  installments?: number | null;
+  /** `TransactionType` כפי שנדרים מחזירים ("רגיל" / תשלומים / הוראת קבע) */
+  txType?: string | null;
+  /** `KevaId` – קיים רק בחיוב של הוראת קבע */
+  kevaId?: string | null;
 };
 
 /** השדות היחידים שנשמרים ב-raw (M6): בלי ת"ז, כתובת, שם – רק מה שדרוש לאבחון ההתאמה */
-export const RAW_KEEP_FIELDS = ["TransactionId", "Amount", "Currency", "Comments", "TransactionTime", "Confirmation", "LastNum", "Status", "TransactionType", "Groupe", "Tashloumim", "KabalaId"] as const;
+export const RAW_KEEP_FIELDS = ["TransactionId", "Amount", "Currency", "Comments", "TransactionTime", "Confirmation", "LastNum", "Status", "TransactionType", "Groupe", "Tashloumim", "FirstTashloum", "NextTashloum", "KevaId", "KabalaId"] as const;
+
+/** `Tashloumim` → מספר שלם ≥1, או null אם ריק/לא מספרי */
+function parseInstallments(v: string | undefined): number | null {
+  if (v === undefined) return null;
+  const n = Number(v.trim());
+  return Number.isInteger(n) && n >= 1 && n <= 99 ? n : null;
+}
+
+/** שדות התנאים של עסקה (תשלומים / סוג / הוראת קבע) משורת היסטוריה או מ-`raw` השמור במטמון – אותם שמות שדות */
+export function txTermsFromRow(row: unknown): { installments: number | null; txType: string | null; kevaId: string | null } {
+  return {
+    installments: parseInstallments(pick(row, ["Tashloumim", "Tashlumim"])),
+    txType: pick(row, ["TransactionType", "Type"])?.slice(0, 40) ?? null,
+    kevaId: pick(row, ["KevaId"])?.slice(0, 40) ?? null,
+  };
+}
+export function txTermsFromRaw(raw: string | null | undefined): { installments: number | null; txType: string | null; kevaId: string | null } {
+  try {
+    return txTermsFromRow(raw ? JSON.parse(raw) : null);
+  } catch {
+    return { installments: null, txType: null, kevaId: null };
+  }
+}
+
+/** העסקה היא חיוב של הוראת קבע (יש KevaId, או סוג העסקה מציין הוראת קבע) */
+export function isKevaTx(tx: Pick<NormalizedTx, "txType" | "kevaId">): boolean {
+  return !!tx.kevaId || /הוראת\s*קבע|הו["״']?ק|keva|^hk$/i.test(tx.txType ?? "");
+}
+
+/**
+ * האם העסקה שנדרים החזירו עונה בדיוק לתנאים שנקבעו בבקשה (כל סטייה = לא מתאימים אוטומטית, רק אישור ידני חריג):
+ *   normal – הסכום המלא; מספר התשלומים זהה (`Tashloumim`; לא ידוע מתקבל רק כשצפוי תשלום אחד); וזו לא הוראת קבע.
+ *   keva   – סכום החיוב החודשי; חיוב של הוראת קבע (KevaId / סוג העסקה). מספר החודשים נבדק מול רשומת ההוראה עצמה (checkKevaRecord).
+ */
+export function checkTxTerms(terms: ChargeTerms, tx: Pick<NormalizedTx, "amount" | "installments" | "txType" | "kevaId">): { ok: boolean; reason: string } {
+  if (tx.amount !== terms.chargeAmount) {
+    return { ok: false, reason: `סכום העסקה (₪${agorotToAmountString(tx.amount)}) שונה מהצפוי (₪${agorotToAmountString(terms.chargeAmount)})` };
+  }
+  const keva = isKevaTx(tx);
+  if (terms.mode === "keva") {
+    return keva ? { ok: true, reason: "" } : { ok: false, reason: "העסקה אינה חיוב של הוראת קבע, אבל התבקשה הוראת קבע" };
+  }
+  if (keva) return { ok: false, reason: "העסקה היא חיוב של הוראת קבע, אבל התבקש תשלום רגיל" };
+  const got = tx.installments ?? null;
+  if (got === null) {
+    return terms.installments === 1 ? { ok: true, reason: "" } : { ok: false, reason: `מספר התשלומים בעסקה לא ידוע (צפויים ${terms.installments})` };
+  }
+  return got === terms.installments ? { ok: true, reason: "" } : { ok: false, reason: `מספר התשלומים בעסקה (${got}) שונה מהצפוי (${terms.installments})` };
+}
+
+/** רשומת הוראת קבע מ-`GetKevaId` (השדות שאנחנו בודקים בלבד) */
+export type KevaRecord = { id: string; status: string; amount: number | null; remaining: number | null; done: number | null; frequency: string; currency: string };
+
+/** `GetKevaId` → רשומה מנורמלת. KevaTashlumim = יתרת חיובים (ריק = ללא הגבלה); KevaSuccess = חיובים שבוצעו */
+export function parseKevaRecord(json: unknown): KevaRecord | null {
+  const id = pick(json, ["KevaId"]);
+  if (!id) return null;
+  const num = (v: string | undefined) => {
+    if (v === undefined) return null;
+    const n = Number(v.replace(/[^\d.-]/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
+  const amt = shekelsToAgorot(pick(json, ["KevaAmount"]));
+  return {
+    id: id.trim(),
+    status: (pick(json, ["KevaStatus"]) ?? "").trim(),
+    amount: amt,
+    remaining: num(pick(json, ["KevaTashlumim"])),
+    done: num(pick(json, ["KevaSuccess"])),
+    frequency: (pick(json, ["KevaFrequency"]) ?? "1").trim(),
+    currency: (pick(json, ["KevaCurrency"]) ?? "1").trim(),
+  };
+}
+
+/**
+ * אימות ההוראה עצמה מול התנאים שנקבעו (לפני שפותחים מנוי על חיוב ראשון): פעילה, חודשית, שקלים, סכום חודשי זהה, ומספר החיובים
+ * הכולל (בוצעו + יתרה) זהה למצופה – הוראה "ללא הגבלה" (יתרה ריקה) או בסכום אחר לא מתקבלת אוטומטית.
+ */
+export function checkKevaRecord(terms: ChargeTerms, rec: KevaRecord): { ok: boolean; reason: string } {
+  if (rec.status !== "1") return { ok: false, reason: `הוראת הקבע ${rec.id} אינה פעילה (סטטוס ${rec.status || "לא ידוע"})` };
+  if (rec.frequency !== "1") return { ok: false, reason: `הוראת הקבע ${rec.id} אינה חודשית` };
+  if (rec.currency !== "1") return { ok: false, reason: `הוראת הקבע ${rec.id} אינה בש"ח` };
+  if (rec.amount !== terms.chargeAmount) return { ok: false, reason: `סכום החיוב החודשי בהוראה ${rec.id} (₪${rec.amount === null ? "?" : agorotToAmountString(rec.amount)}) שונה מהצפוי (₪${agorotToAmountString(terms.chargeAmount)})` };
+  if (rec.remaining === null || rec.done === null) return { ok: false, reason: `מספר החיובים בהוראה ${rec.id} אינו מוגבל או לא ידוע – לבדיקה ידנית` };
+  if (rec.remaining + rec.done !== terms.installments) return { ok: false, reason: `מספר החיובים בהוראה ${rec.id} (${rec.remaining + rec.done}) שונה מהצפוי (${terms.installments})` };
+  return { ok: true, reason: "" };
+}
 export function pickRawFields(row: unknown): Record<string, string> {
   const out: Record<string, string> = {};
   for (const k of RAW_KEEP_FIELDS) {
@@ -407,6 +574,7 @@ export function parseHistoryRow(row: unknown, now: Date = new Date()): Normalize
     status: pick(row, ["Status", "Result", "TransactionStatus", "StatusDesc"]) ?? null,
     approved: false,
     transactionAt: parseNedarimDate(pick(row, ["TransactionTime", "Date", "CreateDate", "Time"]), now),
+    ...txTermsFromRow(row),
   });
   t.approved = isApprovedTx(t);
   return t;
@@ -472,7 +640,7 @@ export function pickDistinctAmount(amount: number, used: Iterable<number>, step 
 }
 
 /** האם שתי בקשות "אותה הזמנה" (N2) – מסלול, מקצועות (ללא סדר), דלג, סכום; ולפריט – אותו חומר / אותה תיקייה */
-type IntentParams = { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number; materialId?: number | null; itemCategoryId?: number | null };
+type IntentParams = { plan: string; categoryIds: number[]; subjectsPending: boolean; amount: number; materialId?: number | null; itemCategoryId?: number | null; chargeMode?: string | null; installments?: number | null };
 export function sameIntentParams(a: IntentParams, b: IntentParams): boolean {
   const sa = [...new Set(a.categoryIds)].sort((x, y) => x - y).join(",");
   const sb = [...new Set(b.categoryIds)].sort((x, y) => x - y).join(",");
@@ -480,6 +648,8 @@ export function sameIntentParams(a: IntentParams, b: IntentParams): boolean {
     a.plan === b.plan &&
     a.subjectsPending === b.subjectsPending &&
     a.amount === b.amount &&
+    (a.chargeMode === "keva" ? "keva" : "normal") === (b.chargeMode === "keva" ? "keva" : "normal") &&
+    (a.installments ?? 1) === (b.installments ?? 1) &&
     sa === sb &&
     (a.materialId ?? null) === (b.materialId ?? null) &&
     (a.itemCategoryId ?? null) === (b.itemCategoryId ?? null)
@@ -507,6 +677,10 @@ export type OpenPaymentForMatch = {
   phone: string | null;
   email: string | null;
   createdAt: Date;
+  /** תנאי התשלום שנקבעו בבקשה (ברירת מחדל: תשלום אחד בסכום המלא) */
+  chargeMode?: string | null;
+  installments?: number | null;
+  chargeAmount?: number | null;
 };
 export type TxForMatch = NormalizedTx & { fetchedAt: Date; matchedPaymentId: number | null };
 
@@ -515,18 +689,27 @@ export type TxForMatch = NormalizedTx & { fetchedAt: Date; matchedPaymentId: num
  * מפוענח (בלי מועד – לא מועמדת; לא משתמשים במועד הקריאה), שאינו לפני יצירת הבקשה (פחות חסד קטן) ואינו לפני מועד החיתוך
  * (cutoffAt – תחילת ההדלקה; עסקאות היסטוריות לעולם לא מתאימות). strong = מזהה הבקשה בהערה; weak = טלפון זהה או מייל זהה.
  */
-export function findCandidates(p: OpenPaymentForMatch, txs: TxForMatch[], cutoffAt: Date | null = null): { strong: TxForMatch[]; weak: TxForMatch[] } {
+export function findCandidates(p: OpenPaymentForMatch, txs: TxForMatch[], cutoffAt: Date | null = null): { strong: TxForMatch[]; weak: TxForMatch[]; mismatch: { tx: TxForMatch; reason: string }[] } {
   const strong: TxForMatch[] = [];
   const weak: TxForMatch[] = [];
+  /** עסקאות שנושאות את מזהה הבקשה (ולכן כנראה שלה), מאושרות ובש"ח, אבל לא בתנאים שנקבעו – סכום/תשלומים/הוראת קבע. לעולם לא ממתאימות אוטומטית; מוצגות לאישור ידני */
+  const mismatch: { tx: TxForMatch; reason: string }[] = [];
   const notBefore = Math.max(p.createdAt.getTime() - MATCH_EARLY_GRACE_MS, cutoffAt?.getTime() ?? 0);
   const pPhone = phoneDigits(p.phone);
   const pEmail = emailKey(p.email);
+  const terms = termsOfPayment({ amount: p.amount, chargeMode: p.chargeMode, installments: p.installments, chargeAmount: p.chargeAmount });
   for (const t of txs) {
     if (t.matchedPaymentId !== null) continue;
     if (!t.approved || !t.transactionAt) continue;
-    if (t.amount <= 0 || t.amount !== p.amount || !isIls(t.currency)) continue;
+    if (t.amount <= 0 || !isIls(t.currency)) continue;
     if (t.transactionAt.getTime() < notBefore) continue;
-    if (extractReference(t.comments) === p.reference) {
+    const isRef = extractReference(t.comments) === p.reference;
+    const termsCheck = checkTxTerms(terms, t);
+    if (!termsCheck.ok) {
+      if (isRef) mismatch.push({ tx: t, reason: termsCheck.reason });
+      continue;
+    }
+    if (isRef) {
       strong.push(t);
       continue;
     }
@@ -534,7 +717,7 @@ export function findCandidates(p: OpenPaymentForMatch, txs: TxForMatch[], cutoff
     const emailOk = !!pEmail && pEmail.includes("@") && t.email === pEmail;
     if (phoneOk || emailOk) weak.push(t);
   }
-  return { strong, weak };
+  return { strong, weak, mismatch };
 }
 
 export type MatchKind = "strong" | "weak";
@@ -572,7 +755,14 @@ export function decideAutoMatches(payments: OpenPaymentForMatch[], txs: TxForMat
   const decided = new Set<number>();
   for (const p of payments) {
     const c = cands.get(p.id)!;
-    if (c.strong.length === 0) continue;
+    if (c.strong.length === 0) {
+      // שילמה עם מזהה הבקשה אבל לא בתנאים שנקבעו (סכום אחר / מספר תשלומים אחר / הוראת קבע במקום רגיל או להפך) – לא משדרגים, מציגים לאישור ידני
+      if (c.mismatch.length) {
+        decided.add(p.id);
+        review.push({ paymentId: p.id, reason: `התשלום ${c.mismatch[0].tx.transactionId} לא תואם את תנאי הבקשה: ${c.mismatch[0].reason}`, transactionIds: c.mismatch.map((m) => m.tx.transactionId) });
+      }
+      continue;
+    }
     decided.add(p.id);
     if (c.strong.length === 1 && strongClaimers.get(c.strong[0].transactionId) === 1 && !taken.has(c.strong[0].transactionId)) {
       taken.add(c.strong[0].transactionId);
@@ -606,13 +796,16 @@ export function decideAutoMatches(payments: OpenPaymentForMatch[], txs: TxForMat
  * (אלא אם המנהלת מאשרת במפורש "חריג", והסכומים נרשמים באודיט).
  */
 export function checkManualTransaction(
-  intent: { amount: number },
-  tx: Pick<NormalizedTx, "amount" | "currency" | "approved" | "confirmation">,
+  intent: { amount: number; chargeMode?: string | null; installments?: number | null; chargeAmount?: number | null },
+  tx: Pick<NormalizedTx, "amount" | "currency" | "approved" | "confirmation"> & Partial<Pick<NormalizedTx, "installments" | "txType" | "kevaId">>,
 ): { ok: boolean; reason: string } {
   if (!tx.approved) return { ok: false, reason: `לעסקה אין מספר אישור / הסטטוס שלה אינו הצלחה` };
   if (tx.amount <= 0) return { ok: false, reason: `סכום העסקה אינו חיובי (${agorotToAmountString(tx.amount)})` };
   if (!isIls(tx.currency)) return { ok: false, reason: `מטבע העסקה אינו ש"ח (${tx.currency})` };
-  if (tx.amount !== intent.amount) return { ok: false, reason: `סכום העסקה (₪${agorotToAmountString(tx.amount)}) שונה מסכום הבקשה (₪${agorotToAmountString(intent.amount)})` };
+  if (tx.amount !== intent.amount && !(intent.chargeMode === "keva")) return { ok: false, reason: `סכום העסקה (₪${agorotToAmountString(tx.amount)}) שונה מסכום הבקשה (₪${agorotToAmountString(intent.amount)})` };
+  // תנאי התשלום (סכום החיוב, מספר תשלומים, הוראת קבע מול רגיל) – אותה בדיקה כמו בהתאמה האוטומטית
+  const terms = checkTxTerms(termsOfPayment(intent), { amount: tx.amount, installments: tx.installments ?? null, txType: tx.txType ?? null, kevaId: tx.kevaId ?? null });
+  if (!terms.ok) return terms;
   return { ok: true, reason: "" };
 }
 

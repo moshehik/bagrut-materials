@@ -2,17 +2,21 @@ import "server-only";
 import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { nedarimPayments, nedarimSyncState, nedarimTransactions, type NedarimSyncState } from "@/db/schema";
-import { getTransactionHistory } from "./manage";
+import { getKevaDetails, getTransactionHistory } from "./manage";
 import { getNedarimApiPassword, redactNedarim } from "./secrets";
 import {
   INTENT_TTL_HOURS,
   OPEN_STATUSES,
   TX_RETENTION_DAYS,
   advanceLastId,
+  checkKevaRecord,
   chunk,
   decideAutoMatches,
   parseHistoryRow,
+  parseKevaRecord,
   pickRawFields,
+  termsOfPayment,
+  txTermsFromRaw,
   type OpenPaymentForMatch,
   type TxForMatch,
 } from "./logic";
@@ -273,6 +277,29 @@ export async function countTxWithoutDate(): Promise<number> {
 }
 
 /**
+ * אימות הוראת קבע מול נדרים אחרי שחיוב שלה הותאם לבקשה (ר' checkKevaRecord): ok = ההוראה בתנאים שנקבעו; reject = אי-התאמה ברורה
+ * (אישור ידני); retry = אי אפשר לאמת עכשיו (אין מזהה הוראה בעסקה / שגיאה / תשובה לא ברורה) – לא פותחים מנוי ולא מסמנים כתקלה,
+ * מנסים שוב בסבב הבא.
+ */
+async function verifyKevaForMatch(row: { id: number; mosadId: string | null; amount: number; chargeMode: string; installments: number; chargeAmount: number | null }, tx: TxForMatch): Promise<{ kind: "ok" } | { kind: "retry" } | { kind: "reject"; reason: string }> {
+  if (!tx.kevaId) return { kind: "reject", reason: `חיוב ${tx.transactionId} לא נושא מזהה הוראת קבע – לבדיקה ידנית` };
+  const mosadId = row.mosadId || process.env.NEDARIM_MOSAD_ID?.trim() || "";
+  if (!mosadId) return { kind: "retry" };
+  try {
+    const rec = parseKevaRecord(await getKevaDetails({ mosadId, kevaId: tx.kevaId }));
+    if (!rec) {
+      await appendEvent(row.id, "keva_unreadable", `תשובת נדרים להוראה ${tx.kevaId} לא ברורה – ננסה שוב`, { kevaId: tx.kevaId });
+      return { kind: "retry" };
+    }
+    const check = checkKevaRecord(termsOfPayment(row), rec);
+    return check.ok ? { kind: "ok" } : { kind: "reject", reason: check.reason };
+  } catch (e) {
+    await appendEvent(row.id, "keva_check_failed", `בדיקת הוראת הקבע ${tx.kevaId} נכשלה: ${redactNedarim(e instanceof Error ? e.message : String(e)).slice(0, 200)} – ננסה שוב`, { kevaId: tx.kevaId });
+    return { kind: "retry" };
+  }
+}
+
+/**
  * ההתאמה (DB בלבד, בלי API): בקשות פתוחות מ-INTENT_TTL_HOURS האחרונות מול עסקאות לא-משויכות. התאמה strong חד-משמעית →
  * settleFromTransaction. כל השאר → processing + סיבה + מספרי העסקאות (אישור ידני במסך הניהול).
  */
@@ -290,7 +317,7 @@ export async function matchPendingPayments(): Promise<{ settled: number[]; revie
     .where(and(isNull(nedarimTransactions.matchedPaymentId), eq(nedarimTransactions.approved, true), gte(nedarimTransactions.fetchedAt, new Date(since.getTime() - 60 * 60 * 1000))))
     .orderBy(desc(nedarimTransactions.fetchedAt));
 
-  const payments: OpenPaymentForMatch[] = open.map((p) => ({ id: p.id, reference: p.reference, amount: p.amount, phone: p.phone, email: p.email, createdAt: p.createdAt }));
+  const payments: OpenPaymentForMatch[] = open.map((p) => ({ id: p.id, reference: p.reference, amount: p.amount, phone: p.phone, email: p.email, createdAt: p.createdAt, chargeMode: p.chargeMode, installments: p.installments, chargeAmount: p.chargeAmount }));
   const forMatch: TxForMatch[] = txs.map((t) => ({
     transactionId: t.transactionId,
     amount: t.amount,
@@ -306,6 +333,8 @@ export async function matchPendingPayments(): Promise<{ settled: number[]; revie
     transactionAt: t.transactionAt,
     fetchedAt: t.fetchedAt,
     matchedPaymentId: t.matchedPaymentId,
+    // תשלומים / סוג עסקה / הוראת קבע – מה-raw השמור (אותם שמות שדות כמו בהיסטוריה)
+    ...txTermsFromRaw(t.raw),
   }));
   const { matches, review } = decideAutoMatches(payments, forMatch, state?.cutoffAt ?? null);
 
@@ -313,6 +342,16 @@ export async function matchPendingPayments(): Promise<{ settled: number[]; revie
   for (const m of matches) {
     const row = open.find((p) => p.id === m.paymentId);
     if (!row) continue;
+    // הוראת קבע: לפני שפותחים מנוי על החיוב הראשון בודקים את ההוראה עצמה אצל נדרים (פעילה, חודשית, הסכום החודשי ומספר החיובים
+    // כמו שנקבע). כל אי-התאמה → אישור ידני; שגיאת רשת/תשובה לא ברורה → לא פותחים ומנסים שוב בסבב הבא (הבקשה נשארת ממתינה).
+    if (row.chargeMode === "keva") {
+      const verdict = await verifyKevaForMatch(row, m.tx);
+      if (verdict.kind === "retry") continue;
+      if (verdict.kind === "reject") {
+        review.push({ paymentId: row.id, reason: verdict.reason, transactionIds: [m.tx.transactionId] });
+        continue;
+      }
+    }
     const r = await settleFromTransaction(row, m.tx, m.kind);
     if (r.ok && r.status === "paid") settled.push(m.paymentId);
   }

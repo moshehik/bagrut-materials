@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { limitKey, rateLimit, TOO_MANY_MESSAGE } from "@/lib/rate-limit";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
-import { INTENT_TTL_HOURS, customerStatusText, isStaleProcessing, isValidReference, orderKindOf, OPEN_STATUSES } from "@/lib/nedarim/logic";
+import { INTENT_TTL_HOURS, customerStatusText, describeTerms, isStaleProcessing, isValidReference, orderKindOf, termsOfPayment, OPEN_STATUSES } from "@/lib/nedarim/logic";
 import { describeIntent, expireStale, getByReference } from "@/lib/nedarim/store";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
 import { successHrefFor } from "@/lib/nedarim/items";
@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
     listAmount: row.listAmount,
     couponPercent: row.couponPercent,
     label: describeIntent(row),
+    termsText: describeTerms(termsOfPayment(row)),
     successHref: row.status === "paid" ? await successHrefFor(row) : null,
     hostedUrl: open && cfg.mosadId ? hostedUrlFor(row, cfg.mosadId) : null,
     lastCheckedAt: state?.lastSuccessAt ?? null,

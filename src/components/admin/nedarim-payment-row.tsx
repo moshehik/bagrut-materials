@@ -21,6 +21,10 @@ export type NedarimPaymentRowData = {
   itemCategoryId: number | null;
   amount: number;
   listAmount: number;
+  /** תנאי התשלום שננעלו: "תשלום אחד" / "3 תשלומים" / "הוראת קבע – 12 חיובים חודשיים של ₪49" */
+  termsText: string;
+  /** מזהה הוראת הקבע אצל נדרים (אחרי שחיוב ראשון הותאם) */
+  kevaId: string | null;
   couponPercent: number | null;
   userId: number;
   userName: string;
@@ -98,6 +102,7 @@ export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentR
         </td>
         <td className="py-2 pe-3 whitespace-nowrap">
           {formatPrice(p.amount)}
+          {p.termsText !== "תשלום אחד" ? <div className="text-xs font-semibold text-oak-deep">{p.termsText}{p.kevaId ? ` · הוראה ${p.kevaId}` : ""}</div> : null}
           {p.couponPercent ? <div className="text-xs text-muted">קופון {p.couponPercent}% (מ-{formatPrice(p.listAmount)})</div> : null}
         </td>
         <td className="py-2 pe-3">
