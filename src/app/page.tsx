@@ -6,6 +6,7 @@ import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import { getRootSubjects, getHomeStats } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
 import { SUBJECT_HOUSES } from "@/lib/constants";
+import { inlineHouse, inlineLessonIcon } from "@/lib/inline-images";
 import type { Category } from "@/db/schema";
 import type { CSSProperties } from "react";
 import Image from "next/image";
@@ -191,8 +192,9 @@ export default async function HomePage({
               >
                 <div className={s.lessonArtBox}>
                   {!soon && <span className={s.lessonCheck} aria-hidden />}
-                  <Image
-                    src={`/images/lesson-icons-v2/${st.art}.png`}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- מוטמע ב-HTML (מסנן תוכן מחליף קובצי תמונה רגילים) */}
+                  <img
+                    src={inlineLessonIcon(st.art)}
                     alt=""
                     width={120}
                     height={120}
@@ -363,7 +365,7 @@ function HouseCluster({ subjects }: { subjects: Category[] }) {
               {SUBJECT_HOUSES[c.slug] ? (
                 <img
                   className={s.snowHouseImg}
-                  src={SUBJECT_HOUSES[c.slug]}
+                  src={inlineHouse(SUBJECT_HOUSES[c.slug])}
                   alt=""
                   width={356}
                   height={266}

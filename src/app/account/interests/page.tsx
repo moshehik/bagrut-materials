@@ -7,6 +7,7 @@ import { userInterests } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getRootSubjects } from "@/lib/data";
 import { SUBJECT_ICONS, SUBJECT_HOUSES, subjectDisplayTitle } from "@/lib/constants";
+import { inlineHouse } from "@/lib/inline-images";
 import { updateInterestsAction } from "@/lib/actions/profile";
 import { AccountTitle, Notice, Panel } from "@/components/account-ui";
 
@@ -55,7 +56,7 @@ export default async function AccountInterestsPage({
                 </span>
                 {SUBJECT_HOUSES[r.slug] ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img className="gate-pick-house !w-16" src={SUBJECT_HOUSES[r.slug]} alt="" width={356} height={266} />
+                  <img className="gate-pick-house !w-16" src={inlineHouse(SUBJECT_HOUSES[r.slug])} alt="" width={356} height={266} />
                 ) : (
                   <span className="w-16 text-center text-2xl" aria-hidden>
                     {r.icon ?? SUBJECT_ICONS[r.slug] ?? "📘"}

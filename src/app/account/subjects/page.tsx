@@ -7,6 +7,7 @@ import { purchases } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { getRootSubjects } from "@/lib/data";
 import { SUBJECT_HOUSES, SUBJECT_ICONS, YEARLY_INCLUDED_SUBJECTS, subjectDisplayTitle } from "@/lib/constants";
+import { inlineHouse } from "@/lib/inline-images";
 import { addYearlySubjectAction, swapYearlySubjectAction } from "@/lib/actions/subscription-subjects";
 import { PendingSubjectsForm } from "@/components/pending-subjects-form";
 import { BackButton, fmtDate } from "@/components/account-ui";
@@ -117,7 +118,7 @@ export default async function SubscriptionSubjectsPage({
                 <li key={p.id} className="gate-card gate-pick !cursor-default flex-wrap">
                   {s?.slug && SUBJECT_HOUSES[s.slug] && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img className="gate-pick-house" src={SUBJECT_HOUSES[s.slug]} alt="" width={356} height={266} />
+                    <img className="gate-pick-house" src={inlineHouse(SUBJECT_HOUSES[s.slug])} alt="" width={356} height={266} />
                   )}
                   <span className="text-xl">{s?.title ?? "מקצוע"}</span>
                   {locked ? (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
+import { inlineHouse } from "@/lib/inline-images";
 import Image from "next/image";
 import { SubjectIcon } from "./subject-icons";
 import { nutForLevel } from "@/lib/nut-images";
@@ -47,7 +48,7 @@ export function SubjectCard({
 }: Props) {
   // בית מאויר רק לכרטיס של מקצוע ברמה הראשית (nutDepth === 0). תיקייה פנימית תמיד מקבלת אגוז,
   // גם אם ה-slug שלה מתנגש בשם של מקצוע שיש לו בית (למשל "mishlei" שבתוך חלופות כתובים).
-  const house = nutDepth === 0 && slug ? SUBJECT_HOUSES[slug] : undefined;
+  const house = nutDepth === 0 && slug ? inlineHouse(SUBJECT_HOUSES[slug]) : undefined;
   const accent = color || (slug ? SUBJECT_HOUSE_COLORS[slug] : undefined) || "var(--blue)";
   const big = size === "lg";
 

@@ -36,6 +36,7 @@ import { SichotModule } from "@/components/sichot/sichot-module";
 import Image from "next/image";
 import { nutForLevel } from "@/lib/nut-images";
 import { SUBJECT_HOUSES } from "@/lib/constants";
+import { inlineHouse } from "@/lib/inline-images";
 import { folderExplainer } from "@/lib/folder-explainer";
 import { FOLDER_INTROS } from "@/lib/folder-intros";
 import { ExplainInline } from "@/components/folder-explain-button";
@@ -198,7 +199,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   // רמה אחת פנימה מקבלת תמונה אחרת, וכל מקצוע רץ על מסלול תמונות משלו
   const depth = chain.length - 1;
   const nutImg = nutForLevel(root.slug, depth);
-  const houseImg = depth === 0 ? SUBJECT_HOUSES[root.slug] : undefined;
+  const houseImg = depth === 0 ? inlineHouse(SUBJECT_HOUSES[root.slug]) : undefined;
 
   // הסברים בסגנון תרשים הזרימה (כפתור "הסבר" וחלונית) במקום טקסט התיאור
   const infoOf = (c: (typeof chain)[number]) => ({
