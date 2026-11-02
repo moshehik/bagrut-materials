@@ -115,6 +115,60 @@ export async function createSicha(input: {
   return { ok: true, id: row.id };
 }
 
+const addFileSchema = z.object({
+  sichaId: z.coerce.number().int().positive(),
+  file: fileSchema,
+  path: z.string().min(1),
+});
+
+/**
+ * מורה מוסיפה קובץ חדש לשיעור קיים (הפלוס ליד "הוספת רעיון"). הקובץ כבר הועלה לדרייב דרך
+ * /api/sichot/upload/*; כאן רק מצרפים אותו כשורה ב-sicha_files, באותו תקרה של 10 קבצים לשיעור.
+ * מי הוסיפה נשמר ביומן הביקורת (אין עמודה ייעודית).
+ */
+export async function addSichaFile(input: {
+  sichaId: number;
+  file: CreateSichaFile;
+  path: string;
+}): Promise<{ ok: true } | { error: string }> {
+  const user = await requireUser().catch(() => null);
+  if (!user) return { error: "יש להתחבר כדי להוסיף קובץ" };
+  if (user.suspended) return { error: "החשבון מושעה" };
+  if (await tooMany(limitKey("sicha-file", "user", user.id), 20, 3600)) return { error: TOO_MANY_MESSAGE };
+
+  const parsed = addFileSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { sichaId, file, path } = parsed.data;
+  if (!verifyUpload(user.id, file.fileUrl, file.fileSig)) {
+    return { error: "הקובץ לא הועלה מהחשבון הזה - יש להעלות אותו מחדש" };
+  }
+
+  const [sicha] = await db.select({ status: sichot.status }).from(sichot).where(eq(sichot.id, sichaId)).limit(1);
+  if (!sicha || sicha.status !== "active") return { error: "השיעור לא נמצא" };
+
+  const existing = await db.select({ sort: sichaFiles.sort }).from(sichaFiles).where(eq(sichaFiles.sichaId, sichaId));
+  if (existing.length + 1 >= 10) return { error: "בשיעור אחד יכולים להיות עד 10 קבצים" };
+
+  await db.insert(sichaFiles).values({
+    sichaId,
+    fileUrl: file.fileUrl,
+    fileName: file.fileName,
+    mime: file.mime,
+    size: file.size,
+    sort: existing.reduce((m, r) => Math.max(m, r.sort), 0) + 1,
+  });
+  await logAudit({
+    actorId: user.id,
+    action: "sicha.file.add",
+    entityType: "sicha",
+    entityId: sichaId,
+    details: { fileName: file.fileName, size: file.size },
+  });
+
+  revalidatePath(path);
+  return { ok: true };
+}
+
 const usageSchema = z.object({
   sichaId: z.coerce.number().int().positive(),
   path: z.string().min(1),

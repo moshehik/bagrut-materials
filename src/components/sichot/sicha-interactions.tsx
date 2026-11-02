@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Send, Loader2, AlertCircle, ChevronDown, ThumbsUp } from "lucide-react";
 import { toggleUsage, addIdea, type SichaActionState } from "@/lib/actions/sichot";
 import { addVideoIdea, toggleVideoUsage } from "@/lib/actions/sichot-videos";
+import { AddFileButton } from "./sicha-add-file";
 
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
@@ -114,7 +115,9 @@ export function IdeaBox({
               className="input resize-y font-sans text-base"
               placeholder={videoId ? "לאיזה שיעור הסרטון מתאים, באיזה שלב להראות אותו, ומה לעשות איתו..." : "רעיון למשחק, פעילות, סיפור או מדרש שמשלים את השיחה הזו..."}
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-2">
+              {/* פלוס להוספת קובץ חדש לשיעור (רק בשיחה, לא בדף סרטון) */}
+              {videoId ? <span /> : <AddFileButton sichaId={sichaId} path={path} />}
               <button type="submit" disabled={pending} className="btn btn-gold btn-gate py-2">
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 הוספת רעיון

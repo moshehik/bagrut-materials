@@ -210,7 +210,7 @@ export function SichaVideoForm({
 
         <label className="block">
           <span className="text-lg inline-flex items-center gap-1.5">
-            או קישור מהדרייב
+            או העתיקי קישור מהדרייב
             <span
               tabIndex={0}
               role="img"

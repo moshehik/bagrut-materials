@@ -2637,6 +2637,59 @@ button.sicha-tag:hover:not(:disabled) {
 .sicha-drop {
   padding: 0.6rem 0.85rem;
 }
+/* "+" להוספת קובץ לשיעור (ליד "הוספת רעיון"): עיגול זהב עם מסגרת שחורה; הטולטיפ – ה-data-tip הכללי */
+.sicha-plus {
+  display: inline-grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-shrink: 0;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  background: #ffd45a;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.sicha-plus:hover,
+.sicha-plus:focus-visible {
+  background: #ffe08a;
+  transform: scale(1.1) rotate(90deg);
+}
+.addfile-panel {
+  max-width: 27rem;
+}
+.addfile-panel .explain-title {
+  font-size: 1.6rem;
+}
+.addfile-drop {
+  margin-top: 1rem;
+  padding: 1rem 0.9rem;
+}
+.addfile-cancel {
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.addfile-done {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: 0.9rem;
+  background: #cdeec3;
+  color: #1d5a22;
+  font-size: 1.2rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sicha-plus:hover,
+  .sicha-plus:focus-visible {
+    transform: none;
+  }
+}
 /* בלי צללים בכפתורים של מאגר השיחות */
 .sicha-card .btn,
 .sicha-card .btn:hover,
