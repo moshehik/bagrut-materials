@@ -102,7 +102,6 @@ function Words({ segs }: { segs: ReturnType<typeof plan>["sign"][number]["segs"]
 const OPEN_AHEAD = 250; // הדף נפתח מעט לפני שהשורה מתחילה להיכתב
 const LOGO_MS = 1300; // זמן הצגת הלוגו אחרי החתימה
 
-const PAUSE_MS = 2500; // כמה זמן הגלילה האוטומטית מחכה אחרי שהקוראת גוללה בעצמה למעלה
 const FOLLOW_MARGIN = 130; // הקצה התחתון של האיגרת נשמר כך הרחק מתחתית המסך
 
 type Phase = "static" | "armed" | "writing" | "done";
@@ -159,18 +158,14 @@ export function AboutWriting() {
     let following = false;
     let lastSet = window.scrollY; // המיקום האחרון שאנחנו קבענו – כל שינוי אחר הוא של הקוראת
     let last = 0;
-    let pauseUntil = 0;
-    // רק גלילה יזומה של הקוראת עוצרת אותנו, ורק לכמה שניות – ואז הגלילה האוטומטית ממשיכה (אפשר לשבת ולצפות בלי לגעת).
-    const pause = () => {
-      pauseUntil = performance.now() + PAUSE_MS;
-    };
-    const onWheel = (ev: WheelEvent) => ev.deltaY < 0 && pause();
-    const onKey = (ev: KeyboardEvent) => ["ArrowUp", "PageUp", "Home"].includes(ev.key) && pause();
-    const onTouch = () => pause();
+    // ברגע שהקוראת נוגעת בגלילה (בכל כיוון) – הגלילה האוטומטית נפסקת סופית. הכתיבה ממשיכה, אבל המסך שלה.
+    const onWheel = () => stopFollow();
+    const onKey = (ev: KeyboardEvent) =>
+      ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(ev.key) && stopFollow();
+    const onTouch = () => stopFollow();
     const onScroll = () => {
-      // גלילה כלפי מעלה שלא אנחנו עשינו (גרירת פס, מגע) – עוצרים; כלפי מטה – רק מקבלים את המיקום החדש
-      if (window.scrollY < lastSet - 12) pause();
-      else lastSet = Math.max(lastSet, window.scrollY);
+      // כל שינוי מיקום שלא אנחנו עשינו (גרירת פס, מגע) הוא של הקוראת
+      if (Math.abs(window.scrollY - lastSet) > 12) stopFollow();
     };
     function stopFollow() {
       if (!following) return;
@@ -186,15 +181,13 @@ export function AboutWriting() {
       if (!following) return;
       const dt = Math.min(now - last, 250);
       last = now;
-      if (now >= pauseUntil) {
-        const k = 1 - Math.exp(-dt / 170); // החלקה שלא תלויה בקצב הפריימים
-        const bottom = body.getBoundingClientRect().bottom + 30; // + הגליל התחתון
-        const delta = bottom - (window.innerHeight - FOLLOW_MARGIN);
-        if (delta > 1) {
-          const maxY = document.documentElement.scrollHeight - window.innerHeight;
-          lastSet = Math.min(maxY, window.scrollY + Math.max(1, delta * k));
-          window.scrollTo({ top: lastSet, behavior: "instant" });
-        }
+      const k = 1 - Math.exp(-dt / 170); // החלקה שלא תלויה בקצב הפריימים
+      const bottom = body.getBoundingClientRect().bottom + 30; // + הגליל התחתון
+      const delta = bottom - (window.innerHeight - FOLLOW_MARGIN);
+      if (delta > 1) {
+        const maxY = document.documentElement.scrollHeight - window.innerHeight;
+        lastSet = Math.min(maxY, window.scrollY + Math.max(1, delta * k));
+        window.scrollTo({ top: lastSet, behavior: "instant" });
       }
       raf = requestAnimationFrame(follow);
     };
