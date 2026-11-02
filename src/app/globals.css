@@ -2750,6 +2750,10 @@ button.sicha-tag:hover:not(:disabled) {
   cursor: help;
   filter: drop-shadow(0 0 4px rgba(255, 212, 90, 0.35));
 }
+/* כותרת ארוכה לא נכנסת מתחת לתג הלייק */
+.sicha-head:has(.sicha-enjoyed-badge) .sicha-title {
+  padding-inline-end: 4.6rem;
+}
 .sicha-enjoyed-count {
   display: inline-grid;
   place-items: center;

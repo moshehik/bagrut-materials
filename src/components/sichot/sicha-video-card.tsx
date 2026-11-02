@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ExternalLink, Folder, Video } from "lucide-react";
 import { driveLinkUrl } from "@/lib/drive-link";
 import { DeleteMyVideoButton } from "./delete-my-video-button";
-import { IdeaBox } from "./sicha-interactions";
+import { IdeaBox, UsageToggle } from "./sicha-interactions";
 import { CopyrightReport } from "./copyright-report";
 import { EnjoyedBadge } from "./enjoyed-badge";
 import { VIDEO_IDEA_BOX_COLORS } from "@/lib/sicha-colors";
@@ -21,6 +21,8 @@ export type SichaVideoCardData = {
   ideas?: { id: number; body: string; teacherName: string }[];
   /** מורות שונות שסימנו שהשתמשו בשיעורים שהסרטון מעשיר */
   usageCount?: number;
+  /** המורה הנוכחית סימנה לייק */
+  usedByMe?: boolean;
   /** השיעורים שהסרטון מתאים להם, עם קישור לדף השיעור (מוצגים רק בדף הסרטון עצמו) */
   lessons?: { id: number; title: string; href: string }[];
 };
@@ -101,6 +103,9 @@ export function SichaVideoCard({ video, path }: { video: SichaVideoCardData; pat
             </div>
           </div>
         </div>
+
+        {/* לייק: השתמשת? נהנית? (כמו בשיעורי יהדות) */}
+        <UsageToggle sichaId={0} videoId={video.id} path={path} used={!!video.usedByMe} />
 
         {/* הורדה למחשב בלבד – בלי צפייה באתר ובלי שליחה למייל */}
         <div className="flex flex-wrap items-center gap-3">

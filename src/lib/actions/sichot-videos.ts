@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { sichaVideos, sichaVideoIdeas, categories } from "@/db/schema";
+import { sichaVideos, sichaVideoIdeas, sichaVideoUsages, categories } from "@/db/schema";
 import { requireAdmin, requireUser, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
 import { TOO_MANY_MESSAGE, clientIp, limitKey, tooMany } from "@/lib/rate-limit";
 import { parseDriveLink } from "@/lib/drive-link";
+import { verifyUpload } from "@/lib/upload-id";
+import { driveUrlFor } from "@/lib/driveBridge";
 import { copySharedVideo, VideoCopyError } from "@/lib/drive-video-copy";
 import { ensureCategoryFolder, driveTrash, driveSafe, sanitizeDriveName } from "@/lib/driveTree";
 
@@ -17,7 +19,12 @@ const videoSchema = z.object({
   categoryId: z.coerce.number().int().positive(),
   title: z.string().trim().min(4, "כותרת קצרה מדי").max(200, "כותרת ארוכה מדי"),
   description: z.string().trim().min(10, "צריך תיאור קצר של הסרטון (לפחות 10 תווים)").max(2000),
-  link: z.string().trim().min(1, "הדביקי קישור מהדרייב").max(500),
+  /** קישור שיתוף מהדרייב (אם לא הועלה קובץ) */
+  link: z.string().trim().max(500).optional(),
+  /** קובץ שהועלה בגרירה/בחירה (ר' /api/sichot/video-upload): מזהה הקובץ בדרייב של האתר + חתימה */
+  uploadedFileId: z.string().regex(/^[A-Za-z0-9_-]{10,100}$/).optional(),
+  uploadedSig: z.string().optional(),
+  uploadedSize: z.coerce.number().int().nonnegative().optional(),
   displayName: z.string().trim().min(2, "שם בדוי קצר מדי").max(40, "שם בדוי ארוך מדי").optional(),
   path: z.string().min(1),
 });
@@ -36,10 +43,17 @@ export async function addSichaVideo(input: AddVideoInput): Promise<{ ok: true } 
 
   const parsed = videoSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { categoryId, title, description, link, displayName, path } = parsed.data;
-  const drive = parseDriveLink(link);
-  if (!drive) return { error: "הקישור לא נראה כמו קישור שיתוף של גוגל דרייב (drive.google.com)" };
-  if (drive.kind === "folder") return { error: "אפשר לשתף קובץ סרטון אחד בכל פעם (לא תיקייה). שתפי את קובץ הסרטון עצמו." };
+  const { categoryId, title, description, link, uploadedFileId, uploadedSig, uploadedSize, displayName, path } = parsed.data;
+  const uploaded = !!uploadedFileId;
+  if (uploaded && !verifyUpload(user.id, driveUrlFor(uploadedFileId!), uploadedSig)) {
+    return { error: "ההעלאה לא אומתה, נסי להעלות שוב" };
+  }
+  const drive = uploaded ? null : link ? parseDriveLink(link) : null;
+  if (!uploaded) {
+    if (!link) return { error: "גררי קובץ סרטון או הדביקי קישור מהדרייב" };
+    if (!drive) return { error: "הקישור לא נראה כמו קישור שיתוף של גוגל דרייב (drive.google.com)" };
+    if (drive.kind === "folder") return { error: "אפשר לשתף קובץ סרטון אחד בכל פעם (לא תיקייה). שתפי את קובץ הסרטון עצמו." };
+  }
 
   const [cat] = await db
     .select({ contentModule: categories.contentModule, parentId: categories.parentId })
@@ -48,19 +62,24 @@ export async function addSichaVideo(input: AddVideoInput): Promise<{ ok: true } 
     .limit(1);
   if (!cat || cat.contentModule !== "sichot_videos") return { error: "התיקייה לא נמצאה" };
 
-  const [dup] = await db
-    .select({ id: sichaVideos.id })
-    .from(sichaVideos)
-    .where(and(eq(sichaVideos.categoryId, categoryId), eq(sichaVideos.sourceDriveId, drive.id)))
-    .limit(1);
-  if (dup) return { error: "הסרטון הזה כבר שותף בתיקייה" };
+  if (drive) {
+    const [dup] = await db
+      .select({ id: sichaVideos.id })
+      .from(sichaVideos)
+      .where(and(eq(sichaVideos.categoryId, categoryId), eq(sichaVideos.sourceDriveId, drive.id)))
+      .limit(1);
+    if (dup) return { error: "הסרטון הזה כבר שותף בתיקייה" };
+  }
 
   let copied: { fileId: string; size: number };
+  if (uploaded) {
+    copied = { fileId: uploadedFileId!, size: uploadedSize ?? 0 };
+  } else
   try {
     const folderId = await ensureCategoryFolder(categoryId);
     copied = await copySharedVideo({
-      sourceId: drive.id,
-      resourceKey: drive.resourceKey,
+      sourceId: drive!.id,
+      resourceKey: drive!.resourceKey,
       name: `${sanitizeDriveName(title).slice(0, 120)} – ${Date.now().toString(36)}`,
       parentId: folderId,
     });
@@ -83,7 +102,7 @@ export async function addSichaVideo(input: AddVideoInput): Promise<{ ok: true } 
       title,
       description,
       driveId: copied.fileId,
-      sourceDriveId: drive.id,
+      sourceDriveId: drive?.id ?? null,
       linkKind: "file",
       displayName: displayName ?? null,
     })
@@ -215,4 +234,35 @@ export async function reportVideoCopyright(
     details: { sent: r.ok },
   });
   return r.ok ? { ok: "הדיווח התקבל, תודה. נבדוק ונטפל בהקדם." } : { error: "השליחה נכשלה, נסי שוב מאוחר יותר" };
+}
+
+/** לייק "השתמשתי / נהניתי" על סרטון: לחיצה מסמנת, ועוד לחיצה מבטלת (כמו בשיעורי היהדות) */
+export async function toggleVideoUsage(
+  _prev: { error?: string; ok?: boolean } | undefined,
+  form: FormData,
+): Promise<{ error?: string; ok?: boolean }> {
+  const user = await requireUser().catch(() => null);
+  if (!user) return { error: "יש להתחבר כדי לסמן שימוש" };
+  const videoId = Number(form.get("videoId"));
+  const path = String(form.get("path") ?? "");
+  if (!Number.isInteger(videoId) || videoId <= 0 || !path) return { error: "בקשה לא תקינה" };
+
+  const deleted = await db
+    .delete(sichaVideoUsages)
+    .where(and(eq(sichaVideoUsages.videoId, videoId), eq(sichaVideoUsages.teacherId, user.id)))
+    .returning({ id: sichaVideoUsages.id });
+  if (deleted.length === 0) {
+    const [video] = await db.select({ id: sichaVideos.id }).from(sichaVideos).where(eq(sichaVideos.id, videoId)).limit(1);
+    if (!video) return { error: "הסרטון לא נמצא" };
+    await db.insert(sichaVideoUsages).values({ videoId, teacherId: user.id });
+  }
+  await logAudit({
+    actorId: user.id,
+    action: "sicha.video.usage.toggle",
+    entityType: "sicha_video",
+    entityId: videoId,
+    details: { on: deleted.length === 0 },
+  });
+  revalidatePath(path);
+  return { ok: true };
 }

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Send, Loader2, AlertCircle, ChevronDown, ThumbsUp } from "lucide-react";
 import { toggleUsage, addIdea, type SichaActionState } from "@/lib/actions/sichot";
-import { addVideoIdea } from "@/lib/actions/sichot-videos";
+import { addVideoIdea, toggleVideoUsage } from "@/lib/actions/sichot-videos";
 
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
@@ -19,17 +19,24 @@ export function UsageToggle({
   sichaId,
   path,
   used,
+  videoId,
 }: {
   sichaId: number;
   path: string;
   used: boolean;
+  /** בדף סרטון: sichaId לא בשימוש (0) ו-videoId מזהה את הסרטון */
+  videoId?: number;
 }) {
-  const [state, action, pending] = useActionState<SichaActionState, FormData>(toggleUsage, undefined);
+  const [state, action, pending] = useActionState<SichaActionState, FormData>(videoId ? toggleVideoUsage : toggleUsage, undefined);
 
   // לייק: לחיצה מסמנת שהשתמשת / נהנית (ועוד לחיצה מבטלת); הכיתוב "N מורות נהנו" יושב בראש הכרטיס (ר' sicha-card.tsx)
   return (
     <form action={action} className="space-y-0.5">
-      <input type="hidden" name="sichaId" value={sichaId} />
+      {videoId ? (
+        <input type="hidden" name="videoId" value={videoId} />
+      ) : (
+        <input type="hidden" name="sichaId" value={sichaId} />
+      )}
       <input type="hidden" name="path" value={path} />
       <button
         type="submit"

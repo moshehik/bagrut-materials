@@ -2,7 +2,7 @@ import "server-only";
 import { driveFetchAuthed } from "@/lib/driveBridgeCore";
 
 /** תקרת גודל לסרטון שמועתק לדרייב של האתר (מכסת האחסון של הדרייב משותפת לכל הארכיון) */
-export const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 10 * 1024 * 1024 * 1024;
 const API = "https://www.googleapis.com/drive/v3";
 const META_TIMEOUT_MS = 20_000;
 const COPY_TIMEOUT_MS = 55_000;
@@ -42,7 +42,7 @@ export async function copySharedVideo(args: {
 
   if (!meta.mimeType?.startsWith("video/")) throw new VideoCopyError("הקישור הזה אינו של קובץ וידאו.");
   const size = meta.size ? Number(meta.size) : 0;
-  if (size > MAX_VIDEO_BYTES) throw new VideoCopyError("הסרטון גדול מ-2GB. אפשר לשתף גרסה מכווצת יותר.");
+  if (size > MAX_VIDEO_BYTES) throw new VideoCopyError("הסרטון גדול במיוחד (מעל 10GB). אפשר לשתף גרסה מכווצת יותר.");
   if (meta.capabilities?.canCopy === false) {
     throw new VideoCopyError("הבעלים חסם העתקה של הקובץ בדרייב. צריך לבטל את החסימה (הגדרות שיתוף) ולנסות שוב.");
   }

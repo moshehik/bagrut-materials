@@ -348,6 +348,22 @@ export const sichaUsages = pgTable(
 );
 
 /** רעיון (משחק/פעילות/סיפור/מדרש) שמורה אחרת הוסיפה על שיחה קיימת */
+/** "השתמשתי / נהניתי" על סרטון – לייק אחד לכל מורה (scripts/create-sicha-video-usages-table.ts) */
+export const sichaVideoUsages = pgTable(
+  "sicha_video_usages",
+  {
+    id: serial("id").primaryKey(),
+    videoId: integer("video_id")
+      .notNull()
+      .references(() => sichaVideos.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("sicha_video_usages_uq").on(t.videoId, t.teacherId)],
+);
+
 /** רעיונות של מורות "למה הסרטון מתאים לשיעור" – בדף הסרטון עצמו (scripts/create-sicha-video-ideas-table.ts) */
 export const sichaVideoIdeas = pgTable(
   "sicha_video_ideas",

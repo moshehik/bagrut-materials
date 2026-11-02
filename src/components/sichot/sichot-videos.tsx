@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { sichaVideos, sichaVideoLinks, sichaVideoIdeas, sichaUsages, sichot, users, type User } from "@/db/schema";
+import { sichaVideos, sichaVideoLinks, sichaVideoIdeas, sichaVideoUsages, sichot, users, type User } from "@/db/schema";
 import { getCategoryChain, chainToHref } from "@/lib/data";
 import { SichaVideoForm } from "./sicha-video-form";
 import { CopyrightReport } from "./copyright-report";
@@ -39,7 +39,6 @@ export async function SichotVideos({
 
   // השיעורים שכל סרטון מתאים להם (עם קישור לדף השיעור) וכמה מורות שונות סימנו שהשתמשו בהם
   const lessonsByVideo = new Map<number, { id: number; title: string; href: string }[]>();
-  const teachersByVideo = new Map<number, Set<number>>();
   if (rows.length) {
     const links = await db
       .select({ videoId: sichaVideoLinks.videoId, sichaId: sichot.id, title: sichot.title, categoryId: sichot.categoryId })
@@ -56,17 +55,19 @@ export async function SichotVideos({
         { id: l.sichaId, title: l.title, href: `${hrefByCat.get(l.categoryId)}?sicha=${l.sichaId}` },
       ]);
     }
-    const sichaIds = [...new Set(links.map((l) => l.sichaId))];
-    const usages = sichaIds.length
-      ? await db
-          .select({ sichaId: sichaUsages.sichaId, teacherId: sichaUsages.teacherId })
-          .from(sichaUsages)
-          .where(inArray(sichaUsages.sichaId, sichaIds))
-      : [];
-    for (const l of links) {
-      const set = teachersByVideo.get(l.videoId) ?? new Set<number>();
-      for (const u of usages) if (u.sichaId === l.sichaId) set.add(u.teacherId);
-      teachersByVideo.set(l.videoId, set);
+  }
+
+  // לייקים אמיתיים של מורות על הסרטון ("השתמשתי / נהניתי") וכמה מהן
+  const likesByVideo = new Map<number, number>();
+  const likedByMe = new Set<number>();
+  if (rows.length) {
+    const likes = await db
+      .select({ videoId: sichaVideoUsages.videoId, teacherId: sichaVideoUsages.teacherId })
+      .from(sichaVideoUsages)
+      .where(inArray(sichaVideoUsages.videoId, rows.map((r) => r.id)));
+    for (const l of likes) {
+      likesByVideo.set(l.videoId, (likesByVideo.get(l.videoId) ?? 0) + 1);
+      if (user && l.teacherId === user.id) likedByMe.add(l.videoId);
     }
   }
 
@@ -91,7 +92,8 @@ export async function SichotVideos({
     teacherName: r.displayName ?? r.teacherName,
     canDelete: user?.role === "admin",
     ideas: ideasByVideo.get(r.id) ?? [],
-    usageCount: teachersByVideo.get(r.id)?.size ?? 0,
+    usageCount: likesByVideo.get(r.id) ?? 0,
+    usedByMe: likedByMe.has(r.id),
     lessons: lessonsByVideo.get(r.id) ?? [],
   }));
 
