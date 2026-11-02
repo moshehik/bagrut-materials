@@ -3,9 +3,21 @@
 import { useState, useTransition } from "react";
 import { PauseCircle, PlayCircle, Trash2 } from "lucide-react";
 import type { Status } from "@/db/schema";
-import { setSichaStatus, deleteSicha } from "@/lib/actions/admin-sichot";
+import { setSichaStatus, deleteSicha, setSichaVideoStatus, deleteSichaVideo } from "@/lib/actions/admin-sichot";
 
-export function SichaModerationButtons({ id, title, status }: { id: number; title: string; status: Status }) {
+export function SichaModerationButtons({
+  id,
+  title,
+  status,
+  kind = "sicha",
+}: {
+  id: number;
+  title: string;
+  status: Status;
+  kind?: "sicha" | "video";
+}) {
+  const setStatus = kind === "video" ? setSichaVideoStatus : setSichaStatus;
+  const remove = kind === "video" ? deleteSichaVideo : deleteSicha;
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
 
@@ -18,7 +30,7 @@ export function SichaModerationButtons({ id, title, status }: { id: number; titl
           disabled={pending}
           onClick={() =>
             start(async () => {
-              const r = await setSichaStatus(id, status === "active" ? "suspended" : "active");
+              const r = await setStatus(id, status === "active" ? "suspended" : "active");
               if (r?.error) setErr(r.error);
             })
           }
@@ -38,9 +50,9 @@ export function SichaModerationButtons({ id, title, status }: { id: number; titl
           className="btn text-xs py-1 px-2.5 text-red-700 border border-red-200 hover:bg-red-50"
           disabled={pending}
           onClick={() => {
-            if (!confirm(`למחוק לצמיתות את השיחה "${title}"?`)) return;
+            if (!confirm(`למחוק לצמיתות את ${kind === "video" ? "הסרטון" : "השיחה"} "${title}"?`)) return;
             start(async () => {
-              const r = await deleteSicha(id);
+              const r = await remove(id);
               if (r?.error) setErr(r.error);
             });
           }}

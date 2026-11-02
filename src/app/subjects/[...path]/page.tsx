@@ -33,6 +33,7 @@ import { getFreeTrialState } from "@/lib/free-trial";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 import { SichotModule } from "@/components/sichot/sichot-module";
+import { SichotVideos } from "@/components/sichot/sichot-videos";
 import Image from "next/image";
 import { nutForLevel } from "@/lib/nut-images";
 import { SUBJECT_HOUSES } from "@/lib/constants";
@@ -45,7 +46,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ path: string[] }>;
-  searchParams: Promise<{ dlall?: string }>;
+  searchParams: Promise<{ dlall?: string; sicha?: string; video?: string }>;
 };
 
 /**
@@ -96,7 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { path } = await params;
-  const { dlall } = await searchParams;
+  const { dlall, sicha, video } = await searchParams;
   const chain = await resolvePath(decode(path)).catch(() => null);
   if (!chain || chain.length === 0) notFound();
 
@@ -182,7 +183,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const folderIntro = FOLDER_INTROS[chain.map((c) => c.slug).join("/")];
 
   // יחידה (תיקייה בלי תתי-תיקיות) עם חומרים בתשלום: רכישה חד-פעמית של כל הקבצים
-  const isUnit = children.length === 0 && category.contentModule !== "sichot";
+  const isSichotFolder = category.contentModule === "sichot" || category.contentModule === "sichot_videos";
+  const isUnit = children.length === 0 && !isSichotFolder;
   const hasPaid = mats.some((m) => m.access !== "free");
   const ownsAll = mats.length > 0 && entitlements.every((e) => e.ok);
   const showBundle = isUnit && hasPaid && mats.length > 0;
@@ -276,7 +278,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                   <span className="gate-badge">סמל שאלון {category.questionnaireCode}</span>
                 )}
               </div>
-              {category.contentModule !== "sichot" && (
+              {!isSichotFolder && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {children.length > 0 && (
                     <span className="gate-badge">
@@ -319,9 +321,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       </header>
 
       {/* מאגר שיחות מורות (שיחה / חברה / כישורי חיים) – מציג מודול ייעודי במקום עמוד חומרים רגיל */}
-      {category.contentModule === "sichot" ? (
+      {isSichotFolder ? (
         <div className="mt-10">
-          <SichotModule categoryId={category.id} folderTitle={category.title} path={here} user={user} />
+          {category.contentModule === "sichot_videos" ? (
+            <SichotVideos categoryId={category.id} path={here} user={user} videoId={Number(video) || undefined} />
+          ) : (
+            <SichotModule categoryId={category.id} folderTitle={category.title} path={here} user={user} sichaId={Number(sicha) || undefined} />
+          )}
         </div>
       ) : (
         <>

@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   sichot,
-  sichaRatings,
+  sichaFiles,
   sichaUsages,
   sichaIdeas,
-  sichaTeacherStatus,
   categories,
   type SichaSeminar,
 } from "@/db/schema";
@@ -17,66 +16,10 @@ import { requireUser } from "@/lib/session";
 import { verifyUpload } from "@/lib/upload-id";
 import { logAudit } from "@/lib/audit";
 import { TOO_MANY_MESSAGE, limitKey, tooMany } from "@/lib/rate-limit";
-import {
-  SICHA_REGULAR_CADENCE_WEEKS,
-  SICHA_HIGH_RATED_CADENCE_WEEKS,
-  SICHA_HIGH_RATED_MIN_AVG,
-  SICHA_HIGH_RATED_MIN_COUNT,
-} from "@/lib/constants";
 
 export type SichaActionState = { error?: string; ok?: boolean } | undefined;
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-/** קצב ההעלאה הבא של מורה: 10 שבועות אם היא "מדורגת גבוה" (ר' SICHA_HIGH_RATED_*), אחרת 6 */
-async function nextCadenceWeeks(teacherId: number): Promise<number> {
-  const [row] = await db
-    .select({
-      avgStars: sql<string | null>`avg(${sichaRatings.stars})`,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(sichaRatings)
-    .innerJoin(sichot, eq(sichot.id, sichaRatings.sichaId))
-    .where(eq(sichot.teacherId, teacherId));
-
-  const highRated =
-    !!row && row.n >= SICHA_HIGH_RATED_MIN_COUNT && Number(row.avgStars) >= SICHA_HIGH_RATED_MIN_AVG;
-  return highRated ? SICHA_HIGH_RATED_CADENCE_WEEKS : SICHA_REGULAR_CADENCE_WEEKS;
-}
-
-/**
- * מאפסת/יוצרת את שעון-ההתחייבות של המורה עם כל העלאה. `count` = כמה שיחות הועלו יחד
- * בבת אחת — קצב ההתחייבות הבסיסי (6 או 10 שבועות, לפי דירוג) מוכפל בו, כלומר מורה
- * שמעלה 2 שיחות בבת אחת מקבלת פטור כפול (למשל 12 שבועות במקום 6). מחזירה את מספר
- * השבועות שניתנו בפועל, לתצוגה למורה.
- */
-async function bumpTeacherStatus(teacherId: number, count: number): Promise<number> {
-  const baseWeeks = await nextCadenceWeeks(teacherId);
-  const weeks = baseWeeks * count;
-  const now = new Date();
-  const nextDueAt = new Date(now.getTime() + weeks * WEEK_MS);
-  await db
-    .insert(sichaTeacherStatus)
-    .values({ teacherId, lastUploadAt: now, nextDueAt })
-    .onConflictDoUpdate({
-      target: sichaTeacherStatus.teacherId,
-      set: { lastUploadAt: now, nextDueAt, reminderSentAt: null, blocked: false },
-    });
-  await logAudit({
-    actorId: teacherId,
-    action: "sicha.teacher_status",
-    entityType: "user",
-    entityId: teacherId,
-    details: { weeks, count, nextDueAt: nextDueAt.toISOString(), unblocked: true },
-  });
-  return weeks;
-}
-
-const itemSchema = z.object({
-  categoryId: z.coerce.number().int().positive(),
-  title: z.string().trim().min(4, "כותרת קצרה מדי").max(200, "כותרת ארוכה מדי"),
-  description: z.string().trim().max(2000).optional(),
-  seminarType: z.enum(["mainstream", "kiruv", "charedi_modern"]),
+const fileSchema = z.object({
   fileUrl: z.string().regex(/^drive:\/\/[A-Za-z0-9_-]{10,100}$/, "קובץ לא תקין"),
   /** חתימת /api/sichot/upload/finish - מוכיחה שהקובץ הועלה ע"י המשתמשת הזו */
   fileSig: z.string().min(1),
@@ -85,107 +28,91 @@ const itemSchema = z.object({
   size: z.coerce.number().int().min(0),
 });
 
-const batchSchema = z.object({
-  items: z.array(itemSchema).min(1, "צריך לפחות שיחה אחת").max(20, "עד 20 שיחות בבת אחת"),
+const sichaSchema = z.object({
+  categoryId: z.coerce.number().int().positive(),
+  title: z.string().trim().min(4, "כותרת קצרה מדי").max(200, "כותרת ארוכה מדי"),
+  description: z.string().trim().min(10, "צריך תיאור קצר של השיחה (לפחות 10 תווים)").max(2000),
+  seminarType: z.enum(["mainstream", "kiruv", "charedi_modern"]),
+  /** כל הקבצים שהועלו באותה העלאה הם חלק מאותו שיעור; הראשון הוא הקובץ הראשי */
+  files: z.array(fileSchema).min(1, "צריך לפחות קובץ אחד").max(10, "עד 10 קבצים בשיעור אחד"),
   /** נתיב עמוד התיקייה הנוכחית, לרענון הרשימה אחרי ההעלאה */
   path: z.string().min(1),
+  /** שם בדוי להצגה במקום שם המורה; ריק/חסר = בשמה האמיתי */
+  displayName: z.string().trim().min(2, "שם בדוי קצר מדי").max(40, "שם בדוי ארוך מדי").optional(),
 });
 
-export type CreateSichaItem = z.infer<typeof itemSchema>;
+export type CreateSichaFile = z.infer<typeof fileSchema>;
 
 /**
- * נקראת ישירות מהלקוח אחרי העלאת הקובץ/ים (בדומה ל-createMaterial), לא דרך
- * useActionState. תומכת בהעלאת כמה שיחות בבת אחת — ר' bumpTeacherStatus.
+ * נקראת ישירות מהלקוח אחרי העלאת הקבצים (בדומה ל-createMaterial), לא דרך useActionState.
+ * שיחה אחת = העלאה אחת, ויכולים להיות לה כמה קבצים. אין חובת העלאה חוזרת.
  */
-export async function createSichaBatch(input: {
-  items: CreateSichaItem[];
+export async function createSicha(input: {
+  categoryId: number;
+  title: string;
+  description: string;
+  seminarType: SichaSeminar;
+  files: CreateSichaFile[];
   path: string;
-}): Promise<{ ok: true; ids: number[]; cadenceWeeks: number } | { error: string }> {
+  displayName?: string;
+}): Promise<{ ok: true; id: number } | { error: string }> {
   const user = await requireUser().catch(() => null);
   if (!user) return { error: "יש להתחבר כדי להעלות שיחה" };
 
-  const parsed = batchSchema.safeParse(input);
+  const parsed = sichaSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { items, path } = parsed.data;
+  const { categoryId, title, description, seminarType, files, path, displayName } = parsed.data;
   if (user.suspended) return { error: "החשבון מושעה" };
-  if (items.some((i) => !verifyUpload(user.id, i.fileUrl, i.fileSig))) {
+  if (files.some((f) => !verifyUpload(user.id, f.fileUrl, f.fileSig))) {
     return { error: "הקובץ לא הועלה מהחשבון הזה - יש להעלות אותו מחדש" };
   }
 
-  const categoryIds = [...new Set(items.map((i) => i.categoryId))];
-  const cats = await db
-    .select({ id: categories.id, contentModule: categories.contentModule })
+  const [cat] = await db
+    .select({ contentModule: categories.contentModule })
     .from(categories)
-    .where(inArray(categories.id, categoryIds));
-  if (cats.length !== categoryIds.length || cats.some((c) => c.contentModule !== "sichot")) {
-    return { error: "התיקייה לא נמצאה" };
-  }
+    .where(eq(categories.id, categoryId))
+    .limit(1);
+  if (!cat || cat.contentModule !== "sichot") return { error: "התיקייה לא נמצאה" };
 
-  const rows = await db
+  const [first, ...rest] = files;
+  const [row] = await db
     .insert(sichot)
-    .values(
-      items.map((d) => ({
-        categoryId: d.categoryId,
-        teacherId: user.id,
-        title: d.title,
-        description: d.description || null,
-        seminarType: d.seminarType as SichaSeminar,
-        fileUrl: d.fileUrl,
-        fileName: d.fileName,
-        mime: d.mime,
-        size: d.size,
-      })),
-    )
+    .values({
+      categoryId,
+      teacherId: user.id,
+      title,
+      description,
+      seminarType: seminarType as SichaSeminar,
+      fileUrl: first.fileUrl,
+      fileName: first.fileName,
+      mime: first.mime,
+      size: first.size,
+      displayName: displayName ?? null,
+    })
     .returning({ id: sichot.id });
 
-  const cadenceWeeks = await bumpTeacherStatus(user.id, items.length);
+  if (rest.length) {
+    await db.insert(sichaFiles).values(
+      rest.map((f, i) => ({
+        sichaId: row.id,
+        fileUrl: f.fileUrl,
+        fileName: f.fileName,
+        mime: f.mime,
+        size: f.size,
+        sort: i + 1,
+      })),
+    );
+  }
+
   await logAudit({
     actorId: user.id,
     action: "sicha.create",
     entityType: "sicha",
-    entityId: rows[0]?.id ?? null,
-    details: { ids: rows.map((r) => r.id), count: rows.length, categoryIds, cadenceWeeks },
+    entityId: row.id,
+    details: { categoryId, files: files.length, pseudonym: displayName ?? null },
   });
   revalidatePath(path);
-  return { ok: true, ids: rows.map((r) => r.id), cadenceWeeks };
-}
-
-const rateSchema = z.object({
-  sichaId: z.coerce.number().int().positive(),
-  stars: z.coerce.number().int().min(1).max(5),
-  path: z.string().min(1),
-});
-
-export async function rateSicha(_prev: SichaActionState, form: FormData): Promise<SichaActionState> {
-  const user = await requireUser().catch(() => null);
-  if (!user) return { error: "יש להתחבר כדי לדרג" };
-  // הגבלת קצב: 30 דירוגים לשעה למורה
-  if (await tooMany(limitKey("sicha-rate", "user", user.id), 30, 3600)) return { error: TOO_MANY_MESSAGE };
-  const parsed = rateSchema.safeParse({
-    sichaId: form.get("sichaId"),
-    stars: form.get("stars"),
-    path: form.get("path"),
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { sichaId, stars, path } = parsed.data;
-
-  await db
-    .insert(sichaRatings)
-    .values({ sichaId, teacherId: user.id, stars })
-    .onConflictDoUpdate({
-      target: [sichaRatings.sichaId, sichaRatings.teacherId],
-      set: { stars, updatedAt: new Date() },
-    });
-
-  await logAudit({
-    actorId: user.id,
-    action: "sicha.rate",
-    entityType: "sicha",
-    entityId: sichaId,
-    details: { stars },
-  });
-  revalidatePath(path);
-  return { ok: true };
+  return { ok: true, id: row.id };
 }
 
 const usageSchema = z.object({

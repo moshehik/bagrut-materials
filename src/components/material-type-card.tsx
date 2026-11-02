@@ -39,7 +39,7 @@ const DAILY_SUBSTITUTE_VIEW_TIP =
 const MAIL_TIP = "הקובץ ישלח אליך ישירות למייל.";
 
 /** אגוז הלוז המקורי (one-01) עם אייקון מייל דק-קווים שחור, כאילו נחרט עליו */
-function MailNut() {
+export function MailNut() {
   return (
     <span className="mtc-nut mtc-mailnut" aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}

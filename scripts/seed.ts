@@ -75,7 +75,7 @@ async function upsertCategory(
     excluded: node.excluded ?? false,
     excludedNote: node.excludedNote ?? null,
     ready: node.ready ?? false,
-    contentModule: (node.moduleType ?? "standard") as "standard" | "sichot",
+    contentModule: (node.moduleType ?? "standard") as "standard" | "sichot" | "sichot_videos",
     icon: extra.icon ?? null,
     color: extra.color ?? null,
     sort,

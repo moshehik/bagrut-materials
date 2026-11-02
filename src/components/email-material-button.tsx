@@ -9,13 +9,16 @@ import { Loader2 } from "lucide-react";
  */
 export function EmailMaterialButton({
   materialId,
+  url,
   className,
   children,
   fixes,
   tip,
   ariaLabel,
 }: {
-  materialId: number;
+  materialId?: number;
+  /** כתובת POST אחרת (למשל קובץ שיחה: /api/sichot/download/[id]); ברירת מחדל: /api/download/[materialId] */
+  url?: string;
   className?: string;
   children: React.ReactNode;
   /** "all" – גרסת הקובץ עם התיקונים (כמו ?fixes=all בהורדה) */
@@ -42,7 +45,7 @@ export function EmailMaterialButton({
     setState("sending");
     setMsg(null);
     try {
-      const res = await fetch(`/api/download/${materialId}${fixes ? `?fixes=${fixes}` : ""}`, {
+      const res = await fetch(url ?? `/api/download/${materialId}${fixes ? `?fixes=${fixes}` : ""}`, {
         method: "POST",
         headers: { Accept: "application/json" },
       });

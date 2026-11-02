@@ -1,38 +1,26 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { sichot, sichaRatings, sichaUsages, sichaIdeas, sichaTeacherStatus, users, type User } from "@/db/schema";
+import { sichot, sichaFiles, sichaUsages, sichaIdeas, sichaVideos, sichaVideoLinks, categories, users, type User } from "@/db/schema";
 import { SichaIntro } from "./sicha-intro";
-import { SichaBlockedBanner } from "./sicha-blocked-banner";
 import { SichaUploadForm } from "./sicha-upload-form";
-import { SichaCard, type SichaCardData } from "./sicha-card";
+import { SichaCard, SichaListCard, type SichaCardData } from "./sicha-card";
 
 export async function SichotModule({
   categoryId,
   folderTitle,
   path,
   user,
+  sichaId,
 }: {
   categoryId: number;
   folderTitle: string;
   path: string;
   user: User | null;
+  /** מזהה שיחה פתוחה (?sicha=) – מציג את דף השיעור במקום הרשימה */
+  sichaId?: number;
 }) {
-  if (user) {
-    const [status] = await db
-      .select({ blocked: sichaTeacherStatus.blocked })
-      .from(sichaTeacherStatus)
-      .where(eq(sichaTeacherStatus.teacherId, user.id))
-      .limit(1);
-    if (status?.blocked) {
-      return (
-        <div className="space-y-8">
-          <SichaIntro folderTitle={folderTitle} />
-          <SichaBlockedBanner categoryId={categoryId} path={path} />
-        </div>
-      );
-    }
-  }
-
   const items = await db
     .select({
       id: sichot.id,
@@ -41,32 +29,57 @@ export async function SichotModule({
       seminarType: sichot.seminarType,
       fileName: sichot.fileName,
       createdAt: sichot.createdAt,
+      displayName: sichot.displayName,
       teacherId: sichot.teacherId,
       teacherName: users.name,
-      avgStars: sql<string | null>`avg(${sichaRatings.stars})`,
-      ratingCount: sql<number>`count(distinct ${sichaRatings.id})::int`,
       usageCount: sql<number>`count(distinct ${sichaUsages.id})::int`,
     })
     .from(sichot)
     .innerJoin(users, eq(users.id, sichot.teacherId))
-    .leftJoin(sichaRatings, eq(sichaRatings.sichaId, sichot.id))
     .leftJoin(sichaUsages, eq(sichaUsages.sichaId, sichot.id))
     .where(and(eq(sichot.categoryId, categoryId), eq(sichot.status, "active")))
-    .groupBy(sichot.id, users.name)
-    .orderBy(
-      desc(sql`coalesce(avg(${sichaRatings.stars}),0)`),
-      desc(sql`count(distinct ${sichaRatings.id})`),
-      desc(sichot.createdAt),
-    );
+    .groupBy(sichot.id, users.name, sichot.displayName)
+    // הכי בשימוש קודם, ואז החדשות
+    .orderBy(desc(sql`count(distinct ${sichaUsages.id})`), desc(sichot.createdAt));
 
   const ids = items.map((it) => it.id);
 
-  const [myRatings, myUsages, ideaRows] = await Promise.all([
-    user && ids.length
+  const [videoRows, [thisCat]] = await Promise.all([
+    ids.length
       ? db
-          .select({ sichaId: sichaRatings.sichaId, stars: sichaRatings.stars })
-          .from(sichaRatings)
-          .where(and(eq(sichaRatings.teacherId, user.id), inArray(sichaRatings.sichaId, ids)))
+          .select({ id: sichaVideos.id, title: sichaVideos.title, sichaId: sichaVideoLinks.sichaId })
+          .from(sichaVideoLinks)
+          .innerJoin(sichaVideos, eq(sichaVideos.id, sichaVideoLinks.videoId))
+          .where(and(inArray(sichaVideoLinks.sichaId, ids), eq(sichaVideos.status, "active")))
+          .orderBy(asc(sichaVideos.createdAt))
+      : Promise.resolve([]),
+    db.select({ parentId: categories.parentId }).from(categories).where(eq(categories.id, categoryId)).limit(1),
+  ]);
+  // תיקיית "סרטונים להעשרת שיעורים": אחות של "שיעורי יהדות" (שבתוכה תיקיית השיחות הזו), באותו מקצוע — אליה מובילים כפתורי הסרטונים
+  const [lessonsParent] = thisCat?.parentId
+    ? await db.select({ parentId: categories.parentId }).from(categories).where(eq(categories.id, thisCat.parentId)).limit(1)
+    : [];
+  const [videosCat] = lessonsParent?.parentId
+    ? await db
+        .select({ slug: categories.slug })
+        .from(categories)
+        .where(and(eq(categories.parentId, lessonsParent.parentId), eq(categories.contentModule, "sichot_videos")))
+        .limit(1)
+    : [];
+  const videosBase = videosCat ? `${path.split("/").slice(0, -2).join("/")}/${videosCat.slug}` : null;
+  const videosBySicha = new Map<number, { id: number; title: string }[]>();
+  for (const v of videoRows) {
+    if (v.sichaId === null) continue;
+    videosBySicha.set(v.sichaId, [...(videosBySicha.get(v.sichaId) ?? []), { id: v.id, title: v.title }]);
+  }
+
+  const [extraRows, myUsages, ideaRows] = await Promise.all([
+    ids.length
+      ? db
+          .select({ id: sichaFiles.id, sichaId: sichaFiles.sichaId, fileName: sichaFiles.fileName })
+          .from(sichaFiles)
+          .where(inArray(sichaFiles.sichaId, ids))
+          .orderBy(asc(sichaFiles.sort), asc(sichaFiles.id))
       : Promise.resolve([]),
     user && ids.length
       ? db
@@ -90,7 +103,8 @@ export async function SichotModule({
       : Promise.resolve([]),
   ]);
 
-  const myRatingMap = new Map(myRatings.map((r) => [r.sichaId, r.stars]));
+  const extrasBySicha = new Map<number, { id: number; fileName: string }[]>();
+  for (const f of extraRows) extrasBySicha.set(f.sichaId, [...(extrasBySicha.get(f.sichaId) ?? []), { id: f.id, fileName: f.fileName }]);
   const myUsageSet = new Set(myUsages.map((u) => u.sichaId));
   const ideasBySicha = new Map<number, { id: number; body: string; teacherName: string; teacherId: number }[]>();
   for (const idea of ideaRows) {
@@ -107,16 +121,30 @@ export async function SichotModule({
       description: it.description,
       seminarType: it.seminarType,
       fileName: it.fileName,
-      teacherName: it.teacherName,
-      avgStars: it.avgStars !== null ? Number(it.avgStars) : null,
-      ratingCount: it.ratingCount,
+      extraFiles: extrasBySicha.get(it.id) ?? [],
+      teacherName: it.displayName ?? it.teacherName,
       usageCount: it.usageCount,
-      myRating: myRatingMap.get(it.id) ?? null,
       usedByMe: myUsageSet.has(it.id),
       ideas: ideas.map((i) => ({ id: i.id, body: i.body, teacherName: i.teacherName })),
       ideaContributorCount: new Set(ideas.map((i) => i.teacherId)).size,
+      videos: videosBase ? (videosBySicha.get(it.id) ?? []).map((v) => ({ id: v.id, title: v.title, href: `${videosBase}?video=${v.id}` })) : [],
     };
   });
+
+  // ?sicha=<id>: דף השיעור עצמו (במקום הרשימה)
+  const opened = sichaId ? cards.find((c) => c.id === sichaId) : undefined;
+  if (opened) {
+    return (
+      <div className="space-y-5">
+        <Link href={path} className="sicha-tag">
+          <ArrowRight className="h-4 w-4" aria-hidden /> חזרה לכל השיחות ב{folderTitle}
+        </Link>
+        <div className="max-w-lg">
+          <SichaCard sicha={opened} path={path} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -125,19 +153,19 @@ export async function SichotModule({
       {user ? (
         <SichaUploadForm categoryId={categoryId} path={path} />
       ) : (
-        <div className="card p-5 text-sm text-muted">יש להתחבר כדי להעלות שיחה, לדרג ולהוסיף רעיונות.</div>
+        <div className="gate-card text-lg">יש להתחבר כדי להעלות שיחה, להוריד ולהוסיף רעיונות.</div>
       )}
 
       {cards.length === 0 ? (
-        <div className="card p-10 text-center text-muted">
+        <div className="gate-card p-10 text-center">
           <div className="text-5xl">🪄</div>
-          <p className="mt-3 font-semibold text-foreground">עדיין אין כאן שיחות.</p>
-          <p className="mt-1 text-sm">היי הראשונה שמעלה שיחה לתיקייה הזו!</p>
+          <p className="mt-3 text-2xl">עדיין אין כאן שיחות.</p>
+          <p className="mt-1 text-lg gate-soft">היי הראשונה שמעלה שיחה לתיקייה הזו!</p>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((sicha) => (
-            <SichaCard key={sicha.id} sicha={sicha} path={path} />
+            <SichaListCard key={sicha.id} sicha={sicha} href={`${path}?sicha=${sicha.id}`} />
           ))}
         </div>
       )}

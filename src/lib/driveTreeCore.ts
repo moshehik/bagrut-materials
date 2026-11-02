@@ -616,7 +616,12 @@ export async function loadLinkedDriveIds(): Promise<Set<string>> {
     }
   };
   add(await db.select({ u: materials.fileUrl }).from(materials));
-  for (const t of ["sichot", "sell_offers"]) {
+  try {
+    add(await db.execute(sql.raw(`select 'drive://' || drive_id as u from sicha_videos`)));
+  } catch {
+    /* הטבלה עוד לא קיימת — מתעלמים */
+  }
+  for (const t of ["sichot", "sicha_files", "sell_offers"]) {
     try {
       add(await db.execute(sql.raw(`select file_url as u from ${t} where file_url like 'drive://%'`)));
     } catch {

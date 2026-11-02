@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Star, Repeat, Lightbulb, Send, Loader2, AlertCircle, ChevronDown } from "lucide-react";
-import { rateSicha, toggleUsage, addIdea, type SichaActionState } from "@/lib/actions/sichot";
+import { Send, Loader2, AlertCircle, ChevronDown, ThumbsUp } from "lucide-react";
+import { toggleUsage, addIdea, type SichaActionState } from "@/lib/actions/sichot";
+import { addVideoIdea } from "@/lib/actions/sichot-videos";
 
 function ErrorBox({ error }: { error?: string }) {
   if (!error) return null;
@@ -14,77 +15,32 @@ function ErrorBox({ error }: { error?: string }) {
   );
 }
 
-export function RatingStars({
-  sichaId,
-  path,
-  myRating,
-}: {
-  sichaId: number;
-  path: string;
-  myRating: number | null;
-}) {
-  const [state, action, pending] = useActionState<SichaActionState, FormData>(rateSicha, undefined);
-  const [hover, setHover] = useState<number | null>(null);
-
-  const submitStars = (stars: number) => {
-    const fd = new FormData();
-    fd.set("sichaId", String(sichaId));
-    fd.set("stars", String(stars));
-    fd.set("path", path);
-    action(fd);
-  };
-
-  const shown = hover ?? myRating ?? 0;
-
-  return (
-    <div className="flex items-center gap-1" aria-label="דרגי את השיחה">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          disabled={pending}
-          onMouseEnter={() => setHover(n)}
-          onMouseLeave={() => setHover(null)}
-          onClick={() => submitStars(n)}
-          aria-label={`דרגי ${n} מתוך 5`}
-          className="p-0.5"
-        >
-          <Star
-            className={`h-4 w-4 ${n <= shown ? "fill-gold text-gold" : "text-oak/30"}`}
-            aria-hidden
-          />
-        </button>
-      ))}
-      {state?.error && <ErrorBox error={state.error} />}
-    </div>
-  );
-}
-
 export function UsageToggle({
   sichaId,
   path,
   used,
-  count,
 }: {
   sichaId: number;
   path: string;
   used: boolean;
-  count: number;
 }) {
   const [state, action, pending] = useActionState<SichaActionState, FormData>(toggleUsage, undefined);
 
+  // לייק: לחיצה מסמנת שהשתמשת / נהנית (ועוד לחיצה מבטלת); הכיתוב "N מורות נהנו" יושב בראש הכרטיס (ר' sicha-card.tsx)
   return (
-    <form action={action} className="inline-flex items-center gap-2">
+    <form action={action} className="space-y-0.5">
       <input type="hidden" name="sichaId" value={sichaId} />
       <input type="hidden" name="path" value={path} />
       <button
         type="submit"
         disabled={pending}
-        className={`chip ${used ? "bg-green-100 text-green-700" : "bg-blue-soft text-blue-deep"}`}
-        title={used ? "לחצי כדי לבטל" : "סמני שהשתמשת בשיחה הזו"}
+        aria-pressed={used}
+        data-tip={"השתמשת? נהנית?\nלחיצה על הלייק תפרגן למורה\nותעזור לשיעור להגיע לעוד מורות"}
+        className="sicha-like"
+        data-on={used}
       >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Repeat className="h-3.5 w-3.5" />}
-        {used ? "השתמשתי" : "השתמשתי בזה"} · {count}
+        {pending ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden /> : <ThumbsUp className="h-6 w-6" aria-hidden />}
+        <span>{used ? "תודה שפירגנת!" : "השתמשת? נהנית?"}</span>
       </button>
       {state?.error && <ErrorBox error={state.error} />}
     </form>
@@ -95,15 +51,18 @@ export function IdeaBox({
   sichaId,
   path,
   ideas,
-  contributorCount,
+  defaultOpen = false,
+  videoId,
 }: {
+  /** בדף סרטון: sichaId לא בשימוש (0) ו-videoId מזהה את הסרטון */
   sichaId: number;
+  videoId?: number;
   path: string;
   ideas: { id: number; body: string; teacherName: string }[];
-  contributorCount: number;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<SichaActionState, FormData>(addIdea, undefined);
+  const [open, setOpen] = useState(defaultOpen);
+  const [state, action, pending] = useActionState<SichaActionState, FormData>(videoId ? addVideoIdea : addIdea, undefined);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -112,14 +71,11 @@ export function IdeaBox({
 
   return (
     <div className="mt-2">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="chip bg-gold-soft text-[#8a6500] inline-flex items-center gap-1"
-      >
-        <Lightbulb className="h-3.5 w-3.5" aria-hidden />
-        {contributorCount > 0 ? `${contributorCount} מורות העשירו ברעיונות` : "הוסיפי רעיון"}
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      <button type="button" onClick={() => setOpen((v) => !v)} className="mtc-row" aria-expanded={open}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/nuts/one-02.webp" alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
+        <span>{videoId ? "הוספת רעיון: למה הסרטון מתאים לשיעור" : "הוספת תוכן או רעיון לשיעור"}</span>
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
 
       {open && (
@@ -127,15 +83,19 @@ export function IdeaBox({
           {ideas.length > 0 && (
             <ul className="space-y-2">
               {ideas.map((idea) => (
-                <li key={idea.id} className="rounded-xl bg-gold-soft/50 px-3 py-2 text-sm">
+                <li key={idea.id} className="rounded-xl bg-white/70 border-2 border-black px-3 py-2 text-base">
                   <p className="leading-relaxed">{idea.body}</p>
-                  <p className="mt-1 text-xs text-muted">— {idea.teacherName}</p>
+                  <p className="mt-1 text-sm gate-soft">— {idea.teacherName}</p>
                 </li>
               ))}
             </ul>
           )}
           <form ref={formRef} action={action} className="space-y-2">
-            <input type="hidden" name="sichaId" value={sichaId} />
+            {videoId ? (
+              <input type="hidden" name="videoId" value={videoId} />
+            ) : (
+              <input type="hidden" name="sichaId" value={sichaId} />
+            )}
             <input type="hidden" name="path" value={path} />
             <ErrorBox error={state?.error} />
             <textarea
@@ -144,11 +104,11 @@ export function IdeaBox({
               minLength={3}
               maxLength={2000}
               rows={3}
-              className="input resize-y text-sm"
-              placeholder="רעיון למשחק, פעילות, סיפור או מדרש שמשלים את השיחה הזו..."
+              className="input resize-y font-sans text-base"
+              placeholder={videoId ? "לאיזה שיעור הסרטון מתאים, באיזה שלב להראות אותו, ומה לעשות איתו..." : "רעיון למשחק, פעילות, סיפור או מדרש שמשלים את השיחה הזו..."}
             />
             <div className="flex justify-end">
-              <button type="submit" disabled={pending} className="btn btn-ghost text-sm py-2">
+              <button type="submit" disabled={pending} className="btn btn-gold btn-gate py-2">
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 הוספת רעיון
               </button>

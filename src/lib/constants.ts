@@ -23,17 +23,11 @@ export const MATERIAL_KINDS: Record<MaterialKind, { label: string; icon: string;
 };
 
 /** סוג הסמינר שבו נמסרה שיחה במאגר השיחות (שיחה/חברה/כישורי חיים) */
-export const SICHA_SEMINARS: Record<SichaSeminar, { label: string; icon: string }> = {
-  mainstream: { label: "מיינסטרים", icon: "🏫" },
-  kiruv: { label: "קירוב", icon: "🌱" },
-  charedi_modern: { label: "חרדי מודרני", icon: "🕯️" },
+export const SICHA_SEMINARS: Record<SichaSeminar, { label: string }> = {
+  mainstream: { label: "מיינסטרים" },
+  kiruv: { label: "קירוב" },
+  charedi_modern: { label: "חרדי פתוח" },
 };
-
-/** קצב ההתחייבות להעלאת שיחה חדשה למאגר השיחות */
-export const SICHA_REGULAR_CADENCE_WEEKS = 6;
-export const SICHA_HIGH_RATED_CADENCE_WEEKS = 10;
-export const SICHA_HIGH_RATED_MIN_AVG = 4;
-export const SICHA_HIGH_RATED_MIN_COUNT = 3;
 
 export const PLANS: Record<
   Plan,

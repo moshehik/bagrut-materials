@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Gveret_Levin } from "next/font/google";
+import { Bellefair, Gveret_Levin } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
@@ -35,6 +35,13 @@ const gveretLevin = Gveret_Levin({
   weight: ["400"],
 });
 
+// כתב "רנסנס" לכותרות שיעורי השיחות (Bellefair: עברית + לטינית בהשראת כתב הרנסנס, מוגש מהדומיין שלנו דרך next/font)
+const bellefair = Bellefair({
+  variable: "--font-renaissance",
+  subsets: ["hebrew", "latin"],
+  weight: ["400"],
+});
+
 export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
   description: SITE_TAGLINE,
@@ -46,7 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="he"
       dir="rtl"
-      className={`${asparagos.variable} ${gveretLevin.variable} h-full antialiased`}
+      className={`${asparagos.variable} ${gveretLevin.variable} ${bellefair.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <a href="#main" className="skip-link">

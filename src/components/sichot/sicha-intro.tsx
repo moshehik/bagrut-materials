@@ -1,55 +1,67 @@
-import { Sparkles, FileText, Star, Lightbulb, RefreshCw } from "lucide-react";
 
 /**
  * באנר ההוראות הקבוע שמופיע מיד בכניסה לתיקיית מאגר השיחות (חגים / אקטואליה והשקפה,
- * תחת שיחה / חברה / כישורי חיים). נעים ומזמין, בהתאם לבקשת המנהלת.
+ * תחת שיחה / חברה / כישורי חיים). באותו עיצוב של "שימי לב!" ו"מסלולים ומחירים":
+ * חלונית כחולה כהה עם טבעת זהב וכרטיסי זהב בהיר במסגרת שחורה.
  */
+const RULES = [
+  {
+    nut: "/images/nuts/one-05.webp",
+    text: (
+      <>
+        כל שיחה שמועלית צריכה להתאים למסירה של{" "}
+        <span className="underline decoration-2 underline-offset-4">45 דקות לפחות</span> — לא רעיון
+        קצר, אלא שיעור שלם ומוכן.
+      </>
+    ),
+  },
+  {
+    nut: "/images/nuts/two-01.webp",
+    text: (
+      <>
+        אחרי שמעבירים שיעור אפשר לסמן &quot;השתמשתי בו&quot; — כך כולן יודעות אילו שיעורים הכי בשימוש.
+      </>
+    ),
+  },
+  {
+    nut: "/images/nuts/one-03.webp",
+    text: (
+      <>
+        יש רעיון למשחק, פעילות, סיפור או מדרש שמשלים שיחה קיימת? לוחצות על ה-&quot;+&quot; ליד
+        השיחה ומוסיפות.
+      </>
+    ),
+  },
+];
+
 export function SichaIntro({ folderTitle }: { folderTitle: string }) {
   return (
-    <div className="card relative overflow-hidden p-6 md:p-8 bg-gradient-to-br from-blue-soft/70 via-white to-gold-soft/50">
-      <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white shadow-md text-xl" aria-hidden>
-          <Sparkles className="h-5 w-5 text-blue-deep" />
-        </span>
-        <div>
-          <h2 className="font-display text-xl font-bold">ברוכה הבאה למאגר השיחות! 💛</h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
+    <section className="gate-panel" aria-labelledby="sicha-intro-h">
+      <span className="gold-ring" aria-hidden="true" />
+
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/nuts/many-04.webp" alt="" aria-hidden className="h-14 w-auto shrink-0" />
+        <div className="min-w-0">
+          <h2 id="sicha-intro-h" className="text-2xl md:text-3xl">
+            ברוכה הבאה למאגר השיחות!
+          </h2>
+          <p className="text-base md:text-lg" style={{ color: "rgba(255,255,255,0.88)" }}>
             כאן מורות מכל הארץ חולקות שיחות מוכנות למסירה בנושאי {folderTitle}, כדי שכולנו נוכל
             להעביר שיעור איכותי בלי להתחיל מאפס.
           </p>
         </div>
       </div>
 
-      <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-        <li className="flex items-start gap-2.5 text-sm leading-relaxed">
-          <FileText className="h-4 w-4 mt-0.5 shrink-0 text-blue-deep" aria-hidden />
-          <span>
-            כל שיחה שמועלית צריכה להתאים למסירה של <b>45 דקות לפחות</b> — לא רעיון קצר, אלא שיעור
-            שלם ומוכן.
-          </span>
-        </li>
-        <li className="flex items-start gap-2.5 text-sm leading-relaxed">
-          <Star className="h-4 w-4 mt-0.5 shrink-0 text-gold" aria-hidden />
-          <span>
-            אחרי שמעבירים שיעור אפשר לדרג אותו 1-5 ולסמן &quot;השתמשתי בו&quot; — כך כולן יודעות מה
-            עבד הכי טוב.
-          </span>
-        </li>
-        <li className="flex items-start gap-2.5 text-sm leading-relaxed">
-          <Lightbulb className="h-4 w-4 mt-0.5 shrink-0 text-[#8a6500]" aria-hidden />
-          <span>
-            יש רעיון למשחק, פעילות, סיפור או מדרש שמשלים שיחה קיימת? לוחצות על ה-&quot;+&quot; ליד
-            השיחה ומוסיפות.
-          </span>
-        </li>
-        <li className="flex items-start gap-2.5 text-sm leading-relaxed">
-          <RefreshCw className="h-4 w-4 mt-0.5 shrink-0 text-blue-deep" aria-hidden />
-          <span>
-            כדי לשמור על מאגר חי: כל מורה שמצטרפת מתחייבת להעלות שיחה חדשה אחת ל-6 שבועות (דירוג
-            גבוה → פעם ב-10 שבועות). נשלח תזכורת ידידותית שבוע לפני המועד.
-          </span>
-        </li>
+      <ul className="mt-5 flex flex-col gap-3">
+        {RULES.map(({ nut, text }, i) => (
+          <li key={i} className="gate-card flex items-start gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={nut} alt="" aria-hidden className="h-9 w-9 shrink-0 object-contain" />
+            <span className="text-base leading-snug">{text}</span>
+          </li>
+        ))}
       </ul>
-    </div>
+    </section>
   );
 }

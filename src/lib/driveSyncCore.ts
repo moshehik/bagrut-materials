@@ -146,7 +146,8 @@ export type SyncBatchResult = {
 /** סורק עד 40 תיקיות (מ-cursor). ממשיכים עם nextCursor עד null. */
 export async function syncBatch(cursor: number, onlyCategoryId: number | undefined, ctx: SyncCtx): Promise<SyncBatchResult> {
   const { all, mats } = ctx.snapshot ?? (await loadSyncSnapshot());
-  let targets = all.filter((c) => c.driveFolderId).sort((a, b) => a.id - b.id);
+  // תיקיות מאגר השיחות/הסרטונים אינן תיקיות חומרים: קבצים שם (עותקי סרטונים) אסור שיאומצו כטיוטות חומר
+  let targets = all.filter((c) => c.driveFolderId && c.contentModule === "standard").sort((a, b) => a.id - b.id);
   if (onlyCategoryId) targets = targets.filter((c) => c.id === onlyCategoryId);
   const batch = targets.slice(cursor, cursor + 40);
   const byFile = new Map(mats.map((m) => [driveIdFromUrl(m.fileUrl) ?? "", m]));

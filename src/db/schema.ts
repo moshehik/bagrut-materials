@@ -40,7 +40,7 @@ export const txTypeEnum = pgEnum("tx_type", ["charge", "refund", "manual", "adju
 /** סוג הסמינר שבו נמסרה השיחה — נבחר ע"י המורה המעלה, מוצג כתגית על כרטיס השיחה */
 export const sichaSeminarEnum = pgEnum("sicha_seminar", ["mainstream", "kiruv", "charedi_modern"]);
 /** האם קטגוריה זו מציגה את ה-UI הרגיל של חומרים, או את מודול מאגר השיחות (שיחה/חברה/כישורי חיים) */
-export const categoryModuleEnum = pgEnum("category_module", ["standard", "sichot"]);
+export const categoryModuleEnum = pgEnum("category_module", ["standard", "sichot", "sichot_videos"]);
 
 export const planEnum = pgEnum("plan", [
   "single", // הורדה בודדת
@@ -268,11 +268,49 @@ export const sichot = pgTable(
     fileName: varchar("file_name", { length: 255 }).notNull(),
     mime: varchar("mime", { length: 120 }).notNull(),
     size: integer("size").notNull().default(0),
+    /** שם בדוי שהמורה בחרה להופיע בו; null = מופיעה בשמה האמיתי (המנהלת תמיד רואה את השם האמיתי) */
+    displayName: varchar("display_name", { length: 60 }),
     /** כלי השעיה בדיעבד למנהלת — פרסום עצמו פתוח וללא אישור מראש */
     status: statusEnum("status").notNull().default("active"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("sichot_category_idx").on(t.categoryId), index("sichot_teacher_idx").on(t.teacherId)],
+);
+
+/** לאילו שיחות הסרטון מתאים (רבים-לרבים) — בכרטיס כל שיחה כזו מופיע כפתור "סרטון להעשרת השיעור" */
+export const sichaVideoLinks = pgTable(
+  "sicha_video_links",
+  {
+    id: serial("id").primaryKey(),
+    videoId: integer("video_id")
+      .notNull()
+      .references(() => sichaVideos.id, { onDelete: "cascade" }),
+    sichaId: integer("sicha_id")
+      .notNull()
+      .references(() => sichot.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex("sicha_video_links_uq").on(t.videoId, t.sichaId), index("sicha_video_links_sicha_idx").on(t.sichaId)],
+);
+
+/**
+ * קבצים נוספים של אותה שיחה (הקובץ הראשון נשאר בעמודות של sichot). כל הקבצים שהועלו באותה העלאה
+ * הם חלק מאותו שיעור; הורדה דרך /api/sichot/download/[id]?file=<id>.
+ */
+export const sichaFiles = pgTable(
+  "sicha_files",
+  {
+    id: serial("id").primaryKey(),
+    sichaId: integer("sicha_id")
+      .notNull()
+      .references(() => sichot.id, { onDelete: "cascade" }),
+    fileUrl: text("file_url").notNull(),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    mime: varchar("mime", { length: 120 }).notNull(),
+    size: integer("size").notNull().default(0),
+    sort: integer("sort").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("sicha_files_sicha_idx").on(t.sichaId)],
 );
 
 /** דירוג 1-5 של שיחה ע"י מורה — מורה יכולה לעדכן את הדירוג שלה (upsert לפי sichaId+teacherId) */
@@ -310,6 +348,23 @@ export const sichaUsages = pgTable(
 );
 
 /** רעיון (משחק/פעילות/סיפור/מדרש) שמורה אחרת הוסיפה על שיחה קיימת */
+/** רעיונות של מורות "למה הסרטון מתאים לשיעור" – בדף הסרטון עצמו (scripts/create-sicha-video-ideas-table.ts) */
+export const sichaVideoIdeas = pgTable(
+  "sicha_video_ideas",
+  {
+    id: serial("id").primaryKey(),
+    videoId: integer("video_id")
+      .notNull()
+      .references(() => sichaVideos.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("sicha_video_ideas_video_idx").on(t.videoId)],
+);
+
 export const sichaIdeas = pgTable(
   "sicha_ideas",
   {
@@ -324,6 +379,39 @@ export const sichaIdeas = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("sicha_ideas_sicha_idx").on(t.sichaId)],
+);
+
+/**
+ * סרטון לשיעור במאגר השיחות: המורה משתפת קישור לקובץ/תיקייה בדרייב שלה (לא מעלה קובץ לאתר).
+ * נשמר רק מזהה הדרייב + סוג; הקישור המלא נבנה בקריאה (src/lib/drive-link.ts) כדי שלא יישמר URL שרירותי.
+ */
+export const sichaVideos = pgTable(
+  "sicha_videos",
+  {
+    id: serial("id").primaryKey(),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    teacherId: integer("teacher_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    /** מזהה העותק בדרייב של האתר (הסרטון מועתק לשם בצד השרת של גוגל, ונפתח לצפייה בקישור) */
+    driveId: varchar("drive_id", { length: 100 }).notNull(),
+    /** מזהה הקובץ המקורי בדרייב של המורה (למעקב ולמניעת כפילות) */
+    sourceDriveId: varchar("source_drive_id", { length: 100 }),
+    /** 'file' | 'folder' (תיקיות לא מועתקות יותר; נשאר לתאימות) */
+    linkKind: varchar("link_kind", { length: 10 }).notNull().default("file"),
+    /** שם בדוי להצגה; null = בשם המורה האמיתי */
+    displayName: varchar("display_name", { length: 60 }),
+    status: statusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("sicha_videos_category_idx").on(t.categoryId),
+    index("sicha_videos_teacher_idx").on(t.teacherId),
+  ],
 );
 
 /** מעקב קצב-העלאה למורות שהצטרפו למאגר השיחות (שורה אחת למורה, נוצרת בהעלאה הראשונה) */

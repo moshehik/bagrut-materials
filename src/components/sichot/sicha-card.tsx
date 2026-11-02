@@ -1,6 +1,9 @@
-import { Download, UserRound } from "lucide-react";
-import { SICHA_SEMINARS } from "@/lib/constants";
-import { RatingStars, UsageToggle, IdeaBox } from "./sicha-interactions";
+import Link from "next/link";
+import { Play } from "lucide-react";
+import { SichaFileCard } from "./sicha-file-card";
+import { EnjoyedBadge } from "./enjoyed-badge";
+import { IDEA_BOX_COLORS } from "@/lib/sicha-colors";
+import { UsageToggle, IdeaBox } from "./sicha-interactions";
 import type { SichaSeminar } from "@/db/schema";
 
 export type SichaCardData = {
@@ -9,59 +12,106 @@ export type SichaCardData = {
   description: string | null;
   seminarType: SichaSeminar;
   fileName: string;
+  /** קבצים נוספים באותו שיעור (הקובץ הראשי הוא fileName) */
+  extraFiles?: { id: number; fileName: string }[];
   teacherName: string;
-  avgStars: number | null;
-  ratingCount: number;
   usageCount: number;
-  myRating: number | null;
   usedByMe: boolean;
   ideas: { id: number; body: string; teacherName: string }[];
   ideaContributorCount: number;
+  /** סרטונים להעשרת השיעור שמורות קישרו לשיחה הזו – כל סרטון בכפתור משלו, שמוביל אליו בתיקיית "סרטונים" */
+  videos?: { id: number; title: string; href: string }[];
 };
 
-export function SichaCard({ sicha, path }: { sicha: SichaCardData; path: string }) {
-  const seminar = SICHA_SEMINARS[sicha.seminarType];
+const enjoyedTip = (n: number) => (n === 1 ? "מורה אחת נהנתה מהשיעור הזה!" : `${n} מורות נהנו מהשיעור הזה!`);
 
+/** כרטיס קטן ברשימת השיחות: רק מה השיעור – הכניסה אליו (קבצים, סרטון, תוספות, פורום) בדף השיעור */
+export function SichaListCard({ sicha, href }: { sicha: SichaCardData; href: string }) {
   return (
-    <article className="card p-5 flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-bold leading-snug">{sicha.title}</h3>
-          <p className="mt-0.5 text-xs text-muted flex items-center gap-1">
-            <UserRound className="h-3.5 w-3.5" aria-hidden /> {sicha.teacherName}
-          </p>
-        </div>
-        <span className="chip bg-blue-soft text-blue-deep shrink-0">
-          {seminar.icon} {seminar.label}
-        </span>
-      </div>
+    <article className="gate-card sicha-card !p-0 overflow-hidden flex flex-col">
+      <header className="sicha-head">
+        <h3 className="sicha-title leading-snug">
+          <Link href={href} className="hover:underline">
+            {sicha.title}
+          </Link>
+        </h3>
+        <p className="mt-1 text-lg flex items-center gap-2">
+          <span className="sicha-avatar" aria-hidden>
+            {sicha.teacherName.trim().charAt(0)}
+          </span>
+          {sicha.teacherName}
+        </p>
+        <EnjoyedBadge count={sicha.usageCount} tip={enjoyedTip(sicha.usageCount)} />
+      </header>
 
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        {sicha.description && <p className="text-base gate-soft leading-relaxed line-clamp-3">{sicha.description}</p>}
+        <Link href={href} className="btn btn-gold btn-gate !px-4 !py-1 !text-lg mt-auto self-start">
+          לפתיחת השיעור
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+/** דף השיעור עצמו: השיעור, הקבצים, הסרטון, התוספות של המורות והפורום */
+export function SichaCard({ sicha, path }: { sicha: SichaCardData; path: string }) {
+  return (
+    <article className="gate-card sicha-card !p-0 overflow-hidden flex flex-col">
+      <header className="sicha-head">
+        <h3 className="sicha-title leading-snug">{sicha.title}</h3>
+        <p className="mt-1 text-lg flex items-center gap-2">
+          <span className="sicha-avatar" aria-hidden>
+            {sicha.teacherName.trim().charAt(0)}
+          </span>
+          {sicha.teacherName}
+        </p>
+        <EnjoyedBadge count={sicha.usageCount} tip={enjoyedTip(sicha.usageCount)} />
+      </header>
+
+      <div className="flex flex-col gap-3 p-4">
       {sicha.description && (
-        <p className="text-sm text-muted leading-relaxed line-clamp-3">{sicha.description}</p>
+        <p className="text-base gate-soft leading-relaxed whitespace-pre-line">{sicha.description}</p>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <RatingStars sichaId={sicha.id} path={path} myRating={sicha.myRating} />
-        {sicha.ratingCount > 0 && (
-          <span className="text-xs text-muted">
-            {sicha.avgStars?.toFixed(1)} ({sicha.ratingCount})
-          </span>
-        )}
+      <hr className="sicha-divider" />
+
+      {/* כל קובץ של השיעור בכרטיס משלו, אחד מתחת לשני */}
+      <div className="flex flex-col gap-3">
+        <SichaFileCard sichaId={sicha.id} fileName={sicha.fileName} />
+        {sicha.extraFiles?.map((f, i) => (
+          <SichaFileCard key={f.id} sichaId={sicha.id} fileId={f.id} fileName={f.fileName} colorIndex={i + 1} />
+        ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <UsageToggle sichaId={sicha.id} path={path} used={sicha.usedByMe} count={sicha.usageCount} />
-        <a href={`/api/sichot/download/${sicha.id}`} className="btn btn-primary text-sm py-2">
-          <Download className="h-4 w-4" aria-hidden /> הורדה
-        </a>
+      {!!sicha.videos?.length && (
+        <div className="flex flex-col items-start gap-2">
+          {sicha.videos.map((v) => (
+            <Link key={v.id} href={v.href} className="sicha-tag sicha-tag-video max-w-full">
+              <Play className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">{v.title}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <UsageToggle sichaId={sicha.id} path={path} used={sicha.usedByMe} />
       </div>
 
-      <IdeaBox
-        sichaId={sicha.id}
-        path={path}
-        ideas={sicha.ideas}
-        contributorCount={sicha.ideaContributorCount}
-      />
+      <div className="mtc sicha-idea-card" style={IDEA_BOX_COLORS}>
+        <div className="mtc-lower">
+          <div className="mtc-tools">
+            <IdeaBox
+              sichaId={sicha.id}
+              path={path}
+              ideas={sicha.ideas}
+              defaultOpen
+            />
+          </div>
+        </div>
+      </div>
+      </div>
     </article>
   );
 }

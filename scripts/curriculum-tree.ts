@@ -16,14 +16,21 @@ export type Node = {
   /** כבר הוכן חומר בפועל (דף לתלמידה/למורה וכו') לצומת זה — מוצג במפה עם סימן וי */
   ready?: boolean;
   /** "sichot" = צומת עלה שמציג את מודול מאגר השיחות (שיחה/חברה/כישורי חיים) במקום עמוד חומרים רגיל */
-  moduleType?: "sichot";
+  moduleType?: "sichot" | "sichot_videos";
   children?: Node[];
 };
 
-/** שתי תיקיות מאגר השיחות המשותפות לשיחה/חברה/כישורי חיים */
+/** בכל אחד ממקצועות השיחות (שיחה/חברה/כישורי חיים) שתי תיקיות: "שיעורי יהדות" (ובתוכה חגים ואקטואליה והשקפה) ו"סרטונים להעשרת שיעורים" (קישורי דרייב) */
 const SICHOT_FOLDERS: Node[] = [
-  { slug: "chagim", title: "חגים", moduleType: "sichot" },
-  { slug: "aktualia-hashkafa", title: "אקטואליה והשקפה", moduleType: "sichot" },
+  {
+    slug: "shiurei-yahadut",
+    title: "שיעורי יהדות",
+    children: [
+      { slug: "chagim", title: "חגים", moduleType: "sichot" },
+      { slug: "aktualia-hashkafa", title: "אקטואליה והשקפה", moduleType: "sichot" },
+    ],
+  },
+  { slug: "sichot-videos", title: "סרטונים להעשרת שיעורים", moduleType: "sichot_videos" },
 ];
 
 /* --- עזרי פרקים בגימטריה --- */
