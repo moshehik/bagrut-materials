@@ -33,7 +33,7 @@
 import JSZip from "jszip";
 
 /** מכמה קווים תחתונים רצופים (כולל ריצה שנקטעת ב-tab) פסקה נחשבת "שורת מילוי" */
-const MIN_UNDERSCORES = 8;
+const MIN_UNDERSCORES = 9; // ריצה בלתי-שבירה של 9+ (8 בודדים - רוחב ~4em - לא מותחים שורה); קו שביר נבנה מקטעים של עד 8
 
 /** מכמה רווחים רצופים ריצה-של-רווחים-בלבד בין מילים נחשבת "חור למילוי" (הקצר ביותר שנמצא בקורפוס: 4) */
 const MIN_SPACE_BLANK = 4;
@@ -68,7 +68,10 @@ function visibleText(xml: string): string {
  * (בלי פסקאות-ילד), ונוגעים רק ב-`<w:pPr>` הישיר שלה - לעולם לא ב-jc של טבלה/מקטע/סגנון.
  */
 export function relaxJustifiedBlankLinesXml(xml: string): string | null {
-  const underscoreRun = new RegExp(`_{${MIN_UNDERSCORES},}`);
+  // ריצת קווים "בלתי-שבירה": MIN_UNDERSCORES ומעלה ברצף שלא צמודה לרווח-אפס-רוחב (U+200B). קו שנבנה "שביר"
+  // (רווח-אפס-רוחב כל 8 קווים, ר' _review-tool/fill-lines-breakable.cjs) נשבר בסוף שורה כמו טקסט רגיל,
+  // לכן הוא לא מותח את השורה שלפניו - ופסקה כזו נשארת מיושרת לשני הצדדים (בקשת המורה, 2026-11-03).
+  const underscoreRun = new RegExp(`(?<![_\\u200B])_{${MIN_UNDERSCORES},}(?![_\\u200B])`);
   // מחסנית הפסקאות הפתוחות: תחילת התג + טווחי פסקאות-ילד שכבר נסגרו
   const open: { start: number; openEnd: number; children: [number, number][] }[] = [];
   const cuts: [number, number][] = []; // טווחי `<w:jc .../>` להסרה
@@ -176,13 +179,34 @@ export function fillSpaceBlanksXml(xml: string): string | null {
 }
 
 /**
- * שני התיקונים יחד, בסדר הזה: קודם חורים-מרווחים → קווים תחתונים (כך פסקה שהחור שלה ארוך דיו
- * נחשבת מיד "שורת מילוי"), ואז שחרור היישור-לשני-הצדדים. מחזיר null אם אף אחד מהם לא שינה דבר.
+ * שיטה B (בקשת המורה, 2026-11-03): הופכת קו-מילוי ארוך ל"שביר" - רווח-אפס-רוחב (U+200B) אחרי כל 8 קווים
+ * בריצה של 9 קווים ומעלה - כך שהקו נשבר בסוף שורה כמו טקסט רגיל, לא קופץ שלם לשורה הבאה ולא מותח את
+ * השורה שלפניו. הפסקה נשארת מיושרת לשני הצדדים (בניגוד ל-relaxJustifiedBlankLinesXml, שמסירה יישור).
+ * פועלת על כל `<w:t>` לחוד (קו שמפוצל בין כמה ריצות לא נוגעים בו - relax יטפל בו אם נשאר בלתי-שביר).
+ * אידמפוטנטית: קטעים של עד 8 קווים הצמודים ל-U+200B לא נתפסים שוב. מחזירה null אם אין מה לשנות.
+ */
+export function breakLongBlanksXml(xml: string): string | null {
+  let changed = false;
+  const out = xml.replace(/(<w:t(?:\s[^>]*)?>)([^<]*)(<\/w:t>)/g, (all, open: string, text: string, close: string) => {
+    if (!/_{9,}/.test(text)) return all;
+    const next = text.replace(/(?<![_​])_{9,}(?![_​])/g, (run) => run.replace(/(_{8})(?=_)/g, "$1​"));
+    if (next === text) return all;
+    changed = true;
+    return open + next + close;
+  });
+  return changed ? out : null;
+}
+
+/**
+ * התיקונים יחד, בסדר הזה: קודם חורים-מרווחים → קווים תחתונים (כך פסקה שהחור שלה ארוך דיו
+ * נחשבת מיד "שורת מילוי"), אז קווים שבירים (שיטה B, היישור נשמר), ולבסוף שחרור יישור רק בפסקה
+ * שנשארה בה ריצת קווים בלתי-שבירה. מחזיר null אם אף אחד מהם לא שינה דבר.
  */
 export function fixBlankLinesXml(xml: string): string | null {
   const filled = fillSpaceBlanksXml(xml);
-  const relaxed = relaxJustifiedBlankLinesXml(filled ?? xml);
-  return relaxed ?? filled;
+  const broken = breakLongBlanksXml(filled ?? xml);
+  const relaxed = relaxJustifiedBlankLinesXml(broken ?? filled ?? xml);
+  return relaxed ?? broken ?? filled;
 }
 
 /**

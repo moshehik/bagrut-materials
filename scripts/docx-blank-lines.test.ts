@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import JSZip from "jszip";
-import { fillSpaceBlanksXml, fixBlankLinesXml, relaxJustifiedBlankLines, relaxJustifiedBlankLinesXml } from "../src/lib/docx-blank-lines";
+import { breakLongBlanksXml, fillSpaceBlanksXml, fixBlankLinesXml, relaxJustifiedBlankLines, relaxJustifiedBlankLinesXml } from "../src/lib/docx-blank-lines";
 
 function docXml(body: string) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`;
@@ -94,11 +94,38 @@ test("שחרור יישור: פסקה מיושרת עם ריצת קווים אר
   assert.equal(relaxJustifiedBlankLinesXml(docXml(`<w:p>${JC}${run("פסקת הסבר רגילה ____ קצרה")}</w:p>`)), null);
 });
 
+test("שחרור יישור: קו שביר (רווח-אפס-רוחב כל 8 קווים) - הפסקה נשארת מיושרת; קו בלתי-שביר לצדו - ה-jc מוסר", () => {
+  const breakable = ["________", "________", "____"].join("​");
+  const kept = docXml(`<w:p>${JC}${run("לפי רש\"י - ")}${run(breakable)}</w:p>`);
+  assert.equal(relaxJustifiedBlankLinesXml(kept), null);
+  const mixed = docXml(`<w:p>${JC}${run("לפי רש\"י - ")}${run(breakable)}${run(" ו")}${run("_".repeat(30))}</w:p>`);
+  const out = relaxJustifiedBlankLinesXml(mixed);
+  assert.ok(out);
+  assert.ok(!out.includes(`<w:jc w:val="both"/>`));
+});
+
+test("שיטה B: קו ארוך הופך לשביר (U+200B אחרי כל 8); קצר/שביר כבר - לא נוגעים; אידמפוטנטי", () => {
+  const xml = docXml(`<w:p>${JC}${run("לפי רש\"י - ")}${run("_".repeat(20))}${run(" ו")}${run("_".repeat(8))}</w:p>`);
+  const out = breakLongBlanksXml(xml);
+  assert.ok(out);
+  assert.ok(out.includes("________​________​____"));
+  assert.ok(out.includes(">" + "_".repeat(8) + "</w:t>")); // ריצה של 8 בדיוק - לא נוגעים
+  assert.equal(breakLongBlanksXml(out), null);
+  assert.equal(breakLongBlanksXml(docXml(`<w:p>${run("קצר ____ בלבד")}</w:p>`)), null);
+});
+
+test("fixBlankLinesXml: קו ארוך נעשה שביר והפסקה נשארת מיושרת (בלי הסרת jc)", () => {
+  const out = fixBlankLinesXml(docXml(`<w:p>${JC}${run("לפי רש\"י - ")}${run("_".repeat(40))}</w:p>`));
+  assert.ok(out);
+  assert.ok(out.includes('<w:jc w:val="both"/>'));
+  assert.ok(out.includes("​"));
+});
+
 test("fixBlankLinesXml: שני התיקונים יחד על הפסקה של גדעון; שתי קריאות - אותה תוצאה", () => {
   const xml = docXml(GIDEON);
   const out = fixBlankLinesXml(xml);
   assert.ok(out);
-  assert.ok(!out.includes(`<w:jc w:val="both"/>`)); // "________________" (16) ≥ 8 → שורת מילוי
+  assert.ok(out.includes(`<w:jc w:val="both"/>`)); // "________________" (16): נעשה שביר (שיטה B) ולכן היישור נשמר
   assert.ok(visible(out).includes("אם יבינו _______ באה בגלל"));
   assert.equal(fixBlankLinesXml(xml), out);
   // חור קצר (5) בפסקה מיושרת בלי ריצה ארוכה: החור מומר, היישור נשאר

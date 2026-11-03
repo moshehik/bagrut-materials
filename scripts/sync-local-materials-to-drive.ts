@@ -14,7 +14,7 @@
  *
  *   npx tsx scripts/sync-local-materials-to-drive.ts --plan            → כותב תוכנית (לא משנה כלום)
  *   npx tsx scripts/sync-local-materials-to-drive.ts --apply           → מבצע (בודק שוב מצב חי לפני כל פעולה)
- *   אפשרויות: --only <חלק מנתיב> · --limit N · --include-exam · --no-replace (רק קבצים חדשים)
+ *   אפשרויות: --only <חלק מנתיב> · --since YYYY-MM-DD (רק קבצים שנערכו מהתאריך) · --limit N · --include-exam · --no-replace (רק קבצים חדשים)
  * לעולם לא מוחק. החלפה שומרת גיבוי מקומי של גרסת הדרייב + גרסה קודמת נשארת בהיסטוריית הגרסאות של Drive.
  */
 import "dotenv/config";
@@ -35,7 +35,7 @@ import { getRootFolderId } from "../src/lib/driveBridgeCore";
 const makeResolver = require("./local-category-resolver.cjs") as (cats: unknown[]) => { resolve: (rel: string) => { cat?: number; why?: string; path?: string } };
 
 const ROOT = path.resolve("חומרים מוכנים מחדש");
-const DATE = "2026-10-22";
+const DATE = "2026-11-03";
 const PLAN = path.join(ROOT, "_ייבוא-לאתר", `תוכנית-סנכרון-${DATE}.json`);
 const LOG = path.join(ROOT, "_ייבוא-לאתר", `יומן-סנכרון-${DATE}.json`);
 const BACKUP = path.join(ROOT, `_גיבוי-דרייב-לפני-עדכון-${DATE}`);
@@ -49,7 +49,11 @@ const INCLUDE_EXAM = args.includes("--include-exam");
 const NO_REPLACE = args.includes("--no-replace");
 const arg = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
 const ONLY = arg("only");
+const SINCE = arg("since"); // YYYY-MM-DD: רק קבצים שנערכו מהתאריך הזה והלאה
 const LIMIT = arg("limit") ? Number(arg("limit")) : Infinity;
+const EXCLUDE = args.flatMap((a, i) => (a === "--exclude" ? [args[i + 1]] : [])); // כל חלק-נתיב כאן מוחרג (אפשר לחזור על הדגל)
+const LISTF = arg("list"); // JSON array of paths relative to ROOT: sync only these files
+const LIST = LISTF ? new Set<string>(JSON.parse(fs.readFileSync(LISTF, "utf8")) as string[]) : null;
 
 const audit: SyncAudit = async (a) => {
   try {
@@ -133,7 +137,8 @@ async function buildPlan(): Promise<Row[]> {
   const resolver = makeResolver(all.map((c) => ({ id: c.id, parent: c.parentId, title: c.title, path: pathOf(c.id) })));
   const files: string[] = [];
   walk(ROOT, "", files);
-  let sel = files.filter((r) => (INCLUDE_EXAM || !EXAM.test(path.basename(r))) && (!ONLY || r.includes(ONLY)));
+  const sinceMs = SINCE ? new Date(`${SINCE}T00:00:00`).getTime() : 0;
+  let sel = files.filter((r) => (INCLUDE_EXAM || !EXAM.test(path.basename(r))) && (!ONLY || r.includes(ONLY)) && !EXCLUDE.some((x) => r.includes(x)) && (!LIST || LIST.has(r)) && (!sinceMs || fs.statSync(path.join(ROOT, r)).mtimeMs >= sinceMs));
   console.log(`נמצאו ${files.length} קבצי docx מקומיים; בטיפול ${sel.length}`);
   const rows: Row[] = [];
   const byCat = new Map<number, string[]>();
