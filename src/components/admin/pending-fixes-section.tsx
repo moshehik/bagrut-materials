@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
 import { FixPublishForm } from "@/components/admin/fix-publish-form";
+import { FIX_REASONS } from "@/lib/fix-writing-guidelines";
 
 /** בקשות תיקון שממתינות לטיפול – משותף ל-/admin/fixes ול-/admin/inbox */
 export async function PendingFixesSection({ title = "ממתינות לטיפול" }: { title?: string }) {
@@ -12,6 +13,9 @@ export async function PendingFixesSection({ title = "ממתינות לטיפול
       id: materialFixes.id,
       requestText: materialFixes.requestText,
       quoteText: materialFixes.quoteText,
+      kind: materialFixes.kind,
+      reason: materialFixes.reason,
+      userNote: materialFixes.userNote,
       createdAt: materialFixes.createdAt,
       suggestedOriginal: materialFixes.originalText,
       suggestedCorrected: materialFixes.correctedText,
@@ -44,6 +48,17 @@ export async function PendingFixesSection({ title = "ממתינות לטיפול
                   {r.userName ?? "—"} · {r.createdAt.toLocaleDateString("he-IL")}
                 </span>
               </div>
+              {r.kind === "general" && <span className="chip bg-gold-soft text-[#7a5b00] mt-2">תלונה כללית (בלי סימון)</span>}
+              {r.kind === "list" && (
+                <p className="mt-2 text-xs text-muted">
+                  ג&apos;מיני ניסח את התיקון לפי הסיבה שנבחרה: {FIX_REASONS.find((x) => x.key === r.reason)?.label ?? r.reason}
+                </p>
+              )}
+              {r.kind === "custom" && (
+                <p className="mt-2 text-xs text-muted">
+                  ג&apos;מיני ניסח את התיקון לפי מה שהמורה כתבה על הבעיה: «{r.userNote}»
+                </p>
+              )}
               {r.quoteText ? (
                 <div className="mt-2 text-sm leading-7">
                   <span className="text-xs text-muted">המורה סימנה: </span>

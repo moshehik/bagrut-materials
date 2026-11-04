@@ -2192,6 +2192,77 @@ button.underline {
   background: rgba(255, 255, 255, 0.6);
 }
 
+/* בחירת דרך התיקון: כתיבה עצמית / סיבה מרשימה / ניסוח חופשי – ג'מיני מכין את התיקון בשתי האחרונות */
+.fix-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.fix-mode {
+  padding: 0.2rem 0.75rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: transparent;
+  color: #000;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.fix-mode-on {
+  background: #0a0a0a;
+  color: #fff;
+}
+.fix-ai {
+  margin-top: 0.4rem;
+}
+.fix-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+}
+.fix-edit .fix-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.fix-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.9rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: #fff6d6;
+  color: #000;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.fix-ai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.fix-general {
+  margin-bottom: 0.9rem;
+}
+.fix-general-box {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+.fix-general-box textarea {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 /* ההודעה הצפה "שימי לב!" */
 .fix-notice {
   padding: 0.8rem 1rem;

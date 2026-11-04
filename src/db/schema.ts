@@ -202,6 +202,15 @@ export const materialFixes = pgTable(
     /** כשהטקסט שסומן חוזר כמה פעמים בקובץ: כמה מופעים שלו קדמו למקום שהמורה סימנה (מאפס); null = הראשון */
     occurrence: integer("occurrence"),
     /**
+     * איך נוצר התיקון: free = המורה כתבה בעצמה את התיקון; list = בחרה סיבה מרשימה וג'מיני ניסח;
+     * custom = תיארה בחופשיות מה לא טוב וג'מיני ניסח; general = תלונה כללית על הקובץ (בלי טקסט מסומן)
+     */
+    kind: varchar("kind", { length: 12 }).notNull().default("free"),
+    /** kind=list: awkward / unfit / inaccurate */
+    reason: varchar("reason", { length: 24 }),
+    /** kind=custom: מה שהמורה כתבה על הבעיה (requestText הוא התיקון שניסח ג'מיני) */
+    userNote: text("user_note"),
+    /**
      * pending = ממתינה לבדיקה, published = תיקון מפורסם (מוצג לכל מי שיש לה גישה לקובץ),
      * merged = שולב בקובץ המקורי (לא מוצג יותר), rejected = נדחתה,
      * private = הסוכן בדק ולא שילב בקובץ המקורי – התיקון מוצג רק למבקרת (userId)

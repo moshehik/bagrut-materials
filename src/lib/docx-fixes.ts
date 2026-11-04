@@ -299,6 +299,46 @@ export async function applyDocxFixes(
   };
 }
 
+/**
+ * הפסקה (ועוד פסקה לפניה ואחריה) שמכילה את הטקסט שהמורה סימנה – הקשר לג'מיני, כדי שינסח תיקון שמתאים
+ * למשפט שסביבו. אותה התאמה (דחוסה, בלי רווחים וניקוד) ואותו מניין מופעים כמו ב-applyDocxFixes.
+ * null אם הטקסט לא נמצא.
+ */
+export async function findParagraphContext(
+  input: Uint8Array,
+  quote: string,
+  occurrence = 0,
+): Promise<{ paragraph: string; before: string; after: string } | null> {
+  const zip = await JSZip.loadAsync(input);
+  const docFile = zip.file("word/document.xml");
+  if (!docFile) return null;
+  const xml = await docFile.async("string");
+  const texts = [...xml.matchAll(PARAGRAPH)].map((p) =>
+    tokenize(p[0])
+      .map((t) => (t.kind === "text" ? t.text : ""))
+      .join("")
+      .trim(),
+  );
+  const needle = compactWithMap(norm(quote.trim())).out;
+  if (needle.length < 2) return null;
+  let seen = 0;
+  let firstHit = -1;
+  for (let i = 0; i < texts.length; i++) {
+    const hay = compactWithMap(norm(texts[i])).out;
+    for (let at = hay.indexOf(needle); at >= 0; at = hay.indexOf(needle, at + needle.length)) {
+      if (firstHit < 0) firstHit = i;
+      if (seen === occurrence) return ctx(texts, i);
+      seen++;
+    }
+  }
+  return firstHit >= 0 ? ctx(texts, firstHit) : null;
+}
+
+function ctx(texts: string[], i: number) {
+  const near = (j: number) => (j >= 0 && j < texts.length ? texts[j].slice(0, 600) : "");
+  return { paragraph: texts[i].slice(0, 1500), before: near(i - 1), after: near(i + 1) };
+}
+
 export function isDocxName(fileName: string) {
   return /\.docx$/i.test(fileName);
 }

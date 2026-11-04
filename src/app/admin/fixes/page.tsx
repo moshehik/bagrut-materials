@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
 import { UnpublishFixButton } from "@/components/admin/fix-publish-form";
 import { PendingFixesSection } from "@/components/admin/pending-fixes-section";
+import { GeminiPoolCard } from "@/components/admin/gemini-pool-card";
+import { geminiPoolStatus } from "@/lib/gemini-pool";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +45,8 @@ export default async function AdminFixesPage() {
         <span className="chip bg-gold-soft text-[#7a5b00]">{pending.length} ממתינות</span>
         <span className="chip bg-blue-soft text-blue-deep">{published.length} מפורסמים</span>
       </div>
+
+      <GeminiPoolCard status={await geminiPoolStatus()} />
 
       <PendingFixesSection />
 

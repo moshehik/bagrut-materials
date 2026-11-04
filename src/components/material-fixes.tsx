@@ -3,8 +3,15 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Download, Plus, Send, X } from "lucide-react";
-import { cancelOwnFix, submitFixRequests, type FixState } from "@/lib/actions/fixes";
+import { ArrowLeft, Check, Download, MessageSquareWarning, Plus, Send, Sparkles, X } from "lucide-react";
+import {
+  cancelOwnFix,
+  submitFixRequests,
+  submitGeneralComplaint,
+  suggestFixWithAI,
+  type FixState,
+} from "@/lib/actions/fixes";
+import { FIX_REASONS, type FixReasonKey } from "@/lib/fix-writing-guidelines";
 import { PdfViewer, type PdfMark } from "@/components/pdf-viewer";
 
 /** own = התיקון של המורה עצמה: חל אצלה מיד (מסומן מראש), בלי תלות בהחלטה על שאר המורות */
@@ -76,9 +83,39 @@ function Nut({ src }: { src: string }) {
   return <img src={src} alt="" width={40} height={40} className="mtc-rownut" aria-hidden />;
 }
 
-type Edit = { id: number; quote: string; correction: string; mark: PdfMark | null; applied: boolean };
+/** free = המורה כותבת את התיקון; list = בוחרת סיבה מרשימה; custom = מתארת בחופשיות מה לא טוב (בשתיהן ג'מיני מנסח) */
+type EditMode = "free" | "list" | "custom";
+type Edit = {
+  id: number;
+  quote: string;
+  correction: string;
+  mark: PdfMark | null;
+  applied: boolean;
+  mode: EditMode;
+  reason: FixReasonKey | null;
+  note: string;
+  busy: boolean;
+  aiError: string | null;
+};
 let editSeq = 0;
-const newEdit = (): Edit => ({ id: ++editSeq, quote: "", correction: "", mark: null, applied: false });
+const newEdit = (): Edit => ({
+  id: ++editSeq,
+  quote: "",
+  correction: "",
+  mark: null,
+  applied: false,
+  mode: "free",
+  reason: null,
+  note: "",
+  busy: false,
+  aiError: null,
+});
+
+const MODE_LABELS: { mode: EditMode; label: string }[] = [
+  { mode: "free", label: "אני כותבת את התיקון" },
+  { mode: "list", label: "בחירה מרשימה" },
+  { mode: "custom", label: "ניסוח חופשי של הבעיה" },
+];
 
 /**
  * "לעריכת שינויים בקובץ": אחרי ההודעה "שימי לב!" נפתח הקובץ עצמו; המורה מסמנת בו את הטקסט שצריך
@@ -120,10 +157,25 @@ export function FixRequestButton({
     setActiveId(e.id);
     setResult(undefined);
   };
+  // תלונה כללית על הקובץ (בלי טקסט מסומן)
+  const [generalOpen, setGeneralOpen] = useState(false);
+  const [generalText, setGeneralText] = useState("");
+  const [generalResult, setGeneralResult] = useState<FixState>(undefined);
+  const [generalPending, startGeneral] = useTransition();
+  const sendGeneral = () => {
+    setGeneralResult(undefined);
+    startGeneral(async () => {
+      const res = await submitGeneralComplaint({ materialId, text: generalText });
+      setGeneralResult(res);
+      if (res?.ok) setGeneralText("");
+    });
+  };
   const close = () => {
     setOpen(false);
     setAcknowledged(false);
     if (result?.ok) resetAfterSend();
+    setGeneralOpen(false);
+    setGeneralResult(undefined);
   };
   const ref = useDialog(open, close, !demo);
 
@@ -159,6 +211,24 @@ export function FixRequestButton({
     if (active) update(active.id, { applied: true });
   };
   const ready = edits.filter((e) => e.quote.trim().length >= 2 && e.correction.trim());
+  /** המופע שסומן (כשהטקסט חוזר כמה פעמים) – רק אם הטקסט לא נערך ידנית אחרי הסימון */
+  const occurrenceOf = (e: Edit) => (e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined);
+  /** ג'מיני מנסח תיקון לפי הסיבה/התיאור; התיקון נכנס לתיבת "התיקון שלך" וניתן לעריכה */
+  const askAI = async (e: Edit) => {
+    update(e.id, { busy: true, aiError: null });
+    try {
+      const res = await suggestFixWithAI({
+        materialId,
+        quote: e.quote.trim(),
+        occurrence: occurrenceOf(e),
+        reason: e.mode === "list" ? (e.reason ?? undefined) : undefined,
+        note: e.mode === "custom" ? e.note.trim() || undefined : undefined,
+      });
+      update(e.id, res.correction ? { busy: false, correction: res.correction } : { busy: false, aiError: res.error ?? "לא הצלחנו להכין תיקון" });
+    } catch {
+      update(e.id, { busy: false, aiError: "לא הצלחנו להכין תיקון כרגע. נסי שוב." });
+    }
+  };
   const send = () => {
     setResult(undefined);
     if (demo) {
@@ -175,8 +245,10 @@ export function FixRequestButton({
         items: ready.map((e) => ({
           quote: e.quote.trim(),
           correction: e.correction.trim(),
-          // המופע שסומן (כשהטקסט חוזר כמה פעמים) – רק אם הטקסט לא נערך ידנית אחרי הסימון
-          occurrence: e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined,
+          occurrence: occurrenceOf(e),
+          source: e.mode,
+          reason: e.mode === "list" ? (e.reason ?? undefined) : undefined,
+          note: e.mode === "custom" ? e.note.trim() || undefined : undefined,
         })),
       });
       setResult(res);
@@ -237,7 +309,8 @@ export function FixRequestButton({
           <div className="fix-inner fix-viewer">
             <div className="fix-pane">
               <p className="fix-dialog-sub">
-                סמני בקובץ את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז כתבי מתחת את התיקון שלך.
+                סמני בקובץ את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז כתבי מתחת את התיקון שלך. אפשר גם לבחור
+                סיבה מרשימה או לתאר מה לא טוב, ונכין לך תיקון.
               </p>
               <ul className="fix-edits">
                 {edits.map((e, i) => (
@@ -291,8 +364,74 @@ export function FixRequestButton({
                         onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null })}
                       />
                     </label>
+                    {!demo && (
+                      <div className="fix-modes" role="tablist" aria-label="איך לתקן">
+                        {MODE_LABELS.map((m) => (
+                          <button
+                            key={m.mode}
+                            type="button"
+                            role="tab"
+                            aria-selected={e.mode === m.mode}
+                            className={`fix-mode ${e.mode === m.mode ? "fix-mode-on" : ""}`}
+                            onClick={() => update(e.id, { mode: m.mode, aiError: null })}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {e.mode === "list" && (
+                      <div className="fix-ai">
+                        <div className="fix-reasons" role="radiogroup" aria-label="מה הבעיה">
+                          {FIX_REASONS.map((r) => (
+                            <label key={r.key} className="fix-reason">
+                              <input
+                                type="radio"
+                                name={`fix-reason-${e.id}`}
+                                checked={e.reason === r.key}
+                                onChange={() => update(e.id, { reason: r.key, aiError: null })}
+                              />
+                              <span>{r.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {e.mode === "custom" && (
+                      <div className="fix-ai">
+                        <label>
+                          מה לא טוב בקטע שסימנת?
+                          <textarea
+                            rows={2}
+                            maxLength={1000}
+                            value={e.note}
+                            placeholder="למשל: הניסוח לא ברור לתלמידה, או שחסר כאן הסבר…"
+                            onFocus={() => setActiveId(e.id)}
+                            onChange={(ev) => update(e.id, { note: ev.target.value, aiError: null })}
+                          />
+                        </label>
+                      </div>
+                    )}
+                    {e.mode !== "free" && (
+                      <div className="fix-ai">
+                        <button
+                          type="button"
+                          className="fix-ai-btn"
+                          disabled={
+                            e.busy ||
+                            e.quote.trim().length < 2 ||
+                            (e.mode === "list" ? !e.reason : e.note.trim().length < 3)
+                          }
+                          onClick={() => askAI(e)}
+                        >
+                          <Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                          {e.busy ? "מכינה תיקון…" : e.correction.trim() ? "הכנת תיקון אחר" : "הכנת תיקון"}
+                        </button>
+                        {e.aiError && <p className="fix-error">{e.aiError}</p>}
+                      </div>
+                    )}
                     <label>
-                      התיקון שלך
+                      {e.mode === "free" ? "התיקון שלך" : "התיקון שהוכן (אפשר לערוך)"}
                       <textarea
                         className="fix-edit-fix"
                         rows={2}
@@ -318,6 +457,37 @@ export function FixRequestButton({
                 <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                 הוספת תיקון נוסף
               </button>
+              {!demo && (
+                <div className="fix-general">
+                  <button type="button" className="fix-add" onClick={() => setGeneralOpen((v) => !v)} aria-expanded={generalOpen}>
+                    <MessageSquareWarning className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    תלונה כללית על הקובץ (בלי סימון)
+                  </button>
+                  {generalOpen &&
+                    (generalResult?.ok ? (
+                      <p className="fix-dialog-sub">התלונה נשלחה, תודה! נבדוק אותה ונתקן בקובץ אם יתברר שצריך.</p>
+                    ) : (
+                      <div className="fix-general-box">
+                        <textarea
+                          rows={3}
+                          maxLength={2000}
+                          value={generalText}
+                          placeholder="כתבי מה לא טוב בקובץ בכלל, בלי לסמן קטע מסוים"
+                          onChange={(ev) => setGeneralText(ev.target.value)}
+                        />
+                        {generalResult?.error && <p className="fix-error">{generalResult.error}</p>}
+                        <button
+                          type="button"
+                          className="btn btn-gold text-sm py-2"
+                          disabled={generalPending || generalText.trim().length < 5}
+                          onClick={sendGeneral}
+                        >
+                          {generalPending ? "שולחת…" : "שליחת התלונה"}
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
               {result?.error && <p className="fix-error">{result.error}</p>}
               <div className="fix-actions">
                 <button
