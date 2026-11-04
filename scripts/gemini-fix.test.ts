@@ -46,3 +46,25 @@ test("Gemini text is placed into the docx by applyDocxFixes (not by Gemini)", as
   assert.match(xml, /בלתי ברור/);
   assert.doesNotMatch(xml, /עילג מאוד/);
 });
+
+test("a mark that spans several paragraphs (question + options) is replaced as one, text left around it stays", async () => {
+  const docx = await makeDocx(["לפני", "2. מהי המליצה שיש להבין?", "א. הרעיון הנרמז.", "ב. הנמשל.", "אחרי"]);
+  const quote = "מהי המליצה שיש להבין?\nא. הרעיון הנרמז.\nב. הנ";
+  const r = await applyDocxFixes(docx, [{ id: 1, originalText: quote, correctedText: "שאלה חדשה" }]);
+  assert.deepEqual(r.applied, [1]);
+  const xml = await (await JSZip.loadAsync(r.bytes)).file("word/document.xml")!.async("string");
+  const text = [...xml.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("|");
+  assert.match(text, /לפני/);
+  assert.match(text, /2\. /);
+  assert.match(text, /שאלה חדשה/);
+  assert.match(text, /משל\./); // מה שנשאר אחרי הסימון בפסקה האחרונה
+  assert.doesNotMatch(text, /הרעיון הנרמז/);
+  assert.match(text, /אחרי/);
+  assert.equal((text.match(/שאלה חדשה/g) ?? []).length, 1);
+});
+
+test("a multi-paragraph mark whose middle does not match is still reported missing", async () => {
+  const docx = await makeDocx(["שאלה אחת כאן", "משהו אחר לגמרי", "סעיף ב"]);
+  const r = await applyDocxFixes(docx, [{ id: 1, originalText: "כאן סעיף ב", correctedText: "x" }]);
+  assert.deepEqual(r.applied, []);
+});

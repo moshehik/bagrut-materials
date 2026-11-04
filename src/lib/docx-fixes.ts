@@ -134,7 +134,8 @@ function tokenize(paragraph: string): Token[] {
   return tokens;
 }
 
-type Edit = { fix: DocxFix; start: number; end: number };
+/** silent = חלק מתיקון שחוצה כמה פסקאות: הטקסט המסומן מוחלף/מסומן, אבל התיקון עצמו נכנס רק בפסקה הראשונה */
+type Edit = { fix: DocxFix; start: number; end: number; silent?: boolean };
 
 /** בונה מחדש פסקה אחת עם כל העריכות שלה (העריכות לא חופפות וממוינות) */
 function rebuild(tokens: Token[], edits: Edit[], mode: FixMode): string {
@@ -165,7 +166,7 @@ function rebuild(tokens: Token[], edits: Edit[], mode: FixMode): string {
         out.push(textRun(tok.rPr, piece));
       }
       const finished = edits.find((e) => e.end === b);
-      if (finished && inEdit === finished) {
+      if (finished && inEdit === finished && !finished.silent) {
         if (mode === "marked") {
           out.push(textRun("", " "));
           out.push(textRun(editRPr.get(finished) ?? tok.rPr, finished.fix.correctedText, BLUE));
@@ -215,6 +216,42 @@ export async function applyDocxFixes(
       from = ci + needleCompact.length;
     }
     return res;
+  };
+
+  /**
+   * הטקסט הדחוס חוצה פסקאות רצופות: סיומת של פסקה, פסקאות שלמות באמצע, ותחילת הפסקה האחרונה.
+   * מחזיר את טווח הטקסט בכל פסקה, או null. פסקאות בלי טקסט מדלגים עליהן.
+   */
+  const findAcrossParagraphs = (needleCompact: string) => {
+    if (needleCompact.length < 4) return null;
+    for (let i = 0; i < paraCompact.length; i++) {
+      const ci = paraCompact[i].out;
+      if (!ci) continue;
+      for (let s = 0; s < ci.length; s++) {
+        const head = ci.slice(s);
+        if (head.length >= needleCompact.length) break; // נשארה בפסקה אחת – לא המקרה כאן
+        if (!needleCompact.startsWith(head)) continue;
+        const spans = [{ pi: i, start: paraCompact[i].map[s], end: paraText[i].length }];
+        let pos = head.length;
+        for (let j = i + 1; j < paraCompact.length && j <= i + 40; j++) {
+          const cj = paraCompact[j].out;
+          if (!cj) continue;
+          const rest = needleCompact.slice(pos);
+          if (cj.length <= rest.length ? !rest.startsWith(cj) : !cj.startsWith(rest)) break;
+          if (cj.length <= rest.length) {
+            spans.push({ pi: j, start: 0, end: paraText[j].length });
+            pos += cj.length;
+            if (pos === needleCompact.length) return spans;
+          } else {
+            let end = paraCompact[j].map[rest.length - 1] + 1;
+            while (end < paraText[j].length && NIKUD.test(paraText[j][end])) end++;
+            spans.push({ pi: j, start: 0, end });
+            return spans;
+          }
+        }
+      }
+    }
+    return null;
   };
 
   for (const fix of wanted) {
@@ -267,6 +304,19 @@ export async function applyDocxFixes(
       found.set(pi, existing);
       applied.add(fix.id);
       break;
+    }
+
+    // לא נמצא בפסקה אחת – אולי המורה סימנה כמה פסקאות רצופות (שאלה וסעיפיה, כמה שורות בטבלה)
+    if (!applied.has(fix.id)) {
+      const span = findAcrossParagraphs(needleCompact);
+      if (span && span.every((s) => !(found.get(s.pi) ?? []).some((e) => s.start < e.end && s.end > e.start))) {
+        span.forEach((s, k) => {
+          const existing = found.get(s.pi) ?? [];
+          existing.push({ fix, start: s.start, end: s.end, silent: k > 0 });
+          found.set(s.pi, existing);
+        });
+        applied.add(fix.id);
+      }
     }
   }
 
