@@ -19,6 +19,7 @@ import { normalizeNikudCompat } from "./docx-nikud-compat";
 import { fitTablesToPage } from "./docx-table-fit";
 import { separateLineBorders } from "./docx-line-borders";
 import { clearHeaderLogo } from "./docx-header-clearance";
+import { ensureRtlParagraphs } from "./docx-rtl-paragraphs";
 
 const BRIDGE_TIMEOUT_MS = 55000; // מתחת ל-60s של Vercel
 
@@ -768,6 +769,7 @@ async function prepareOfficeForConvert(args: ConvertArgs): Promise<ConvertArgs> 
   bytes = await fitTablesToPage(bytes);
   bytes = await separateLineBorders(bytes);
   bytes = await clearHeaderLogo(bytes);
+  bytes = await ensureRtlParagraphs(bytes);
   return bytes === args.bytes ? args : { ...args, bytes };
 }
 
