@@ -202,26 +202,28 @@ export async function suggestFixWithAI(input: {
   if (!ent.ok) return { error: "בקשת שינוי זמינה למי שיש לה גישה לקובץ" };
   if (!isDocxName(material.fileName)) return { error: "תיקונים מסומנים נתמכים רק בקבצי Word (docx)" };
 
+  // ההקשר (הפסקה והפסקאות שלידה) הוא בונוס שמשפר את הניסוח – לא תנאי. אם הקובץ לא נקרא או שהטקסט לא נמצא בו
+  // כרצף (נבדק שוב בשליחה, ב-submitFixRequests), ג'מיני עדיין מנסח לפי הטקסט שסומן בלבד.
   let context: Awaited<ReturnType<typeof findParagraphContext>> = null;
   try {
     const file = await fetchFile(material.fileUrl);
     if (file) {
       const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
       context = await findParagraphContext(bytes, quote, occurrence ?? 0);
+      if (!context) console.warn("suggestFixWithAI: quote not found in docx", { materialId, len: quote.length });
+    } else {
+      console.warn("suggestFixWithAI: file not readable", { materialId });
     }
   } catch (e) {
     console.error("suggestFixWithAI: context read failed", e);
-  }
-  if (!context) {
-    return { error: "הטקסט שסומן לא נמצא בקובץ כרצף אחד. סמני קטע קצר יותר מתוך פסקה אחת ונסי שוב." };
   }
 
   suggestLog.set(user.id, [...recent, now]);
   const res = await suggestFixWithGemini({
     quote,
-    paragraph: context.paragraph,
-    before: context.before,
-    after: context.after,
+    paragraph: context?.paragraph,
+    before: context?.before,
+    after: context?.after,
     reason: reason as "awkward" | "unfit" | "inaccurate" | undefined,
     note,
   });
