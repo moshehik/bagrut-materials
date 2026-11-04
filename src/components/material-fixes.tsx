@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Download, MessageSquareWarning, Plus, Send, Sparkles,
 import {
   cancelOwnFix,
   submitFixRequests,
+  resolveMark,
   submitGeneralComplaint,
   suggestFixWithAI,
   type FixState,
@@ -96,6 +97,11 @@ type Edit = {
   note: string;
   busy: boolean;
   aiError: string | null;
+  /** המופע בקובץ, כפי שזוהה בשרת (גובר על מה שהסימון ב-PDF מדווח) */
+  occ?: number;
+  /** זיהוי הסימון בקובץ: busy = בבדיקה, ok = נמצא כמו שסומן, fixed = הותאם לטקסט שבקובץ, fail = לא זוהה */
+  check: "idle" | "busy" | "ok" | "fixed" | "fail";
+  checkMsg: string | null;
 };
 let editSeq = 0;
 const newEdit = (): Edit => ({
@@ -109,6 +115,8 @@ const newEdit = (): Edit => ({
   note: "",
   busy: false,
   aiError: null,
+  check: "idle",
+  checkMsg: null,
 });
 
 const MODE_LABELS: { mode: EditMode; label: string }[] = [
@@ -201,7 +209,31 @@ export function FixRequestButton({
     // אם התיקון הפעיל כבר לא קיים – הסימון נכנס לתיקון האחרון ברשימה
     const target = edits.find((e) => e.id === activeId) ?? edits[edits.length - 1];
     setActiveId(target.id);
-    update(target.id, { mark, quote: mark.text });
+    update(target.id, { mark, quote: mark.text, occ: undefined, check: demo ? "idle" : "busy", checkMsg: null });
+    if (!demo) verifyMark(target.id, mark.text, mark.occurrence);
+  };
+  /** מזהה בשרת את הטקסט שסומן בקובץ (גם כשהוא לא זהה בדיוק) ומציג למורה מה זוהה, עוד לפני שהיא כותבת תיקון */
+  const verifyMark = async (id: number, text: string, occurrence?: number) => {
+    try {
+      const res = await resolveMark({ materialId, quote: text, occurrence });
+      setEdits((list) =>
+        list.map((e) => {
+          if (e.id !== id || e.quote !== text) return e; // הסימון הוחלף/נערך בינתיים
+          if (res.error) return { ...e, check: "fail", checkMsg: res.error };
+          if (res.skipped || !res.quote) return { ...e, check: "idle", checkMsg: null };
+          if (res.exact) return { ...e, check: "ok", checkMsg: null, occ: res.occurrence };
+          return {
+            ...e,
+            quote: res.quote,
+            occ: res.occurrence,
+            check: "fixed",
+            checkMsg: "הטקסט ב-PDF לא זהה בדיוק לקובץ, אז התאמנו את הסימון לטקסט כפי שהוא כתוב בקובץ. בדקי שזה הקטע הנכון.",
+          };
+        }),
+      );
+    } catch {
+      setEdits((list) => list.map((e) => (e.id === id && e.check === "busy" ? { ...e, check: "idle" } : e)));
+    }
   };
 
   const marks = edits.flatMap((e) => (e.mark ? [e.mark] : []));
@@ -212,7 +244,7 @@ export function FixRequestButton({
   };
   const ready = edits.filter((e) => e.quote.trim().length >= 2 && e.correction.trim());
   /** המופע שסומן (כשהטקסט חוזר כמה פעמים) – רק אם הטקסט לא נערך ידנית אחרי הסימון */
-  const occurrenceOf = (e: Edit) => (e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined);
+  const occurrenceOf = (e: Edit) => (e.occ !== undefined ? e.occ : e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined);
   /** ג'מיני מנסח תיקון לפי הסיבה/התיאור; התיקון נכנס לתיבת "התיקון שלך" וניתן לעריכה */
   const askAI = async (e: Edit) => {
     update(e.id, { busy: true, aiError: null });
@@ -361,9 +393,12 @@ export function FixRequestButton({
                         value={e.quote}
                         placeholder="סמני בקובץ את הטעות…"
                         onFocus={() => setActiveId(e.id)}
-                        onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null })}
+                        onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null, occ: undefined, check: "idle", checkMsg: null })}
                       />
                     </label>
+                    {e.check === "busy" && <p className="fix-check">בודקת איפה זה בקובץ…</p>}
+                    {e.check === "fixed" && e.checkMsg && <p className="fix-check fix-check-fixed">{e.checkMsg}</p>}
+                    {e.check === "fail" && e.checkMsg && <p className="fix-error">{e.checkMsg}</p>}
                     {!demo && (
                       <div className="fix-modes" role="tablist" aria-label="איך לתקן">
                         {MODE_LABELS.map((m) => (

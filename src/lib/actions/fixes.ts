@@ -10,7 +10,7 @@ import { checkEntitlement } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
 import { createReport } from "@/lib/errorReports";
 import { fetchFile } from "@/lib/file-source";
-import { applyDocxFixes, findParagraphContext, isDocxName } from "@/lib/docx-fixes";
+import { applyDocxFixes, findParagraphContext, isDocxName, resolveQuote } from "@/lib/docx-fixes";
 import { suggestFixWithGemini } from "@/lib/gemini-fix";
 import { FIX_REASON_KEYS } from "@/lib/fix-writing-guidelines";
 
@@ -87,9 +87,8 @@ export async function submitFixRequests(input: {
   // כשל בקריאת הקובץ לא חוסם את הבקשה (הסוכן/המנהלת יבדקו אותה בכל מקרה)
   if (isDocxName(material.fileName)) {
     try {
-      const file = await fetchFile(material.fileUrl);
-      if (file) {
-        const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+      const bytes = await docxBytes(material.fileUrl);
+      if (bytes) {
         const test = await applyDocxFixes(
           bytes,
           items.map((it, i) => ({ id: i + 1, originalText: it.quote, correctedText: it.correction, occurrence: it.occurrence })),
@@ -158,6 +157,67 @@ export async function submitFixRequests(input: {
 
 /* ---------- תיקון שג'מיני מנסח ---------- */
 
+/** קובץ ה-docx בזיכרון לכמה דקות – כדי שסימון אחרי סימון באותו קובץ לא יחכה שוב להורדה מהדרייב */
+const docxCache = new Map<string, { at: number; bytes: Uint8Array }>();
+async function docxBytes(fileUrl: string): Promise<Uint8Array | null> {
+  const hit = docxCache.get(fileUrl);
+  if (hit && Date.now() - hit.at < 180_000) return hit.bytes;
+  const file = await fetchFile(fileUrl);
+  if (!file) return null;
+  const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+  docxCache.set(fileUrl, { at: Date.now(), bytes });
+  for (const [k, v] of docxCache) if (docxCache.size > 4 || Date.now() - v.at > 180_000) docxCache.delete(k);
+  return bytes;
+}
+
+const RESOLVE_LIMIT_PER_HOUR = 120;
+const resolveLog = new Map<number, number[]>();
+
+/**
+ * המורה סימנה טקסט ב-PDF. הטקסט שמגיע משכבת הטקסט של ה-PDF לא תמיד זהה לטקסט ב-docx (סדר, פיסוק, כותרות וטבלאות),
+ * אז מזהים אותו בקובץ בכמה שלבים (ר' resolveQuote) ומחזירים אותו כפי שהוא כתוב בקובץ – כך שהחלת התיקון מדויקת והמורה
+ * רואה מה זוהה לפני שהיא כותבת תיקון.
+ */
+export async function resolveMark(input: {
+  materialId: number;
+  quote: string;
+  occurrence?: number;
+}): Promise<{ quote?: string; occurrence?: number; exact?: boolean; skipped?: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "יש להתחבר כדי לבקש שינוי" };
+  if (user.suspended) return { error: "החשבון מושהה" };
+  const parsed = z
+    .object({
+      materialId: z.coerce.number().int().positive(),
+      quote: z.string().trim().min(2).max(1000),
+      occurrence: z.number().int().min(0).max(500).optional(),
+    })
+    .safeParse(input);
+  if (!parsed.success) return { error: "הטקסט שסומן קצר או ארוך מדי" };
+  const { materialId, quote, occurrence } = parsed.data;
+
+  const now = Date.now();
+  const recent = (resolveLog.get(user.id) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= RESOLVE_LIMIT_PER_HOUR) return { skipped: true };
+  resolveLog.set(user.id, [...recent, now]);
+
+  const [material] = await db.select().from(materials).where(eq(materials.id, materialId)).limit(1);
+  if (!material) return { error: "הקובץ לא נמצא" };
+  const ent = await checkEntitlement(user, material);
+  if (!ent.ok) return { error: "בקשת שינוי זמינה למי שיש לה גישה לקובץ" };
+  if (!isDocxName(material.fileName)) return { skipped: true };
+  try {
+    const bytes = await docxBytes(material.fileUrl);
+    if (!bytes) return { skipped: true }; // אי אפשר לבדוק עכשיו – הבדיקה תתבצע בשליחה
+    const r = await resolveQuote(bytes, quote, occurrence ?? 0);
+    if (!r) return { error: "לא הצלחנו לזהות את הטקסט הזה בקובץ. סמני שוב קטע קצר יותר, מתוך פסקה או שתיים." };
+    return { quote: r.quote, occurrence: r.occurrence, exact: r.exact };
+  } catch (e) {
+    console.error("resolveMark failed", e);
+    return { skipped: true };
+  }
+}
+
 const SUGGEST_LIMIT_PER_HOUR = 20;
 const suggestLog = new Map<number, number[]>();
 
@@ -206,9 +266,8 @@ export async function suggestFixWithAI(input: {
   // כרצף (נבדק שוב בשליחה, ב-submitFixRequests), ג'מיני עדיין מנסח לפי הטקסט שסומן בלבד.
   let context: Awaited<ReturnType<typeof findParagraphContext>> = null;
   try {
-    const file = await fetchFile(material.fileUrl);
-    if (file) {
-      const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+    const bytes = await docxBytes(material.fileUrl);
+    if (bytes) {
       context = await findParagraphContext(bytes, quote, occurrence ?? 0);
       if (!context) console.warn("suggestFixWithAI: quote not found in docx", { materialId, len: quote.length });
     } else {

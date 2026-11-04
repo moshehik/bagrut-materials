@@ -389,6 +389,146 @@ function ctx(texts: string[], i: number) {
   return { paragraph: texts[i].slice(0, 1500), before: near(i - 1), after: near(i + 1) };
 }
 
+/**
+ * התאמה מקורבת (Sellers): המקטע ב-hay שהכי דומה ל-needle לפי מרחק עריכה (החלפה/הוספה/מחיקה של תו), או null אם
+ * המרחק גדול מ-maxCost. מחזיר [start, end) ב-hay. O(|hay|·|needle|).
+ */
+function approxFind(hay: string, needle: string, maxCost: number): { start: number; end: number; cost: number } | null {
+  const n = needle.length;
+  const m = hay.length;
+  if (n === 0 || m === 0 || n * m > 2e8) return null;
+  let prev = new Int32Array(m + 1); // שורה 0: אפשר להתחיל בכל מקום בחינם
+  let prevStart = new Int32Array(m + 1);
+  for (let j = 0; j <= m; j++) prevStart[j] = j;
+  let cur = new Int32Array(m + 1);
+  let curStart = new Int32Array(m + 1);
+  for (let i = 1; i <= n; i++) {
+    cur[0] = i;
+    curStart[0] = 0;
+    const c = needle.charCodeAt(i - 1);
+    for (let j = 1; j <= m; j++) {
+      const sub = prev[j - 1] + (hay.charCodeAt(j - 1) === c ? 0 : 1);
+      const del = prev[j] + 1; // תו בסימון שאין בקובץ
+      const ins = cur[j - 1] + 1; // תו בקובץ שלא בסימון
+      if (sub <= del && sub <= ins) {
+        cur[j] = sub;
+        curStart[j] = prevStart[j - 1];
+      } else if (del <= ins) {
+        cur[j] = del;
+        curStart[j] = prevStart[j];
+      } else {
+        cur[j] = ins;
+        curStart[j] = curStart[j - 1];
+      }
+    }
+    [prev, cur] = [cur, prev];
+    [prevStart, curStart] = [curStart, prevStart];
+  }
+  let best = -1;
+  for (let j = 1; j <= m; j++) if (best < 0 || prev[j] < prev[best]) best = j;
+  if (best < 0 || prev[best] > maxCost) return null;
+  return { start: prevStart[best], end: best, cost: prev[best] };
+}
+
+export type ResolvedQuote = { quote: string; occurrence: number; exact: boolean };
+
+/**
+ * מזהה בקובץ את מה שהמורה סימנה ב-PDF גם כשהטקסט לא זהה בדיוק לטקסט ב-docx (שכבת הטקסט של ה-PDF משתנה בסדר, בסימני
+ * פיסוק, בכותרות וטבלאות). סדר ניסיונות: (1) התאמה מדויקת (בלי רווחים וניקוד, גם על פני כמה פסקאות); (2) התאמה מקורבת
+ * של הסימון כולו (עד ~25% הבדלים); (3) איתור כל משפט/חלק בסימון בנפרד – אם רובו נמצא, בטווח של עד 8 פסקאות רצופות.
+ * מחזיר את הטקסט כפי שהוא בקובץ (כדי שהחלת התיקון תהיה מדויקת) ואת מספר המופע, או null.
+ */
+export async function resolveQuote(input: Uint8Array, quote: string, occurrence = 0): Promise<ResolvedQuote | null> {
+  const q = quote.trim();
+  if (!q) return null;
+  const exact = await applyDocxFixes(input, [{ id: 1, originalText: q, correctedText: "x", occurrence }]);
+  if (exact.applied.length) return { quote: q, occurrence, exact: true };
+
+  const zip = await JSZip.loadAsync(input);
+  const docFile = zip.file("word/document.xml");
+  if (!docFile) return null;
+  const xml = await docFile.async("string");
+  const orig = [...xml.matchAll(PARAGRAPH)].map((p) =>
+    tokenize(p[0])
+      .map((t) => (t.kind === "text" ? t.text : ""))
+      .join(""),
+  );
+  const comps = orig.map((t) => compactWithMap(norm(t)));
+  // כל הטקסט הדחוס בשורה אחת + לכל תו: הפסקה שלו והמיקום בטקסט הפסקה
+  let S = "";
+  const owner: number[] = [];
+  const where: number[] = [];
+  comps.forEach((c, pi) => {
+    S += c.out;
+    for (let k = 0; k < c.out.length; k++) {
+      owner.push(pi);
+      where.push(c.map[k]);
+    }
+  });
+  const needle = compactWithMap(norm(q)).out;
+  if (needle.length < 4 || !S) return null;
+
+  let range: { start: number; end: number } | null = null;
+  const whole = approxFind(S, needle, Math.floor(needle.length * 0.25));
+  if (whole) range = whole;
+  if (!range) {
+    // חלקים (משפטים/שורות) בנפרד: מספיק שרובו של הסימון נמצא, והחלקים קרובים זה לזה
+    const pieces = norm(q)
+      .split(/[\n.:;!?]+/)
+      .map((x) => compactWithMap(x).out)
+      .filter((x) => x.length >= 8);
+    let covered = 0;
+    let lo = Infinity;
+    let hi = -1;
+    for (const piece of pieces) {
+      const at = S.indexOf(piece);
+      const hit = at >= 0 ? { start: at, end: at + piece.length } : approxFind(S, piece, Math.floor(piece.length * 0.2));
+      if (!hit) continue;
+      covered += piece.length;
+      lo = Math.min(lo, hit.start);
+      hi = Math.max(hi, hit.end);
+    }
+    if (covered >= needle.length * 0.5 && hi > lo && owner[hi - 1] - owner[lo] <= 8) range = { start: lo, end: hi };
+  }
+  if (!range) return null;
+
+  const ps = owner[range.start];
+  const pe = owner[range.end - 1];
+  const tail = (pi: number, upto: number) => {
+    let end = upto + 1;
+    while (end < orig[pi].length && NIKUD.test(orig[pi][end])) end++;
+    return end;
+  };
+  let text: string;
+  if (ps === pe) {
+    text = orig[ps].slice(where[range.start], tail(pe, where[range.end - 1]));
+  } else {
+    const parts = [orig[ps].slice(where[range.start])];
+    for (let pi = ps + 1; pi < pe; pi++) if (orig[pi].trim()) parts.push(orig[pi]);
+    parts.push(orig[pe].slice(0, tail(pe, where[range.end - 1])));
+    text = parts.join("\n");
+  }
+  text = text.trim();
+  if (text.length < 2 || text.length > 1000) return null;
+
+  // כמה מופעים של הטקסט שנמצא קדמו לו (כשהוא חוזר בקובץ)
+  let occ = 0;
+  if (ps === pe) {
+    const t = compactWithMap(norm(text)).out;
+    const localStart = range.start - owner.indexOf(ps);
+    for (let pi = 0; pi <= ps && t; pi++) {
+      const hay = comps[pi].out;
+      for (let at = hay.indexOf(t); at >= 0; at = hay.indexOf(t, at + t.length)) {
+        if (pi === ps && at >= localStart) break;
+        occ++;
+      }
+    }
+  }
+  const check = await applyDocxFixes(input, [{ id: 1, originalText: text, correctedText: "x", occurrence: occ }]);
+  if (!check.applied.length) return null;
+  return { quote: text, occurrence: occ, exact: false };
+}
+
 export function isDocxName(fileName: string) {
   return /\.docx$/i.test(fileName);
 }

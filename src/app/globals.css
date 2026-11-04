@@ -1741,6 +1741,14 @@ svg.mtc-rownut {
   color: #b42318;
   font-size: 0.85rem;
 }
+.fix-check {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.fix-check-fixed {
+  color: #8a5a00;
+}
 .fix-done {
   display: flex;
   flex-direction: column;

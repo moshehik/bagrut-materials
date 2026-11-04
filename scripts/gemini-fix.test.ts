@@ -68,3 +68,28 @@ test("a multi-paragraph mark whose middle does not match is still reported missi
   const r = await applyDocxFixes(docx, [{ id: 1, originalText: "כאן סעיף ב", correctedText: "x" }]);
   assert.deepEqual(r.applied, []);
 });
+
+test("resolveQuote: exact, approximate (punctuation/ordering noise) and out-of-order pieces", async () => {
+  const { resolveQuote } = await import("../src/lib/docx-fixes");
+  const docx = await makeDocx([
+    "יחי ראובן ואל ימות",
+    "משה מבקש שני דברים עבור ראובן: שיחיה בעולם הזה, ושיזכה גם לעולם הבא.",
+    "פסקה אחרת לגמרי על נושא שונה",
+  ]);
+  const exact = await resolveQuote(docx, "מבקש שני דברים");
+  assert.equal(exact?.exact, true);
+  // נקודה במקום נקודתיים, וחסרות מילים באמצע
+  const noisy = await resolveQuote(docx, "משה מבקש שני דברים עבור ראובן. שיחיה בעולם הזה ושיזכה לעולם הבא");
+  assert.equal(noisy?.exact, false);
+  assert.match(noisy!.quote, /^משה מבקש שני דברים עבור ראובן: שיחיה בעולם הזה, ושיזכה גם לעולם הבא\.?$/);
+  // שני חלקים בסדר הפוך מהקובץ (שכבת טקסט של PDF)
+  const swapped = await resolveQuote(docx, "משה מבקש שני דברים עבור ראובן. יחי ראובן ואל ימות");
+  assert.ok(swapped);
+  assert.match(swapped!.quote, /יחי ראובן/);
+  assert.match(swapped!.quote, /עבור ראובן/);
+  // טקסט שלא קיים בכלל
+  assert.equal(await resolveQuote(docx, "משפט שאין לו שום קשר לקובץ הזה בכלל"), null);
+  // התוצאה ניתנת להחלה בדיוק
+  const applied = await applyDocxFixes(docx, [{ id: 1, originalText: noisy!.quote, correctedText: "חדש", occurrence: noisy!.occurrence }]);
+  assert.deepEqual(applied.applied, [1]);
+});
