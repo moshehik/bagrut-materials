@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Download, MessageSquareWarning, Plus, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Download, MessageSquareWarning, Plus, Send, Sparkles, X } from "lucide-react";
 import {
   cancelOwnFix,
   submitFixRequests,
@@ -84,16 +84,15 @@ function Nut({ src }: { src: string }) {
   return <img src={src} alt="" width={40} height={40} className="mtc-rownut" aria-hidden />;
 }
 
-/** free = המורה כותבת את התיקון; list = בוחרת סיבה מרשימה; custom = מתארת בחופשיות מה לא טוב (בשתיהן ג'מיני מנסח) */
-type EditMode = "free" | "list" | "custom";
+/** התשובה ל"איך תרצי לתקן?": "" = עוד לא נבחר; self = היא כותבת את התיקון; אחרת סיבה מהרשימה, וג'מיני מנסח הצעה */
+type FixChoice = "" | "self" | FixReasonKey;
 type Edit = {
   id: number;
   quote: string;
   correction: string;
   mark: PdfMark | null;
   applied: boolean;
-  mode: EditMode;
-  reason: FixReasonKey | null;
+  choice: FixChoice;
   note: string;
   busy: boolean;
   aiError: string | null;
@@ -110,8 +109,7 @@ const newEdit = (): Edit => ({
   correction: "",
   mark: null,
   applied: false,
-  mode: "free",
-  reason: null,
+  choice: "",
   note: "",
   busy: false,
   aiError: null,
@@ -119,11 +117,97 @@ const newEdit = (): Edit => ({
   checkMsg: null,
 });
 
-const MODE_LABELS: { mode: EditMode; label: string }[] = [
-  { mode: "free", label: "אני כותבת את התיקון" },
-  { mode: "list", label: "בחירה מרשימה" },
-  { mode: "custom", label: "ניסוח חופשי של הבעיה" },
-];
+/** הסיבה שנבחרה ברשימה (אם נבחרה סיבה ולא "אני אתקן בעצמי") */
+const reasonOf = (choice: FixChoice): FixReasonKey | undefined => (choice === "" || choice === "self" ? undefined : choice);
+
+/**
+ * "איך תרצי לתקן?": רשימה נפתחת בעיצוב האתר (במקום select של הדפדפן, שאי אפשר לעצב).
+ * הרשימה נפתחת בתוך הזרימה ולא מעל התוכן, כדי שלא תיחתך באזור הנגלל.
+ */
+function FixHowSelect({
+  value,
+  onChange,
+  onOpen,
+  labelledBy,
+}: {
+  value: FixChoice;
+  onChange: (v: FixChoice) => void;
+  onOpen: () => void;
+  labelledBy: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    list.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const away = (ev: MouseEvent) => {
+      if (wrap.current && !wrap.current.contains(ev.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [open]);
+  const pick = (v: FixChoice) => {
+    onChange(v);
+    setOpen(false);
+  };
+  const current = value === "self" ? "אני אתקן בעצמי" : FIX_REASONS.find((r) => r.key === value)?.label;
+  const option = (v: FixChoice, text: string) => (
+    <li key={v} role="presentation">
+      <button type="button" role="option" aria-selected={value === v} className="fix-opt" onClick={() => pick(v)}>
+        <span>{text}</span>
+        {value === v && <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+      </button>
+    </li>
+  );
+  return (
+    <div
+      className="fix-how"
+      ref={wrap}
+      onKeyDown={(ev) => {
+        if (ev.key === "Escape" && open) {
+          ev.preventDefault(); // בלי זה Escape סוגר את כל החלון
+          ev.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className={`fix-how-btn ${open ? "fix-how-open" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-labelledby={labelledBy}
+        onClick={() => {
+          onOpen();
+          setOpen((v) => !v);
+        }}
+      >
+        <span className={current ? "" : "fix-how-ph"}>{current ?? "בחרי…"}</span>
+        <ChevronDown className="h-5 w-5 fix-how-chev" strokeWidth={2} aria-hidden />
+      </button>
+      {open && (
+        <ul className="fix-how-list" role="listbox" aria-labelledby={labelledBy} ref={list}>
+          {option("self", "אני אתקן בעצמי")}
+          <li role="presentation" className="fix-how-group">
+            או שנציע לך תיקון. מה הבעיה בקטע?
+          </li>
+          {FIX_REASONS.map((r) => option(r.key, r.label))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** מה נשלח לשרת: כתיבה עצמית = free; סיבה בלבד = list; סיבה + הערה = custom */
+const aiPayload = (e: { choice: FixChoice; note: string }) => {
+  const reason = reasonOf(e.choice);
+  if (!reason) return { source: "free" as const };
+  const note = e.note.trim();
+  if (!note) return { source: "list" as const, reason };
+  const reasonLabel = FIX_REASONS.find((r) => r.key === reason)?.label;
+  return { source: "custom" as const, note: reasonLabel ? `${reasonLabel}: ${note}` : note };
+};
 
 /**
  * "לעריכת שינויים בקובץ": אחרי ההודעה "שימי לב!" נפתח הקובץ עצמו; המורה מסמנת בו את הטקסט שצריך
@@ -253,8 +337,8 @@ export function FixRequestButton({
         materialId,
         quote: e.quote.trim(),
         occurrence: occurrenceOf(e),
-        reason: e.mode === "list" ? (e.reason ?? undefined) : undefined,
-        note: e.mode === "custom" ? e.note.trim() || undefined : undefined,
+        reason: reasonOf(e.choice),
+        note: e.note.trim() || undefined,
       });
       update(e.id, res.correction ? { busy: false, correction: res.correction } : { busy: false, aiError: res.error ?? "לא הצלחנו להכין תיקון" });
     } catch {
@@ -278,9 +362,7 @@ export function FixRequestButton({
           quote: e.quote.trim(),
           correction: e.correction.trim(),
           occurrence: occurrenceOf(e),
-          source: e.mode,
-          reason: e.mode === "list" ? (e.reason ?? undefined) : undefined,
-          note: e.mode === "custom" ? e.note.trim() || undefined : undefined,
+          ...aiPayload(e),
         })),
       });
       setResult(res);
@@ -338,176 +420,154 @@ export function FixRequestButton({
             </div>
           </div>
         ) : (
-          <div className="fix-inner fix-viewer">
+          <div className="fix-inner fix-viewer fix-viewer-edit">
             <div className="fix-pane">
+              <div className="fix-pane-scroll">
               <p className="fix-dialog-sub">
-                סמני בקובץ את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז כתבי מתחת את התיקון שלך. אפשר גם לבחור
-                סיבה מרשימה או לתאר מה לא טוב, ונכין לך תיקון.
+                סמני בקובץ (משמאל) את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז ענִי על השאלה למטה.
               </p>
               <ul className="fix-edits">
-                {edits.map((e, i) => (
-                  <li
-                    key={e.id}
-                    className={`fix-edit ${e.id === activeId ? "fix-edit-active" : ""}`}
-                    onClick={() => setActiveId(e.id)}
-                  >
-                    <div className="fix-edit-head">
-                      <span className="fix-num">{i + 1}</span>
-                      <button
-                        type="button"
-                        className="fix-edit-remove"
-                        aria-label="הסרת התיקון"
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          removeEdit(e.id);
-                        }}
-                      >
-                        <X className="h-4 w-4" aria-hidden />
-                      </button>
-                    </div>
-                    {e.applied ? (
-                      <div className="fix-edit-applied">
-                        <span className="fix-pink">{e.quote}</span>
-                        <span className="fix-arrow" aria-hidden>←</span>
-                        <span className="fix-blue">{e.correction}</span>
+                {edits.map((e, i) => {
+                  const reason = reasonOf(e.choice);
+                  // תיבת התיקון מופיעה רק כשהיא כותבת בעצמה, או אחרי שהוכנה לה הצעה לעריכה
+                  const showCorrection = demo || e.choice === "self" || (!!reason && !!e.correction.trim());
+                  return (
+                    <li
+                      key={e.id}
+                      className={`fix-edit ${e.id === activeId ? "fix-edit-active" : ""}`}
+                      onClick={() => setActiveId(e.id)}
+                    >
+                      <div className="fix-edit-head">
+                        <span className="fix-num">{i + 1}</span>
                         <button
                           type="button"
-                          className="fix-edit-reopen"
+                          className="fix-edit-remove"
+                          aria-label="הסרת התיקון"
                           onClick={(ev) => {
                             ev.stopPropagation();
-                            update(e.id, { applied: false });
-                            setActiveId(e.id);
+                            removeEdit(e.id);
                           }}
                         >
-                          עריכה
+                          <X className="h-4 w-4" aria-hidden />
                         </button>
                       </div>
-                    ) : (
-                      <>
-                    <label>
-                      מה שצריך תיקון (מסמנים בקובץ)
-                      <textarea
-                        className="fix-edit-quote"
-                        rows={2}
-                        maxLength={1000}
-                        value={e.quote}
-                        placeholder="סמני בקובץ את הטעות…"
-                        onFocus={() => setActiveId(e.id)}
-                        onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null, occ: undefined, check: "idle", checkMsg: null })}
-                      />
-                    </label>
-                    {e.check === "busy" && <p className="fix-check">בודקת איפה זה בקובץ…</p>}
-                    {e.check === "fixed" && e.checkMsg && <p className="fix-check fix-check-fixed">{e.checkMsg}</p>}
-                    {e.check === "fail" && e.checkMsg && <p className="fix-error">{e.checkMsg}</p>}
-                    {!demo && (
-                      <div className="fix-modes" role="tablist" aria-label="איך לתקן">
-                        {MODE_LABELS.map((m) => (
+                      {e.applied ? (
+                        <div className="fix-edit-applied">
+                          <span className="fix-pink">{e.quote}</span>
+                          <span className="fix-arrow" aria-hidden>←</span>
+                          <span className="fix-blue">{e.correction}</span>
                           <button
-                            key={m.mode}
                             type="button"
-                            role="tab"
-                            aria-selected={e.mode === m.mode}
-                            className={`fix-mode ${e.mode === m.mode ? "fix-mode-on" : ""}`}
-                            onClick={() => update(e.id, { mode: m.mode, aiError: null })}
+                            className="fix-edit-reopen"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              update(e.id, { applied: false });
+                              setActiveId(e.id);
+                            }}
                           >
-                            {m.label}
+                            עריכה
                           </button>
-                        ))}
-                      </div>
-                    )}
-                    {e.mode === "list" && (
-                      <div className="fix-ai">
-                        <div className="fix-reasons" role="radiogroup" aria-label="מה הבעיה">
-                          {FIX_REASONS.map((r) => (
-                            <label key={r.key} className="fix-reason">
-                              <input
-                                type="radio"
-                                name={`fix-reason-${e.id}`}
-                                checked={e.reason === r.key}
-                                onChange={() => update(e.id, { reason: r.key, aiError: null })}
-                              />
-                              <span>{r.label}</span>
-                            </label>
-                          ))}
                         </div>
-                      </div>
-                    )}
-                    {e.mode === "custom" && (
-                      <div className="fix-ai">
-                        <label>
-                          מה לא טוב בקטע שסימנת?
-                          <textarea
-                            rows={2}
-                            maxLength={1000}
-                            value={e.note}
-                            placeholder="למשל: הניסוח לא ברור לתלמידה, או שחסר כאן הסבר…"
-                            onFocus={() => setActiveId(e.id)}
-                            onChange={(ev) => update(e.id, { note: ev.target.value, aiError: null })}
-                          />
-                        </label>
-                      </div>
-                    )}
-                    {e.mode !== "free" && (
-                      <div className="fix-ai">
-                        <button
-                          type="button"
-                          className="fix-ai-btn"
-                          disabled={
-                            e.busy ||
-                            e.quote.trim().length < 2 ||
-                            (e.mode === "list" ? !e.reason : e.note.trim().length < 3)
-                          }
-                          onClick={() => askAI(e)}
-                        >
-                          <Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                          {e.busy ? "מכינה תיקון…" : e.correction.trim() ? "הכנת תיקון אחר" : "הכנת תיקון"}
-                        </button>
-                        {e.aiError && <p className="fix-error">{e.aiError}</p>}
-                      </div>
-                    )}
-                    <label>
-                      {e.mode === "free" ? "התיקון שלך" : "התיקון שהוכן (אפשר לערוך)"}
-                      <textarea
-                        className="fix-edit-fix"
-                        rows={2}
-                        maxLength={2000}
-                        value={e.correction}
-                        placeholder="כתבי כאן איך זה צריך להיות"
-                        onFocus={() => setActiveId(e.id)}
-                        onChange={(ev) => update(e.id, { correction: ev.target.value })}
-                      />
-                    </label>
-                      </>
-                    )}
-                  </li>
-                ))}
+                      ) : (
+                        <>
+                          <label className="fix-q">
+                            מה שצריך תיקון
+                            <textarea
+                              className="fix-edit-quote"
+                              rows={2}
+                              maxLength={1000}
+                              value={e.quote}
+                              placeholder="עוד לא סימנת. סמני בקובץ משמאל…"
+                              onFocus={() => setActiveId(e.id)}
+                              onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null, occ: undefined, check: "idle", checkMsg: null })}
+                            />
+                          </label>
+                          {e.check === "busy" && <p className="fix-check">בודקת איפה זה בקובץ…</p>}
+                          {e.check === "fixed" && e.checkMsg && <p className="fix-check fix-check-fixed">{e.checkMsg}</p>}
+                          {e.check === "fail" && e.checkMsg && <p className="fix-error">{e.checkMsg}</p>}
+
+                          {!demo && (
+                            <div className="fix-q">
+                              <span id={`fix-how-${e.id}`}>איך תרצי לתקן?</span>
+                              <FixHowSelect
+                                labelledBy={`fix-how-${e.id}`}
+                                value={e.choice}
+                                onOpen={() => setActiveId(e.id)}
+                                onChange={(choice) => update(e.id, { choice, aiError: null })}
+                              />
+                            </div>
+                          )}
+
+                          {reason && (
+                            <div className="fix-ai">
+                              <textarea
+                                rows={2}
+                                maxLength={1000}
+                                value={e.note}
+                                placeholder="אפשר להוסיף כמה מילים משלך (לא חובה)"
+                                onFocus={() => setActiveId(e.id)}
+                                onChange={(ev) => update(e.id, { note: ev.target.value, aiError: null })}
+                              />
+                              <button
+                                type="button"
+                                className="fix-ai-btn"
+                                disabled={e.busy || e.quote.trim().length < 2}
+                                onClick={() => askAI(e)}
+                              >
+                                <Sparkles className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                                {e.busy ? "מכינה הצעה…" : e.correction.trim() ? "הצעה אחרת" : "הכנת הצעה"}
+                              </button>
+                              {e.aiError && <p className="fix-error">{e.aiError}</p>}
+                            </div>
+                          )}
+
+                          {showCorrection && (
+                            <label className="fix-q">
+                              {reason ? "ההצעה (אפשר לערוך)" : "התיקון שלך"}
+                              <textarea
+                                className="fix-edit-fix"
+                                rows={3}
+                                maxLength={2000}
+                                value={e.correction}
+                                placeholder="כתבי כאן איך זה צריך להיות"
+                                onFocus={() => setActiveId(e.id)}
+                                onChange={(ev) => update(e.id, { correction: ev.target.value })}
+                              />
+                            </label>
+                          )}
+
+                          {e.id === activeId && (
+                            <button type="button" className="fix-apply" disabled={!canApply} onClick={applyActive}>
+                              <Check className="h-4 w-4" strokeWidth={2} aria-hidden />
+                              החל תיקון
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
-              {active && !active.applied && (
-                <button type="button" className="fix-apply" disabled={!canApply} onClick={applyActive}>
-                  <Check className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  החל תיקון
-                </button>
-              )}
               <button type="button" className="fix-add" onClick={addEdit}>
                 <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                הוספת תיקון נוסף
+                עוד תיקון בקובץ
               </button>
               {!demo && (
                 <div className="fix-general">
-                  <button type="button" className="fix-add" onClick={() => setGeneralOpen((v) => !v)} aria-expanded={generalOpen}>
+                  <button type="button" className="fix-link" onClick={() => setGeneralOpen((v) => !v)} aria-expanded={generalOpen}>
                     <MessageSquareWarning className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                    תלונה כללית על הקובץ (בלי סימון)
+                    יש הערה כללית על הקובץ, בלי לסמן קטע?
                   </button>
                   {generalOpen &&
                     (generalResult?.ok ? (
-                      <p className="fix-dialog-sub">התלונה נשלחה, תודה! נבדוק אותה ונתקן בקובץ אם יתברר שצריך.</p>
+                      <p className="fix-dialog-sub">ההערה נשלחה, תודה! נבדוק אותה ונתקן בקובץ אם יתברר שצריך.</p>
                     ) : (
                       <div className="fix-general-box">
                         <textarea
                           rows={3}
                           maxLength={2000}
                           value={generalText}
-                          placeholder="כתבי מה לא טוב בקובץ בכלל, בלי לסמן קטע מסוים"
+                          placeholder="כתבי מה לא טוב בקובץ בכלל"
                           onChange={(ev) => setGeneralText(ev.target.value)}
                         />
                         {generalResult?.error && <p className="fix-error">{generalResult.error}</p>}
@@ -517,12 +577,14 @@ export function FixRequestButton({
                           disabled={generalPending || generalText.trim().length < 5}
                           onClick={sendGeneral}
                         >
-                          {generalPending ? "שולחת…" : "שליחת התלונה"}
+                          {generalPending ? "שולחת…" : "שליחת ההערה"}
                         </button>
                       </div>
                     ))}
                 </div>
               )}
+              </div>
+              <div className="fix-pane-foot">
               {result?.error && <p className="fix-error">{result.error}</p>}
               <div className="fix-actions">
                 <button
@@ -534,6 +596,7 @@ export function FixRequestButton({
                   {pending ? "שולחת…" : ready.length > 1 ? `שליחת ${ready.length} התיקונים` : "שליחת התיקון"}
                   <Send className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
                 </button>
+              </div>
               </div>
             </div>
             <div className="fix-frame-wrap">

@@ -2252,8 +2252,112 @@ button.underline {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.fix-edit .fix-q {
+  margin-top: 0.7rem;
+  font-weight: 700;
+}
+.fix-edit .fix-q textarea,
+.fix-edit .fix-q select {
+  font-weight: 400;
+}
+.fix-edit .fix-q {
+  font-size: 1.05rem;
+}
+/* "איך תרצי לתקן?": רשימה נפתחת בעיצוב האתר */
+.fix-how {
+  margin-top: 0.3rem;
+  font-weight: 400;
+}
+.fix-how-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.9rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.25rem;
+  line-height: 1.3;
+  text-align: right;
+  cursor: pointer;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+.fix-how-btn:hover,
+.fix-how-open {
+  background: #fff6d6;
+  box-shadow: 0 0 0 3px rgba(224, 170, 34, 0.45);
+}
+.fix-how-ph {
+  color: rgba(0, 0, 0, 0.5);
+}
+.fix-how-chev {
+  flex: none;
+  transition: transform 0.2s;
+}
+.fix-how-open .fix-how-chev {
+  transform: rotate(180deg);
+}
+.fix-how-list {
+  margin: 0.4rem 0 0;
+  padding: 0.35rem;
+  list-style: none;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 1rem;
+  background: #fff;
+}
+.fix-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.8rem;
+  border: 0;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  text-align: right;
+  cursor: pointer;
+}
+.fix-opt:hover,
+.fix-opt:focus-visible {
+  background: #fff6d6;
+  outline: none;
+}
+.fix-opt[aria-selected="true"] {
+  background: #e9d08a;
+}
+.fix-how-group {
+  margin: 0.35rem 0.5rem 0.15rem;
+  padding-top: 0.5rem;
+  border-top: 1.5px dashed rgba(0, 0, 0, 0.3);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+.fix-ai textarea {
+  margin-bottom: 0.5rem;
+}
+.fix-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #000;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .fix-general {
-  margin-bottom: 0.9rem;
+  margin: 0.6rem 0 0.9rem;
 }
 .fix-general-box {
   display: grid;
@@ -3904,6 +4008,62 @@ a.sicha-tag-video:hover {
 .fix-frame {
   width: 100%;
   height: min(70vh, 46rem);
+}
+
+/* חלון עריכת השינויים: הקובץ קבוע בצד, רשימת התיקונים נגללת לבד, וכפתור השליחה נשאר תמיד למטה */
+.fix-pane-foot {
+  margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1.5px solid rgba(0, 0, 0, 0.18);
+}
+.fix-pane-foot .fix-actions {
+  margin-top: 0;
+}
+.fix-pane-scroll {
+  /* פס הגלילה בקצה הימני של האזור; התוכן נשאר ב-RTL */
+  direction: ltr;
+  scrollbar-width: thin;
+  scrollbar-color: #2f3b57 transparent;
+}
+.fix-pane-scroll > * {
+  direction: rtl;
+}
+.fix-pane-scroll::-webkit-scrollbar {
+  width: 9px;
+}
+.fix-pane-scroll::-webkit-scrollbar-track {
+  background: rgba(47, 59, 87, 0.12);
+  border-radius: 999px;
+}
+.fix-pane-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3d4f7c, #1f2c4d);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.fix-pane-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e0aa22, #b8860b);
+  background-clip: padding-box;
+}
+@media (min-width: 801px) {
+  .fix-viewer-edit {
+    height: min(68vh, 44rem);
+    align-items: stretch;
+  }
+  .fix-viewer-edit .fix-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .fix-viewer-edit .fix-pane-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.6rem;
+  }
+  .fix-viewer-edit .fix-frame {
+    height: calc(min(68vh, 44rem) - 2.6rem);
+  }
 }
 
 .mtc-foot {
