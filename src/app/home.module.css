@@ -436,22 +436,6 @@
     transition: none;
   }
 }
-.lessonSoon {
-  position: absolute;
-  z-index: 2;
-  left: 50%;
-  top: 6px;
-  transform: translateX(-50%) rotate(-6deg);
-  background: var(--sun);
-  color: #fff;
-  font-family: var(--font-hand);
-  font-size: 18px;
-  line-height: 1;
-  padding: 6px 12px;
-  border-radius: 999px;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(31, 45, 51, 0.18);
-}
 .lessonNote {
   margin: 34px 0 90px;
   text-align: center;

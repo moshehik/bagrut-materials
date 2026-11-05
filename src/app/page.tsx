@@ -116,7 +116,7 @@ export default async function HomePage({
                   <Link
                     href={user ? "/subjects" : "/register"}
                     className="btn btn-ghost btn-plans btn-hand"
-                    data-tip={"הורדה אחת בחינם, על כל חומר שתבחרי!\nנרשמות, מאמתות מייל, בוחרות חומר – והוא שלך.\nבלי כרטיס אשראי ובלי התחייבות."}
+                    data-tip={"הורדה אחת בחינם, על כל חומר שתבחרי – גם על חומר בתשלום!\nנרשמות, מאמתות מייל, בוחרות חומר – והוא שלך.\nבלי כרטיס אשראי ובלי התחייבות."}
                   >
                     <Gift className="h-5 w-5 plans-icon" strokeWidth={1.75} aria-hidden />
                     נסי שיעור אחד בחינם
@@ -160,14 +160,14 @@ export default async function HomePage({
             <img src="/images/kind-blob-3.png" alt="" className={s.kindBlob} />
             <IconLessonTypes className={s.kindIcon} />
             {/* "עד": המפרט משתנה לפי סוג השיעור (ר' ההערה מתחת ל"מה לו״ז השיעור שלנו?"), לא בכל שיעור יש את כל הסוגים */}
-            <b>עד <CountUp value={LESSON_ITEMS.filter((t) => t !== "presentation").length} /></b>
+            <b>עד <CountUp value={LESSON_ITEMS.length} /></b>
             <span>קבצי תוכן לשיעור</span>
           </div>
           <div className={s.kind}>
             <img src="/images/kind-blob-4.png" alt="" className={s.kindBlob} />
             <IconFree className={s.kindIcon} />
             <b><CountUp value={stats.freeFiles} /></b>
-            <span>קבצים חינמיים</span>
+            <span>קבצים פתוחים לכולן</span>
           </div>
         </AnimatedGrid>
         {/* ================= LESSON CONTENTS (לו"ז השיעור) ================= */}
@@ -180,7 +180,6 @@ export default async function HomePage({
         <AnimatedGrid className={s.lessonItems}>
           {LESSON_ITEMS.map((t) => {
             const st = CARD_STYLES[t];
-            const soon = t === "presentation";
             // הכיתוב והוי באותו צבע — צבע התיקייה (לכל סוג צבע ייחודי ב-CARD_STYLES)
             const chk = st.chk ?? st.strip;
             return (
@@ -191,7 +190,7 @@ export default async function HomePage({
                 style={{ "--chk": chk } as CSSProperties}
               >
                 <div className={s.lessonArtBox}>
-                  {!soon && <span className={s.lessonCheck} aria-hidden />}
+                  <span className={s.lessonCheck} aria-hidden />
                   {/* eslint-disable-next-line @next/next/no-img-element -- מוטמע ב-HTML (מסנן תוכן מחליף קובצי תמונה רגילים) */}
                   <img
                     src={inlineLessonIcon(st.art)}
@@ -201,7 +200,6 @@ export default async function HomePage({
                     className={s.lessonArt}
                     aria-hidden
                   />
-                  {soon && <span className={s.lessonSoon}>בקרוב!</span>}
                 </div>
                 <b>{st.label}</b>
               </div>
