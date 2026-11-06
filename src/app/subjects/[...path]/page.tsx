@@ -197,6 +197,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         items.slice(i * 2, i * 2 + 2).map((item) => ({ type: "video" as CardType, item })),
       );
     }
+    // מבחנים וחומרים שלא זוהו: אין ביניהם זוג קבוע, אז ממלאים שתיים בשורה ברצף (אחרת "דף עזר" לבד נדחף לעמודה השמאלית כשאין מבחן)
+    if (types.includes("generic")) {
+      const items = types.flatMap((t) => (byType.get(t) ?? []).map((item) => ({ type: t, item })));
+      return Array.from({ length: Math.ceil(items.length / 2) }, (_, i) => items.slice(i * 2, i * 2 + 2));
+    }
     const n = Math.max(0, ...types.map((t) => byType.get(t)?.length ?? 0));
     return Array.from({ length: n }, (_, i) =>
       types.map((t) => ({ type: t, item: byType.get(t)?.[i] ?? null })),

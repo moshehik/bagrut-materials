@@ -1,5 +1,5 @@
 import "server-only";
-import { PDFDocument, rgb, degrees, type PDFFont } from "pdf-lib";
+import { PDFArray, PDFDocument, rgb, degrees, type PDFFont, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
@@ -91,10 +91,27 @@ export async function makeDiagonalWatermarkPng(pageWidth: number, pageHeight: nu
 }
 
 /**
+ * מעביר את שכבת החתימה שנוספה לעמוד (ה-content stream האחרון) להיות הראשונה: היא מצוירת מתחת לתוכן העמוד,
+ * כך שתמונות ורקעים (למשל בשקפי מצגת) מכסים אותה ולא להפך. הטקסט נשאר בקובץ לחילוץ.
+ */
+function moveStampBehindContent(page: PDFPage) {
+  const contents = page.node.Contents();
+  if (!(contents instanceof PDFArray) || contents.size() < 2) return;
+  const last = contents.get(contents.size() - 1);
+  contents.remove(contents.size() - 1);
+  contents.insert(0, last);
+}
+
+export type StampOptions = {
+  /** החתימה מתחת לתוכן העמוד ולא מעליו – למצגות, שאין לצייר בהן על גבי התמונות */
+  behindContent?: boolean;
+};
+
+/**
  * מטביע על כל עמוד ב-PDF: שם האתר + כל הזכויות שמורות + מספר אישי של המורידה.
  * החתימה האישית מאפשרת זיהוי אם הקובץ מועבר הלאה.
  */
-export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo) {
+export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo, opts: StampOptions = {}) {
   const pdf = await PDFDocument.load(input, { ignoreEncryption: true });
   pdf.registerFontkit(fontkit);
   const font = await pdf.embedFont(await loadFont(), { subset: true });
@@ -248,6 +265,8 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo)
         opacity: 0.09,
       });
     });
+
+    if (opts.behindContent) moveStampBehindContent(page);
   }
 
   pdf.setProducer(SITE_NAME);

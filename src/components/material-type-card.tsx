@@ -125,6 +125,8 @@ export function MaterialTypeCard({
   const viewOnly = entitlement.ok && !m.allowDownload && entitlement.via !== "admin";
   const size = LABEL_SIZES[type];
   const base = cardHeading(type, m.title, folderTitle);
+  // בלי הריבוע התחתון (סרטון / מצגת) גוף הכרטיס הוא סופו, אז פינותיו התחתונות מעוגלות
+  const noFixBox = isVideo || type === "presentation";
   const heading = subtitle ? { ...base, full: `${base.full} (${subtitle})` } : base;
   // אגוזי התיקונים רק למי שמורשית להוריד, ורק בקובץ Word (שם התיקונים מוחלים)
   const canFix = entitlement.ok && !viewOnly && !!target && /\.docx$/i.test(m.fileName) && fixes.length > 0;
@@ -199,7 +201,7 @@ export function MaterialTypeCard({
         </h3>
       </header>
 
-      <div className="mtc-body">
+      <div className={`mtc-body${noFixBox ? " mtc-body-end" : ""}`}>
         <div
           className={`mtc-print ${s.lightPrint ? "mtc-print-light" : ""}`}
           data-tip="החומר שלך, נשאר שלך:)"
@@ -309,7 +311,7 @@ export function MaterialTypeCard({
 
       {/* הריבוע התחתון: עריכת שינויים תמיד; ואם כבר נעשו תיקונים – גם צפייה בהם והורדת הקובץ המתוקן */}
       {/* סרטון ומצגת (קובץ PDF, לא Word) – אין בהם עריכת שינויים */}
-      {!isVideo && type !== "presentation" && (
+      {!noFixBox && (
       <div className="mtc-lower">
         <div className="mtc-tools">
           <FixRequestButton

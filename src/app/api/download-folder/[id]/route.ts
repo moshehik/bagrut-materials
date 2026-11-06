@@ -23,7 +23,7 @@ import {
   type ReserveResult,
 } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
-import { isVideoMaterial } from "@/lib/material-card-types";
+import { classifyMaterial, isVideoMaterial } from "@/lib/material-card-types";
 import { getPrivateVersion } from "@/lib/private-versions";
 import { chooseServedFile } from "@/lib/private-version-logic";
 
@@ -78,6 +78,8 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   const isImage = /^image\/(png|jpe?g)$/.test(file.contentType ?? m.mime ?? "");
   const raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
   const tag = u.personalCode;
+  // מצגת: החתימה מתחת לתמונות
+  const behind = { behindContent: classifyMaterial(m) === "presentation" };
   const safe = safeEntryName(m.fileName);
   const original = { name: `${stem(safe)}-${tag}${ext(safe)}`, bytes: raw };
   // מנהלת בלבד מקבלת את המקור כשההמרה/ההטבעה נכשלו
@@ -89,14 +91,14 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   if (isOffice && isDriveConfigured()) {
     try {
       const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(src.fileUrl), defer: after });
-      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo) };
+      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo, behind) };
     } catch (e) {
       return fallback("office->pdf", e);
     }
   }
   if (isPdf) {
     try {
-      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(raw, stampInfo) };
+      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(raw, stampInfo, behind) };
     } catch (e) {
       return fallback("pdf stamp", e);
     }

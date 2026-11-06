@@ -5,6 +5,7 @@ import { downloads, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
+import { classifyMaterial } from "@/lib/material-card-types";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
@@ -306,7 +307,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
           userName: u.name,
           email: u.email,
           phone: u.phone,
-        });
+        }, { behindContent: classifyMaterial(material) === "presentation" });
       } catch (e) {
         console.error("office->pdf conversion failed", e);
         const blocked = await degraded("office_to_pdf_or_stamp");
@@ -333,7 +334,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
           userName: u.name,
           email: u.email,
           phone: u.phone,
-        });
+        }, { behindContent: classifyMaterial(material) === "presentation" });
       } catch (e) {
         // ההטבעה נכשלה (PDF פגום/מוצפן): משתמשת רגילה – חסימה; מנהלת – המקור
         console.error("pdf stamp failed", e);

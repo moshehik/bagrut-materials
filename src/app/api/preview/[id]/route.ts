@@ -6,6 +6,7 @@ import { materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampPreview, firstPageOnly } from "@/lib/watermark";
+import { classifyMaterial } from "@/lib/material-card-types";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl } from "@/lib/driveBridge";
 import { logAudit, requestMeta } from "@/lib/audit";
@@ -170,7 +171,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     out =
       fullView && user
-        ? await stampPdf(pdfBytes, { personalCode: user.personalCode, userName: user.name, email: user.email, phone: user.phone })
+        ? await stampPdf(pdfBytes, { personalCode: user.personalCode, userName: user.name, email: user.email, phone: user.phone }, { behindContent: classifyMaterial(material) === "presentation" })
         : await stampPreview(await firstPageOnly(pdfBytes));
   } catch (e) {
     console.error("preview stamp failed", e);
