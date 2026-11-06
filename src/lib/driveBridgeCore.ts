@@ -460,7 +460,7 @@ export async function driveCopyFile(
   return { fileId: json.id, size: json.size ? Number(json.size) : 0 };
 }
 
-async function driveUploadRest({
+export async function driveUploadRest({
   name,
   mimeType,
   bytes,

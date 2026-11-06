@@ -15,6 +15,7 @@ export function EmailMaterialButton({
   fixes,
   tip,
   ariaLabel,
+  sentText,
 }: {
   materialId?: number;
   /** כתובת POST אחרת (למשל קובץ שיחה: /api/sichot/download/[id]); ברירת מחדל: /api/download/[materialId] */
@@ -26,6 +27,8 @@ export function EmailMaterialButton({
   /** טולטיפ האתר המעוצב (data-tip ← NutTooltip) */
   tip?: string;
   ariaLabel?: string;
+  /** פתיח הודעת ההצלחה לפני כתובת המייל (ברירת מחדל: "הקובץ נשלח אל") */
+  sentText?: string;
 }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
@@ -52,7 +55,7 @@ export function EmailMaterialButton({
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; email?: string; error?: string; redirect?: string };
       if (data.ok) {
         setState("done");
-        setMsg(`הקובץ נשלח אל ${data.email}`);
+        setMsg(`${sentText ?? "הקובץ נשלח אל"} ${data.email}`);
         return;
       }
       if (data.redirect && res.status === 401) {

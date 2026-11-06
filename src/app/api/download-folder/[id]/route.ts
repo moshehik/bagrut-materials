@@ -23,6 +23,7 @@ import {
   type ReserveResult,
 } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
+import { isVideoMaterial } from "@/lib/material-card-types";
 import { getPrivateVersion } from "@/lib/private-versions";
 import { chooseServedFile } from "@/lib/private-version-logic";
 
@@ -60,6 +61,7 @@ type Who = { id: number; personalCode: string; name: string; email: string; phon
 /**
  * מכינה קובץ אחד לזיפ: אותה לוגיקה כמו /api/download/[id] – המרת Office ל-PDF + הטבעת מספר אישי.
  * null = נכשל. למשתמשת רגילה כשל בהמרה/הטבעה = כשל (לא שולחים מקור בלי סימן מים); למנהלת – המקור.
+ * גרסה פרטית מתוקנת של המורה (ר' src/lib/private-versions.ts) נכנסת לזיפ במקום הקובץ המשותף, כמו בהורדה בודדת.
  */
 async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: string; bytes: Uint8Array } | null> {
   const pv = isAdmin ? null : await getPrivateVersion(m.id, u.id);
@@ -182,7 +184,8 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
         .where(inArray(materials.categoryId, ids))
         .orderBy(asc(materials.categoryId), asc(materials.id))
     : [];
-  const candidates = all.filter((m) => (m.status === "active" || isAdmin) && (m.allowDownload || isAdmin));
+  // סרטונים לא נכנסים לחבילה (גדולים מדי לזיכרון/לזיפ) – יורדים בנפרד מהכרטיסייה שלהם
+  const candidates = all.filter((m) => (m.status === "active" || isAdmin) && (m.allowDownload || isAdmin) && !isVideoMaterial(m));
 
   const ents = await Promise.all(candidates.map((m) => checkEntitlement(user, m)));
   const entOf = new Map<number, EntitlementOk>();

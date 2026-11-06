@@ -22,6 +22,7 @@ export type CardType =
   | "reflection"
   | "workbook"
   | "test"
+  | "video"
   | "generic";
 
 export type CardStyle = {
@@ -64,6 +65,7 @@ export const CARD_STYLES: Record<CardType, CardStyle> = {
   reflection: { label: "רפלקציה מסכמת", art: "reflection", body: "#cdeedd", strip: "#3d8f6a", buy: "#e3f6ec", extra: true },
   workbook: { label: "חוברת עבודה", art: "workbook", body: "#ffe1b5", strip: "#b5651d", buy: "#fff0d9", extra: true },
   test: { label: "מבחן", art: "test", body: "#f6cfcf", strip: "#b8473b", buy: "#fbe6e6", extra: true },
+  video: { label: "סרטון מלווה", art: "video", body: "#d6e4f5", strip: "#3f6aa0", buy: "#e8f0fa", extra: true },
   generic: { label: "חומר נוסף", art: "generic", body: "#e6e1d4", strip: "#7a7466", buy: "#f3f0e8", extra: true },
 };
 
@@ -105,6 +107,7 @@ export const CARD_ROWS: CardType[][] = [
  * בשום סוג: מקבל כרטיסייה מעוצבת עם שמו, ולא כרטיס "אחר" כללי.
  */
 export const EXTRA_ROWS: CardType[][] = [
+  ["video"],
   ["events", "characters"],
   ["places"],
   ["alternative", "reflection"],
@@ -134,8 +137,36 @@ function normalize(s: string) {
   return s.replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "");
 }
 
+const HE_DIGIT: Record<string, number> = {
+  א: 1, ב: 2, ג: 3, ד: 4, ה: 5, ו: 6, ז: 7, ח: 8, ט: 9, י: 10, כ: 20, ל: 30, מ: 40, נ: 50, ס: 60, ע: 70, פ: 80, צ: 90, ק: 100, ר: 200, ש: 300, ת: 400,
+};
+function hebrewNumeral(s: string): number {
+  return [...s.replace(/[^א-ת]/g, "")].reduce((sum, ch) => sum + (HE_DIGIT[ch] ?? 0), 0);
+}
+
+/**
+ * מצגת שמחולקת לכמה חלקים באותו פרק ("מצגת - פרק ד - פסוקים א-יד", "מצגת - הקדמת הרמבן - חלק א׳"):
+ * מחזירה את הטווח שנכתב בשם ("פסוקים א-יד" / "חלק א") לכותרת הכרטיסייה, ומפתח מיון (תחילת הטווח).
+ */
+export function presentationPart(title: string): { label: string; order: number } | null {
+  const t = normalize(title);
+  const verses = t.match(/פסוק(?:ים)?\s+([א-ת]+)(?:\s*[-–]\s*([א-ת]+))?/);
+  if (verses) {
+    const range = verses[2] ? `${verses[1]}-${verses[2]}` : verses[1];
+    return { label: `${/פסוקים/.test(verses[0]) ? "פסוקים" : "פסוק"} ${range}`, order: hebrewNumeral(verses[1]) };
+  }
+  const part = t.match(/חלק\s+([א-ת]+)/);
+  return part ? { label: `חלק ${part[1]}`, order: hebrewNumeral(part[1]) } : null;
+}
+
+/** חומר שהוא סרטון (לפי סוג הקובץ או הסיומת): מוזרם ישר מדרייב ולא עובר סימן מים/המרה. ר' /api/material-video/[id] */
+export function isVideoMaterial(m: Partial<Pick<Material, "mime" | "fileName">>): boolean {
+  return (m.mime ?? "").startsWith("video/") || /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|3gp)$/i.test(m.fileName ?? "");
+}
+
 /** מסווגת חומר לסוג כרטיסייה לפי שמו (רוב החומרים שמורים כ-"other" במסד, אז השם הוא המקור). null = כרטיס כללי */
-export function classifyMaterial(m: Pick<Material, "title" | "kind">): CardType | null {
+export function classifyMaterial(m: Pick<Material, "title" | "kind"> & Partial<Pick<Material, "mime" | "fileName">>): CardType | null {
+  if (isVideoMaterial(m)) return "video";
   const t = normalize(m.title);
   if (/בגרו/.test(t) || m.kind === "past_exam") return /תשובות|פתרונות|פתרון/.test(t) ? "exam-answers" : "exam";
   if (/בוחן/.test(t)) return /תשובות|פתרון/.test(t) ? "quiz-answers" : "quiz";

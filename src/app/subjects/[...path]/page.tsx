@@ -18,7 +18,7 @@ import {
 import { getCurrentUser } from "@/lib/session";
 import { UNIT_BUNDLE_PRICE, formatPrice } from "@/lib/constants";
 import type { Material } from "@/db/schema";
-import { CARD_ROWS, EXTRA_ROWS, classifyMaterial, type CardType } from "@/lib/material-card-types";
+import { CARD_ROWS, EXTRA_ROWS, classifyMaterial, presentationPart, type CardType } from "@/lib/material-card-types";
 import { MaterialTypeCard } from "@/components/material-type-card";
 import { ForumCard } from "@/components/forum-card";
 import { FolderBundleBanner } from "@/components/folder-bundle-banner";
@@ -181,6 +181,22 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   ].filter((row) => row.some((c) => c.item)));
   const cardRows = [...CARD_ROWS, ...EXTRA_ROWS].flatMap((types) => {
     if (types.some((t) => bookTypes.includes(t))) return types[0] === "events" ? bookRows : [];
+    // כמה מצגות באותו פרק (כל אחת על טווח פסוקים אחר): בסדר הפסוקים, ושתיים בכל שורה זו לצד זו
+    if (types.length === 1 && types[0] === "presentation") {
+      const items = [...(byType.get("presentation") ?? [])].sort(
+        (a, b) => (presentationPart(a.m.title)?.order ?? 0) - (presentationPart(b.m.title)?.order ?? 0) || a.m.id - b.m.id,
+      );
+      return Array.from({ length: Math.ceil(items.length / 2) }, (_, i) =>
+        items.slice(i * 2, i * 2 + 2).map((item) => ({ type: "presentation" as CardType, item })),
+      );
+    }
+    // כמה סרטונים מלווים באותו פרק: שניים בכל שורה, והשאר יורדים לשורה הבאה
+    if (types.length === 1 && types[0] === "video") {
+      const items = [...(byType.get("video") ?? [])].sort((a, b) => a.m.sort - b.m.sort || a.m.id - b.m.id);
+      return Array.from({ length: Math.ceil(items.length / 2) }, (_, i) =>
+        items.slice(i * 2, i * 2 + 2).map((item) => ({ type: "video" as CardType, item })),
+      );
+    }
     const n = Math.max(0, ...types.map((t) => byType.get(t)?.length ?? 0));
     return Array.from({ length: n }, (_, i) =>
       types.map((t) => ({ type: t, item: byType.get(t)?.[i] ?? null })),
@@ -422,6 +438,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                         type={type}
                         bundleHref={`/checkout?bundle=${category.id}`}
                         folderTitle={category.title}
+                        subtitle={type === "presentation" ? (presentationPart(item.m.title)?.label ?? undefined) : undefined}
                         currentPath={here}
                         myDownloadCount={downloadCounts.get(item.m.id) ?? 0}
                         freeTrial={freeTrial}

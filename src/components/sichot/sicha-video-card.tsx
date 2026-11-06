@@ -2,7 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Folder, Video } from "lucide-react";
 import { driveLinkUrl } from "@/lib/drive-link";
+import { EmailMaterialButton } from "@/components/email-material-button";
+import { MailNut } from "@/components/material-type-card";
 import { DeleteMyVideoButton } from "./delete-my-video-button";
+import { VideoViewerButton } from "./sicha-video-viewer";
 import { IdeaBox, UsageToggle } from "./sicha-interactions";
 import { CopyrightReport } from "./copyright-report";
 import { EnjoyedBadge } from "./enjoyed-badge";
@@ -107,17 +110,44 @@ export function SichaVideoCard({ video, path }: { video: SichaVideoCardData; pat
         {/* לייק: השתמשת? נהנית? (כמו בשיעורי יהדות) */}
         <UsageToggle sichaId={0} videoId={video.id} path={path} used={!!video.usedByMe} />
 
-        {/* הורדה למחשב בלבד – בלי צפייה באתר ובלי שליחה למייל */}
+        {/* כמו בכל קובץ: הורדה, צפייה באתר, שליחת קישור למייל */}
         <div className="flex flex-wrap items-center gap-3">
           {isFolder ? (
             <a href={driveLinkUrl(video.driveId, video.linkKind)} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-gate py-2">
               <ExternalLink className="h-4 w-4" aria-hidden /> פתיחת התיקייה
             </a>
           ) : (
-            <a href={`/api/sichot/video/${video.id}`} className="mtc-download sicha-video-download" data-tip="להורדת הסרטון למחשב" aria-label={`הורדת ${video.title}`}>
-              <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
-              <span>להורדה למחשב</span>
-            </a>
+            <>
+              <a href={`/api/sichot/video/${video.id}`} className="mtc-download sicha-video-download" data-tip="להורדת הסרטון למחשב" aria-label={`הורדת ${video.title}`}>
+                <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+                <span>להורדה</span>
+              </a>
+
+              <VideoViewerButton
+                src={`/api/sichot/video/${video.id}?inline=1`}
+                title={video.title}
+                className="mtc-download sicha-video-download"
+                tip="לצפייה בסרטון כאן באתר"
+                label={`צפייה ב${video.title} באתר`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+                <span>לצפייה</span>
+              </VideoViewerButton>
+
+              <span className="mtc-mail-wrap">
+                <EmailMaterialButton
+                  url={`/api/sichot/video/${video.id}`}
+                  className="mtc-download sicha-video-download"
+                  tip="קישור לסרטון ישלח אליך למייל."
+                  ariaLabel={`שליחת קישור ל${video.title} למייל`}
+                  sentText="הקישור נשלח אל"
+                >
+                  <MailNut />
+                  <span>לשליחה למייל</span>
+                </EmailMaterialButton>
+              </span>
+            </>
           )}
           {video.canDelete && <DeleteMyVideoButton id={video.id} path={path} />}
         </div>

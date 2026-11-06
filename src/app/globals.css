@@ -1248,6 +1248,15 @@ body {
   font-size: 1.1rem;
   color: #fff;
 }
+/* שורה קטנה מתחת לכותרת (טווח פסוקים של מצגת) */
+.mtc-subtitle {
+  flex-basis: 100%;
+  text-align: center;
+  font-family: var(--font-hand);
+  font-size: 0.85rem;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.85);
+}
 .mtc-body {
   display: flex;
   align-items: center;

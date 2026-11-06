@@ -5,6 +5,7 @@ import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
+import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
 import { FIX_TIPS, FixRequestButton, FixViewer, type CardFix } from "@/components/material-fixes";
 import { PrivateVersionNote } from "@/components/material-private-version";
 import type { CorrectionState } from "@/lib/private-version-logic";
@@ -17,6 +18,8 @@ type Props = {
   type: CardType;
   /** שם הפרק / היחידה (שם התיקייה) – מופיע בכותרת אחרי המקף, בגופן גברת לוין */
   folderTitle: string;
+  /** שורה קטנה מתחת לכותרת – למשל טווח הפסוקים של מצגת ("פסוקים א-טו") כשיש כמה מצגות בפרק */
+  subtitle?: string;
   currentPath: string;
   /** רכישת כל התיקייה (15 ש"ח) – לשם מובילה ההורדה למי שעוד לא רכשה */
   bundleHref: string;
@@ -54,8 +57,8 @@ export function MailNut() {
 }
 
 /** לאן מובילה לחיצה על האגוז האדום – הורדה למי שמורשית, אחרת הצעד החסר (התחברות / רכישת התיקייה) */
-function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bundleHref: string): string | null {
-  if (ent.ok) return m.allowDownload || ent.via === "admin" ? `/api/download/${m.id}` : null;
+function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bundleHref: string, isVideo: boolean): string | null {
+  if (ent.ok) return m.allowDownload || ent.via === "admin" ? (isVideo ? `/api/material-video/${m.id}` : `/api/download/${m.id}`) : null;
   switch (ent.reason) {
     case "login":
       return `/login?next=${encodeURIComponent(currentPath)}`;
@@ -68,12 +71,42 @@ function downloadTarget(m: Material, ent: Entitlement, currentPath: string, bund
   }
 }
 
+/** כפתור הצפייה באתר: נגן וידאו לסרטון (מוזרם מ-/api/material-video), אחרת חלון ה-PDF */
+function CardViewer({
+  isVideo,
+  materialId,
+  title,
+  className,
+  tip,
+  label,
+  children,
+}: {
+  isVideo: boolean;
+  materialId: number;
+  title: string;
+  className?: string;
+  tip?: string;
+  label?: string;
+  children: React.ReactNode;
+}) {
+  return isVideo ? (
+    <VideoViewerButton src={`/api/material-video/${materialId}?inline=1`} title={title} className={className} tip="לצפייה בסרטון כאן באתר" label={label}>
+      {children}
+    </VideoViewerButton>
+  ) : (
+    <FileViewerButton src={`/api/preview/${materialId}`} title={title} className={className} tip={tip} label={label}>
+      {children}
+    </FileViewerButton>
+  );
+}
+
 /** הכרטיסייה מבפנים: כותרת כהה עם דמות ושם הסוג (בכתב מהעיצוב) + שם הפרק, וגוף צבעוני עם הורדה באגוז */
 export function MaterialTypeCard({
   material: m,
   entitlement,
   type,
   folderTitle,
+  subtitle,
   currentPath,
   bundleHref,
   myDownloadCount = 0,
@@ -86,10 +119,13 @@ export function MaterialTypeCard({
   freeTrial = "off",
 }: Props) {
   const s = CARD_STYLES[type];
-  const target = downloadTarget(m, entitlement, currentPath, bundleHref);
+  // סרטון: מוזרם ישר מדרייב (צפייה / הורדה / קישור למייל) דרך /api/material-video – בלי המרה וסימן מים
+  const isVideo = type === "video";
+  const target = downloadTarget(m, entitlement, currentPath, bundleHref, isVideo);
   const viewOnly = entitlement.ok && !m.allowDownload && entitlement.via !== "admin";
   const size = LABEL_SIZES[type];
-  const heading = cardHeading(type, m.title, folderTitle);
+  const base = cardHeading(type, m.title, folderTitle);
+  const heading = subtitle ? { ...base, full: `${base.full} (${subtitle})` } : base;
   // אגוזי התיקונים רק למי שמורשית להוריד, ורק בקובץ Word (שם התיקונים מוחלים)
   const canFix = entitlement.ok && !viewOnly && !!target && /\.docx$/i.test(m.fileName) && fixes.length > 0;
   // בלי גישה לקובץ: "שינויים בקובץ" מוביל לאותו צעד חסר כמו ההורדה (התחברות / רכישה)
@@ -100,6 +136,7 @@ export function MaterialTypeCard({
   const guestFree = !entitlement.ok && entitlement.reason === "login" && m.access === "free";
   // מחוברת שעוד לא רכשה את הקובץ ועדיין יש לה הורדה חינמית אחת (או שחסר לה רק אימות מייל)
   const trialOffer =
+    !isVideo &&
     !entitlement.ok &&
     entitlement.reason === "purchase" &&
     m.allowDownload &&
@@ -154,6 +191,11 @@ export function MaterialTypeCard({
               )}
             </>
           )}
+          {subtitle && (
+            <span className="mtc-subtitle" aria-hidden>
+              {subtitle}
+            </span>
+          )}
         </h3>
       </header>
 
@@ -168,10 +210,10 @@ export function MaterialTypeCard({
         </div>
 
         {viewOnly ? (
-          <FileViewerButton src={`/api/preview/${m.id}`} title={heading.full} className="mtc-download">
+          <CardViewer isVideo={isVideo} materialId={m.id} title={heading.full} className="mtc-download">
             <Eye className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
-          </FileViewerButton>
+          </CardViewer>
         ) : trialOffer ? (
           <FreeTrialDownload
             materialId={m.id}
@@ -207,8 +249,9 @@ export function MaterialTypeCard({
 
         {/* מי שלא שילמה: האגוז מוביל לאותו צעד חסר כמו ההורדה (התחברות / רכישה); הצפייה עצמה נאכפת בשרת */}
         {canView ? (
-          <FileViewerButton
-            src={`/api/preview/${m.id}`}
+          <CardViewer
+            isVideo={isVideo}
+            materialId={m.id}
             title={heading.full}
             className="mtc-download"
             tip={isDailySubstitute ? DAILY_SUBSTITUTE_VIEW_TIP : undefined}
@@ -217,7 +260,7 @@ export function MaterialTypeCard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
-          </FileViewerButton>
+          </CardViewer>
         ) : (
           !viewOnly &&
           target && (
@@ -239,8 +282,9 @@ export function MaterialTypeCard({
           <span className="mtc-mail-wrap">
             <EmailMaterialButton
               materialId={m.id}
+              {...(isVideo ? { url: `/api/material-video/${m.id}`, sentText: "הקישור נשלח אל" } : {})}
               className="mtc-download"
-              tip={MAIL_TIP}
+              tip={isVideo ? "קישור לסרטון ישלח אליך למייל." : MAIL_TIP}
               ariaLabel={`שליחת ${s.label} למייל`}
             >
               <MailNut />
@@ -264,6 +308,8 @@ export function MaterialTypeCard({
       </div>
 
       {/* הריבוע התחתון: עריכת שינויים תמיד; ואם כבר נעשו תיקונים – גם צפייה בהם והורדת הקובץ המתוקן */}
+      {/* סרטון ומצגת (קובץ PDF, לא Word) – אין בהם עריכת שינויים */}
+      {!isVideo && type !== "presentation" && (
       <div className="mtc-lower">
         <div className="mtc-tools">
           <FixRequestButton
@@ -288,15 +334,16 @@ export function MaterialTypeCard({
           {entitlement.ok && !viewOnly && <PrivateVersionNote state={correction} downloadHref={target} />}
         </div>
       </div>
+      )}
 
-      {(m.status !== "active" || myDownloadCount > 0 || (m.allowPreview && !entitlement.ok)) && (
+      {(m.status !== "active" || myDownloadCount > 0 || (m.allowPreview && !entitlement.ok && !isVideo)) && (
         <div className="mtc-foot">
           {m.status !== "active" && (
             <span className="inline-flex items-center gap-1 text-red-700">
               <PauseCircle className="h-3.5 w-3.5" aria-hidden /> {m.status === "draft" ? "טיוטה – מוצג רק למנהלת" : "מושהה"}
             </span>
           )}
-          {m.allowPreview && !entitlement.ok && (
+          {m.allowPreview && !entitlement.ok && !isVideo && (
             <FileViewerButton src={`/api/preview/${m.id}`} title={heading.full} className="underline">
               תצוגה מקדימה (עמוד ראשון)
             </FileViewerButton>
