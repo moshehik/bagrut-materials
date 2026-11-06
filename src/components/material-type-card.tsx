@@ -6,7 +6,7 @@ import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
-import { FIX_TIPS, FixRequestButton, FixViewer, type CardFix } from "@/components/material-fixes";
+import { FixRequestButton, type CardFix } from "@/components/material-fixes";
 import { PrivateVersionNote } from "@/components/material-private-version";
 import type { CorrectionState } from "@/lib/private-version-logic";
 import { FreeTrialDownload } from "@/components/free-trial-download";
@@ -309,7 +309,7 @@ export function MaterialTypeCard({
         )}
       </div>
 
-      {/* הריבוע התחתון: עריכת שינויים תמיד; ואם כבר נעשו תיקונים – גם צפייה בהם והורדת הקובץ המתוקן */}
+      {/* הריבוע התחתון: כפתור אחד – עריכת שינויים. בתוכו גם התיקונים שכבר נעשו (בחירה, ביטול של שלה, הורדה עם הנבחרים) */}
       {/* סרטון ומצגת (קובץ PDF, לא Word) – אין בהם עריכת שינויים */}
       {!noFixBox && (
       <div className="mtc-lower">
@@ -319,19 +319,11 @@ export function MaterialTypeCard({
             materialTitle={heading.full}
             lockedHref={lockedHref}
             nutSrc="/images/nuts/one-02.webp"
-            viewSrc={plainViewSrc}
+            viewSrc={canFix ? (fixesViewSrc ?? plainViewSrc) : plainViewSrc}
             demo={fixDemo}
+            fixes={canFix ? fixes : []}
+            downloadHref={canFix ? target : null}
           />
-          {canFix && (
-            <>
-              <FixViewer materialId={m.id} fixes={fixes} downloadHref={target!} nutSrc="/images/nuts/one-06.webp" viewSrc={fixesViewSrc} />
-              <a href={`${target}?fixes=all`} className="mtc-row" data-tip={FIX_TIPS.download}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/mat-cards/nut-download-light.webp" alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
-                <span>להורדת הקובץ המתוקן</span>
-              </a>
-            </>
-          )}
           {/* מצב ההערה הכללית של המורה / הגרסה הפרטית המתוקנת שלה – רק למי שמורשית לקובץ */}
           {entitlement.ok && !viewOnly && <PrivateVersionNote state={correction} downloadHref={target} />}
         </div>

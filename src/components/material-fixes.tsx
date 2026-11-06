@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ChevronDown, Download, MessageSquareWarning, Plus, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Download, MessageSquareWarning, Plus, Sparkles, X } from "lucide-react";
 import {
   cancelOwnFix,
   submitFixRequests,
@@ -22,44 +22,7 @@ export type CardFix = { id?: number; number: number; originalText: string; corre
 /** נוסחי הטולטיפ של שלושת אגוזי התיקונים (כתב גברת לוין, מוצג במעבר עכבר / מיקוד) */
 export const FIX_TIPS = {
   edit: "בעריכת שינויים – תוכלי לתקן טעויות",
-  view: "לצפייה בשינויים – תוכלי לראות תיקונים שכבר נעשו ולסמן אם את מעוניינת בהם.",
-  download: "להורדת הקובץ המתוקן: להורדת הדף עם השינויים.",
 } as const;
-
-/** ההודעה הצפה לפני שמורה מסמנת תיקונים */
-function FixNotice() {
-  return (
-    <div className="fix-notice" role="note">
-      <b>שימי לב!</b>
-      <ol>
-        <li>
-          מערכת לו&quot;ז העניין עוברת על השינויים הנערכים.<br />אם יתברר שאכן חלה טעות היא תתוקן ותשולב בקובץ המקורי
-          תוך מספר ימים.
-        </li>
-        <li>
-          הסימונים שאת מסמנת וכן הצבע המודגש של הטעות ותיקונה מופיעים <strong className="fix-emph">רק בקובץ לצפייה</strong>.<br />כשתורידי אותו תקבלי אותו
-          בנראות רגילה.
-        </li>
-      </ol>
-    </div>
-  );
-}
-
-/** תוכן שלב ההודעה "שימי לב!" – משותף לעריכת שינויים ולצפייה בשינויים (אותו עיצוב בכל מקום) */
-function NoticeGate({ onContinue }: { onContinue: () => void }) {
-  return (
-    <div className="fix-gate">
-      <FixNotice />
-      {/* לוגו האתר (הלבן, על הרקע הכחול) מתחת להודעה ומעל הלחצן */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-gate-logo" />
-      <button type="button" className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={onContinue}>
-        הבנתי, להמשיך
-        <ArrowLeft className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
-      </button>
-    </div>
-  );
-}
 
 /** פותח/סוגר <dialog> מקורי לפי state */
 function useDialog(open: boolean, onClose: () => void, modal = true) {
@@ -228,9 +191,15 @@ export function FixRequestButton({
   nutSrc,
   viewSrc: viewSrcOverride,
   demo = false,
+  fixes = [],
+  downloadHref = null,
 }: {
   materialId: number;
   materialTitle: string;
+  /** תיקונים שכבר נעשו בקובץ (שלה + מה שפורסם) – מוצגים בתוך חלון העריכה: בחירה, ביטול של שלה והורדה עם הנבחרים */
+  fixes?: CardFix[];
+  /** כתובת ההורדה הבסיסית (בלי ?fixes); חסר = אין הורדה מתוקנת */
+  downloadHref?: string | null;
   /** הדגמה לסיור באתר: שום דבר לא נשלח לשרת, והתיקון "חל" רק על המסך */
   demo?: boolean;
   /** אם אין גישה לקובץ – לאן לשלוח במקום לפתוח את החלון (התחברות / רכישה) */
@@ -249,6 +218,48 @@ export function FixRequestButton({
   const [viewVersion, setViewVersion] = useState(0);
   /** הנוסח החדש שעוד לא נשלח (ידני או מג'מיני), בקידוד לתצוגה המקדימה – הקובץ שבצד נטען איתו מחדש כמו ב"לצפייה בשינויים" */
   const [liveDraft, setLiveDraft] = useState<string | null>(null);
+  // תיקונים שכבר נעשו: מה נבחר להורדה (שלה – מסומנים מראש), וביטול של תיקון שהיא ביקשה
+  const [picked, setPicked] = useState<Set<number>>(() => new Set(fixes.filter((f) => f.own).map((f) => f.number)));
+  const knownFixes = useRef<Set<number>>(new Set(fixes.map((f) => f.number)));
+  useEffect(() => {
+    // תיקון חדש שלה (נשלח עכשיו) נבחר אוטומטית
+    const fresh = fixes.filter((f) => f.own && !knownFixes.current.has(f.number));
+    fixes.forEach((f) => knownFixes.current.add(f.number));
+    if (fresh.length) setPicked((prev) => new Set([...prev, ...fresh.map((f) => f.number)]));
+  }, [fixes]);
+  const [cancelling, startCancel] = useTransition();
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  /** התיקון שמחכה לאישור הביטול בחלונית (במקום חלונית הדפדפן) */
+  const [confirmCancel, setConfirmCancel] = useState<CardFix | null>(null);
+  const confirmRef = useDialog(confirmCancel !== null, () => setConfirmCancel(null), true);
+  const cancelMine = (f: CardFix) => {
+    if (!f.id) return;
+    setConfirmCancel(null);
+    setCancelError(null);
+    startCancel(async () => {
+      const res = await cancelOwnFix(f.id!);
+      if (res?.error) setCancelError(res.error);
+      else {
+        setPicked((prev) => {
+          const next = new Set(prev);
+          next.delete(f.number);
+          return next;
+        });
+        setViewVersion((v) => v + 1); // הקובץ שבצד נטען מחדש בלי התיקון שבוטל
+        router.refresh();
+      }
+    });
+  };
+  const togglePicked = (n: number) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  const allPicked = fixes.length > 0 && picked.size === fixes.length;
+  const downloadFixesHref =
+    downloadHref && picked.size ? `${downloadHref}?fixes=${[...picked].sort((a, b) => a - b).join(",")}` : null;
   const router = useRouter();
   // תלונה כללית על הקובץ (בלי טקסט מסומן)
   const [generalOpen, setGeneralOpen] = useState(false);
@@ -397,7 +408,7 @@ export function FixRequestButton({
     viewSrcOverride ??
     (liveDraft
       ? `/api/preview/${materialId}?fixes=all&draft=${liveDraft}&v=${viewVersion}`
-      : viewVersion > 0
+      : viewVersion > 0 || fixes.length > 0
         ? `/api/preview/${materialId}?fixes=all&v=${viewVersion}`
         : `/api/preview/${materialId}`);
 
@@ -588,6 +599,58 @@ export function FixRequestButton({
                   )}
                 </div>
               )}
+              {fixes.length > 0 && (
+                <section className="fix-existing" aria-label="שינויים שכבר נעשו בקובץ">
+                  <h4 className="fix-existing-title">שינויים שכבר נעשו בקובץ</h4>
+                  <p className="fix-dialog-sub">סמני וי ליד כל שינוי שאת רוצה בהורדה. מה שלא סימנת יישאר כמו במקור.</p>
+                  <ul className="fix-list">
+                    {fixes.map((f) => (
+                      <li key={f.number}>
+                        <label className="fix-row">
+                          <input type="checkbox" checked={picked.has(f.number)} onChange={() => togglePicked(f.number)} />
+                          <span className="fix-check" aria-hidden />
+                          <span className="fix-num">{f.number}</span>
+                          <span className="fix-texts">
+                            <span className="fix-pink">{f.originalText}</span>
+                            <span className="fix-arrow" aria-hidden>←</span>
+                            <span className="fix-blue">{f.correctedText}</span>
+                          </span>
+                        </label>
+                        {f.own && f.id ? (
+                          <button type="button" className="btn btn-ghost text-sm py-1" disabled={cancelling} onClick={() => setConfirmCancel(f)}>
+                            ביטול התיקון שלי
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {cancelError ? <p className="fix-dialog-sub" role="alert">{cancelError}</p> : null}
+                  <div className="fix-actions">
+                    {fixes.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost text-sm py-2"
+                        onClick={() => setPicked(allPicked ? new Set() : new Set(fixes.map((f) => f.number)))}
+                      >
+                        {allPicked ? "ניקוי הסימונים" : "סימון הכול"}
+                      </button>
+                    )}
+                    {downloadHref ? (
+                      downloadFixesHref ? (
+                        <a href={downloadFixesHref} className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={close}>
+                          הורדה עם {picked.size} {picked.size === 1 ? "שינוי" : "שינויים"}
+                          <Download className="h-4 w-4 fix-gate-arrow fix-gate-down" strokeWidth={1.75} aria-hidden />
+                        </a>
+                      ) : (
+                        <span className="btn btn-gold text-sm py-2 fix-gate-btn fix-disabled" aria-disabled>
+                          סמני לפחות שינוי אחד
+                          <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                        </span>
+                      )
+                    ) : null}
+                  </div>
+                </section>
+              )}
               </div>
             </div>
             <div className="fix-frame-wrap">
@@ -615,192 +678,6 @@ export function FixRequestButton({
         </button>
       )}
       {demo ? (mounted ? createPortal(dialogEl, document.body) : null) : dialogEl}
-      {/* אישור שליחת ההערה הכללית – אותה חלונית צפה כמו שאר החלוניות באתר */}
-      <dialog
-        ref={generalDoneRef}
-        className="fix-dialog fix-dialog-dark"
-        aria-label="ההערה נשלחה"
-        onClick={(e) => {
-          if (e.target === generalDoneRef.current) setGeneralDone(false);
-        }}
-      >
-        <div className="fix-dialog-box">
-          <div className="fix-dialog-head">
-            <h3>ההערה נשלחה</h3>
-            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setGeneralDone(false)}>
-              <X className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
-          <div className="fix-inner fix-done">
-            <p className="fix-dialog-sub">תודה! נבדוק אותה, ואם צריך – תקבלי כאן קובץ מתוקן.</p>
-          </div>
-        </div>
-      </dialog>
-    </>
-  );
-}
-
-/**
- * "לצפייה בשינויים שכבר נעשו": קודם ההודעה הצפה "שימי לב!", ואז הקובץ באתר עם הסימונים
- * (מה שהתבקש לתקן בורוד, התיקון בתכלת) לצד רשימת השינויים עם וי ליד כל אחד.
- * הקובץ שיורד מכיל רק את השינויים שסומנו, בנראות רגילה; שינוי בלי וי נשאר כמו במקור.
- */
-export function FixViewer({
-  materialId,
-  fixes,
-  downloadHref,
-  nutSrc,
-  viewSrc: viewSrcOverride,
-}: {
-  materialId: number;
-  fixes: CardFix[];
-  /** כתובת ההורדה הבסיסית (בלי ?fixes) */
-  downloadHref: string;
-  nutSrc: string;
-  /** רק לדוגמאות פיתוח: קובץ PDF קבוע להצגה במקום הצפייה האמיתית */
-  viewSrc?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  // בצפייה בשינויים אין הודעת "לפני שממשיכות": ישר ברשימת השינויים והקובץ
-  const acknowledged = true;
-  // התיקונים של המורה עצמה מסומנים מראש (חלים אצלה מיד); של אחרות – היא בוחרת
-  const [picked, setPicked] = useState<Set<number>>(() => new Set(fixes.filter((f) => f.own).map((f) => f.number)));
-  const close = () => {
-    setOpen(false);
-  };
-  const ref = useDialog(open, close);
-  const router = useRouter();
-  const [cancelling, startCancel] = useTransition();
-  const [cancelError, setCancelError] = useState<string | null>(null);
-  /** התיקון שמחכה לאישור הביטול בחלונית (במקום חלונית הדפדפן) */
-  const [confirmCancel, setConfirmCancel] = useState<CardFix | null>(null);
-  const confirmRef = useDialog(confirmCancel !== null, () => setConfirmCancel(null), true);
-  /** ביטול תיקון שהמורה עצמה ביקשה (מוסתר מהצפייה וההורדה שלה) – אחרי אישור בחלונית */
-  const cancelMine = (f: CardFix) => {
-    if (!f.id) return;
-    setConfirmCancel(null);
-    setCancelError(null);
-    startCancel(async () => {
-      const res = await cancelOwnFix(f.id!);
-      if (res?.error) setCancelError(res.error);
-      else {
-        setPicked((prev) => {
-          const next = new Set(prev);
-          next.delete(f.number);
-          return next;
-        });
-        router.refresh();
-      }
-    });
-  };
-
-  const toggle = (n: number) =>
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(n)) next.delete(n);
-      else next.add(n);
-      return next;
-    });
-  const allPicked = picked.size === fixes.length;
-  const href = picked.size ? `${downloadHref}?fixes=${[...picked].sort((a, b) => a - b).join(",")}` : null;
-  const viewSrc = viewSrcOverride ?? `/api/preview/${materialId}?fixes=all`;
-
-  return (
-    <>
-      <button type="button" className="mtc-row" data-tip={FIX_TIPS.view} onClick={() => setOpen(true)}>
-        <Nut src={nutSrc} />
-        <span>לצפייה בשינויים שכבר נעשו</span>
-      </button>
-      <dialog
-        ref={ref}
-        className={`fix-dialog fix-dialog-dark ${acknowledged ? "fix-dialog-wide" : ""}`}
-        onClick={(e) => {
-          if (e.target === ref.current) close();
-        }}
-      >
-        <div className="fix-dialog-box">
-          <div className={`fix-dialog-head ${acknowledged ? "fix-dialog-head-centered" : ""}`}>
-            {acknowledged && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
-            )}
-            <div className="fix-head-title">
-              <h3>{acknowledged ? "השינויים שכבר נעשו בקובץ" : "לפני שממשיכות!"}</h3>
-            </div>
-            <button type="button" className="fix-close" aria-label="סגירה" onClick={close}>
-              <X className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
-
-          {(
-
-            <div className="fix-inner fix-viewer">
-              <div className="fix-pane">
-                <p className="fix-dialog-sub">
-                  סמני וי ליד כל שינוי שאת רוצה. במקום שלא סימנת יישאר הטקסט המקורי.
-                </p>
-                <ul className="fix-list">
-                  {fixes.map((f) => (
-                    <li key={f.number}>
-                      <label className="fix-row">
-                        <input type="checkbox" checked={picked.has(f.number)} onChange={() => toggle(f.number)} />
-                        <span className="fix-check" aria-hidden />
-                        <span className="fix-num">{f.number}</span>
-                        <span className="fix-texts">
-                          <span className="fix-pink">{f.originalText}</span>
-                          <span className="fix-arrow" aria-hidden>←</span>
-                          <span className="fix-blue">{f.correctedText}</span>
-                        </span>
-                      </label>
-                      {f.own && f.id ? (
-                        <button
-                          type="button"
-                          className="btn btn-ghost text-sm py-1"
-                          disabled={cancelling}
-                          onClick={() => setConfirmCancel(f)}
-                        >
-                          ביטול התיקון שלי
-                        </button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-                {cancelError ? <p className="fix-dialog-sub" role="alert">{cancelError}</p> : null}
-                <div className="fix-actions">
-                  {/* "סימון הכול / ניקוי הסימונים" רק כשיש יותר משינוי אחד */}
-                  {fixes.length > 1 && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost text-sm py-2"
-                      onClick={() => setPicked(allPicked ? new Set() : new Set(fixes.map((f) => f.number)))}
-                    >
-                      {allPicked ? "ניקוי הסימונים" : "סימון הכול"}
-                    </button>
-                  )}
-                  {href ? (
-                    <a href={href} className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={close}>
-                      הורדה עם {picked.size} {picked.size === 1 ? "שינוי" : "שינויים"}
-                      <Download className="h-4 w-4 fix-gate-arrow fix-gate-down" strokeWidth={1.75} aria-hidden />
-                    </a>
-                  ) : (
-                    <span className="btn btn-gold text-sm py-2 fix-gate-btn fix-disabled" aria-disabled>
-                      סמני לפחות שינוי אחד
-                      <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="fix-frame-wrap">
-                <p className="fix-legend">
-                  <span className="fix-pink">מה שהתבקש לתקן</span>
-                  <span className="fix-blue">התיקון</span>
-                </p>
-                <PdfViewer src={viewSrc} className="fix-frame" />
-              </div>
-            </div>
-          )}
-        </div>
-      </dialog>
       {/* אישור ביטול תיקון – חלונית צפה בעיצוב חלוניות האתר */}
       <dialog
         ref={confirmRef}
@@ -820,17 +697,34 @@ export function FixViewer({
           <div className="fix-inner fix-done">
             <p className="fix-dialog-sub">הוא יוסר מהצפייה ומההורדה שלך.</p>
             <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="btn btn-gold text-sm py-2 fix-gate-btn"
-                onClick={() => confirmCancel && cancelMine(confirmCancel)}
-              >
+              <button type="button" className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={() => confirmCancel && cancelMine(confirmCancel)}>
                 כן, לבטל
               </button>
               <button type="button" className="btn btn-ghost text-sm py-2" onClick={() => setConfirmCancel(null)}>
                 לא, להשאיר
               </button>
             </div>
+          </div>
+        </div>
+      </dialog>
+      {/* אישור שליחת ההערה הכללית – אותה חלונית צפה כמו שאר החלוניות באתר */}
+      <dialog
+        ref={generalDoneRef}
+        className="fix-dialog fix-dialog-dark"
+        aria-label="ההערה נשלחה"
+        onClick={(e) => {
+          if (e.target === generalDoneRef.current) setGeneralDone(false);
+        }}
+      >
+        <div className="fix-dialog-box">
+          <div className="fix-dialog-head">
+            <h3>ההערה נשלחה</h3>
+            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setGeneralDone(false)}>
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          <div className="fix-inner fix-done">
+            <p className="fix-dialog-sub">תודה! נבדוק אותה, ואם צריך – תקבלי כאן קובץ מתוקן.</p>
           </div>
         </div>
       </dialog>

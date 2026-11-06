@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/** עמוד ההדגמה של הסיור: אחרי שהתיקון ״נשלח״ בחלון, מוחלפת הכרטיסייה באחת שכבר יש בה אגוזי ״צפייה בשינויים״ ו״הורדת הקובץ המתוקן״ */
+/** עמוד ההדגמה של הסיור: אחרי שהתיקון ״נשלח״ בחלון, מוחלפת הכרטיסייה באחת שכבר יש בה תיקונים שנעשו (הם מופיעים בתוך חלון העריכה) */
 export function TourFixSwap({ before, after }: { before: React.ReactNode; after: React.ReactNode }) {
   const [applied, setApplied] = useState(false);
   useEffect(() => {

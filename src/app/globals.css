@@ -1840,6 +1840,17 @@ svg.mtc-rownut {
   border-color: #5aa8c8;
   background: #f1fafd;
 }
+/* התיקונים שכבר נעשו, בתוך חלון העריכה: מופרדים מהתיקונים החדשים */
+.fix-existing {
+  margin-top: 1.4rem;
+  padding-top: 1rem;
+  border-top: 1.5px dashed rgba(0, 0, 0, 0.35);
+}
+.fix-existing-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
 /* "ביטול התיקון שלי": צמוד מיד מתחת לשורת התיקון שלה, כחלק ממנה */
 .fix-list > li {
   display: flex;
