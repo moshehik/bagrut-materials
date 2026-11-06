@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatHebrewDate } from "@/lib/hebrew-date";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { Store, Coins, SearchCheck, Handshake, Link2, Clock, Crown } from "lucide-react";
@@ -131,7 +132,7 @@ export default async function SellPage() {
                           {o.subject}
                           {o.askingPrice !== null && <> · {formatPrice(o.askingPrice)}</>}
                           {" · "}
-                          {o.createdAt.toLocaleDateString("he-IL")}
+                          {formatHebrewDate(o.createdAt)}
                         </p>
                       </div>
                       <span className={`chip shrink-0 ${st.cls}`}>{st.label}</span>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatHebrewDate } from "@/lib/hebrew-date";
 import Link from "next/link";
 import { ArrowLeft, Gift, Ticket } from "lucide-react";
 import {
@@ -68,7 +69,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
                 <h2 className="mt-2 text-2xl">{c.label}</h2>
                 <p className="gate-soft text-base">
                   {benefitText(c, parseSubjectIds(c).map((id) => titleOf.get(id) ?? ""))}
-                  {c.expiresAt && <> · בתוקף עד {c.expiresAt.toLocaleDateString("he-IL")}</>}
+                  {c.expiresAt && <> · בתוקף עד {formatHebrewDate(c.expiresAt)}</>}
                 </p>
               </div>
               <div className="coupon-stub">

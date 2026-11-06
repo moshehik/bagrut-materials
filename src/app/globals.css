@@ -1840,6 +1840,21 @@ svg.mtc-rownut {
   border-color: #5aa8c8;
   background: #f1fafd;
 }
+/* "ביטול התיקון שלי": צמוד מיד מתחת לשורת התיקון שלה, כחלק ממנה */
+.fix-list > li {
+  display: flex;
+  flex-direction: column;
+}
+.fix-list > li > .btn {
+  width: 100%;
+  margin-top: -1px;
+  padding-block: 0.25rem;
+  border-radius: 0 0 0.7rem 0.7rem;
+}
+.fix-list > li:has(> .btn) > .fix-row {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
 .fix-row input {
   /* תיבת הסימון המקורית מוסתרת (נשארת נגישה למקלדת וקורא מסך) – במקומה הלחצן העגול .fix-check */
   position: absolute;

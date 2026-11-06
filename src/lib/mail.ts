@@ -1,4 +1,5 @@
 import "server-only";
+import { formatHebrewDate } from "./hebrew-date";
 import { db } from "@/db";
 import { emailLogs } from "@/db/schema";
 import { SITE_MOTTO, SITE_NAME } from "./constants";
@@ -212,14 +213,14 @@ export const templates = {
   },
   purchase(name: string, description: string, amountText: string, endsAt?: Date | null) {
     const url = siteUrl();
-    const until = endsAt ? `\nבתוקף עד: ${endsAt.toLocaleDateString("he-IL")}` : "";
+    const until = endsAt ? `\nבתוקף עד: ${formatHebrewDate(endsAt)}` : "";
     return {
       subject: `אישור רכישה – ${SITE_NAME}`,
       text: `שלום ${name},\n\nהרכישה נקלטה בהצלחה:\n${description}\nסכום: ${amountText}${until}\n\nלהורדות: ${url}/account`,
       html: layoutHtml(
         "הרכישה נקלטה בהצלחה",
         `<p>שלום ${esc(name)},</p><p><b>${esc(description)}</b><br>סכום: ${esc(amountText)}${
-          endsAt ? `<br>בתוקף עד: ${endsAt.toLocaleDateString("he-IL")}` : ""
+          endsAt ? `<br>בתוקף עד: ${formatHebrewDate(endsAt)}` : ""
         }</p>`,
         { label: "לאזור האישי ולהורדות", href: `${url}/account` },
       ),

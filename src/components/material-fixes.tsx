@@ -252,12 +252,19 @@ export function FixRequestButton({
   const [generalText, setGeneralText] = useState("");
   const [generalResult, setGeneralResult] = useState<FixState>(undefined);
   const [generalPending, startGeneral] = useTransition();
+  /** אישור שליחת ההערה הכללית: חלונית צפה בעיצוב חלוניות האתר, ולא טקסט שנכנס בתוך החלון הגדול */
+  const [generalDone, setGeneralDone] = useState(false);
+  const generalDoneRef = useDialog(generalDone, () => setGeneralDone(false), true);
   const sendGeneral = () => {
     setGeneralResult(undefined);
     startGeneral(async () => {
       const res = await submitGeneralComplaint({ materialId, text: generalText });
       setGeneralResult(res);
-      if (res?.ok) setGeneralText("");
+      if (res?.ok) {
+        setGeneralText("");
+        setGeneralOpen(false);
+        setGeneralDone(true);
+      }
     });
   };
   const close = () => {
@@ -537,13 +544,7 @@ export function FixRequestButton({
                     <MessageSquareWarning className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                     יש הערה כללית על הקובץ, בלי לסמן קטע?
                   </button>
-                  {generalOpen &&
-                    (generalResult?.ok ? (
-                      <p className="fix-dialog-sub">
-                        ההערה נשלחה, תודה! המערכת תבדוק אותה מול הקובץ עצמו. אם יתברר שצריך תיקון – תקבלי כאן בכרטיסייה
-                        גרסה מתוקנת של הקובץ (ואם זו טעות שנוגעת לכולן – הקובץ יתוקן לכל המורות). מה שהוחלט יופיע בכרטיסייה.
-                      </p>
-                    ) : (
+                  {generalOpen && (
                       <div className="fix-general-box">
                         <p className="fix-dialog-sub">
                           למשל: הדף ארוך מדי, חסרה שאלה על…, שאלה 3 לא ברורה. המערכת תבדוק את ההערה מול הקובץ, ואם צריך – תתקן
@@ -566,7 +567,7 @@ export function FixRequestButton({
                           {generalPending ? "שולחת…" : "שליחת ההערה"}
                         </button>
                       </div>
-                    ))}
+                  )}
                 </div>
               )}
               </div>
@@ -596,6 +597,27 @@ export function FixRequestButton({
         </button>
       )}
       {demo ? (mounted ? createPortal(dialogEl, document.body) : null) : dialogEl}
+      {/* אישור שליחת ההערה הכללית – אותה חלונית צפה כמו שאר החלוניות באתר */}
+      <dialog
+        ref={generalDoneRef}
+        className="fix-dialog fix-dialog-dark"
+        aria-label="ההערה נשלחה"
+        onClick={(e) => {
+          if (e.target === generalDoneRef.current) setGeneralDone(false);
+        }}
+      >
+        <div className="fix-dialog-box">
+          <div className="fix-dialog-head">
+            <h3>ההערה נשלחה</h3>
+            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setGeneralDone(false)}>
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          <div className="fix-inner fix-done">
+            <p className="fix-dialog-sub">תודה! נבדוק אותה, ואם צריך – תקבלי כאן קובץ מתוקן.</p>
+          </div>
+        </div>
+      </dialog>
     </>
   );
 }
@@ -621,12 +643,12 @@ export function FixViewer({
   viewSrc?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [acknowledged, setAcknowledged] = useState(false);
+  // בצפייה בשינויים אין הודעת "לפני שממשיכות": ישר ברשימת השינויים והקובץ
+  const acknowledged = true;
   // התיקונים של המורה עצמה מסומנים מראש (חלים אצלה מיד); של אחרות – היא בוחרת
   const [picked, setPicked] = useState<Set<number>>(() => new Set(fixes.filter((f) => f.own).map((f) => f.number)));
   const close = () => {
     setOpen(false);
-    setAcknowledged(false);
   };
   const ref = useDialog(open, close);
   const router = useRouter();
@@ -689,9 +711,8 @@ export function FixViewer({
             </button>
           </div>
 
-          {!acknowledged ? (
-            <NoticeGate onContinue={() => setAcknowledged(true)} />
-          ) : (
+          {(
+
             <div className="fix-inner fix-viewer">
               <div className="fix-pane">
                 <p className="fix-dialog-sub">

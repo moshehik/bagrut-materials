@@ -1,4 +1,5 @@
 import { CheckCircle2, Hourglass, MessageSquareText } from "lucide-react";
+import { formatHebrewDate } from "@/lib/hebrew-date";
 import { generalStatusLabel, latestGeneral, type CorrectionState } from "@/lib/private-version-logic";
 
 /**
@@ -16,7 +17,7 @@ export function PrivateVersionNote({ state, downloadHref }: { state: CorrectionS
   if (!label) return null;
   const Icon = label.tone === "wait" ? Hourglass : label.tone === "done" ? CheckCircle2 : MessageSquareText;
   const reply = pv?.note ?? (latest?.status !== "pending" ? latest?.replyText : null);
-  const date = (pv?.createdAt ?? latest?.createdAt)?.toLocaleDateString("he-IL");
+  const date = (pv?.createdAt ?? latest?.createdAt) ? formatHebrewDate(pv?.createdAt ?? latest?.createdAt) : null;
   return (
     <div className={`mtc-note mtc-note-${label.tone}`} role="status">
       <p className="mtc-note-head">
