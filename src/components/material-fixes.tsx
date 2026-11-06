@@ -488,7 +488,7 @@ export function FixRequestButton({
       type="button"
       role="radio"
       aria-checked={mode === m}
-      className={`fix-mode-opt ${mode === m ? "fix-mode-on" : ""}`}
+      className={`fix-what-opt ${mode === m ? "fix-what-on" : ""}`}
       data-tip={tip}
       onClick={() => setMode(m)}
     >
@@ -537,9 +537,9 @@ export function FixRequestButton({
           <div className="fix-pane">
             <div className="fix-pane-scroll">
               {!demo && (
-                <div className="fix-mode" role="radiogroup" aria-label="מה תרצי לתקן?">
-                  <span className="fix-mode-q">מה תרצי לתקן?</span>
-                  <div className="fix-mode-opts">
+                <div className="fix-what" role="radiogroup" aria-label="מה תרצי לתקן?">
+                  <span className="fix-what-q">מה תרצי לתקן?</span>
+                  <div className="fix-what-opts">
                     {modeOption("mark", "סימון בדף", "תיקון מיידי")}
                     {modeOption("general", "הערה כללית", "כמה דקות לתיקון")}
                     {modeOption("commentators", "מפרשים נוספים", "כמה דקות לתיקון, נשמר רק אצלך")}

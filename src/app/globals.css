@@ -1887,21 +1887,21 @@ svg.mtc-rownut {
   cursor: not-allowed;
 }
 /* "מה תרצי לתקן?": שלוש אפשרויות בראש החלון */
-.fix-mode {
+.fix-what {
   margin-bottom: 1rem;
 }
-.fix-mode-q {
+.fix-what-q {
   display: block;
   margin-bottom: 0.45rem;
   font-family: var(--font-hand);
   font-size: 1.25rem;
 }
-.fix-mode-opts {
+.fix-what-opts {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
-.fix-mode-opt {
+.fix-what-opt {
   padding: 0.3rem 0.95rem;
   border: 2px solid #0a0a0a;
   border-radius: 999px;
@@ -1910,14 +1910,14 @@ svg.mtc-rownut {
   font-size: 1.1rem;
   cursor: pointer;
 }
-.fix-mode-opt:hover {
+.fix-what-opt:hover {
   background: #f1fafd;
 }
-.fix-mode-on {
+.fix-what-on {
   background: #16244e;
   color: #fff;
 }
-.fix-mode-on:hover {
+.fix-what-on:hover {
   background: #1f3270;
 }
 /* כותרת החלון: הורדה (עם מספר התיקונים שסומנו) ליד ה-X, בצד שמאל */
