@@ -134,6 +134,16 @@ export async function findOpenWithCoupon(userId: number, couponId: number): Prom
   return row ?? null;
 }
 
+/** בקשה פתוחה (pending/processing) של המשתמשת לפי מזהה – לקמפיין: הבקשה הקשורה למקום */
+export async function getOpenPaymentById(id: number, userId: number): Promise<NedarimPayment | null> {
+  const [row] = await db
+    .select()
+    .from(nedarimPayments)
+    .where(and(eq(nedarimPayments.id, id), eq(nedarimPayments.userId, userId), inArray(nedarimPayments.status, [...OPEN_STATUSES])))
+    .limit(1);
+  return row ?? null;
+}
+
 /**
  * הסכומים (באגורות) של הבקשות האחרות של המשתמשת ב-24 השעות האחרונות שעשויות להיות מחויבות (ממתינה / ממתינה לאישור / שולמה) –
  * בלי הבקשה של אותה הזמנה עצמה (ניסיון חוזר על אותו פריט לא נחשב רכישה נוספת). משמש ל-pickDistinctAmount: נדרים לא מאפשרים שני
@@ -175,6 +185,8 @@ export async function createIntent(input: {
   /** תנאי התשלום שננעלו בקישור לנדרים (ברירת מחדל: תשלום אחד בסכום המלא) */
   terms?: ChargeTerms;
   coupon: { id: number; percent: number } | null;
+  /** הנחת קמפיין (אחוז) – נשמרת ב-coupon_percent בלי coupon_id (אין קופון פרטי שצריך לתפוס בהשלמה) */
+  campaignPercent?: number | null;
   firstName: string;
   lastName: string;
   phone: string;
@@ -205,7 +217,7 @@ export async function createIntent(input: {
           installments: input.terms?.installments ?? 1,
           chargeAmount: input.terms?.chargeAmount ?? input.amount,
           couponId: input.coupon?.id ?? null,
-          couponPercent: input.coupon?.percent ?? null,
+          couponPercent: input.coupon?.percent ?? input.campaignPercent ?? null,
           firstName: input.firstName.slice(0, 60),
           lastName: input.lastName.slice(0, 60),
           phone: input.phone.slice(0, 20),

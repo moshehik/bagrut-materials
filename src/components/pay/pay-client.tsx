@@ -84,6 +84,8 @@ export function PayClient(props: {
   needsLocation: boolean;
   user: { firstName: string; fullName: string; email: string; phone: string | null; personalCode: string };
   coupon: { label: string; percent: number } | null;
+  /** מבצע מוגבל במקומות (/offer/<slug>): ההנחה (coupon) היא של המבצע, והשרת מאמת שיש מקום שמור – הסכום נקבע שם */
+  campaignSlug?: string | null;
   initialRef: string | null;
   /** חזרה מדף התשלום של נדרים (?from=nedarim): מריצים מיד בדיקה מול ה-API, ועוד ניסיון או שניים אחרי כמה שניות */
   returned?: boolean;
@@ -259,7 +261,7 @@ export function PayClient(props: {
       // פריט: רק המזהה – המחיר נקבע בשרת; מסלול: מקצועות/דלג
       const body = item
         ? { plan: item.kind, ...(item.kind === "single" ? { materialId: item.id } : { categoryId: item.id }), ...profile }
-        : { plan: plan.key, categoryIds: needsSubjects && !skip ? selected : [], skipSubjects: isYearly && skip, payMode: effectiveMode, ...profile };
+        : { plan: plan.key, categoryIds: needsSubjects && !skip ? selected : [], skipSubjects: isYearly && skip, payMode: effectiveMode, ...(props.campaignSlug ? { campaign: props.campaignSlug } : {}), ...profile };
       const res = await fetch("/api/pay/intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -539,7 +541,7 @@ export function PayClient(props: {
           </div>
           {couponPercent && listAmount ? (
             <div className="w-full text-base">
-              כולל {couponPercent}% הנחה מהקופון שלך (במקום <GateShekel agorot={listAmount} />)
+              כולל {couponPercent}% הנחה {props.campaignSlug ? "מהמבצע" : "מהקופון שלך"} (במקום <GateShekel agorot={listAmount} />)
             </div>
           ) : null}
           {(intent.termsText ?? info?.termsText) && (intent.termsText ?? info?.termsText) !== "תשלום אחד" ? (
@@ -644,7 +646,9 @@ export function PayClient(props: {
       <span className="gold-ring" aria-hidden="true" />
       {coupon && (
         <div className="gate-strip mb-4 text-base">
-          🎟️ יש לך קופון «{coupon.label}» – {coupon.percent}% הנחה יורדים אוטומטית מהסכום.
+          {props.campaignSlug
+            ? `🎟️ המקום שלך במבצע שמור – ${coupon.percent}% הנחה יורדים אוטומטית מהסכום. כדאי להשלים את התשלום בהקדם, כדי שהמקום לא יתפנה לאחרות.`
+            : `🎟️ יש לך קופון «${coupon.label}» – ${coupon.percent}% הנחה יורדים אוטומטית מהסכום.`}
         </div>
       )}
       {item ? itemCard : planCard}

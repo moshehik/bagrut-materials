@@ -6,6 +6,7 @@ import { getRootSubjects } from "@/lib/data";
 import { getPlanPrices } from "@/lib/pricing";
 import { getBestPercentCoupon } from "@/lib/private-coupons";
 import { hasActiveSamePlan } from "@/lib/purchase-helpers";
+import { campaignIsOpen, getCampaign, getUserSeat } from "@/lib/campaign";
 import { PLANS, SUBJECT_ICONS, SUBSTITUTE_MONTHS, subjectDisplayTitle } from "@/lib/constants";
 import { getBool } from "@/lib/settings";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
@@ -24,7 +25,7 @@ import { PayClient, type PayItemOption, type PayPlanOption } from "@/components/
 export const metadata: Metadata = { title: "תשלום מאובטח" };
 export const dynamic = "force-dynamic";
 
-type SP = { plan?: string; categories?: string; category?: string; ref?: string; material?: string; bundle?: string; from?: string };
+type SP = { plan?: string; categories?: string; category?: string; ref?: string; material?: string; bundle?: string; from?: string; campaign?: string };
 
 function num(v?: string) {
   const n = Number(v);
@@ -123,14 +124,24 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
     };
   }
 
-  const [prices, roots, coupon, kevaEnabled] = await Promise.all([getPlanPrices(), getRootSubjects(), getBestPercentCoupon(user), getBool("nedarim_keva_enabled").catch(() => false)]);
+  // --- מבצע מוגבל במקומות (/offer/<slug>): דורש מקום שמור למורה; בלי מקום – חזרה לדף המבצע (שם אפשר לתפוס או רואים שנגמר) ---
+  let campaign: { slug: string; percent: number; label: string } | null = null;
+  if (typeof sp.campaign === "string" && !item && !isValidReference(sp.ref)) {
+    const camp = await getCampaign(sp.campaign);
+    if (!camp || !campaignIsOpen(camp) || camp.plan !== "yearly" || sp.plan !== camp.plan) redirect("/pricing");
+    if (!(await getUserSeat(camp.slug, user.id))) redirect(`/offer/${camp.slug}`);
+    campaign = { slug: camp.slug, percent: camp.percent, label: `מבצע ${camp.percent}% – נרשמות ראשונות` };
+  }
+
+  const [prices, roots, personalCoupon, kevaEnabled] = await Promise.all([getPlanPrices(), getRootSubjects(), getBestPercentCoupon(user), getBool("nedarim_keva_enabled").catch(() => false)]);
+  const coupon = campaign ? null : personalCoupon;
   const subjects = roots.map((r) => ({
     id: r.id,
     title: subjectDisplayTitle(r.slug, r.title),
     slug: r.slug,
     icon: r.icon ?? SUBJECT_ICONS[r.slug] ?? "📘",
   }));
-  const plans: PayPlanOption[] = PAYABLE_PLANS.map((key) => ({
+  const plans: PayPlanOption[] = PAYABLE_PLANS.filter((key) => !campaign || key === "yearly").map((key) => ({
     key,
     label: PLANS[key].label,
     description: PLANS[key].description,
@@ -189,7 +200,8 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
           needsPhone={!user.phone}
           needsLocation={!user.city || !user.school}
           user={{ firstName: user.name.split(" ")[0], fullName: user.name, email: user.email, phone: user.phone, personalCode: user.personalCode }}
-          coupon={coupon && coupon.percent ? { label: coupon.label, percent: coupon.percent } : null}
+          coupon={campaign ? { label: campaign.label, percent: campaign.percent } : coupon && coupon.percent ? { label: coupon.label, percent: coupon.percent } : null}
+          campaignSlug={campaign?.slug ?? null}
           initialRef={isValidReference(sp.ref) ? sp.ref : null}
           returned={sp.from === "nedarim"}
           substituteMonths={SUBSTITUTE_MONTHS}

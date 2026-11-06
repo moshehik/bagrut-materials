@@ -14,11 +14,12 @@ import { citySchema, phoneSchema, schoolSchema } from "@/lib/profile-validation"
 import { loadNedarimConfig } from "@/lib/nedarim/config";
 import { MAX_BODY_BYTES, PAY_KEYS, chargeTermsFor, describeTerms, isPayableItemKind, orderKindOf, pickDistinctAmount, sameIntentParams, type PayKey } from "@/lib/nedarim/logic";
 import { getBool } from "@/lib/settings";
-import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, parseCategoryIds, sameDayAmountsOfOtherOrders } from "@/lib/nedarim/store";
+import { appendEvent, cancelReplaced, createIntent, findOpenWithCoupon, getOpenPaymentById, parseCategoryIds, sameDayAmountsOfOtherOrders } from "@/lib/nedarim/store";
 import { redactNedarim } from "@/lib/nedarim/secrets";
 import { hostedUrlFor } from "@/lib/nedarim/hosted";
 import { itemCoverageFor, loadPayableItem, successHrefFor } from "@/lib/nedarim/items";
 import { hasActiveSamePlan } from "@/lib/purchase-helpers";
+import { attachPaymentToSeat, campaignIsOpen, getCampaign, getUserSeat, type Seat } from "@/lib/campaign";
 
 /*
  * POST /api/pay/intent – עמוד התשלום (/pay, מחוברות בלבד): יוצר בקשת תשלום 'pending' עם מזהה ייחודי (NP-…) ומחזיר את הקישור
@@ -39,6 +40,8 @@ const bodySchema = z.object({
   skipSubjects: z.boolean().optional(),
   /** אופן התשלום: normal = תשלום רגיל (שנתי – אחד; ממלאת מקום 3 חודשים – 3 תשלומים); keva = הוראת קבע אשראי בלי תפיסת מסגרת (רק למסלולים שמאפשרים, כשההגדרה דולקת) */
   payMode: z.enum(["normal", "keva"]).optional(),
+  /** קמפיין הנחה מוגבל במקומות (/offer/<slug>): רק למסלול שנתי, ורק למורה שתפסה מקום – הסכום נקבע בשרת */
+  campaign: z.string().regex(/^[a-z0-9-]{1,40}$/).optional(),
   /** הורדה בודדת: החומר */
   materialId: idNum.optional(),
   /** קובץ מורחב: התיקייה */
@@ -157,8 +160,19 @@ export async function POST(req: NextRequest) {
 
   // --- סכום: מחיר המחירון (מסלול/פריט – נקבע למעלה בשרת) + קופון הנחה פרטי (ייתפס רק בהשלמה), כמו purchaseAction ---
   const { listAmount } = order;
-  const coupon = await getBestPercentCoupon(user);
-  const pct = coupon?.percent ?? 0;
+  // קמפיין: ההנחה של הקמפיין במקום קופון פרטי (לא מצטברות); דורש מקום שמור למורה
+  let seat: Seat | null = null;
+  let campaignPct = 0;
+  if (input.campaign) {
+    const camp = await getCampaign(input.campaign);
+    if (!camp || !campaignIsOpen(camp)) return denied("campaign_closed", "המבצע הסתיים.", 409, { campaign: input.campaign });
+    if (order.plan !== camp.plan) return denied("campaign_plan", "המבצע חל על המנוי השנתי בלבד.", 400, { campaign: input.campaign });
+    seat = await getUserSeat(camp.slug, user.id);
+    if (!seat) return denied("campaign_no_seat", "המקום במבצע לא נשמר (או שהמבצע הסתיים). אפשר לחזור לדף המבצע ולנסות לתפוס מקום.", 409, { campaign: camp.slug });
+    campaignPct = camp.percent;
+  }
+  const coupon = campaignPct ? null : await getBestPercentCoupon(user);
+  const pct = campaignPct || (coupon?.percent ?? 0);
   const baseAmount = pct > 0 ? Math.round((listAmount * (100 - pct)) / 100) : listAmount;
   // נדרים לא מאפשרים שני חיובים באותו סכום לאותו כרטיס באותו יום: בקנייה של כמה תיקיות/קבצים באותו סכום באותו יום – 10 אג' פחות לכל נוספת
   let amount = baseAmount;
@@ -213,7 +227,14 @@ export async function POST(req: NextRequest) {
   // M2/N2: בקשה פתוחה עם אותו קופון – לא יוצרים שנייה (הקופון חד-פעמי): אם אותה הזמנה בדיוק – מחזירים אותה; אחרת מבטלים
   // את הישנה ("replaced") ויוצרים חדשה (עסקה שתשולם על הישנה תישאר לא-משויכת וגלויה למנהלת)
   let replaced: { id: number } | null = null;
-  if (coupon && pct > 0) {
+  if (seat?.paymentId) {
+    // קמפיין: יש כבר בקשה פתוחה על המקום הזה – אם זו אותה הזמנה מחזירים אותה, אחרת מבטלים ויוצרים חדשה
+    const existing = await getOpenPaymentById(seat.paymentId, user.id);
+    if (existing && sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount, materialId: existing.materialId, itemCategoryId: existing.itemCategoryId, chargeMode: existing.chargeMode, installments: existing.installments }, params)) {
+      return respond(existing, true);
+    }
+    if (existing && (await cancelReplaced(existing, "(חדשה)"))) replaced = { id: existing.id };
+  } else if (coupon && pct > 0) {
     const existing = await findOpenWithCoupon(user.id, coupon.id);
     if (existing && !sameIntentParams({ plan: existing.plan, categoryIds: parseCategoryIds(existing), subjectsPending: existing.subjectsPending, amount: existing.amount, materialId: existing.materialId, itemCategoryId: existing.itemCategoryId, chargeMode: existing.chargeMode, installments: existing.installments }, params)) {
       if (await cancelReplaced(existing, "(חדשה)")) replaced = { id: existing.id };
@@ -241,6 +262,7 @@ export async function POST(req: NextRequest) {
       amount,
       terms,
       coupon: coupon && pct > 0 ? { id: coupon.id, percent: pct } : null,
+      campaignPercent: campaignPct || null,
       firstName,
       lastName,
       phone,
@@ -250,6 +272,10 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
     if (replaced) await appendEvent(replaced.id, "replaced_by", `הבקשה החדשה: ${row.reference}`, { newReference: row.reference });
+    if (seat) {
+      await attachPaymentToSeat(seat.id, row.id);
+      await appendEvent(row.id, "campaign", `מבצע ${input.campaign}: מקום ${seat.slot}, ${pct}% הנחה`, { campaign: input.campaign, slot: seat.slot });
+    }
     return respond(row, false);
   } catch (e) {
     console.error("[pay intent] create failed", redactNedarim(e instanceof Error ? e.message : String(e)));

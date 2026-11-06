@@ -1011,6 +1011,45 @@ export const nedarimSyncState = pgTable("nedarim_sync_state", {
 });
 
 /**
+ * קמפיין הנחה מוגבל במקומות (למשל "50% ל-10 הנרשמות הראשונות" – קישור לפרסומות, /offer/<slug>). המקומות הם שורות מוכנות מראש
+ * (campaign_seats, מספר לכל מקום) כדי שתפיסה תהיה אטומית גם כשכמה מורות לוחצות באותה שנייה. נוצר ב-SQL גולמי
+ * (scripts/create-campaign-tables.ts). המונה סופר רק תפיסות של הקמפיין – לא נרשמות קיימות (ניסיון). לוגיקה: src/lib/campaign.ts.
+ */
+export const campaigns = pgTable("campaigns", {
+  slug: varchar("slug", { length: 40 }).primaryKey(),
+  title: varchar("title", { length: 120 }).notNull(),
+  /** אחוז ההנחה מהמחיר הנוכחי של המסלול */
+  percent: integer("percent").notNull(),
+  /** המסלול שההנחה חלה עליו (כרגע yearly בלבד) */
+  plan: varchar("plan", { length: 20 }).notNull().default("yearly"),
+  totalSeats: integer("total_seats").notNull(),
+  active: boolean("active").notNull().default(true),
+  endsAt: timestamp("ends_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/** status: free | reserved. "תפוס" נקבע ב-src/lib/campaign.ts (תשלום שולם/ממתין, או הזמנה בתוקף) */
+export const campaignSeats = pgTable(
+  "campaign_seats",
+  {
+    id: serial("id").primaryKey(),
+    campaignSlug: varchar("campaign_slug", { length: 40 })
+      .notNull()
+      .references(() => campaigns.slug, { onDelete: "cascade" }),
+    slot: integer("slot").notNull(),
+    status: varchar("status", { length: 10 }).notNull().default("free"),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    paymentId: integer("payment_id").references(() => nedarimPayments.id, { onDelete: "set null" }),
+    reservedUntil: timestamp("reserved_until"),
+    claimedAt: timestamp("claimed_at"),
+  },
+  (t) => [
+    uniqueIndex("campaign_seats_slot_idx").on(t.campaignSlug, t.slot),
+    uniqueIndex("campaign_seats_user_idx").on(t.campaignSlug, t.userId).where(sql`user_id IS NOT NULL`),
+  ],
+);
+
+/**
  * עסקאות שנקראו מהיסטוריית נדרים (GetHistoryJson) – המטמון שממנו נעשית ההתאמה לבקשות. שדות מנורמלים (סכום באגורות, טלפון
  * ספרות, מייל lowercase) + raw (JSON אחרי הסתרת סודות). matched_payment_id = הבקשה שהעסקה פתחה (עסקה אחת = בקשה אחת).
  */

@@ -6431,3 +6431,32 @@ a.sicha-tag-video:hover {
   font-family: var(--font-sans);
   font-size: 0.8rem;
 }
+
+/* דף המבצע (/offer/<slug>): מונה המקומות – עיגולים, התפוסים מלאים בכחול-זהב */
+.offer-seats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.offer-seat {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  border: 2px solid #d9a441;
+  background: #fff;
+  transition: background 0.3s, transform 0.3s;
+}
+.offer-seat-taken {
+  background: #33456e;
+  border-color: #33456e;
+  transform: scale(0.85);
+}
+.offer-count {
+  margin-top: 0.75rem;
+  font-size: 1.35rem;
+}
+.offer-count-num {
+  font-size: 2rem;
+  color: #b9801f;
+}
