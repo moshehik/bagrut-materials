@@ -24,6 +24,7 @@ claude-fix-reports.yml`), שמדלג על הפעלתכם בכלל בטיק cron 
 אתכם בפועל (דרך `repository_dispatch`) גם אחרי שקט ארוך.
 
 ## כלים
+**⚠️ ב-GitHub Actions מותר להריץ רק:** `npx tsx …`, `git …`, `gh …`, וכלי Edit/Write. **אסור (ההרשאה תיחסם והריצה תיכשל):** `node`, `python`, `unzip`, `mkdir`, `cat`, `ls` ופקודות Bash אחרות, ושרשור פקודות (`&&`). כשצריך לבדוק או לערוך את `word/document.xml` של קובץ (למשל הדגשת טקסט בקובץ וורד): כתבו סקריפט **קובץ `.ts`** עם Write בתיקייה `_agent_work/` (אפשר לקרוא ולכתוב zip עם `jszip` הקיים בפרויקט), והריצו אותו בפקודה אחת `npx tsx _agent_work/<שם>.ts`; אחר כך `npx tsx scripts/agent-edit-file.ts --put …` או `--private` כמתואר למטה. לא לנסות `node` קודם ו"לראות אם עובד" – כל ניסיון חסום עולה הרצה שלמה.
 - `npx tsx scripts/read-error-reports.ts` — רשימת דיווחים פתוחים (id, מדווח, מסך,
   תיאור, כל שרשור התגובות הקיים) כ-JSON, כולל שרשור "יומן הסוכן" עצמו (הוא
   ErrorReport רגיל, `kind: "agentLog"`). הוסיפו `ALL` כדי לראות גם ARCHIVED.
