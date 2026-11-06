@@ -44,7 +44,8 @@ export function SearchTriggerButton({
 }
 
 /** חלון החיפוש עצמו – רכיב יחיד שמאזין לאירוע הפתיחה (רנדר פעם אחת ב-Header) */
-export function SiteSearchOverlay() {
+/** scope = מזהה המשתמשת המחוברת או "guest": ההיסטוריה ב"ביקרת לאחרונה" נשמרת ומוצגת לכל אחת בנפרד (ר' recent-folders.ts) */
+export function SiteSearchOverlay({ scope }: { scope: string }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
@@ -89,11 +90,11 @@ export function SiteSearchOverlay() {
   // "ביקרת לאחרונה": תיקיות הקבצים האחרונות מהדפדפן (ר' recent-folders.ts)
   useEffect(() => {
     if (!open) return;
-    const load = () => setRecents(readRecentFolders().slice(0, 5));
+    const load = () => setRecents(readRecentFolders(scope).slice(0, 5));
     load();
     window.addEventListener(RECENT_FOLDERS_EVENT, load);
     return () => window.removeEventListener(RECENT_FOLDERS_EVENT, load);
-  }, [open]);
+  }, [open, scope]);
 
   // שהיה קצרה + ביטול בקשה קודמת, כדי לא להציף את השרת בכל הקשה
   useEffect(() => {
@@ -166,7 +167,7 @@ export function SiteSearchOverlay() {
                 <div className="ss-group">
                   <div className="ss-group-head">
                     <h3>ביקרת לאחרונה</h3>
-                    <button type="button" onClick={clearRecentFolders} className="ss-clear">
+                    <button type="button" onClick={() => clearRecentFolders(scope)} className="ss-clear">
                       ניקוי
                     </button>
                   </div>

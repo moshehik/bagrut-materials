@@ -246,6 +246,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       {/* תיקיית קבצים (לא תיקיית-אב): נרשמת ברשימת "ביקרת לאחרונה" של חלון החיפוש */}
       {isUnit && mats.length > 0 && (
         <RememberFolder
+          scope={user ? String(user.id) : "guest"}
           href={chainToHref(chain)}
           title={category.title}
           path={chain.slice(1, -1).map((c) => c.title).join(" › ")}

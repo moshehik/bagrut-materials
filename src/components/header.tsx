@@ -8,7 +8,7 @@ import { logoutAction } from "@/lib/actions/auth";
 import { DizzyButton } from "@/components/dizzy-button";
 import { SearchTriggerButton, SiteSearchOverlay } from "@/components/site-search";
 
-type HeaderUser = { name: string; role: "user" | "admin" } | null;
+type HeaderUser = { id: number; name: string; role: "user" | "admin" } | null;
 
 const NAV = [
   { href: "/", label: "בית", tip: "מפרט האתר ועדכונים שותפים" },
@@ -164,7 +164,7 @@ export function Header({ user }: { user: HeaderUser }) {
         </div>
       )}
 
-      <SiteSearchOverlay />
+      <SiteSearchOverlay scope={user ? String(user.id) : "guest"} />
     </header>
   );
 }

@@ -60,7 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           דלגי לתוכן הראשי
         </a>
         <Header
-          user={user ? { name: user.name, role: user.role } : null}
+          user={user ? { id: user.id, name: user.name, role: user.role } : null}
         />
         <main id="main" className="flex-1">
           <GlobalBackButton />

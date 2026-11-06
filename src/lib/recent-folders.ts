@@ -1,17 +1,22 @@
 /**
  * תיקיות הקבצים (יחידות/פרקים שיש בהם חומרים, לא תיקיות-אב) שהמשתמשת ביקרה בהן לאחרונה – נשמרות בדפדפן בלבד (localStorage),
  * ומוצגות בחלון החיפוש לפני שמקלידים. לא נשלח לשרת ולא נשמר בחשבון, ולכן עובד גם לאורחות. בטוח לקריאה מצד לקוח בלבד.
+ *
+ * הרשימה שייכת למשתמשת שהייתה מחוברת כשביקרה ("scope" = מזהה המשתמשת, או "guest" לאורחת): אחרי יציאה מהחשבון (או במחשב משותף)
+ * לא מוצגת ההיסטוריה של המחוברת. המפתח הישן והמשותף (v1) נמחק בקריאה הראשונה.
  */
 export type RecentFolder = { href: string; title: string; path: string; ts: number };
 
-const KEY = "recent-folders-v1";
+const LEGACY_KEY = "recent-folders-v1";
+const keyOf = (scope: string) => `recent-folders-v2:${scope}`;
 const MAX = 8;
 /** אירוע שמודיע לחלון החיפוש (באותו עמוד) שהרשימה השתנתה */
 export const RECENT_FOLDERS_EVENT = "recent-folders-changed";
 
-export function readRecentFolders(): RecentFolder[] {
+export function readRecentFolders(scope: string): RecentFolder[] {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    window.localStorage.removeItem(LEGACY_KEY);
+    const raw = window.localStorage.getItem(keyOf(scope));
     const list = raw ? (JSON.parse(raw) as unknown) : [];
     if (!Array.isArray(list)) return [];
     return list
@@ -24,19 +29,19 @@ export function readRecentFolders(): RecentFolder[] {
   }
 }
 
-export function rememberFolder(entry: Omit<RecentFolder, "ts">) {
+export function rememberFolder(scope: string, entry: Omit<RecentFolder, "ts">) {
   try {
-    const rest = readRecentFolders().filter((x) => x.href !== entry.href);
-    window.localStorage.setItem(KEY, JSON.stringify([{ ...entry, ts: Date.now() }, ...rest].slice(0, MAX)));
+    const rest = readRecentFolders(scope).filter((x) => x.href !== entry.href);
+    window.localStorage.setItem(keyOf(scope), JSON.stringify([{ ...entry, ts: Date.now() }, ...rest].slice(0, MAX)));
     window.dispatchEvent(new Event(RECENT_FOLDERS_EVENT));
   } catch {
     /* אחסון חסום (מצב פרטי וכד') – מדלגים */
   }
 }
 
-export function clearRecentFolders() {
+export function clearRecentFolders(scope: string) {
   try {
-    window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(keyOf(scope));
     window.dispatchEvent(new Event(RECENT_FOLDERS_EVENT));
   } catch {
     /* ignore */
