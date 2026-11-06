@@ -345,6 +345,8 @@ export function FixRequestButton({
     const e = newEdit();
     setEdits((list) => [...list, e]);
     setActiveId(e.id);
+    // הכרטיס החדש נפתח מתחת לרשימה – גוללים אליו
+    setTimeout(() => document.getElementById(`fix-edit-${e.id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 60);
   };
   const removeEdit = (id: number) =>
     setEdits((list) => {
@@ -489,7 +491,7 @@ export function FixRequestButton({
       role="radio"
       aria-checked={mode === m}
       className={`fix-what-opt ${mode === m ? "fix-what-on" : ""}`}
-      data-tip={tip}
+      data-ftip={tip}
       onClick={() => setMode(m)}
     >
       {text}
@@ -516,13 +518,13 @@ export function FixRequestButton({
             {/* הורדת הקובץ עם התיקונים שסומנו בוי (מספר הנבחרים בעיגול) */}
             {downloadHref && fixes.length > 0 &&
               (downloadFixesHref ? (
-                <a href={downloadFixesHref} className="fix-head-download" onClick={close} data-tip="הורדת הקובץ עם התיקונים שסימנת">
+                <a href={downloadFixesHref} className="btn btn-gold text-sm py-1.5 fix-head-download" onClick={close} data-ftip="הורדת הקובץ עם התיקונים שסימנת">
                   <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   הורדה
                   <span className="fix-head-count">{picked.size}</span>
                 </a>
               ) : (
-                <span className="fix-head-download fix-disabled" aria-disabled data-tip="סמני בוי לפחות תיקון אחד להורדה">
+                <span className="btn btn-gold text-sm py-1.5 fix-head-download fix-disabled" aria-disabled data-ftip="סמני בוי לפחות תיקון אחד להורדה">
                   <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   הורדה
                 </span>
@@ -573,6 +575,10 @@ export function FixRequestButton({
                 </div>
               ) : (
                 <>
+                  <button type="button" className="fix-add" onClick={addEdit}>
+                    <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    עוד תיקון בקובץ
+                  </button>
                   {/* התיקונים שכבר נעשו – באותה רשימה, מעל הכרטיס החדש: וי = להורדה, X = ביטול (אחרי אישור) */}
                   {rows.length > 0 && (
                     <div className="fix-existing">
@@ -606,9 +612,8 @@ export function FixRequestButton({
                             {r.own && r.id ? (
                               <button
                                 type="button"
-                                className="fix-x"
+                                className="fix-edit-remove fix-x"
                                 aria-label="ביטול התיקון"
-                                data-tip="ביטול התיקון"
                                 disabled={cancelling}
                                 onClick={() => setConfirmCancel(r)}
                               >
@@ -629,6 +634,7 @@ export function FixRequestButton({
                       return (
                         <li
                           key={e.id}
+                          id={`fix-edit-${e.id}`}
                           className={`fix-edit ${e.id === activeId ? "fix-edit-active" : ""}`}
                           onClick={() => setActiveId(e.id)}
                         >
@@ -737,10 +743,6 @@ export function FixRequestButton({
                       );
                     })}
                   </ul>
-                  <button type="button" className="fix-add" onClick={addEdit}>
-                    <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                    עוד תיקון בקובץ
-                  </button>
                 </>
               )}
             </div>

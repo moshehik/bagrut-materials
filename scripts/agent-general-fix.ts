@@ -176,7 +176,7 @@ async function decide(action: "private" | "merge" | "answer" | "reject") {
   const fixId = Number(val(action));
   const note = val("note")?.trim();
   if (!fixId) throw new Error(`שימוש: --${action} <fixId> ${action === "private" || action === "merge" ? "<edited.docx> " : ""}--note "..." ${action === "merge" ? '--why "..." ' : ""}[--apply]`);
-  if (!note) throw new Error('חובה --note "<מה תוקן / תשובה>" — זה מה שהמורה תראה בכרטיסייה (ניסוח אליה, בנקבה, בלי פרטים טכניים)');
+  if (!note) throw new Error('חובה --note "<מה תוקן / תשובה>" — זה מה שהמורה תראה בכרטיסייה (בלשון סבילה/עטיפה בגוף שלישי: "הודגשו", "צוטטו", "נוסף", "תוקן" – לא בגוף ראשון יחיד ("הדגשתי") וגם לא ברבים ("הדגשנו"); כשפונים אליה – בנקבה, בלי פרטים טכניים)');
   const why = val("why")?.trim();
   const file = action === "private" || action === "merge" ? val2(action) : undefined;
   let result: unknown;
