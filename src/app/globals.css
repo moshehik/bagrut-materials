@@ -4417,6 +4417,13 @@ a.sicha-tag-video:hover {
 .fix-edit > .fix-edit-applied {
   margin: 0;
 }
+/* "החל תיקון" נשאר צמוד לתחתית החלון הנראה כל עוד הכרטיס על המסך, ולא בורח מתחת לקפל כשהכרטיס גבוה (בעיקר בנייד) */
+.fix-edit > .fix-apply {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 3;
+  box-shadow: 0 6px 16px rgba(10, 10, 10, 0.35);
+}
 .fix-edit .fix-ai {
   display: flex;
   flex-direction: column;

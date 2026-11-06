@@ -411,15 +411,6 @@ export function FixRequestButton({
               <p className="fix-dialog-sub">
                 סמני בקובץ (משמאל) את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז ענִי על השאלה למטה.
               </p>
-              <div className="fix-note">
-                <p>
-                  כל תיקון חל אצלך מיד. בנפרד, מערכת לו&quot;ז העניין בודקת אותו, ואם יתברר שאכן הייתה טעות היא תתוקן
-                  ותשולב בקובץ המקורי (גם אצל שאר המורות) תוך מספר ימים.
-                </p>
-                <p>
-                  הסימונים והצבעים של הטעות ושל התיקון מופיעים <strong>רק בצפייה באתר</strong>; בקובץ שתורידי הכול נראה רגיל.
-                </p>
-              </div>
               <ul className="fix-edits">
                 {edits.map((e, i) => {
                   const reason = reasonOf(e.choice);
