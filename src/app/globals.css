@@ -1851,20 +1851,119 @@ svg.mtc-rownut {
   font-size: 1.15rem;
   font-weight: 800;
 }
-/* "ביטול התיקון שלי": צמוד מיד מתחת לשורת התיקון שלה, כחלק ממנה */
+
+/* התיקונים שכבר נעשו: בראש הרשימה, כל אחד עם וי (להורדה) ו-X (ביטול אחרי אישור) */
+.fix-existing {
+  margin-bottom: 1rem;
+  padding-top: 0;
+  border-top: 0;
+}
 .fix-list > li {
+  position: relative;
+}
+.fix-list > li > .fix-row {
+  padding-inline-end: 2.4rem;
+}
+.fix-x {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  background: #fff;
+  color: #0a0a0a;
+  cursor: pointer;
+}
+.fix-x:hover:not(:disabled) {
+  background: #f6d6d0;
+}
+.fix-x:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* "מה תרצי לתקן?": שלוש אפשרויות בראש החלון */
+.fix-mode {
+  margin-bottom: 1rem;
+}
+.fix-mode-q {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-family: var(--font-hand);
+  font-size: 1.25rem;
+}
+.fix-mode-opts {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
-.fix-list > li > .btn {
-  width: 100%;
-  margin-top: -1px;
-  padding-block: 0.25rem;
-  border-radius: 0 0 0.7rem 0.7rem;
+.fix-mode-opt {
+  padding: 0.3rem 0.95rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  background: #fff;
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  cursor: pointer;
 }
-.fix-list > li:has(> .btn) > .fix-row {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+.fix-mode-opt:hover {
+  background: #f1fafd;
+}
+.fix-mode-on {
+  background: #16244e;
+  color: #fff;
+}
+.fix-mode-on:hover {
+  background: #1f3270;
+}
+/* כותרת החלון: הורדה (עם מספר התיקונים שסומנו) ליד ה-X, בצד שמאל */
+.fix-head-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fix-head-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.8rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  background: #e0aa22;
+  color: #1b1b1b;
+  font-family: var(--font-hand);
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+.fix-head-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #16244e;
+  color: #fff;
+  font-size: 0.85rem;
+}
+/* הטקסטים הצבעוניים ברשימת התיקונים: מצטמצמים לרוחב הכרטיס ושוברים שורות, ולא נחתכים בצד */
+.fix-texts {
+  flex: 1;
+  min-width: 0;
+}
+.fix-pink,
+.fix-blue {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding-inline: 0.35rem;
 }
 .fix-row input {
   /* תיבת הסימון המקורית מוסתרת (נשארת נגישה למקלדת וקורא מסך) – במקומה הלחצן העגול .fix-check */
@@ -2053,11 +2152,25 @@ button.underline {
   width: min(60rem, calc(100vw - 1rem));
   height: calc(100vh - 2rem);
   padding: 0.75rem;
+  /* שוליים שחורים; אזור הקובץ (במקום האפור) חום כהה כמו פאנל הכיתובים במצגות (#291a0f) */
   border: 0;
   border-radius: 1rem;
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  background: #000;
+  color: #fff5e6;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.view-dialog .pdfv {
+  background: #291a0f;
+  border-color: #291a0f;
+}
+.view-dialog .pdfv-msg {
+  color: #fff5e6;
+}
+.view-dialog .fix-close {
+  color: #fff5e6;
+}
+.view-dialog .fix-close:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 .view-dialog[open] {
   display: flex;
@@ -4149,6 +4262,9 @@ a.sicha-tag-video:hover {
     display: flex;
     flex-direction: column;
     min-height: 0;
+  }
+  .fix-viewer-edit .fix-legend {
+    margin: 0.5rem 0 0;
   }
   .fix-viewer-edit .fix-frame {
     flex: 1;

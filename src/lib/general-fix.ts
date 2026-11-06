@@ -303,6 +303,7 @@ export async function decideMerge(opts: { fixId: number; bytes: Uint8Array | Buf
   const why = opts.why?.trim();
   if (!why || why.length < 5) throw new Error('חובה why — למה התיקון נכון לכל המורות ובמה אימתתם (נכנס לתיאור הקובץ ולגיבוי)');
   const p = await prepareEdited(opts.fixId, opts.bytes, opts.note, opts.actor);
+  if (p.fix.reason === "commentators") throw new Error("בקשה למפרשים נוספים נשמרת תמיד כגרסה פרטית לאותה מורה (--private) – אסור --merge");
   const base = { fixId: opts.fixId, materialId: p.m.id, fileName: p.m.fileName, action: "merge" };
   const details = { stats: p.check.stats, warnings: p.check.warnings, note: p.note, why, via: opts.actor.via };
   if (!opts.apply) {
