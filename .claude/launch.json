@@ -8,6 +8,12 @@
       "port": 5178
     },
     {
+      "name": "prospectus",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["_prospectus/serve.cjs"],
+      "port": 4545
+    },
+    {
       "name": "next-attach",
       "url": "http://localhost:3007",
       "port": 3007
