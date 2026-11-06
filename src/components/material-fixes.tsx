@@ -764,13 +764,16 @@ export function FixViewer({
                 </ul>
                 {cancelError ? <p className="fix-dialog-sub" role="alert">{cancelError}</p> : null}
                 <div className="fix-actions">
-                  <button
-                    type="button"
-                    className="btn btn-ghost text-sm py-2"
-                    onClick={() => setPicked(allPicked ? new Set() : new Set(fixes.map((f) => f.number)))}
-                  >
-                    {allPicked ? "ניקוי הסימונים" : "סימון הכול"}
-                  </button>
+                  {/* "סימון הכול / ניקוי הסימונים" רק כשיש יותר משינוי אחד */}
+                  {fixes.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost text-sm py-2"
+                      onClick={() => setPicked(allPicked ? new Set() : new Set(fixes.map((f) => f.number)))}
+                    >
+                      {allPicked ? "ניקוי הסימונים" : "סימון הכול"}
+                    </button>
+                  )}
                   {href ? (
                     <a href={href} className="btn btn-gold text-sm py-2 fix-gate-btn" onClick={close}>
                       הורדה עם {picked.size} {picked.size === 1 ? "שינוי" : "שינויים"}

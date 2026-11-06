@@ -1,6 +1,6 @@
 import { CheckCircle2, Hourglass, MessageSquareText } from "lucide-react";
 import { formatHebrewDate } from "@/lib/hebrew-date";
-import { generalStatusLabel, latestGeneral, type CorrectionState } from "@/lib/private-version-logic";
+import { generalStatusLabel, latestGeneral, timeAgoHe, type CorrectionState } from "@/lib/private-version-logic";
 
 /**
  * השורה בכרטיסייה שמספרת למורה מה קרה עם "ההערה הכללית על הקובץ" שלה (material_fixes kind=general):
@@ -13,11 +13,11 @@ export function PrivateVersionNote({ state, downloadHref }: { state: CorrectionS
   const pv = state.privateVersion;
   const latest = latestGeneral(state.general);
   // גרסה פרטית פעילה גוברת על מצב התלונה (גם אם התלונה המקורית כבר לא מוצגת)
-  const label = pv ? { text: "הקובץ תוקן עבורך לפי ההערה שלך – ההורדה והצפייה שלך מקבלות את הגרסה המתוקנת", tone: "done" as const } : generalStatusLabel(latest);
+  const label = pv ? { text: "הקובץ תוקן עבורך לפי ההערה שלך", tone: "done" as const } : generalStatusLabel(latest);
   if (!label) return null;
   const Icon = label.tone === "wait" ? Hourglass : label.tone === "done" ? CheckCircle2 : MessageSquareText;
   const reply = pv?.note ?? (latest?.status !== "pending" ? latest?.replyText : null);
-  const date = (pv?.createdAt ?? latest?.createdAt) ? formatHebrewDate(pv?.createdAt ?? latest?.createdAt) : null;
+  const date = (() => { const d = pv?.createdAt ?? latest?.createdAt; return d ? (timeAgoHe(d) ?? formatHebrewDate(d)) : null; })();
   return (
     <div className={`mtc-note mtc-note-${label.tone}`} role="status">
       <p className="mtc-note-head">

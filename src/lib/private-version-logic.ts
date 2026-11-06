@@ -72,16 +72,28 @@ export function generalStatusLabel(c: GeneralComplaintView | undefined): { text:
   if (!c) return null;
   switch (c.status) {
     case "pending":
-      return { text: "ההערה שלך על הקובץ התקבלה ונבדקת מול הקובץ – אם צריך תיקון תקבלי כאן גרסה מתוקנת", tone: "wait" };
+      return { text: "ההערה שלך נבדקת – אם צריך, תקבלי כאן קובץ מתוקן", tone: "wait" };
     case "private":
-      return { text: "הקובץ תוקן עבורך לפי ההערה שלך – ההורדה והצפייה שלך מקבלות את הגרסה המתוקנת", tone: "done" };
+      return { text: "הקובץ תוקן עבורך לפי ההערה שלך", tone: "done" };
     case "merged":
-      return { text: "ההערה שלך שולבה בקובץ – הוא עודכן לכל המורות", tone: "done" };
+      return { text: "ההערה שלך שולבה בקובץ לכל המורות", tone: "done" };
     case "answered":
-      return { text: "ההערה שלך נבדקה מול הקובץ", tone: "info" };
+      return { text: "ההערה שלך נבדקה", tone: "info" };
     default:
       return null;
   }
+}
+
+/** "לפני 5 דקות" / "לפני שעתיים" / "לפני 3 ימים" – עד כחודש וחצי; אחרי זה מחזיר null (והמסך מציג תאריך עברי) */
+export function timeAgoHe(then: Date, now: Date = new Date()): string | null {
+  const min = Math.floor((now.getTime() - then.getTime()) / 60_000);
+  if (min < 1) return "לפני רגע";
+  if (min < 60) return min === 1 ? "לפני דקה" : `לפני ${min} דקות`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return hours === 1 ? "לפני שעה" : hours === 2 ? "לפני שעתיים" : `לפני ${hours} שעות`;
+  const days = Math.floor(hours / 24);
+  if (days <= 45) return days === 1 ? "לפני יום" : days === 2 ? "לפני יומיים" : `לפני ${days} ימים`;
+  return null;
 }
 
 /** התלונה הכללית הרלוונטית להצגה: האחרונה שעוד לא הוסתרה (לפי createdAt) */
