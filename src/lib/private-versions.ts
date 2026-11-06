@@ -114,13 +114,15 @@ export async function resolveServedFile(
   const shared = { fileUrl: material.fileUrl, fileName: material.fileName, privateVersion: null, cacheFileId: driveIdFromUrl(material.fileUrl) };
   if (!user) return shared;
   let pv: PrivateVersionInfo | null = null;
-  if (user.role === "admin") {
-    const pvId = Number(searchParams.get("pv"));
-    if (Number.isInteger(pvId) && pvId > 0) pv = await getPrivateVersionById(pvId, material.id);
+  const pvId = Number(searchParams.get("pv"));
+  if (user.role === "admin" && Number.isInteger(pvId) && pvId > 0) {
+    // מנהלת יכולה לצפות בכל גרסה פרטית לפי מזהה (?pv=)
+    pv = await getPrivateVersionById(pvId, material.id);
   } else {
+    // כולן, גם מנהלת שהיא עצמה המבקשת: הגרסה הפרטית של עצמה (כמו שכתוב בכרטיס "הקובץ תוקן עבורך"); ?original=1 = המשותף
     pv = await getPrivateVersion(material.id, user.id);
   }
-  const chosen = chooseServedFile({ material, privateVersion: pv, wantOriginal: user.role !== "admin" && parseOriginalParam(searchParams.get("original")) });
+  const chosen = chooseServedFile({ material, privateVersion: pv, wantOriginal: parseOriginalParam(searchParams.get("original")) });
   return { ...chosen, cacheFileId: driveIdFromUrl(chosen.fileUrl) };
 }
 
