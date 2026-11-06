@@ -4144,8 +4144,16 @@ a.sicha-tag-video:hover {
     overflow-y: auto;
     padding-right: 0.6rem;
   }
+  /* עמודת הקובץ ממלאת בדיוק את גובה השורה, והקובץ את מה שנשאר אחרי השורה "מה שצריך תיקון / התיקון" – בלי לגלוש מתחת ללוח */
+  .fix-viewer-edit .fix-frame-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
   .fix-viewer-edit .fix-frame {
-    height: calc(min(68vh, 44rem) - 2.6rem);
+    flex: 1;
+    height: auto;
+    min-height: 0;
   }
 }
 
