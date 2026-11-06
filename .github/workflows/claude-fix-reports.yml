@@ -122,7 +122,7 @@ jobs:
             זו הרצה חד-פעמית (מגיעה מ-cron/workflow_dispatch חיצוניים) - אל תנסו
             לתזמן הרצה נוספת בעצמכם.
           claude_args: |
-            --model sonnet
+            --model claude-fable-5-1
             --allowedTools "Bash(npx tsx:*),Bash(git:*),Bash(gh:*),Edit,Write"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
