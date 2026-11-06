@@ -430,7 +430,17 @@ export function FixRequestButton({
     update(e.id, { submitting: true, submitError: null });
     if (demo) {
       await new Promise((r) => setTimeout(r, 700));
-      update(e.id, { submitting: false, applied: true });
+      // כמו בחלון האמיתי: הכרטיס עובר לרשימת התיקונים שכבר נעשו (שמגיעה מהכרטיסייה המוחלפת), ובמקומו נפתח כרטיס ריק
+      setEdits((list) => {
+        const rest = list.filter((x) => x.id !== e.id);
+        if (rest.length === 0) {
+          const n = newEdit();
+          setActiveId(n.id);
+          return [n];
+        }
+        setActiveId(rest[rest.length - 1].id);
+        return rest;
+      });
       window.dispatchEvent(new Event("tour-fix-applied"));
       return;
     }
