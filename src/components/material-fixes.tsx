@@ -672,10 +672,13 @@ export function FixViewer({
   const router = useRouter();
   const [cancelling, startCancel] = useTransition();
   const [cancelError, setCancelError] = useState<string | null>(null);
-  /** ביטול תיקון שהמורה עצמה ביקשה (מוסתר מהצפייה וההורדה שלה) */
+  /** התיקון שמחכה לאישור הביטול בחלונית (במקום חלונית הדפדפן) */
+  const [confirmCancel, setConfirmCancel] = useState<CardFix | null>(null);
+  const confirmRef = useDialog(confirmCancel !== null, () => setConfirmCancel(null), true);
+  /** ביטול תיקון שהמורה עצמה ביקשה (מוסתר מהצפייה וההורדה שלה) – אחרי אישור בחלונית */
   const cancelMine = (f: CardFix) => {
     if (!f.id) return;
-    if (!window.confirm("לבטל את התיקון שלך? הוא יוסר מהצפייה ומההורדה שלך.")) return;
+    setConfirmCancel(null);
     setCancelError(null);
     startCancel(async () => {
       const res = await cancelOwnFix(f.id!);
@@ -754,7 +757,7 @@ export function FixViewer({
                           type="button"
                           className="btn btn-ghost text-sm py-1"
                           disabled={cancelling}
-                          onClick={() => cancelMine(f)}
+                          onClick={() => setConfirmCancel(f)}
                         >
                           ביטול התיקון שלי
                         </button>
@@ -796,6 +799,39 @@ export function FixViewer({
               </div>
             </div>
           )}
+        </div>
+      </dialog>
+      {/* אישור ביטול תיקון – חלונית צפה בעיצוב חלוניות האתר */}
+      <dialog
+        ref={confirmRef}
+        className="fix-dialog fix-dialog-dark"
+        aria-label="ביטול התיקון"
+        onClick={(e) => {
+          if (e.target === confirmRef.current) setConfirmCancel(null);
+        }}
+      >
+        <div className="fix-dialog-box">
+          <div className="fix-dialog-head">
+            <h3>לבטל את התיקון שלך?</h3>
+            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setConfirmCancel(null)}>
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          <div className="fix-inner fix-done">
+            <p className="fix-dialog-sub">הוא יוסר מהצפייה ומההורדה שלך.</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="btn btn-gold text-sm py-2 fix-gate-btn"
+                onClick={() => confirmCancel && cancelMine(confirmCancel)}
+              >
+                כן, לבטל
+              </button>
+              <button type="button" className="btn btn-ghost text-sm py-2" onClick={() => setConfirmCancel(null)}>
+                לא, להשאיר
+              </button>
+            </div>
+          </div>
         </div>
       </dialog>
     </>
