@@ -22,6 +22,7 @@ export type CardFix = { id?: number; number: number; originalText: string; corre
 /** נוסחי הטולטיפ של שלושת אגוזי התיקונים (כתב גברת לוין, מוצג במעבר עכבר / מיקוד) */
 export const FIX_TIPS = {
   edit: "בעריכת שינויים – תוכלי לתקן טעויות",
+  download: "להורדת הקובץ המתוקן: להורדת הדף עם השינויים.",
 } as const;
 
 /** פותח/סוגר <dialog> מקורי לפי state */

@@ -6,7 +6,7 @@ import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
-import { FixRequestButton, type CardFix } from "@/components/material-fixes";
+import { FIX_TIPS, FixRequestButton, type CardFix } from "@/components/material-fixes";
 import { PrivateVersionNote } from "@/components/material-private-version";
 import type { CorrectionState } from "@/lib/private-version-logic";
 import { FreeTrialDownload } from "@/components/free-trial-download";
@@ -309,7 +309,7 @@ export function MaterialTypeCard({
         )}
       </div>
 
-      {/* הריבוע התחתון: כפתור אחד – עריכת שינויים. בתוכו גם התיקונים שכבר נעשו (בחירה, ביטול של שלה, הורדה עם הנבחרים) */}
+      {/* הריבוע התחתון: עריכת שינויים (בתוכה גם התיקונים שכבר נעשו: בחירה, ביטול של שלה, הורדה עם הנבחרים); ואם נעשו תיקונים – גם להורדת הקובץ המתוקן */}
       {/* סרטון ומצגת (קובץ PDF, לא Word) – אין בהם עריכת שינויים */}
       {!noFixBox && (
       <div className="mtc-lower">
@@ -324,6 +324,13 @@ export function MaterialTypeCard({
             fixes={canFix ? fixes : []}
             downloadHref={canFix ? target : null}
           />
+          {canFix && (
+            <a href={`${target}?fixes=all`} className="mtc-row" data-tip={FIX_TIPS.download}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/mat-cards/nut-download-light.webp" alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
+              <span>להורדת הקובץ המתוקן</span>
+            </a>
+          )}
           {/* מצב ההערה הכללית של המורה / הגרסה הפרטית המתוקנת שלה – רק למי שמורשית לקובץ */}
           {entitlement.ok && !viewOnly && <PrivateVersionNote state={correction} downloadHref={target} />}
         </div>
