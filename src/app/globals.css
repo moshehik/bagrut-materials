@@ -2157,7 +2157,9 @@ button.underline {
   text-size-adjust: none;
 }
 .pdfv-selectable .textLayer :is(span, br) {
-  color: transparent;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
   position: absolute;
   white-space: pre;
   cursor: text;
