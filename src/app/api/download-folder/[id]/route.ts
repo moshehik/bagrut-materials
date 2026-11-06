@@ -23,6 +23,8 @@ import {
   type ReserveResult,
 } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
+import { getPrivateVersion } from "@/lib/private-versions";
+import { chooseServedFile } from "@/lib/private-version-logic";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,14 +55,16 @@ function ext(fileName: string) {
   return dot > 0 ? fileName.slice(dot) : "";
 }
 
-type Who = { personalCode: string; name: string; email: string; phone: string | null };
+type Who = { id: number; personalCode: string; name: string; email: string; phone: string | null };
 
 /**
  * מכינה קובץ אחד לזיפ: אותה לוגיקה כמו /api/download/[id] – המרת Office ל-PDF + הטבעת מספר אישי.
  * null = נכשל. למשתמשת רגילה כשל בהמרה/הטבעה = כשל (לא שולחים מקור בלי סימן מים); למנהלת – המקור.
  */
 async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: string; bytes: Uint8Array } | null> {
-  const file = await fetchFile(m.fileUrl);
+  const pv = isAdmin ? null : await getPrivateVersion(m.id, u.id);
+  const src = chooseServedFile({ material: m, privateVersion: pv, wantOriginal: false });
+  const file = await fetchFile(src.fileUrl);
   if (!file) return null;
   const stampInfo = { personalCode: u.personalCode, userName: u.name, email: u.email, phone: u.phone };
   const isOffice = isOfficeMime(m.mime) || /\.(docx?|pptx?)$/i.test(m.fileName);
@@ -82,7 +86,7 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
 
   if (isOffice && isDriveConfigured()) {
     try {
-      const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(m.fileUrl), defer: after });
+      const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(src.fileUrl), defer: after });
       return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo) };
     } catch (e) {
       return fallback("office->pdf", e);
@@ -301,7 +305,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     }
   };
 
-  const who: Who = { personalCode: user.personalCode, name: user.name, email: user.email, phone: user.phone };
+  const who: Who = { id: user.id, personalCode: user.personalCode, name: user.name, email: user.email, phone: user.phone };
   type Ready = { name: string; bytes: Uint8Array; m: Material; via: string };
   const results: (Ready | null)[] = new Array(allowed.length).fill(null);
   let next = 0;

@@ -80,3 +80,10 @@ public/_demo/
 
 # עותק מקומי של מסמך ה-API של נדרים פלוס (docs/nedarim-payments.md)
 /_nedarim-api/
+
+# Apps Script build (contains the NotebookLM password) - never commit
+/_tools/pres/gas/build/
+/_tools/pres/queue/
+
+# קבצי עבודה של הסוכן (agent-edit-file / agent-fix-suggest / agent-general-fix) - קבצי docx חיים שהורדו לעריכה
+/_agent_work/

@@ -11,6 +11,7 @@ import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl } from "@/lib/dr
 import { logAudit, requestMeta } from "@/lib/audit";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
+import { resolveServedFile } from "@/lib/private-versions";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
 
@@ -114,10 +115,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
   };
 
-  const file = await fetchFile(material.fileUrl);
+  // גרסה פרטית מתוקנת של המורה (תלונה כללית שהסוכן תיקן רק עבורה) מוגשת במקום הקובץ המשותף; ?original=1 = המשותף.
+  // רק בצפייה מלאה (לאורחת – תמיד המשותף). עוברת את אותו צינור: תיקונים מסומנים, המרה, הטבעה.
+  const served = fullView ? await resolveServedFile(material, user, req.nextUrl.searchParams) : { fileUrl: material.fileUrl, privateVersion: null, cacheFileId: driveIdFromUrl(material.fileUrl) };
+  const file = await fetchFile(served.fileUrl);
   if (!file) {
     await release();
-    await fail("preview.failed", "file_missing");
+    await fail("preview.failed", served.privateVersion ? "private_version_missing" : "file_missing");
     return fileRouteError(req, "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר", 502);
   }
   let raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
@@ -147,8 +151,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     pdfBytes = isOffice
       ? await convertOfficeToPdfCached({
           bytes: raw,
-          // מטמון PDF מומר בדרייב (מפתח: קובץ + md5 של התוכן) – חוסך 10-20 שניות המרה
-          fileId: driveIdFromUrl(material.fileUrl),
+          // מטמון PDF מומר בדרייב (מפתח: קובץ + md5 של התוכן) – חוסך 10-20 שניות המרה; לגרסה פרטית – המפתח שלה
+          fileId: served.cacheFileId,
           defer: after,
           // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
           mimeType: officeMimeFor(material.mime, material.fileName),
@@ -187,7 +191,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       action: "preview",
       entityType: "material",
       entityId: material.id,
-      details: { title: material.title, fullView, accounted: !!reservation, via: ent.ok ? ent.via : null },
+      details: { title: material.title, fullView, accounted: !!reservation, via: ent.ok ? ent.via : null, privateVersion: served.privateVersion?.id ?? null },
     });
   } catch (e) {
     console.error("preview view log failed", e);

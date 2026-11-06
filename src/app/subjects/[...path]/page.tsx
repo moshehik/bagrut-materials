@@ -29,6 +29,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SubjectCard } from "@/components/subject-card";
 import { RememberFolder } from "@/components/remember-folder";
 import { getFixesForViewer } from "@/lib/fixes";
+import { getCorrectionStateForViewer } from "@/lib/private-versions";
 import { getFreeTrialState } from "@/lib/free-trial";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
@@ -146,6 +147,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     : new Map<number, number>();
 
   const fixesByMaterial = await getFixesForViewer(
+    mats.map((m) => m.id),
+    user?.id,
+  );
+  // ההערות הכלליות של המבקרת על הקבצים + גרסאות פרטיות מתוקנות שלה (ר' src/lib/private-versions.ts)
+  const correctionByMaterial = await getCorrectionStateForViewer(
     mats.map((m) => m.id),
     user?.id,
   );
@@ -419,6 +425,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                         currentPath={here}
                         myDownloadCount={downloadCounts.get(item.m.id) ?? 0}
                         freeTrial={freeTrial}
+                        correction={correctionByMaterial.get(item.m.id)}
                         fixes={fixesByMaterial.get(item.m.id)?.map((f) => ({
                           id: f.id,
                           number: f.number,

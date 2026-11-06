@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ChevronDown, Download, MessageSquareWarning, Plus, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Download, MessageSquareWarning, Plus, Sparkles, X } from "lucide-react";
 import {
   cancelOwnFix,
   submitFixRequests,
@@ -96,6 +96,10 @@ type Edit = {
   note: string;
   busy: boolean;
   aiError: string | null;
+  /** נשלח עכשיו לשרת ("החל תיקון" בהמתנה) */
+  submitting: boolean;
+  /** שגיאה מהשרת על התיקון הזה (למשל: הטקסט לא נמצא בקובץ) – התיקון נשאר פתוח לעריכה */
+  submitError: string | null;
   /** המופע בקובץ, כפי שזוהה בשרת (גובר על מה שהסימון ב-PDF מדווח) */
   occ?: number;
   /** זיהוי הסימון בקובץ: busy = בבדיקה, ok = נמצא כמו שסומן, fixed = הותאם לטקסט שבקובץ, fail = לא זוהה */
@@ -113,6 +117,8 @@ const newEdit = (): Edit => ({
   note: "",
   busy: false,
   aiError: null,
+  submitting: false,
+  submitError: null,
   check: "idle",
   checkMsg: null,
 });
@@ -210,9 +216,9 @@ const aiPayload = (e: { choice: FixChoice; note: string }) => {
 };
 
 /**
- * "לעריכת שינויים בקובץ": אחרי ההודעה "שימי לב!" נפתח הקובץ עצמו; המורה מסמנת בו את הטקסט שצריך
- * תיקון ("סימון לתיקון"), כותבת מתחת את התיקון שלה, ויכולה להוסיף עוד תיקונים. כל התיקונים נשלחים
- * יחד לטיפול המנהלת (ר' /admin/fixes).
+ * "לעריכת שינויים בקובץ": נפתח הקובץ עצמו; המורה מסמנת בו את הטקסט שצריך תיקון ("סימון לתיקון"),
+ * כותבת מתחת את התיקון שלה (או מקבלת הצעה מג'מיני) ולוחצת "החל תיקון". כל תיקון נשלח מיד בלחיצה: הוא חל אצלה
+ * מיד והחלון נשאר פתוח להמשך סימונים, ובנפרד נשמר לטיפול (המנהלת / הסוכן, ר' /admin/fixes).
  */
 export function FixRequestButton({
   materialId,
@@ -236,19 +242,11 @@ export function FixRequestButton({
   // בהדגמה (סיור) החלון נשתל ישירות ב-body, כדי שיהיה מרוכז במסך ולא יושפע מהמיכל שהכרטיסייה בתוכו
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const [acknowledged, setAcknowledged] = useState(false);
   const [edits, setEdits] = useState<Edit[]>(() => [newEdit()]);
   const [activeId, setActiveId] = useState<number>(() => edits[0].id);
-  const [result, setResult] = useState<FixState>(undefined);
-  const [pending, startSend] = useTransition();
+  /** עולה בכל תיקון שנשלח בהצלחה – טוען מחדש את הקובץ שבחלון כך שיציג את התיקון שחל */
+  const [viewVersion, setViewVersion] = useState(0);
   const router = useRouter();
-  // אחרי שליחה מוצלחת מאפסים את החלון (אחרת הוא נשאר על "הבקשה נשלחה" ואי אפשר להוסיף תיקונים נוספים)
-  const resetAfterSend = () => {
-    const e = newEdit();
-    setEdits([e]);
-    setActiveId(e.id);
-    setResult(undefined);
-  };
   // תלונה כללית על הקובץ (בלי טקסט מסומן)
   const [generalOpen, setGeneralOpen] = useState(false);
   const [generalText, setGeneralText] = useState("");
@@ -264,8 +262,13 @@ export function FixRequestButton({
   };
   const close = () => {
     setOpen(false);
-    setAcknowledged(false);
-    if (result?.ok) resetAfterSend();
+    // תיקונים שכבר נשלחו מוסרים מהרשימה (הם חלים בקובץ ובכרטיסייה), כדי שהחלון ייפתח נקי בפעם הבאה
+    const left = edits.filter((e) => !e.applied);
+    if (left.length !== edits.length) {
+      const next = left.length ? left : [newEdit()];
+      setEdits(next);
+      setActiveId(next[0].id);
+    }
     setGeneralOpen(false);
     setGeneralResult(undefined);
   };
@@ -320,13 +323,10 @@ export function FixRequestButton({
     }
   };
 
-  const marks = edits.flatMap((e) => (e.mark ? [e.mark] : []));
-  const active = edits.find((e) => e.id === activeId);
-  const canApply = !!active && !active.applied && active.quote.trim().length >= 2 && active.correction.trim().length > 0;
-  const applyActive = () => {
-    if (active) update(active.id, { applied: true });
-  };
-  const ready = edits.filter((e) => e.quote.trim().length >= 2 && e.correction.trim());
+  // תיקון שכבר נשלח מופיע בקובץ המרוענן, אז לא מציירים שוב את הסימון שלו
+  const marks = edits.flatMap((e) => (e.mark && !e.applied ? [e.mark] : []));
+  const canApplyEdit = (e: Edit) =>
+    !e.applied && !e.submitting && !e.busy && e.check !== "busy" && e.quote.trim().length >= 2 && e.correction.trim().length > 0;
   /** המופע שסומן (כשהטקסט חוזר כמה פעמים) – רק אם הטקסט לא נערך ידנית אחרי הסימון */
   const occurrenceOf = (e: Edit) => (e.occ !== undefined ? e.occ : e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined);
   /** ג'מיני מנסח תיקון לפי הסיבה/התיאור; התיקון נכנס לתיבת "התיקון שלך" וניתן לעריכה */
@@ -345,32 +345,36 @@ export function FixRequestButton({
       update(e.id, { busy: false, aiError: "לא הצלחנו להכין תיקון כרגע. נסי שוב." });
     }
   };
-  const send = () => {
-    setResult(undefined);
+  /** "החל תיקון": שולח את התיקון הזה מיד. הצלחה → חל אצלה, הכרטיסייה והקובץ שבחלון מתרעננים; כשל → נשאר פתוח לעריכה */
+  const applyEdit = async (e: Edit) => {
+    if (!canApplyEdit(e)) return;
+    update(e.id, { submitting: true, submitError: null });
     if (demo) {
-      startSend(async () => {
-        await new Promise((r) => setTimeout(r, 700));
-        setResult({ ok: true } as FixState);
-        window.dispatchEvent(new Event("tour-fix-applied"));
-      });
+      await new Promise((r) => setTimeout(r, 700));
+      update(e.id, { submitting: false, applied: true });
+      window.dispatchEvent(new Event("tour-fix-applied"));
       return;
     }
-    startSend(async () => {
+    try {
       const res = await submitFixRequests({
         materialId,
-        items: ready.map((e) => ({
-          quote: e.quote.trim(),
-          correction: e.correction.trim(),
-          occurrence: occurrenceOf(e),
-          ...aiPayload(e),
-        })),
+        items: [{ quote: e.quote.trim(), correction: e.correction.trim(), occurrence: occurrenceOf(e), ...aiPayload(e) }],
       });
-      setResult(res);
-      // התיקון חל אצלה מיד – מרעננים כדי ש"לצפייה בשינויים"/"להורדת הקובץ המתוקן" יופיעו בכרטיסייה
-      if (res?.ok) router.refresh();
-    });
+      if (res?.ok) {
+        update(e.id, { submitting: false, applied: true });
+        setViewVersion((v) => v + 1);
+        // התיקון חל אצלה מיד – מרעננים כדי ש"לצפייה בשינויים"/"להורדת הקובץ המתוקן" יופיעו בכרטיסייה
+        router.refresh();
+      } else {
+        update(e.id, { submitting: false, submitError: res?.error ?? "לא הצלחנו לשלוח את התיקון. נסי שוב." });
+      }
+    } catch {
+      update(e.id, { submitting: false, submitError: "לא הצלחנו לשלוח את התיקון כרגע. נסי שוב." });
+    }
   };
-  const viewSrc = viewSrcOverride ?? `/api/preview/${materialId}`;
+  // אחרי תיקון שנשלח הקובץ שבחלון נטען מחדש עם התיקונים שחלים עליה (?fixes=all); הפרמטר v מונע שימוש בעותק ישן
+  const viewSrc =
+    viewSrcOverride ?? (viewVersion > 0 ? `/api/preview/${materialId}?fixes=all&v=${viewVersion}` : `/api/preview/${materialId}`);
 
   const label = (
     <>
@@ -382,50 +386,40 @@ export function FixRequestButton({
   const dialogEl = (
     <dialog
       ref={ref}
-      className={`fix-dialog fix-dialog-dark ${acknowledged ? "fix-dialog-wide" : ""} ${demo ? "fix-dialog-demo" : ""}`}
+      className={`fix-dialog fix-dialog-dark fix-dialog-wide ${demo ? "fix-dialog-demo" : ""}`}
       onClick={(e) => {
         if (e.target === ref.current) close();
       }}
     >
       <div className="fix-dialog-box">
-        <div className={`fix-dialog-head ${acknowledged ? "fix-dialog-head-centered" : ""}`}>
-          {acknowledged && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
-          )}
+        <div className="fix-dialog-head fix-dialog-head-centered">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
           <div className="fix-head-title">
-            <h3>{acknowledged ? "לעריכת שינויים בקובץ" : "לפני שממשיכות!"}</h3>
-            {acknowledged && <p className="fix-dialog-sub">{materialTitle}</p>}
+            <h3>לעריכת שינויים בקובץ</h3>
+            <p className="fix-dialog-sub">{materialTitle}</p>
           </div>
           <button type="button" className="fix-close" aria-label="סגירה" onClick={close}>
             <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
-        {!acknowledged ? (
-          <NoticeGate onContinue={() => setAcknowledged(true)} />
-        ) : result?.ok ? (
-          <div className="fix-inner fix-done">
-            <p>
-              התיקון כבר חל אצלך! בכרטיסייה מופיעות עכשיו האפשרויות &quot;לצפייה בשינויים שכבר נעשו&quot; ו
-              &quot;להורדת הקובץ המתוקן&quot;. בנפרד, נבדוק אם לעדכן את הקובץ גם אצל שאר המורות.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button type="button" className="btn btn-gold text-sm py-2" onClick={resetAfterSend}>
-                הוספת תיקון נוסף
-              </button>
-              <button type="button" className="btn text-sm py-2" onClick={close}>
-                סגירה
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <div className="fix-inner fix-viewer fix-viewer-edit">
             <div className="fix-pane">
               <div className="fix-pane-scroll">
               <p className="fix-dialog-sub">
                 סמני בקובץ (משמאל) את הטקסט שצריך תיקון ולחצי &quot;סימון לתיקון&quot;, ואז ענִי על השאלה למטה.
               </p>
+              <div className="fix-note">
+                <p>
+                  כל תיקון חל אצלך מיד. בנפרד, מערכת לו&quot;ז העניין בודקת אותו, ואם יתברר שאכן הייתה טעות היא תתוקן
+                  ותשולב בקובץ המקורי (גם אצל שאר המורות) תוך מספר ימים.
+                </p>
+                <p>
+                  הסימונים והצבעים של הטעות ושל התיקון מופיעים <strong>רק בצפייה באתר</strong>; בקובץ שתורידי הכול נראה רגיל.
+                </p>
+              </div>
               <ul className="fix-edits">
                 {edits.map((e, i) => {
                   const reason = reasonOf(e.choice);
@@ -456,17 +450,10 @@ export function FixRequestButton({
                           <span className="fix-pink">{e.quote}</span>
                           <span className="fix-arrow" aria-hidden>←</span>
                           <span className="fix-blue">{e.correction}</span>
-                          <button
-                            type="button"
-                            className="fix-edit-reopen"
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              update(e.id, { applied: false });
-                              setActiveId(e.id);
-                            }}
-                          >
-                            עריכה
-                          </button>
+                          <span className="fix-edit-done">
+                            <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                            חל אצלך
+                          </span>
                         </div>
                       ) : (
                         <>
@@ -536,10 +523,11 @@ export function FixRequestButton({
                             </label>
                           )}
 
+                          {e.submitError && <p className="fix-error">{e.submitError}</p>}
                           {e.id === activeId && (
-                            <button type="button" className="fix-apply" disabled={!canApply} onClick={applyActive}>
+                            <button type="button" className="fix-apply" disabled={!canApplyEdit(e)} onClick={() => applyEdit(e)}>
                               <Check className="h-4 w-4" strokeWidth={2} aria-hidden />
-                              החל תיקון
+                              {e.submitting ? "מחילה…" : "החל תיקון"}
                             </button>
                           )}
                         </>
@@ -560,9 +548,16 @@ export function FixRequestButton({
                   </button>
                   {generalOpen &&
                     (generalResult?.ok ? (
-                      <p className="fix-dialog-sub">ההערה נשלחה, תודה! נבדוק אותה ונתקן בקובץ אם יתברר שצריך.</p>
+                      <p className="fix-dialog-sub">
+                        ההערה נשלחה, תודה! המערכת תבדוק אותה מול הקובץ עצמו. אם יתברר שצריך תיקון – תקבלי כאן בכרטיסייה
+                        גרסה מתוקנת של הקובץ (ואם זו טעות שנוגעת לכולן – הקובץ יתוקן לכל המורות). מה שהוחלט יופיע בכרטיסייה.
+                      </p>
                     ) : (
                       <div className="fix-general-box">
+                        <p className="fix-dialog-sub">
+                          למשל: הדף ארוך מדי, חסרה שאלה על…, שאלה 3 לא ברורה. המערכת תבדוק את ההערה מול הקובץ, ואם צריך – תתקן
+                          את הקובץ ותציע לך כאן גרסה מתוקנת.
+                        </p>
                         <textarea
                           rows={3}
                           maxLength={2000}
@@ -583,20 +578,6 @@ export function FixRequestButton({
                     ))}
                 </div>
               )}
-              </div>
-              <div className="fix-pane-foot">
-              {result?.error && <p className="fix-error">{result.error}</p>}
-              <div className="fix-actions">
-                <button
-                  type="button"
-                  disabled={pending || ready.length === 0}
-                  className="btn btn-gold text-sm py-2 fix-gate-btn"
-                  onClick={send}
-                >
-                  {pending ? "שולחת…" : ready.length > 1 ? `שליחת ${ready.length} התיקונים` : "שליחת התיקון"}
-                  <Send className="h-4 w-4 fix-gate-arrow" strokeWidth={1.75} aria-hidden />
-                </button>
-              </div>
               </div>
             </div>
             <div className="fix-frame-wrap">

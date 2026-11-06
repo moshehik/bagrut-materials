@@ -33,6 +33,7 @@ export function redactSecrets(text: string): string {
     "GITHUB_TOKEN",
     "GH_DISPATCH_TOKEN",
     "ORACLE_CONVERT_API_KEY",
+    "AGENT_API_TOKEN",
     "SESSION_SECRET",
     "MAIL_SCRIPT_URL",
     // נדרים פלוס (src/lib/nedarim) – המפתח npk_ נתפס גם לפי תבנית למטה (כשהוא מגיע מ-app_secrets ולא מ-env)

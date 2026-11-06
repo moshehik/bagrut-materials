@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
 import { UnpublishFixButton } from "@/components/admin/fix-publish-form";
 import { PendingFixesSection } from "@/components/admin/pending-fixes-section";
+import { PrivateVersionsSection } from "@/components/admin/private-versions-section";
 import { GeminiPoolCard } from "@/components/admin/gemini-pool-card";
 import { geminiPoolStatus } from "@/lib/gemini-pool";
 
@@ -49,6 +50,8 @@ export default async function AdminFixesPage() {
       <GeminiPoolCard status={await geminiPoolStatus()} />
 
       <PendingFixesSection />
+
+      <PrivateVersionsSection />
 
       <section>
         <h3 className="mb-2 font-bold">תיקונים מפורסמים</h3>

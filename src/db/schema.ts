@@ -221,6 +221,17 @@ export const materialFixes = pgTable(
     originalText: text("original_text"),
     correctedText: text("corrected_text"),
     adminNote: text("admin_note"),
+    /**
+     * kind=general בלבד: מה שהמורה המבקשת רואה בכרטיסייה אחרי שהסוכן טיפל בהערה שלה (ניסוח אליה, לא הערה פנימית).
+     * סטטוסים נוספים לתלונה כללית: answered = הסוכן בדק ואין מה לשנות (רק תשובה); private = נוצרה לה גרסה פרטית
+     * מתוקנת (ר' materialPrivateVersions); merged = הקובץ המשותף הוחלף לכולן. (scripts/agent-general-fix.ts)
+     */
+    replyText: text("reply_text"),
+    /**
+     * kind=general: JSON של קבצי העבודה שנשמרו בדרייב להערה (לא מוחקים כלום): [{kind: original|edited|rendered|published,
+     * driveId, name, at}] – ר' keepFixArtifact ב-src/lib/general-fix.ts. ציר הזמן המלא – audit_logs (entity material_fix).
+     */
+    artifacts: text("artifacts"),
     publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -228,6 +239,40 @@ export const materialFixes = pgTable(
     index("material_fixes_material_idx").on(t.materialId),
     uniqueIndex("material_fixes_number_idx").on(t.materialId, t.fixNumber),
   ],
+);
+
+/**
+ * "גרסה פרטית" של חומר למורה אחת: קובץ docx שהסוכן ערך בעקבות תלונה כללית שלה (material_fixes, kind=general)
+ * והחליט לא להחליף בו את הקובץ המשותף. הקובץ יושב בדרייב (drive://<id>, בתיקיית _ארכיון/גרסאות פרטיות) ומוגש
+ * לה בלבד – ההורדה/הצפייה/המייל שלה מקבלים אותו במקום הקובץ המשותף (עם אותה הטבעה והמרה), ‎?original=1 מחזיר
+ * את המשותף. לכל (חומר, משתמשת) יש לכל היותר גרסה אחת פעילה (status active); גרסה חדשה מסמנת את הקודמת replaced.
+ * המנהלת רואה ומסירה (status removed) מ-/admin/fixes. **שום דבר לא נמחק**: שורות משנות סטטוס בלבד, והקובץ בדרייב נשאר
+ * (מועבר לתת-תיקיית "לא פעילות" עם שם מתאר). ר' src/lib/private-versions.ts.
+ */
+export const materialPrivateVersions = pgTable(
+  "material_private_versions",
+  {
+    id: serial("id").primaryKey(),
+    materialId: integer("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** התלונה הכללית שבעקבותיה נוצרה (null אם נמחקה) */
+    fixId: integer("fix_id").references(() => materialFixes.id, { onDelete: "set null" }),
+    /** drive://<fileId> בלבד */
+    fileUrl: text("file_url").notNull(),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    size: integer("size").notNull().default(0),
+    /** מה שונה בקובץ – מוצג למורה בכרטיסייה */
+    note: text("note"),
+    /** active / replaced (נוצרה גרסה חדשה יותר) / removed (המנהלת/הסוכן הסירו) */
+    status: varchar("status", { length: 12 }).notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    removedAt: timestamp("removed_at"),
+  },
+  (t) => [index("material_private_versions_user_idx").on(t.userId, t.materialId)],
 );
 
 /** מאגר שיחות מורות (שיחה / חברה / כישורי חיים) — שיחה/פעילות שמורה מעלה, לא "חומר" רגיל של המנהלת */
@@ -1080,6 +1125,7 @@ export type CartItem = typeof cartItems.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type UserInterest = typeof userInterests.$inferSelect;
 export type MaterialFix = typeof materialFixes.$inferSelect;
+export type MaterialPrivateVersion = typeof materialPrivateVersions.$inferSelect;
 export type Sicha = typeof sichot.$inferSelect;
 export type SichaRating = typeof sichaRatings.$inferSelect;
 export type SichaUsage = typeof sichaUsages.$inferSelect;

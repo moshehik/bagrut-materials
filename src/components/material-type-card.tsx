@@ -6,6 +6,8 @@ import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { FIX_TIPS, FixRequestButton, FixViewer, type CardFix } from "@/components/material-fixes";
+import { PrivateVersionNote } from "@/components/material-private-version";
+import type { CorrectionState } from "@/lib/private-version-logic";
 import { FreeTrialDownload } from "@/components/free-trial-download";
 import type { FreeTrialState } from "@/lib/free-trial";
 
@@ -21,6 +23,8 @@ type Props = {
   myDownloadCount?: number;
   /** תיקונים מפורסמים לקובץ (ר' src/lib/fixes.ts) – מציגים אגוזי "קובץ מתוקן" ו"בחירת שינויים" */
   fixes?: CardFix[];
+  /** ההערה הכללית של המבקרת על הקובץ וגרסה פרטית מתוקנת שלה, אם יש (ר' src/lib/private-versions.ts) */
+  correction?: CorrectionState;
   /** רק לדוגמאות פיתוח (card-preview): PDF קבוע בחלון הצפייה בשינויים */
   fixesViewSrc?: string;
   /** רק לדוגמאות פיתוח: PDF נקי (בלי סימונים) בחלון העריכה */
@@ -74,6 +78,7 @@ export function MaterialTypeCard({
   bundleHref,
   myDownloadCount = 0,
   fixes = [],
+  correction,
   fixesViewSrc,
   plainViewSrc,
   fixDemo = false,
@@ -279,6 +284,8 @@ export function MaterialTypeCard({
               </a>
             </>
           )}
+          {/* מצב ההערה הכללית של המורה / הגרסה הפרטית המתוקנת שלה – רק למי שמורשית לקובץ */}
+          {entitlement.ok && !viewOnly && <PrivateVersionNote state={correction} downloadHref={target} />}
         </div>
       </div>
 

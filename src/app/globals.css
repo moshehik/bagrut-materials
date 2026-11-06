@@ -1365,6 +1365,57 @@ svg.mtc-rownut {
   filter: none;
 }
 
+/* מצב "הערה כללית על הקובץ" של המורה / גרסה פרטית מתוקנת שלה (material-private-version.tsx) – בתוך .mtc-tools */
+.mtc-note {
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #1f1f1f;
+}
+.mtc-note-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.mtc-note-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+.mtc-note-wait .mtc-note-icon {
+  color: #8a5a00;
+}
+.mtc-note-done .mtc-note-icon {
+  color: #1f6b3a;
+}
+.mtc-note-info .mtc-note-icon {
+  color: #3f6aa0;
+}
+.mtc-note-date {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.mtc-note-reply {
+  margin-top: 0.25rem;
+  padding-inline-start: 1.5rem;
+  white-space: pre-wrap;
+  color: #333;
+}
+.mtc-note-link {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding-inline-start: 1.5rem;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  color: #3f6aa0;
+}
+
 /* אנימציית אגוז-כפתור: כשעומדים עליו האגוז קופץ כמו ג׳לי (מתכווץ, מזנק, נוחת ומתרסק קצת)
    ומנצנצים סביבו ניצוצות קטנים – כדי שיהיה ברור שזה לחצן */
 @keyframes nut-boing {
@@ -4010,15 +4061,7 @@ a.sicha-tag-video:hover {
   height: min(70vh, 46rem);
 }
 
-/* חלון עריכת השינויים: הקובץ קבוע בצד, רשימת התיקונים נגללת לבד, וכפתור השליחה נשאר תמיד למטה */
-.fix-pane-foot {
-  margin-top: 0.4rem;
-  padding-top: 0.6rem;
-  border-top: 1.5px solid rgba(0, 0, 0, 0.18);
-}
-.fix-pane-foot .fix-actions {
-  margin-top: 0;
-}
+/* חלון עריכת השינויים: הקובץ קבוע בצד, ורשימת התיקונים נגללת לבד */
 .fix-pane-scroll {
   /* פס הגלילה בקצה הימני של האזור; התוכן נשאר ב-RTL */
   direction: ltr;
@@ -4306,6 +4349,8 @@ a.sicha-tag-video:hover {
   justify-content: center;
   gap: 0.45rem;
   width: 100%;
+  /* רווח ברור מהרשימה הנפתחת / תיבת ההצעה / תיבת התיקון שמעליו */
+  margin-top: 1.1rem;
   margin-bottom: 0.7rem;
   padding: 0.45rem 1rem;
   border: 2px solid #0a0a0a;
@@ -4331,15 +4376,57 @@ a.sicha-tag-video:hover {
   font-size: 0.95rem;
   line-height: 1.7;
 }
-.fix-edit-reopen {
+.fix-edit-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-inline-start: auto;
   padding: 0 0.7rem;
   border: 1.5px solid #0a0a0a;
   border-radius: 999px;
-  background: transparent;
+  background: #9ac7bc;
   font-family: var(--font-hand);
   font-size: 1rem;
-  cursor: pointer;
+}
+/* רווח אחיד (~14px) בין כל הבקרות בכרטיס תיקון: רשימה נפתחת ← הערה ← "הכנת הצעה" ← תיבת התיקון ← "החל תיקון" */
+.fix-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.fix-edit > .fix-edit-head {
+  margin-bottom: 0;
+}
+.fix-edit > .fix-q,
+.fix-edit > .fix-ai,
+.fix-edit > .fix-check,
+.fix-edit > .fix-error,
+.fix-edit > .fix-apply,
+.fix-edit > .fix-edit-applied {
+  margin: 0;
+}
+.fix-edit .fix-ai {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+.fix-edit .fix-ai textarea {
+  align-self: stretch;
+  margin: 0;
+}
+.fix-edit .fix-ai .fix-error {
+  margin: 0;
+}
+/* הערה קטנה בראש חלון עריכת השינויים (במקום ההודעה הצפה "שימי לב!") */
+.fix-note {
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.fix-note p {
+  margin: 0 0 0.25rem;
 }
 
 /* כותרת החלון אחרי "שימי לב": לוגו בצד ימין, הכותרת והשם באמצע, סגירה בשמאל */

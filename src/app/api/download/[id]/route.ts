@@ -12,6 +12,9 @@ import { contentDisposition, fileRouteError } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
+import { getPrivateVersion, resolveServedFile } from "@/lib/private-versions";
+import { parseOriginalParam } from "@/lib/private-version-logic";
+import { logFixEvent } from "@/lib/fix-events";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
 import { sendMail, templates } from "@/lib/mail";
@@ -211,7 +214,11 @@ async function serve(req: NextRequest, ctx: Ctx) {
     }
   };
 
-  const file = await fetchFile(material.fileUrl);
+  // גרסה פרטית מתוקנת של המורה (תלונה כללית שהסוכן תיקן רק עבורה) מוגשת במקום הקובץ המשותף; ?original=1 = המשותף.
+  // עוברת את אותו צינור בדיוק (תיקונים מסומנים, המרה, הטבעה) – ההבדל היחיד הוא איזה docx נמשך מהדרייב.
+  const served = await resolveServedFile(material, u, req.nextUrl.searchParams);
+  const wantOriginal = parseOriginalParam(req.nextUrl.searchParams.get("original"));
+  const file = await fetchFile(served.fileUrl);
   if (!file) {
     await release();
     // רק מזהה הקובץ בדרייב (לא סודות)
@@ -220,7 +227,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
       action: "download.file_missing",
       entityType: "material",
       entityId: material.id,
-      details: { driveId: material.fileUrl.startsWith("drive://") ? material.fileUrl.slice("drive://".length) : null },
+      details: { driveId: driveIdFromUrl(served.fileUrl), privateVersion: served.privateVersion?.id ?? null },
     });
     return fileRouteError(req, "הקובץ אינו זמין כרגע, נסי שוב מאוחר יותר", 502);
   }
@@ -282,13 +289,13 @@ async function serve(req: NextRequest, ctx: Ctx) {
           });
         }
       }
-      const baseName = fixesApplied ? withSuffix(material.fileName, "מתוקן") : material.fileName;
+      const baseName = fixesApplied || served.privateVersion ? withSuffix(material.fileName, "מתוקן") : material.fileName;
       let out: Uint8Array;
       try {
         const pdfBytes = await convertOfficeToPdfCached({
           bytes: raw,
-          // מטמון PDF מומר בדרייב (מפתח: קובץ + md5 של התוכן) – חוסך 10-20 שניות המרה
-          fileId: driveIdFromUrl(material.fileUrl),
+          // מטמון PDF מומר בדרייב (מפתח: קובץ + md5 של התוכן) – חוסך 10-20 שניות המרה; לגרסה פרטית – המפתח שלה
+          fileId: served.cacheFileId,
           defer: after,
           // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
           mimeType: officeMimeFor(material.mime, material.fileName),
@@ -395,8 +402,16 @@ async function serve(req: NextRequest, ctx: Ctx) {
       action: "download",
       entityType: "material",
       entityId: material.id,
-      details: { via: ent.via, title: material.title },
+      details: { via: ent.via, title: material.title, privateVersion: served.privateVersion?.id ?? null, original: wantOriginal },
     });
+    // המורה ביקשה במפורש את הקובץ המקורי למרות שיש לה גרסה פרטית – נרשם על ההערה (ציר הזמן ב-/admin/fixes)
+    if (wantOriginal && !isAdmin) {
+      const pv = await getPrivateVersion(material.id, u.id);
+      if (pv?.fixId) {
+        const { ip } = await requestMeta();
+        await logFixEvent({ fixId: pv.fixId, materialId: material.id, action: "fix.general.original_download", actorId: u.id, source: "site", ip, summary: `המורה הורידה את הקובץ המקורי (בלי התיקון) במקום הגרסה הפרטית #${pv.id}`, details: { versionId: pv.id } });
+      }
+    }
     await db
       .update(materials)
       .set({ downloads: sql`${materials.downloads} + 1` })
