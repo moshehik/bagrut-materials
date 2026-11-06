@@ -14,6 +14,7 @@ import {
 } from "@/lib/actions/fixes";
 import { FIX_REASONS, type FixReasonKey } from "@/lib/fix-writing-guidelines";
 import { PdfViewer, type PdfMark } from "@/components/pdf-viewer";
+import { encodeDraft } from "@/lib/fix-draft";
 
 /** own = התיקון של המורה עצמה: חל אצלה מיד (מסומן מראש), בלי תלות בהחלטה על שאר המורות */
 export type CardFix = { id?: number; number: number; originalText: string; correctedText: string; own?: boolean };
@@ -246,6 +247,8 @@ export function FixRequestButton({
   const [activeId, setActiveId] = useState<number>(() => edits[0].id);
   /** עולה בכל תיקון שנשלח בהצלחה – טוען מחדש את הקובץ שבחלון כך שיציג את התיקון שחל */
   const [viewVersion, setViewVersion] = useState(0);
+  /** הנוסח החדש שעוד לא נשלח (ידני או מג'מיני), בקידוד לתצוגה המקדימה – הקובץ שבצד נטען איתו מחדש כמו ב"לצפייה בשינויים" */
+  const [liveDraft, setLiveDraft] = useState<string | null>(null);
   const router = useRouter();
   // תלונה כללית על הקובץ (בלי טקסט מסומן)
   const [generalOpen, setGeneralOpen] = useState(false);
@@ -331,11 +334,21 @@ export function FixRequestButton({
   };
 
   // תיקון שכבר נשלח מופיע בקובץ המרוענן, אז לא מציירים שוב את הסימון שלו
-  const marks = edits.flatMap((e) => (e.mark && !e.applied ? [e.mark] : []));
+  // וגם סימון שכבר מוצג בקובץ כהחלפה (תצוגה חיה) לא מצויר שוב
+  const marks = edits.flatMap((e) => (e.mark && !e.applied && !(liveDraft && e.correction.trim()) ? [e.mark] : []));
   const canApplyEdit = (e: Edit) =>
     !e.applied && !e.submitting && !e.busy && e.check !== "busy" && e.quote.trim().length >= 2 && e.correction.trim().length > 0;
   /** המופע שסומן (כשהטקסט חוזר כמה פעמים) – רק אם הטקסט לא נערך ידנית אחרי הסימון */
   const occurrenceOf = (e: Edit) => (e.occ !== undefined ? e.occ : e.mark && e.mark.text === e.quote ? e.mark.occurrence : undefined);
+  // תצוגה חיה: אחרי שיש נוסח חדש (הקלדה, אחרי הפסקה קצרה, או הצעה מג'מיני) – הקובץ נטען מחדש עם ההחלפה
+  const draftKey = demo
+    ? null
+    : encodeDraft(edits.filter((e) => !e.applied).map((e) => ({ q: e.quote, c: e.correction, o: occurrenceOf(e) })));
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => setLiveDraft(draftKey), draftKey ? 700 : 0);
+    return () => clearTimeout(t);
+  }, [draftKey, open]);
   /** ג'מיני מנסח תיקון לפי הסיבה/התיאור; התיקון נכנס לתיבת "התיקון שלך" וניתן לעריכה */
   const askAI = async (e: Edit) => {
     update(e.id, { busy: true, aiError: null });
@@ -381,7 +394,12 @@ export function FixRequestButton({
   };
   // אחרי תיקון שנשלח הקובץ שבחלון נטען מחדש עם התיקונים שחלים עליה (?fixes=all); הפרמטר v מונע שימוש בעותק ישן
   const viewSrc =
-    viewSrcOverride ?? (viewVersion > 0 ? `/api/preview/${materialId}?fixes=all&v=${viewVersion}` : `/api/preview/${materialId}`);
+    viewSrcOverride ??
+    (liveDraft
+      ? `/api/preview/${materialId}?fixes=all&draft=${liveDraft}&v=${viewVersion}`
+      : viewVersion > 0
+        ? `/api/preview/${materialId}?fixes=all&v=${viewVersion}`
+        : `/api/preview/${materialId}`);
 
   const label = (
     <>

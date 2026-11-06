@@ -165,6 +165,8 @@ export function PdfViewer({
   const [zoom, setZoom] = useState(1);
   const [width, setWidth] = useState(0);
   const [renderVersion, setRenderVersion] = useState(0);
+  /** עולה בכל מסמך שנטען (גם כש-src מתחלף והמצב נשאר "ready") – כדי שהעמודים יצוירו מחדש */
+  const [docVersion, setDocVersion] = useState(0);
   const [pending, setPending] = useState<PendingSelection | null>(null);
   const renderToken = useRef(0);
 
@@ -183,6 +185,7 @@ export function PdfViewer({
         }
         docRef.current = doc;
         setStatus("ready");
+        setDocVersion((v) => v + 1);
       } catch (e) {
         console.error("pdf viewer load failed", e);
         if (!cancelled) setStatus("error");
@@ -288,7 +291,7 @@ export function PdfViewer({
 
   useEffect(() => {
     if (status === "ready") void renderAll();
-  }, [status, renderAll]);
+  }, [status, renderAll, docVersion]);
 
   // ציור הסימונים הוורודים על העמודים
   useEffect(() => {

@@ -12,6 +12,7 @@ import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl } from "@/lib/dr
 import { logAudit, requestMeta } from "@/lib/audit";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
+import { decodeDraft } from "@/lib/fix-draft";
 import { resolveServedFile } from "@/lib/private-versions";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
@@ -29,6 +30,18 @@ export const maxDuration = 120;
  *   downloads עם via="view:<via>" – אחרת מנויה שנתית יכלה לצפות במקצוע שלם ועדיין "להחליף" אותו
  *   (ההחלפה מותרת רק כל עוד downloadsUsed=0). העמוד הראשון לאורחות נשאר חופשי ולא נספר.
  */
+/** הגבלה קלה על תצוגות חיות של נוסח חדש (לכל משתמשת): עד 60 בעשר דקות, בזיכרון השרת */
+const draftHits = new Map<number, number[]>();
+function draftRateOk(userId: number | undefined): boolean {
+  if (!userId) return true;
+  const now = Date.now();
+  const list = (draftHits.get(userId) ?? []).filter((t) => now - t < 10 * 60_000);
+  if (list.length >= 60) return false;
+  list.push(now);
+  draftHits.set(userId, list);
+  return true;
+}
+
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const materialId = Number(id);
@@ -75,9 +88,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return fileRouteError(req, "אין תצוגה מקדימה לסוג קובץ זה", 400);
   }
 
+  // ?draft=… – תצוגה חיה של נוסח חדש בחלון עריכת השינויים (לפני ששולחים): לא נשמר דבר, ולא נספרת בכל הקלדה כצפייה במכסה
+  const rawDraft = fullView ? decodeDraft(req.nextUrl.searchParams.get("draft")) : null;
+  const draft = rawDraft && (isAdmin || draftRateOk(user?.id)) ? rawDraft : null;
+  if (rawDraft && !draft) return fileRouteError(req, "יותר מדי בקשות תצוגה בזמן קצר, נסי שוב עוד רגע", 429);
+
   // צפייה מלאה של משתמשת רגילה: הזמנת מכסה (כמו הורדה) לפני ההבאה; משוחררת אם ההצגה נכשלה
   let reservation: Reservation | null = null;
-  if (fullView && user && !isAdmin && ent.ok) {
+  if (fullView && user && !isAdmin && ent.ok && !draft) {
     let r: ReserveResult;
     try {
       const meta = await requestMeta();
@@ -130,16 +148,18 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   // ?fixes=all | ?fixes=1,3 – הצפייה בשינויים: הדף במלואו, מה שהתבקש לתקן בזהב והתיקון בתכלת, עם מספר ליד כל תיקון.
   // הסימון קיים רק בצפייה באתר; ההורדה (api/download) מחליפה את הטקסט בנראות רגילה.
   const wantFixes = fullView ? parseFixesParam(req.nextUrl.searchParams.get("fixes")) : null;
-  if (wantFixes && isDocxName(material.fileName)) {
+  if ((wantFixes || draft) && isDocxName(material.fileName)) {
     try {
       const published = (await getFixesForViewer([material.id], user?.id)).get(material.id) ?? [];
-      const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
-      if (chosen.length > 0) {
-        const r = await applyDocxFixes(
-          raw,
-          chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, number: f.number, occurrence: f.occurrence })),
-          "marked",
-        );
+      const chosen = !wantFixes ? [] : wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
+      // הנוסח החדש שעוד לא נשלח מקבל את המספר הבא ברשימה, כמו שיופיע אחרי השליחה
+      const nextNumber = published.reduce((m, f) => Math.max(m, f.number), 0) + 1;
+      const toApply = [
+        ...chosen.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, number: f.number, occurrence: f.occurrence })),
+        ...(draft ?? []).map((d, i) => ({ id: -(i + 1), originalText: d.q, correctedText: d.c, number: nextNumber + i, occurrence: d.o })),
+      ];
+      if (toApply.length > 0) {
+        const r = await applyDocxFixes(raw, toApply, "marked");
         if (r.applied.length > 0) raw = new Uint8Array(r.bytes);
       }
     } catch (e) {
