@@ -105,7 +105,7 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
             e = mul([+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]], e);
           }
           const widthPt = Math.hypot(e[0], e[1]);
-          if (widthPt < 30 || widthPt > 200 || Math.abs(e[1]) > 0.01 || Math.abs(e[2]) > 0.01 || !(e[5] > pageH * 0.66 || e[5] + e[3] > pageH * 0.66)) return all;
+          if (widthPt < 30 || widthPt > 200 || Math.abs(e[1]) > 0.01 || Math.abs(e[2]) > 0.01 || Math.max(e[5], e[5] + e[3]) < pageH * 0.9) return all; // הלוגו צמוד לשפה העליונה (≥90% מהגובה); אייקון נורה בשליש העליון לא נספר
           changed = true;
           usedNames.add(c.name);
           if (c.kind.dedupe && doneKinds.has(c.kind.name)) return ""; // עותק נוסף של אותו לוגו – מוסרים
