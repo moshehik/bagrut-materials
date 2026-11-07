@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>זיהוי נטפרי מתוך הדף</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:0 12px;background:#faf8f2;line-height:1.6}
+table{border-collapse:collapse;width:100%;background:#fff}
+td,th{border:1px solid #223;padding:6px 8px;font-size:14px;text-align:right;vertical-align:top}
+th{background:#eee}
+.ok{color:#0a7a2f;font-weight:bold}.bad{color:#b3261e;font-weight:bold}
+pre{background:#fff;border:1px solid #223;padding:8px;white-space:pre-wrap;direction:ltr;text-align:left;font-size:13px}
+button{font-size:16px;padding:8px 16px;border:2px solid #223;border-radius:8px;background:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+<h1>זיהוי נטפרי מתוך הדף</h1>
+<p>הדף שולח כמה בקשות לאתר עצמו ומציג מה חזר: סטטוס, סוג התוכן, כותרות ותחילת הגוף. אם נטפרי חוסם בקשה, ייתכן שיחזור סטטוס 418 או דף חסימה. בסוף יש סיכום להעתקה – העתיקי ושלחי לי.</p>
+<p><button id="run">הרצה מחדש</button></p>
+<table id="t"><thead><tr><th>בדיקה</th><th>סטטוס</th><th>סוג תוכן</th><th>בייטים</th><th>זמן (מ״ש)</th><th>תחילת הגוף / שגיאה</th></tr></thead><tbody></tbody></table>
+<h3>סיכום להעתקה</h3>
+<pre id="sum">טוען…</pre>
+<h3>כותרות שחזרו בבדיקה הראשונה (סרטון)</h3>
+<pre id="hdr"></pre>
+<div id="vwrap"></div>
+<script>
+var ORIGIN = location.origin;
+var TESTS = [
+  { name: "A. סרטון MP4 קטן (fetch)", url: "/netfree-test/vtest.mp4", showHeaders: true },
+  { name: "B. סרטון MP4 עם Range (בקשת נגן)", url: "/netfree-test/vtest.mp4", headers: { Range: "bytes=0-1023" } },
+  { name: "C. סרטון WebM (fetch)", url: "/netfree-test/vtest.webm" },
+  { name: "D. קובץ שמע MP3 (fetch)", url: "/netfree-test/vtest.mp3" },
+  { name: "E. כתובת פנימית של נטפרי על הדומיין שלנו (~netfree/test-url)", url: "/~netfree/test-url?url=" + encodeURIComponent(ORIGIN + "/netfree-test/vtest.mp4") },
+  { name: "F. כתובת פנימית של נטפרי – נתיב אחר (~netfree/)", url: "/~netfree/" },
+  { name: "G. קובץ שלא קיים (להשוואה, אמור 404)", url: "/netfree-test/does-not-exist-" + Date.now() },
+  { name: "H. דף HTML רגיל (להשוואה, אמור 200)", url: "/netfree-test/index.html" }
+];
+var rows = [];
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+function addRow(r){
+  var cls = r.status === 200 || r.status === 206 ? "ok" : "bad";
+  var tr = document.createElement("tr");
+  tr.innerHTML = "<td>" + esc(r.name) + "</td><td class='" + cls + "'>" + esc(r.status) + "</td><td dir='ltr'>" + esc(r.ct || "") + "</td><td>" + esc(r.bytes == null ? "" : r.bytes) + "</td><td>" + esc(r.ms) + "</td><td dir='ltr'>" + esc(r.note || "") + "</td>";
+  document.querySelector("#t tbody").appendChild(tr);
+}
+async function one(t){
+  var t0 = performance.now();
+  var out = { name: t.name, url: t.url };
+  try {
+    var res = await fetch(t.url, { headers: t.headers || {}, cache: "no-store", redirect: "manual" });
+    var buf = await res.arrayBuffer();
+    out.status = res.status + (res.type === "opaqueredirect" ? " (הפניה)" : "");
+    out.ct = res.headers.get("content-type");
+    out.bytes = buf.byteLength;
+    var head = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, 160)).replace(/[^\x20-\x7E֐-׿]/g, ".");
+    out.note = head;
+    if (t.showHeaders) { var h = []; res.headers.forEach(function (v, k) { h.push(k + ": " + v); }); out.headers = h.join("\n"); }
+  } catch (e) {
+    out.status = "שגיאה";
+    out.note = String(e);
+  }
+  out.ms = Math.round(performance.now() - t0);
+  return out;
+}
+function videoProbe(){
+  return new Promise(function (resolve) {
+    var t0 = performance.now(), done = false;
+    var v = document.createElement("video");
+    v.muted = true; v.preload = "auto"; v.playsInline = true; v.style.maxWidth = "200px";
+    function fin(s){ if (done) return; done = true; resolve({ name: "I. אלמנט video (טעינת מטא-דאטה)", status: s, ms: Math.round(performance.now() - t0), note: v.error ? "קוד שגיאה " + v.error.code : "" }); }
+    v.addEventListener("loadedmetadata", function () { fin("נטען"); });
+    v.addEventListener("error", function () { fin("שגיאה"); });
+    setTimeout(function () { fin("לא נטען תוך 8 שניות"); }, 8000);
+    v.src = "/netfree-test/vtest.mp4?x=" + Date.now();
+    document.getElementById("vwrap").appendChild(v);
+  });
+}
+async function run(){
+  document.querySelector("#t tbody").innerHTML = "";
+  document.getElementById("sum").textContent = "בודק…";
+  var results = [];
+  for (var i = 0; i < TESTS.length; i++) { var r = await one(TESTS[i]); results.push(r); addRow(r); if (r.headers) document.getElementById("hdr").textContent = r.headers; }
+  document.getElementById("vwrap").innerHTML = "";
+  var v = await videoProbe(); results.push(v); addRow({ name: v.name, status: v.status, ct: "", bytes: "", ms: v.ms, note: v.note });
+  var lines = ["זיהוי נטפרי – " + new Date().toISOString(), "UA: " + navigator.userAgent];
+  results.forEach(function (r) { lines.push(r.name + " => " + r.status + " | " + (r.ct || "-") + " | " + (r.bytes == null ? "-" : r.bytes) + "B | " + r.ms + "ms | " + String(r.note || "").slice(0, 100)); });
+  document.getElementById("sum").textContent = lines.join("\n");
+}
+document.getElementById("run").addEventListener("click", run);
+run();
+</script>
+</body>
+</html>
