@@ -104,6 +104,10 @@ Since 2026-10-04 the repo `moshehik/bagrut-materials` is **public**, exactly lik
 
 If a feature ever needs to hand the browser a file URL, it must be a same-origin route, never a raw third-party URL — otherwise it silently breaks for every Netfree-filtered visitor with no client-side error to debug from.
 
+## Netfree image/PDF rules (2026-11-08; full table + evidence: [docs/netfree.md](docs/netfree.md))
+
+Netfree blocks **every image except plain image files at a fixed URL** (those are checked once per URL, then pass): data URIs in HTML/CSS/JS/SVG-image, scrambled binaries, encrypted PDFs and zips are blocked; **inline SVG `<path>` passes**, and in PDFs **only vector content/text survive** (raster images inside a PDF are replaced by "התמונה לא נבדקה"). So: never embed images as data URIs (it also broke the RSC payload → React #412 on direct page load); keep image URLs stable; draw line-art as inline SVG (`scripts/gen-line-icons.cjs`, `line-icon.tsx`, **evenodd**); the PDF header logo + watermark are vector (`pdf-vector-logo.ts`, `makeDiagonalWatermarkPath`). Test pages for any new idea live in `public/netfree-test/` (links there must be absolute).
+
 ## Two computers — which folder to run from
 
 This repo is worked on from two physical Windows machines, both sometimes running Claude Code sessions on it at once. **Figure out which machine you're on before touching git**: run `$env:COMPUTERNAME` (PowerShell) or `echo $COMPUTERNAME` (bash).

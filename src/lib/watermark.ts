@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { SITE_NAME } from "./constants";
 import { DIAGONAL_DEG, diagonalOrigin, fitDiagonalSize } from "./watermark-geometry";
+import { replaceHeaderLogoWithVector } from "./pdf-vector-logo";
 
 let fontBytes: Uint8Array | null = null;
 async function loadFont() {
@@ -90,6 +91,46 @@ export async function makeDiagonalWatermarkPng(pageWidth: number, pageHeight: nu
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+/** אותו סימן מים אלכסוני כנתיב וקטורי אחד (קואורדינטות עמוד, y למטה, מקור בפינה השמאלית-עליונה) – בלי תמונה.
+ * נטפרי מחליף כל תמונה בתוך PDF (גם את שכבת התמונה השקופה של החתימה) אבל נתיבים וקטוריים עוברים, ולכן השכבה
+ * הכפולה (מול שכבת הטקסט) מצוירת עכשיו כצורות האותיות עצמן. אותה גאומטריה כמו makeDiagonalWatermarkPng. */
+export async function makeDiagonalWatermarkPath(pageWidth: number, pageHeight: number, text: string, size: number) {
+  const fk = fontkit.create(Buffer.from(await loadFont()));
+  const run = fk.layout(text);
+  const px = size / fk.unitsPerEm;
+  let penX = 0;
+  const pieces: { g: (typeof run.glyphs)[number]; x: number; y: number }[] = [];
+  run.glyphs.forEach((g, i) => {
+    const pos = run.positions[i];
+    pieces.push({ g, x: penX + pos.xOffset * px, y: pos.yOffset * px });
+    penX += pos.xAdvance * px;
+  });
+  const th = (-DIAGONAL_DEG * Math.PI) / 180;
+  const cos = Math.cos(th);
+  const sin = Math.sin(th);
+  const cx = pageWidth / 2;
+  const cy = pageHeight / 2;
+  const baseY = size * 0.35;
+  const P = (fx: number, fy: number, gx: number, gy: number) => {
+    const lx = gx + fx * px - penX / 2;
+    const ly = baseY - gy - fy * px;
+    return `${(cx + lx * cos - ly * sin).toFixed(2)} ${(cy + lx * sin + ly * cos).toFixed(2)}`;
+  };
+  let d = "";
+  for (const { g, x, y } of pieces) {
+    for (const c of (g.path as unknown as { commands: { command: string; args: number[] }[] }).commands) {
+      const a = c.args as number[];
+      if (c.command === "moveTo") d += `M${P(a[0], a[1], x, y)} `;
+      else if (c.command === "lineTo") d += `L${P(a[0], a[1], x, y)} `;
+      else if (c.command === "quadraticCurveTo") d += `Q${P(a[0], a[1], x, y)} ${P(a[2], a[3], x, y)} `;
+      else if (c.command === "bezierCurveTo") d += `C${P(a[0], a[1], x, y)} ${P(a[2], a[3], x, y)} ${P(a[4], a[5], x, y)} `;
+      else if (c.command === "closePath") d += "Z ";
+    }
+  }
+  if (!d) throw new Error("watermark: no glyph paths");
+  return d;
+}
+
 /**
  * מעביר את שכבת החתימה שנוספה לעמוד (ה-content stream האחרון) להיות הראשונה: היא מצוירת מתחת לתוכן העמוד,
  * כך שתמונות ורקעים (למשל בשקפי מצגת) מכסים אותה ולא להפך. הטקסט נשאר בקובץ לחילוץ.
@@ -114,6 +155,12 @@ export type StampOptions = {
 export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo, opts: StampOptions = {}) {
   const pdf = await PDFDocument.load(input, { ignoreEncryption: true });
   pdf.registerFontkit(fontkit);
+  // לוגו הכותרת בתמונה → ציור וקטורי (נטפרי מטשטש תמונות בתוך PDF); כשל לא מפיל את ההורדה
+  try {
+    replaceHeaderLogoWithVector(pdf);
+  } catch (e) {
+    console.error("watermark: vector logo failed", e instanceof Error ? e.message : e);
+  }
   const font = await pdf.embedFont(await loadFont(), { subset: true });
 
   // pdf-lib+fontkit כן מבצע bidi נכון בעצמו לטקסט עברי גולמי (לוגי) - לא צריך להפוך
@@ -228,14 +275,8 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo,
     // אותו סימן מים אלכסוני, כשכבת תמונה נפרדת לגמרי (לא טקסט) - ר' התיעוד על
     // makeDiagonalWatermarkPng. כפילות מכוונת מול השכבה הטקסטואלית שמעל.
     try {
-      const sizeKey = `${Math.round(width)}x${Math.round(height)}`;
-      let diagonalImage = diagonalImageCache.get(sizeKey);
-      if (!diagonalImage) {
-        const png = await makeDiagonalWatermarkPng(width, height, diagonal, dfs);
-        diagonalImage = await pdf.embedPng(png);
-        diagonalImageCache.set(sizeKey, diagonalImage);
-      }
-      page.drawImage(diagonalImage, { x: 0, y: 0, width, height });
+      const d = await makeDiagonalWatermarkPath(width, height, diagonal, dfs);
+      page.drawSvgPath(d, { x: 0, y: height, color: rgb(0.98, 0.98, 0.98), opacity: 0.09 });
     } catch (e) {
       // שכבת התמונה היא כפילות מגן – כשלה לא מפילה את ההורדה (שכבת הטקסט כבר על העמוד)
       console.error("watermark: image layer failed", e instanceof Error ? e.message : e);
