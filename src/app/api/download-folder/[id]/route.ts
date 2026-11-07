@@ -11,7 +11,7 @@ import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
 import { contentDisposition } from "@/lib/http-utils";
 import { markDownloadReady } from "@/lib/download-ready";
-import { sendMail, layoutHtml } from "@/lib/mail";
+import { sendMail, layoutHtml, siteUrl, templates } from "@/lib/mail";
 import { limitKey, rateLimit } from "@/lib/rate-limit";
 import {
   dailyRemaining,
@@ -213,6 +213,21 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     );
   }
 
+  // ?as=links: במקום זיפ מצורף (נחסם בנטפרי) – מייל עם כפתור הורדה לכל קובץ; כל קובץ יורד בנפרד דרך /api/download/[id] (שם נבדקות ההרשאות והמכסה)
+  if (mode === "email" && req.nextUrl.searchParams.get("as") === "links") {
+    const listed = owned.slice(0, FOLDER_MAX_FILES);
+    const tpl = templates.fileLinks(
+      user.name,
+      cat.title,
+      listed.map((m) => ({ title: m.title, href: `${siteUrl()}/api/download/${m.id}` })),
+      Math.max(0, owned.length - FOLDER_MAX_FILES),
+    );
+    const sent = await sendMail({ to: user.email, subject: tpl.subject, text: tpl.text, html: tpl.html, kind: "material", userId: user.id });
+    if (!sent.ok) return NextResponse.json({ error: "שליחת המייל נכשלה, נסי שוב בעוד רגע" }, { status: 502 });
+    await logAudit({ actorId: user.id, action: "download.folder.links_email", entityType: "category", entityId: categoryId, details: { folder: cat.title, files: listed.length } });
+    return NextResponse.json({ ok: true, email: user.email, files: listed.length, skipped: 0, links: true });
+  }
+
   // כמה קבצים מותר בזיפ הזה: תקרה קשיחה, ולמשתמשת רגילה גם המכסה היומית שנותרה,
   // המגבלה לחומר (max_downloads_per_user) ומכסת המנוי. אם התיקייה גדולה מזה – שגיאה ברורה
   // ולא זיפ חלקי בשקט (אי אפשר לצרף הודעה לזיפ, והמשתמשת לא תדע מה חסר).
@@ -378,11 +393,13 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ error }, { status });
     };
     if (body.byteLength > EMAIL_MAX_ZIP_BYTES) {
-      return fail(
-        `הקבצים גדולים מדי לשליחה במייל (${(body.byteLength / 1048576).toFixed(0)}MB). אפשר להוריד אותם ישירות למחשב.`,
-        413,
-        "email_too_large",
-      );
+      // הזיפ גדול ממגבלת הצרופה של ג'ימייל – במקום להיכשל, שולחים מייל עם כפתור הורדה לכל קובץ (הקבצים יורדים בנפרד מהאתר)
+      const listed = allowed.map((m) => ({ title: m.title, href: `${siteUrl()}/api/download/${m.id}` }));
+      const tpl = templates.fileLinks(user.name, cat.title, listed, 0);
+      const linksSent = await sendMail({ to: user.email, subject: tpl.subject, text: tpl.text, html: tpl.html, kind: "material", userId: user.id });
+      if (!linksSent.ok) return fail("שליחת המייל נכשלה, נסי שוב בעוד רגע", 502, "email_send_failed");
+      await logAudit({ actorId: user.id, action: "download.folder.links_email", entityType: "category", entityId: categoryId, details: { folder: cat.title, files: listed.length, reason: "zip_too_large", zipMB: Math.round(body.byteLength / 1048576) } });
+      return NextResponse.json({ ok: true, email: user.email, files: listed.length, skipped: 0, links: true, tooLarge: true });
     }
     const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const list = ready.map((r) => r.name);

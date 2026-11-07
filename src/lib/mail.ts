@@ -325,6 +325,22 @@ export const templates = {
     );
     return { subject: `${title} – ${SITE_NAME}`, text, html };
   },
+  /** מייל תיקייה: כפתור הורדה לכל קובץ (קישור מוטמע לאתר) – במקום זיפ מצורף שנחסם בנטפרי. */
+  fileLinks(name: string, folderTitle: string, items: { title: string; href: string }[], more = 0) {
+    const NL = String.fromCharCode(10);
+    const text = ["שלום " + name + ",", "", `כמבוקש, קישורי ההורדה לקבצי התיקייה "${folderTitle}":`, "", items.map((i) => `${i.title}: ${i.href}`).join(NL), ...(more > 0 ? ["", `(עוד ${more} קבצים בתיקייה – אפשר להוריד אותם מהאתר)`] : []), "", "הקישורים עובדים כשמחוברים לאתר.", "", "בהצלחה בשיעור!"].join(NL);
+    const rows = items
+      .map(
+        (i) =>
+          `<tr><td style="padding:7px 0;border-bottom:1px solid ${MAIL.line};font-size:16px;color:${MAIL.ink};text-align:right">${esc(i.title)}</td><td style="padding:7px 0 7px 12px;border-bottom:1px solid ${MAIL.line};white-space:nowrap"><a href="${esc(i.href)}" style="display:inline-block;background:${MAIL.navy};color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:6px 18px;border-radius:999px">להורדה</a></td></tr>`,
+      )
+      .join("");
+    const html = layoutHtml(
+      folderTitle,
+      `<p>שלום ${esc(name)},</p><p>כמבוקש, קישורי ההורדה לקבצי התיקייה <b>${esc(folderTitle)}</b>. כל קובץ יורד בנפרד:</p><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="direction:rtl;margin:6px 0 4px">${rows}</table>${more > 0 ? `<p style="color:${MAIL.muted};font-size:13px">עוד ${more} קבצים בתיקייה – אפשר להוריד אותם מהאתר.</p>` : ""}<p style="color:${MAIL.muted};font-size:13px">הקישורים עובדים כשמחוברים לאתר.</p>`,
+    );
+    return { subject: `${folderTitle} – ${SITE_NAME}`, text, html };
+  },
   manual(subject: string, body: string) {
     return {
       subject,

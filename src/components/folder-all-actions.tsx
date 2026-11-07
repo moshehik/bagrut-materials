@@ -36,7 +36,7 @@ function MailNut({ nut }: { nut?: ReactNode }) {
 type State =
   | { kind: "idle" }
   | { kind: "sending" }
-  | { kind: "done"; email: string; files: number; skipped: number }
+  | { kind: "done"; email: string; files: number; skipped: number; links?: boolean; tooLarge?: boolean }
   | { kind: "files"; done: number; total: number }
   | { kind: "filesDone"; total: number; more: number }
   | { kind: "error"; message: string };
@@ -105,12 +105,12 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
     }
   }
 
-  async function sendByMail() {
+  async function sendByMail(asLinks = false) {
     if (sending) return;
     setOpen(false);
     setState({ kind: "sending" });
     try {
-      const res = await fetch(endpoint, { method: "POST" });
+      const res = await fetch(asLinks ? `${endpoint}?as=links` : endpoint, { method: "POST" });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: string;
@@ -118,6 +118,8 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         email?: string;
         files?: number;
         skipped?: number;
+        links?: boolean;
+        tooLarge?: boolean;
       };
       if (data.redirect) {
         window.location.href = data.redirect;
@@ -127,7 +129,7 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         setState({ kind: "error", message: data.error || "השליחה נכשלה, נסי שוב בעוד רגע" });
         return;
       }
-      setState({ kind: "done", email: data.email ?? "", files: data.files ?? 0, skipped: data.skipped ?? 0 });
+      setState({ kind: "done", email: data.email ?? "", files: data.files ?? 0, skipped: data.skipped ?? 0, links: data.links ?? asLinks, tooLarge: !!data.tooLarge });
     } catch {
       setState({ kind: "error", message: "אין חיבור לשרת, נסי שוב בעוד רגע" });
     }
@@ -169,10 +171,16 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
             להורדה כזיפ אחד
           </a>
           {loggedIn ? (
-            <button type="button" role="menuitem" className="fa-item" onClick={sendByMail}>
-              <MailNut nut={nutMail} />
-              לשליחה למייל שלי
-            </button>
+            <>
+              <button type="button" role="menuitem" className="fa-item" onClick={() => sendByMail(true)}>
+                <MailNut nut={nutMail} />
+                לשליחה למייל – קישורים לקבצים
+              </button>
+              <button type="button" role="menuitem" className="fa-item" onClick={() => sendByMail(false)}>
+                <MailNut nut={nutMail} />
+                לשליחה למייל כזיפ אחד
+              </button>
+            </>
           ) : (
             <a role="menuitem" href={loginHref} className="fa-item">
               <MailNut nut={nutMail} />
@@ -197,7 +205,8 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         {state.kind === "done" && (
           <span className="fa-ok">
             <CheckCircle2 className="h-4 w-4" aria-hidden />
-            נשלח! {state.files} קבצים (זיפ אחד) בדרך אל <bdi dir="ltr">{state.email}</bdi>
+            נשלח! {state.links ? `קישורים ל-${state.files} קבצים` : `${state.files} קבצים (זיפ אחד)`} בדרך אל <bdi dir="ltr">{state.email}</bdi>
+            {state.tooLarge && " · הקבצים גדולים מדי לזיפ במייל, ולכן נשלחו קישורים להורדה"}
             {state.skipped > 0 && ` · ${state.skipped} קבצים לא נכללו`}
           </span>
         )}
