@@ -1,4 +1,5 @@
 import { NextResponse, after, type NextRequest } from "next/server";
+import { bytesBody } from "@/lib/stream-bytes";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { downloads, materials } from "@/db/schema";
@@ -315,7 +316,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
         out = raw; // מנהלת בלבד
       }
       const converted = out !== raw;
-      response = new Response(new Uint8Array(out), {
+      response = new Response(bytesBody(out), {
         headers: {
           "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
           "Content-Length": String(out.byteLength),
@@ -342,7 +343,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
         if (blocked) return blocked;
         out = bytes;
       }
-      response = new Response(new Uint8Array(out), {
+      response = new Response(bytesBody(out), {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Length": String(out.byteLength),

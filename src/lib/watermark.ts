@@ -7,6 +7,7 @@ import path from "node:path";
 import { SITE_NAME } from "./constants";
 import { DIAGONAL_DEG, diagonalOrigin, fitDiagonalSize } from "./watermark-geometry";
 import { replaceHeaderLogoWithVector } from "./pdf-vector-logo";
+import { meshifyLargeImages } from "./pdf-mesh-images";
 
 let fontBytes: Uint8Array | null = null;
 async function loadFont() {
@@ -160,6 +161,14 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo,
     replaceHeaderLogoWithVector(pdf);
   } catch (e) {
     console.error("watermark: vector logo failed", e instanceof Error ? e.message : e);
+  }
+  // מצגות: רקעי השקפים (תמונות) → רשת צבעים חלקה וקטורית (נטפרי מטשטש תמונות בתוך PDF, ר' pdf-mesh-images.ts)
+  if (opts.behindContent) {
+    try {
+      await meshifyLargeImages(pdf);
+    } catch (e) {
+      console.error("watermark: mesh images failed", e instanceof Error ? e.message : e);
+    }
   }
   const font = await pdf.embedFont(await loadFont(), { subset: true });
 

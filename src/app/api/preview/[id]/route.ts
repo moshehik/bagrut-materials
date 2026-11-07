@@ -1,4 +1,5 @@
 import { NextResponse, after, type NextRequest } from "next/server";
+import { bytesBody } from "@/lib/stream-bytes";
 import { fileRouteError } from "@/lib/http-utils";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -218,7 +219,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     console.error("preview view log failed", e);
   }
 
-  return new Response(new Uint8Array(out), {
+  return new Response(bytesBody(out), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Length": String(out.byteLength),
