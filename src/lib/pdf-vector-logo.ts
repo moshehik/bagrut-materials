@@ -21,6 +21,8 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
   let replaced = 0;
   const candidateRefs = new Set<PDFRef>();
   const stillUsed = new Set<PDFRef>();
+  // LibreOffice משתף לעיתים אותו מילון Resources בין כל העמודים: מוחקים את התמונה רק אחרי שעברנו על כל העמודים
+  const pendingDeletes: { xo: PDFDict; name: string }[] = [];
 
   for (const page of pdf.getPages()) {
     const resources = page.node.Resources();
@@ -96,7 +98,7 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
     xo.set(PDFName.of(FORM_NAME), formRef);
     for (const c of cands) {
       if (usedNames.has(c.name)) {
-        xo.delete(PDFName.of(c.name));
+        pendingDeletes.push({ xo, name: c.name });
         candidateRefs.add(c.ref);
       } else {
         stillUsed.add(c.ref);
@@ -104,6 +106,7 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
     }
     replaced++;
   }
+  for (const { xo, name } of pendingDeletes) xo.delete(PDFName.of(name));
   // תמונות הלוגו שכבר אין להן הפניה – מוחקים מהקובץ (חוסך מקום ולא משאיר תמונה ש"תטושטש")
   for (const ref of candidateRefs) if (!stillUsed.has(ref)) ctx.delete(ref);
   return replaced;
