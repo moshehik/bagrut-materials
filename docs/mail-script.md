@@ -48,3 +48,9 @@
 
 ## סקריפט גיבוי למכסה (2026-11-09)
 `MAIL_SCRIPT_URL_2` = פריסת Apps Script שנייה בחשבון Gmail נוסף (`loozhainyan1@…`). `sendMail` ב-`mail.ts` שולחת קודם דרך `MAIL_SCRIPT_URL`; רק כשהסקריפט מחזיר שגיאת מכסה ("Service invoked too many times"/quota) היא עוברת לגיבוי, ובשעה שאחרי כן מדלגת ישר על הראשי. שגיאה אחרת לא מעבירה לגיבוי (כדי לא לשלוח כפול). את הכתובת מגדירים ב-`.env.local` וב-Vercel (3 סביבות) + Redeploy; לא מעלים ל-git. קוד הסקריפט: `docs/google-apps-script.gs`.
+
+### סטטוס הגיבוי (2026-11-09)
+- הפריסה השנייה נוצרה מהחשבון `loozhainyan1@gmail.com` (שיתוף הפרויקט "מערכת מייל פתוח" + Deploy, Execute as: Me). בקשת GET אליה מחזירה `{"status":"ok","service":"gemach-mailer","version":18}` – כלומר קוד הפרויקט המשותף, לא הסקריפט הקצר.
+- `MAIL_SCRIPT_URL_2` מוגדר ב-`.env.local` וב-Vercel (שלוש סביבות). לא להעלות את הכתובת לגיט.
+- נשלח מייל בדיקה ישיר דרך הכתובת השנייה ל-`moshehik@gmail.com`; הסקריפט החזיר `success`. מי מופיע כשולח – לאמת בתיבה: צריך להיות `loozhainyan1`.
+- כללים: את הפריסה הזו מעדכנים (New version) **רק מ-`loozhainyan1`**; עדכון מ-`moshehik` יעביר את השולח אליו.
