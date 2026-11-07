@@ -1,6 +1,6 @@
 import { nutNameForLevel } from "./nut-images";
 
-/** ר' הערה בראש src/lib/inline-images.ts – נתיבי קובץ בלבד; מגן הנטפרי בדפדפן מטפל בתמונות שהוחלפו. */
+/** ר' הערה בראש src/lib/inline-images.ts – נתיבי קובץ בלבד. */
 
 export function inlineSite(src: string, _variant?: string): string {
   void _variant;
