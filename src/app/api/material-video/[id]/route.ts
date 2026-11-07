@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement, getCategoryChain, chainToHref } from "@/lib/data";
 import { driveFetchAuthed } from "@/lib/driveBridgeCore";
 import { driveIdFromUrl } from "@/lib/driveBridge";
+import { shareDriveFileWithUser } from "@/lib/drive-share";
 import { contentDisposition, fileRouteError } from "@/lib/http-utils";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
@@ -228,13 +229,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return json({ ok: false, error: "לא ניתן לשלוח את הקישור לפני השלמת הצעד הבא", ...(redirect ? { redirect } : {}) }, 409);
   }
 
-  const link = `${siteUrl()}${chainToHref(await getCategoryChain(material.categoryId))}#material-${material.id}`;
-  const tpl = templates.manual(
-    `${material.title} – ${SITE_NAME}`,
-    `שלום ${user.name},\n\nכמבוקש, הקישור לסרטון "${material.title}":\n${link}\n\nהסרטון נפתח באתר לצפייה, ואפשר גם להוריד אותו משם.\n\nבהצלחה בשיעור!`,
-  );
+  // קישור ישיר לקובץ בדרייב, עם הרשאת צפייה אישית לכתובת המייל של המשתמשת (נפתח רק בחשבון גוגל עם אותה כתובת).
+  // אם השיתוף נכשל (למשל כתובת שאינה חשבון גוגל) – חוזרים לקישור לאתר, כמו קודם.
+  const fileId = driveIdFromUrl(material.fileUrl);
+  const shared = fileId ? await shareDriveFileWithUser(fileId, user.email) : null;
+  const siteLink = `${siteUrl()}${chainToHref(await getCategoryChain(material.categoryId))}#material-${material.id}`;
+  const body = shared
+    ? `שלום ${user.name},\n\nכמבוקש, הקישור לסרטון "${material.title}" בדרייב:\n${shared.link}\n\nהסרטון שותף איתך אישית (${user.email}) – כדי לפתוח אותו צריך להיות מחוברת לגוגל באותה כתובת מייל.\nאפשר גם לצפות בו באתר: ${siteLink}\n\nבהצלחה בשיעור!`
+    : `שלום ${user.name},\n\nכמבוקש, הקישור לסרטון "${material.title}":\n${siteLink}\n\nהסרטון נפתח באתר לצפייה, ואפשר גם להוריד אותו משם.\n\nבהצלחה בשיעור!`;
+  const tpl = templates.manual(`${material.title} – ${SITE_NAME}`, body);
   const r = await sendMail({ to: user.email, subject: tpl.subject, text: tpl.text, html: tpl.html, kind: "material", userId: user.id });
   if (!r.ok) return json({ ok: false, error: "שליחת המייל נכשלה, נסי שוב בעוד רגע" }, 502);
-  await logAudit({ actorId: user.id, action: "material.video.email_link", entityType: "material", entityId: material.id, details: {} });
+  await logAudit({ actorId: user.id, action: "material.video.email_link", entityType: "material", entityId: material.id, details: { driveShared: !!shared, ...(shared ? { sharedWith: user.email } : {}) } });
   return json({ ok: true, email: user.email });
 }
