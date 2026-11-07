@@ -16,9 +16,9 @@ const WIDTH_PX = 280;
 const hex = (c) => "#" + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
 
 /** אזור מהלוגו (יחסי 0..1) → טבלת תאים. cell = פיקסלים לתא, k = מספר צבעים */
-async function region(meta, { x0, x1, y0, y1 }, cell, k) {
+async function region(meta, { x0, x1, y0, y1 }, cell, k, widthPx) {
   const crop = { left: Math.round(meta.width * x0), top: Math.round(meta.height * y0), width: Math.round(meta.width * (x1 - x0)), height: Math.round(meta.height * (y1 - y0)) };
-  const COLS = Math.round(WIDTH_PX / cell);
+  const COLS = Math.round(widthPx / cell);
   const ROWS = Math.round((COLS * crop.height) / crop.width);
   const { data } = await sharp(SRC).flatten({ background: "#ffffff" }).extract(crop).resize({ width: COLS, height: ROWS, fit: "fill", kernel: "lanczos3" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const n = COLS * ROWS;
@@ -73,13 +73,16 @@ async function region(meta, { x0, x1, y0, y1 }, cell, k) {
 
 (async () => {
   const meta = await sharp(SRC).metadata();
-  // אותו חיתוך אופקי לשני האזורים כדי שייישרו; הכיתוב מתחיל בערך ב-74% מגובה הלוגו
-  const top = await region(meta, { x0: 0.04, x1: 0.96, y0: 0.03, y1: 0.74 }, 2, 12);
-  const bottom = await region(meta, { x0: 0.04, x1: 0.96, y0: 0.74, y1: 0.97 }, 1, 4);
-  const html = `<div dir="ltr" style="text-align:center;font-size:0;line-height:0">${top.html}${bottom.html}</div>`;
+  // פריסה בשתי עמודות (בלי תפר חוצה): שמאל = אגוזים + חצי הבית (2px) לכל הגובה; ימין = חצי הבית העליון (2px) ומתחתיו הכיתוב (1px, חד יותר)
+  const half = WIDTH_PX / 2;
+  const left = await region(meta, { x0: 0.04, x1: 0.5, y0: 0.03, y1: 0.86 }, 2, 12, half);
+  const leftBottom = await region(meta, { x0: 0.04, x1: 0.5, y0: 0.86, y1: 0.97 }, 1, 4, half);
+  const rightTop = await region(meta, { x0: 0.5, x1: 0.96, y0: 0.03, y1: 0.69 }, 2, 12, half);
+  const rightBottom = await region(meta, { x0: 0.5, x1: 0.96, y0: 0.69, y1: 0.97 }, 1, 4, half);
+  const html = `<table role="presentation" dir="ltr" cellpadding="0" cellspacing="0" border="0" align="center" width="${WIDTH_PX}" style="width:${WIDTH_PX}px;max-width:100%;margin:0 auto;border-collapse:collapse" aria-label="לו״ז העניין – בית לחומרי הבגרות"><tr><td valign="top" width="${half}">${left.html}${leftBottom.html}</td><td valign="top" width="${half}">${rightTop.html}${rightBottom.html}</td></tr></table>`;
   fs.writeFileSync(
     path.join(__dirname, "..", "src/lib/mail-logo.generated.ts"),
     "// קובץ שנוצר אוטומטית ע״י scripts/gen-mail-logo.cjs — לא לערוך ידנית.\n" + `export const MAIL_LOGO_HTML = ${JSON.stringify(html)};\n`,
   );
-  console.log("top", top.cols + "x" + top.rows, "bottom", bottom.cols + "x" + bottom.rows, "html bytes", html.length);
+  console.log("left", left.cols + "x" + left.rows, "rightTop", rightTop.cols + "x" + rightTop.rows, "rightBottom", rightBottom.cols + "x" + rightBottom.rows, "html bytes", html.length);
 })();

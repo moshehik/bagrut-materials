@@ -51,8 +51,8 @@ type Props = {
  * (אחרי בדיקה חד-פעמית של נטפרי) באיכות המלאה, ואילו ה-SVG מוריד איכות (נבדק אצל המורה, 2026-11-08). אם עוד תמונה נחסמת –
  * מוסיפים אותה לכאן. (המפתחות קיימים ב-colour-svgs.generated.ts לכל התמונות.)
  */
-// 2026-11-08: ריק – נטפרי אישר גם את מחשבת ישראל ואזרחות (כל תמונות המקצועות עולות), ושתי הגרסאות ה-SVG שיבשו את סידור הבתים בדף הבית.
-const SVG_ONLY = new Set<string>([]);
+// 2026-11-08: נטפרי עדיין מציג את שני הבתים האלה כ"בבדיקה/נחסם" (בתים אחרים אושרו) – לכן SVG. הבעיה בסידור (גובה 266px מתכונת height) תוקנה: height:auto.
+const SVG_ONLY = new Set(["/images/houses/house-yahadut.png", "/images/houses/house-ezrachut.png"]);
 
 export function ColourSvg({ src, className, style, width, height, shared, small, align }: Props) {
   const key = small && src + "@s" in COLOUR_SVGS ? src + "@s" : src;
