@@ -129,9 +129,11 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({ error: "bad id" }, { status: 400 });
   }
   const origin = req.nextUrl.origin;
-  // בהורדה מפנים (ניווט דפדפן); בשליחה למייל הלקוח הוא fetch, אז מחזירים JSON עם היעד להפניה
+  // ?list=1: רשימת הקבצים שהמשתמשת רשאית להוריד (JSON) – ההורדה "בקבצים נפרדים" בצד הלקוח (זיפ נחסם בנטפרי)
+  const listOnly = mode === "download" && req.nextUrl.searchParams.get("list") === "1";
+  // בהורדה מפנים (ניווט דפדפן); בשליחה למייל / ברשימה הלקוח הוא fetch, אז מחזירים JSON עם היעד להפניה
   const bounce = (path: string, error: string, status: number) =>
-    mode === "email"
+    mode === "email" || listOnly
       ? NextResponse.json({ error, redirect: path }, { status })
       : NextResponse.redirect(new URL(path, origin));
   const user = await getCurrentUser();
@@ -201,6 +203,14 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     // אין הרשאה לאף קובץ – מפנים לרכישת התיקייה
     await deny("no_entitlement", { candidates: candidates.length });
     return bounce(`/checkout?bundle=${categoryId}`, "אין הרשאה לקבצי התיקייה", 402);
+  }
+
+  if (listOnly) {
+    // בלי שמירת מכסה: כל קובץ יורד בנפרד דרך /api/download/[id], שבודק ומנכה מכסה בעצמו
+    return NextResponse.json(
+      { ok: true, items: owned.slice(0, FOLDER_MAX_FILES).map((m) => ({ id: m.id, name: m.fileName })), more: Math.max(0, owned.length - FOLDER_MAX_FILES) },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   // כמה קבצים מותר בזיפ הזה: תקרה קשיחה, ולמשתמשת רגילה גם המכסה היומית שנותרה,

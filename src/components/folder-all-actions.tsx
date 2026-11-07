@@ -37,6 +37,8 @@ type State =
   | { kind: "idle" }
   | { kind: "sending" }
   | { kind: "done"; email: string; files: number; skipped: number }
+  | { kind: "files"; done: number; total: number }
+  | { kind: "filesDone"; total: number; more: number }
   | { kind: "error"; message: string };
 
 /**
@@ -67,6 +69,41 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
   const endpoint = `/api/download-folder/${categoryId}`;
   const loginHref = `/login?next=${encodeURIComponent(here)}`;
   const sending = state.kind === "sending";
+
+  /** הורדה בקבצים נפרדים (זיפ נחסם בנטפרי): מביאים את רשימת הקבצים ומורידים אחד אחד דרך /api/download/[id] */
+  async function downloadAsFiles() {
+    if (sending || state.kind === "files") return;
+    setOpen(false);
+    setState({ kind: "files", done: 0, total: 0 });
+    try {
+      const res = await fetch(`${endpoint}?list=1`, { headers: { Accept: "application/json" } });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; items?: { id: number; name: string }[]; redirect?: string; error?: string; more?: number };
+      if (data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
+      if (!res.ok || !data.ok || !data.items?.length) {
+        setState({ kind: "error", message: data.error || "לא נמצאו קבצים להורדה" });
+        return;
+      }
+      const items = data.items;
+      for (let i = 0; i < items.length; i++) {
+        setState({ kind: "files", done: i, total: items.length });
+        const a = document.createElement("a");
+        a.href = `/api/download/${items[i].id}`;
+        a.rel = "noopener";
+        a.download = "";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // רווח בין הורדות: הדפדפן (ונטפרי) מטפלים בכל קובץ בנפרד, וההמרה ל-PDF לוקחת כמה שניות
+        await new Promise((r) => setTimeout(r, 1800));
+      }
+      setState({ kind: "filesDone", total: items.length, more: data.more ?? 0 });
+    } catch {
+      setState({ kind: "error", message: "אין חיבור לשרת, נסי שוב בעוד רגע" });
+    }
+  }
 
   async function sendByMail() {
     if (sending) return;
@@ -116,9 +153,20 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
       </button>
       {open && (
         <div className="fa-menu" role="menu">
+          {loggedIn ? (
+            <button type="button" role="menuitem" className="fa-item" onClick={downloadAsFiles}>
+              <DownloadNut nut={nutDownload} />
+              להורדה בקבצים נפרדים
+            </button>
+          ) : (
+            <a role="menuitem" href={loginHref} className="fa-item">
+              <DownloadNut nut={nutDownload} />
+              להורדה בקבצים נפרדים
+            </a>
+          )}
           <a role="menuitem" href={loggedIn ? endpoint : loginHref} className="fa-item" onClick={() => setOpen(false)}>
             <DownloadNut nut={nutDownload} />
-            להורדה
+            להורדה כזיפ אחד
           </a>
           {loggedIn ? (
             <button type="button" role="menuitem" className="fa-item" onClick={sendByMail}>
@@ -134,6 +182,18 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         </div>
       )}
       <div className="fa-status" role="status" aria-live="polite">
+        {state.kind === "files" && (
+          <span className="fa-ok">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            מורידה קובץ {Math.min(state.done + 1, state.total)} מתוך {state.total || "…"}
+          </span>
+        )}
+        {state.kind === "filesDone" && (
+          <span className="fa-ok">
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            הורדת {state.total} קבצים התחילה{state.more > 0 ? ` · עוד ${state.more} קבצים לא נכללו (עד 40 בכל פעם)` : ""}
+          </span>
+        )}
         {state.kind === "done" && (
           <span className="fa-ok">
             <CheckCircle2 className="h-4 w-4" aria-hidden />
