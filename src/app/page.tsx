@@ -17,6 +17,7 @@ import { AboutWriting } from "@/components/about-writing";
 import { TypewriterLead } from "@/components/typewriter-lead";
 import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconMaterials, IconSubjects, IconLessonTypes, IconFree } from "@/components/kind-icons";
+import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { CountUp } from "@/components/count-up";
 import { nutForLevel } from "@/lib/nut-images";
 import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
@@ -191,15 +192,13 @@ export default async function HomePage({
               >
                 <div className={s.lessonArtBox}>
                   <span className={s.lessonCheck} aria-hidden />
-                  {/* eslint-disable-next-line @next/next/no-img-element -- מוטמע ב-HTML (מסנן תוכן מחליף קובצי תמונה רגילים) */}
-                  <img
-                    src={inlineLessonIcon(st.art)}
-                    alt=""
-                    width={120}
-                    height={120}
-                    className={s.lessonArt}
-                    aria-hidden
-                  />
+                  {hasLineIcon(st.art) ? (
+                    // איור קו כ-SVG בתוך הדף: נטפרי חוסם תמונות, ו-SVG מוטמע עובר
+                    <LineIcon name={st.art} size={120} className={s.lessonArt} color="#1a1a1a" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={inlineLessonIcon(st.art)} alt="" width={120} height={120} className={s.lessonArt} aria-hidden />
+                  )}
                 </div>
                 <b>{st.label}</b>
               </div>

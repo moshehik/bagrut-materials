@@ -7,6 +7,7 @@ import { FileViewerButton } from "@/components/pdf-viewer";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
 import { FIX_TIPS, FixRequestButton, type CardFix } from "@/components/material-fixes";
 import { inlineUi } from "@/lib/inline-images";
+import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { PrivateVersionNote } from "@/components/material-private-version";
 import type { CorrectionState } from "@/lib/private-version-logic";
 import { FreeTrialDownload } from "@/components/free-trial-download";
@@ -154,14 +155,20 @@ export function MaterialTypeCard({
     >
       {m.access === "free" && <span className="mtc-free">{guestFree ? "חינם בהרשמה" : "חינם"}</span>}
       <header className="mtc-head">
-        <img
-          src={inlineUi(`/images/mat-cards/art4/${s.art}.${s.extra ? "svg" : "webp"}`)}
-          alt=""
-          width={120}
-          height={120}
-          className={`mtc-art ${s.artWide ? "mtc-art-wide" : ""}`}
-          aria-hidden
-        />
+        {hasLineIcon(s.art) ? (
+          // איור קו כ-SVG בתוך הדף (נטפרי חוסם תמונות)
+          <LineIcon name={s.art} className="mtc-art" color="#fff" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={inlineUi(`/images/mat-cards/art4/${s.art}.${s.extra ? "svg" : "webp"}`)}
+            alt=""
+            width={120}
+            height={120}
+            className={`mtc-art ${s.artWide ? "mtc-art-wide" : ""}`}
+            aria-hidden
+          />
+        )}
         <h3 className="mtc-title" aria-label={heading.full}>
           {size ? (
             <>

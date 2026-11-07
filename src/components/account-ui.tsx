@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, Filter, UserRound } from "lucide-react";
 import { formatHebrewDate } from "@/lib/hebrew-date";
 import { inlineLessonIcon, inlineUi } from "@/lib/inline-images";
+import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { CARD_ROWS, CARD_STYLES, EXTRA_TYPES, type CardType } from "@/lib/material-card-types";
 
 /** רכיבי האזור האישי (שרת): כותרת עמוד, חלונית כחולה והודעת סטטוס – בעיצוב חלוניות "שימי לב!" */
@@ -239,13 +240,22 @@ export function TypeIcon({
   const art = type === "forum" ? "forum" : CARD_STYLES[type].art;
   return (
     <span className={`acc-ico relative grid shrink-0 place-items-center ${ICON_COVER.has(type) ? "overflow-hidden" : ""} ${className}`} aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={inlineLessonIcon(art)}
-        alt=""
-        className={ICON_COVER.has(type) ? "h-full w-full object-cover object-center" : "max-h-full max-w-full object-contain"}
-        style={ICON_ZOOM[type] ? { transform: `scale(${ICON_ZOOM[type]})` } : undefined}
-      />
+      {hasLineIcon(art) ? (
+        <LineIcon
+          name={art}
+          className="h-full w-full"
+          color="#1a1a1a"
+          style={ICON_ZOOM[type] ? { transform: `scale(${ICON_ZOOM[type]})` } : undefined}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={inlineLessonIcon(art)}
+          alt=""
+          className={ICON_COVER.has(type) ? "h-full w-full object-cover object-center" : "max-h-full max-w-full object-contain"}
+          style={ICON_ZOOM[type] ? { transform: `scale(${ICON_ZOOM[type]})` } : undefined}
+        />
+      )}
     </span>
   );
 }
