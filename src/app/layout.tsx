@@ -8,6 +8,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { AccessibilityWidget } from "@/components/accessibility-widget";
 import { NutScrollHandle } from "@/components/nut-scroll-handle";
+import { NetfreeImageGuard } from "@/components/netfree-image-guard";
 import { DownloadLoader } from "@/components/download-loader";
 import { NutTooltip } from "@/components/nut-tooltip";
 import { SiteNotices } from "@/components/site-notices";
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Footer />
         <AccessibilityWidget />
         <NutScrollHandle />
+        <NetfreeImageGuard />
         <DownloadLoader />
         <NutTooltip />
         <Suspense fallback={null}>

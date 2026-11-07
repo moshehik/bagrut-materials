@@ -1,5 +1,4 @@
 import { inlineUi } from "@/lib/inline-images";
-import Image from "next/image";
 import { formatPrice } from "@/lib/constants";
 
 type Props = {
@@ -18,7 +17,7 @@ export function FolderBundleBanner({ categoryId, price, owned }: Props) {
   const href = owned ? `/api/download-folder/${categoryId}` : `/checkout?bundle=${categoryId}`;
   return (
     <a href={href} className="mtc-bundle" aria-label={owned ? "הורדת כל הקבצים בתיקייה" : `רכישה חד-פעמית של כל הקבצים בתיקייה, ${formatPrice(price)}`}>
-      <Image src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-bundle-nut" aria-hidden />
+      <img src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-bundle-nut" aria-hidden />
       <span className="mtc-bundle-text">
         {owned ? "להורדה מיידית של כל הטוב הזה – לחצי על האגוז" : "לרכישה בודדת של כל הטוב הזה"}
       </span>

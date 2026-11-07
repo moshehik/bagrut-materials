@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 type Props = {
@@ -19,7 +18,7 @@ type Props = {
 
 /** אגוז ההורדה – אותו אגוז כמו בכרטיסיות התיקייה */
 function DownloadNut({ src }: { src?: string }) {
-  return <Image src={src ?? "/images/mat-cards/nut-download.webp"} alt="" width={84} height={67} className="fa-itemnut" aria-hidden />;
+  return <img src={src ?? "/images/mat-cards/nut-download.webp"} alt="" width={84} height={67} className="fa-itemnut" aria-hidden />;
 }
 
 /** אגוז המייל – כמו בכרטיסיות: אגוז לוז עם אייקון מייל חרות */

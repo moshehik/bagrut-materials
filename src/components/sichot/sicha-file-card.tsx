@@ -1,5 +1,4 @@
 import { inlineUi } from "@/lib/inline-images";
-import Image from "next/image";
 import { Download } from "lucide-react";
 import { EmailMaterialButton } from "@/components/email-material-button";
 import { FileViewerButton } from "@/components/pdf-viewer";
@@ -42,7 +41,7 @@ export function SichaFileCard({
 
       <div className="mtc-body sicha-file-body">
         <a href={`/api/sichot/download/${sichaId}${q}`} className="mtc-download" data-tip="להורדת הקובץ למחשב" aria-label={`הורדת ${title}`}>
-          <Image src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+          <img src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
           <span>להורדה</span>
         </a>
 

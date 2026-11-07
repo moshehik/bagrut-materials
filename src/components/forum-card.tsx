@@ -1,5 +1,4 @@
 import { inlineUi } from "@/lib/inline-images";
-import Image from "next/image";
 
 /**
  * כרטיסיית הפורום בתוך תיקייה: אותו מבנה כמו כרטיסיות החומרים, אבל זו לא רכישה –
@@ -13,7 +12,8 @@ export function ForumCard({ folderTitle }: { folderTitle: string }) {
       style={{ "--mtc-body": "#c5d3ee", "--mtc-strip": "#6b7fa6" } as React.CSSProperties}
     >
       <header className="mtc-head">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={inlineUi("/images/mat-cards/art4/forum.webp")}
           alt=""
           width={636}
@@ -40,7 +40,8 @@ export function ForumCard({ folderTitle }: { folderTitle: string }) {
 
       <a href="#unit-forum" className="mtc-body mtc-forum-body" aria-label={`כניסה לפורום – ${folderTitle}`}>
         <span className="mtc-forum-text">בואי לתרום מהידע שלך על החומר הזה ולהיתרם</span>
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={inlineUi("/images/nuts/many-03.webp")}
           alt=""
           width={120}
