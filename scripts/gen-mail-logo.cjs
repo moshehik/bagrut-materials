@@ -20,7 +20,31 @@ async function region(meta, { x0, x1, y0, y1 }, cell, k, widthPx) {
   const crop = { left: Math.round(meta.width * x0), top: Math.round(meta.height * y0), width: Math.round(meta.width * (x1 - x0)), height: Math.round(meta.height * (y1 - y0)) };
   const COLS = Math.round(widthPx / cell);
   const ROWS = Math.round((COLS * crop.height) / crop.width);
-  const { data } = await sharp(SRC).flatten({ background: "#ffffff" }).extract(crop).resize({ width: COLS, height: ROWS, fit: "fill", kernel: "lanczos3" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  // דגימה פי 3 ואז "הכי כהה בתא" לקווים דקים: בלי זה הקווים הבהירים-דקים של הבית נעלמים בהקטנה (ממוצע מבהיר אותם)
+  const S = 3;
+  const big = await sharp(SRC).flatten({ background: "#ffffff" }).extract(crop).resize({ width: COLS * S, height: ROWS * S, fit: "fill", kernel: "lanczos3" }).removeAlpha().raw().toBuffer();
+  const data = Buffer.alloc(COLS * ROWS * 3);
+  const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      let sr = 0, sg = 0, sb = 0, dark = null, dl = 1e9;
+      for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) {
+        const p = ((y * S + dy) * COLS * S + (x * S + dx)) * 3;
+        const r = big[p], g = big[p + 1], b = big[p + 2];
+        sr += r; sg += g; sb += b;
+        const l = lum(r, g, b);
+        if (l < dl) { dl = l; dark = [r, g, b]; }
+      }
+      const n9 = S * S, avg = [sr / n9, sg / n9, sb / n9];
+      const al = lum(avg[0], avg[1], avg[2]);
+      // תא עם פיקסל כהה בהרבה מהממוצע = קו דק → מחזקים אותו
+      const w = dl < al - 18 ? 0.65 : 0;
+      const q = (y * COLS + x) * 3;
+      data[q] = avg[0] * (1 - w) + dark[0] * w;
+      data[q + 1] = avg[1] * (1 - w) + dark[1] * w;
+      data[q + 2] = avg[2] * (1 - w) + dark[2] * w;
+    }
+  }
   const n = COLS * ROWS;
   const px = (i) => [data[i * 3], data[i * 3 + 1], data[i * 3 + 2]];
   const sample = [];
