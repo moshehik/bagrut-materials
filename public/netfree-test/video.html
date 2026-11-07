@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>בדיקת סרטונים בנטפרי</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:900px;margin:20px auto;padding:0 12px;background:#faf8f2}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.c{border:2px solid #223;border-radius:12px;padding:8px;background:#fff;font-size:14px}
+.c b{display:block;margin-bottom:6px}
+video,audio,img,svg{width:100%;max-height:170px;display:block;background:#eee}
+.st{margin-top:6px;font-size:13px;color:#555;min-height:18px}
+.ok{color:#0a7a2f;font-weight:bold}.bad{color:#b3261e;font-weight:bold}
+</style>
+</head>
+<body>
+<h1>בדיקת סרטונים בנטפרי</h1>
+<p>כל ריבוע מנסה להציג/לנגן קליפ בדיקה בן 6 שניות (תבנית צבעונית + צליל) בדרך אחרת. לחצי נגן בכל אחד וכתבי לי אילו מתנגנים (תמונה ונשמע), ואילו נשארים ריקים / חסומים. מתחת לכל ריבוע מופיע סטטוס אוטומטי.</p>
+<div class="g">
+  <div class="c"><b>א. וידאו MP4 רגיל</b><video id="a" controls preload="auto" playsinline src="vtest.mp4"></video><div class="st" id="sa"></div></div>
+  <div class="c"><b>ב. וידאו WebM</b><video id="b" controls preload="auto" playsinline src="vtest.webm"></video><div class="st" id="sb"></div></div>
+  <div class="c"><b>ג. MP4 שמוגש כקובץ .bin (סוג לא מזוהה) ומנוגן דרך blob</b><video id="c" controls playsinline></video><div class="st" id="sc"></div></div>
+  <div class="c"><b>ד. MP4 שמורד ב-fetch ומנוגן דרך blob</b><video id="d" controls playsinline></video><div class="st" id="sd"></div></div>
+  <div class="c"><b>ה. שמע בלבד (MP3)</b><audio id="e" controls preload="auto" src="vtest.mp3"></audio><div class="st" id="se"></div></div>
+  <div class="c"><b>ו. GIF מונפש</b><img id="f" alt="" src="vtest.gif"><div class="st" id="sf"></div></div>
+  <div class="c"><b>ז. WebP מונפש</b><img id="g" alt="" src="vtest.webp"><div class="st" id="sg"></div></div>
+  <div class="c"><b>ח. אנימציית SVG וקטורית (בלי קובץ וידאו)</b>
+    <svg viewBox="0 0 160 90"><rect width="160" height="90" fill="#dde8f5"/>
+      <circle cx="20" cy="45" r="14" fill="#c9573b"><animate attributeName="cx" values="20;140;20" dur="3s" repeatCount="indefinite"/></circle>
+      <rect x="60" y="20" width="40" height="50" fill="#2c7457" opacity=".8"><animateTransform attributeName="transform" type="rotate" from="0 80 45" to="360 80 45" dur="4s" repeatCount="indefinite"/></rect></svg>
+    <div class="st ok">אם הכדור והריבוע זזים – עובר</div></div>
+</div>
+<script>
+function wire(el, st, name) {
+  var s = document.getElementById(st);
+  s.textContent = "טוען…";
+  el.addEventListener("loadeddata", function () { s.className = "st ok"; s.textContent = "נטען (" + (el.videoWidth ? el.videoWidth + "×" + el.videoHeight : "שמע") + ", " + Math.round(el.duration || 0) + " ש׳)"; });
+  el.addEventListener("error", function () { s.className = "st bad"; s.textContent = "נכשל: " + (el.error ? el.error.code + " " + (el.error.message || "") : ""); });
+  el.addEventListener("load", function () { s.className = "st ok"; s.textContent = "נטען (" + el.naturalWidth + "×" + el.naturalHeight + ")"; });
+}
+wire(document.getElementById("a"), "sa");
+wire(document.getElementById("b"), "sb");
+wire(document.getElementById("e"), "se");
+wire(document.getElementById("f"), "sf");
+wire(document.getElementById("g"), "sg");
+function viaBlob(url, id, st, mime) {
+  var v = document.getElementById(id), s = document.getElementById(st);
+  s.textContent = "מוריד…";
+  fetch(url).then(function (r) { return r.arrayBuffer().then(function (b) { return { b: b, ct: r.headers.get("content-type") }; }); }).then(function (o) {
+    s.textContent = "התקבלו " + o.b.byteLength + " בתים (סוג: " + o.ct + ")";
+    v.src = URL.createObjectURL(new Blob([o.b], { type: mime }));
+    wire(v, st);
+    s.textContent += " ";
+  }).catch(function (e) { s.className = "st bad"; s.textContent = "הורדה נכשלה: " + e; });
+}
+viaBlob("vtest.bin", "c", "sc", "video/mp4");
+viaBlob("vtest.mp4", "d", "sd", "video/mp4");
+</script>
+</body>
+</html>
