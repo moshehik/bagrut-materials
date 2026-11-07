@@ -17,7 +17,7 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     if (!data.to) throw new Error("missing 'to'");
 
-    var options = { name: data.fromName || "חומרים לבגרות" };
+    var options = { name: data.senderName || data.fromName || "חומרים לבגרות" };
     if (data.cc) options.cc = data.cc;
     if (data.htmlBody) options.htmlBody = data.htmlBody;
 
