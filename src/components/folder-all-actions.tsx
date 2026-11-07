@@ -36,7 +36,7 @@ function MailNut({ nut }: { nut?: ReactNode }) {
 type State =
   | { kind: "idle" }
   | { kind: "sending" }
-  | { kind: "done"; email: string; files: number; skipped: number; links?: boolean; tooLarge?: boolean }
+  | { kind: "done"; email: string; files: number; skipped: number; links?: boolean; tooLarge?: boolean; parts?: number }
   | { kind: "files"; done: number; total: number }
   | { kind: "filesDone"; total: number; more: number }
   | { kind: "error"; message: string };
@@ -120,6 +120,7 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         skipped?: number;
         links?: boolean;
         tooLarge?: boolean;
+        parts?: number;
       };
       if (data.redirect) {
         window.location.href = data.redirect;
@@ -129,7 +130,7 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         setState({ kind: "error", message: data.error || "השליחה נכשלה, נסי שוב בעוד רגע" });
         return;
       }
-      setState({ kind: "done", email: data.email ?? "", files: data.files ?? 0, skipped: data.skipped ?? 0, links: data.links ?? asLinks, tooLarge: !!data.tooLarge });
+      setState({ kind: "done", email: data.email ?? "", files: data.files ?? 0, skipped: data.skipped ?? 0, links: data.links ?? asLinks, tooLarge: !!data.tooLarge, parts: data.parts });
     } catch {
       setState({ kind: "error", message: "אין חיבור לשרת, נסי שוב בעוד רגע" });
     }
@@ -205,8 +206,8 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
         {state.kind === "done" && (
           <span className="fa-ok">
             <CheckCircle2 className="h-4 w-4" aria-hidden />
-            נשלח! {state.links ? `קישורים ל-${state.files} קבצים` : `${state.files} קבצים (זיפ אחד)`} בדרך אל <bdi dir="ltr">{state.email}</bdi>
-            {state.tooLarge && " · הקבצים גדולים מדי לזיפ במייל, ולכן נשלחו קישורים להורדה"}
+            נשלח! {state.links ? `קישורים ל-${state.files} קבצים` : state.parts && state.parts > 1 ? `${state.files} קבצים (${state.parts} מיילים, בכל אחד זיפ מצורף)` : `${state.files} קבצים (זיפ אחד)`} בדרך אל <bdi dir="ltr">{state.email}</bdi>
+            {state.parts && state.parts > 1 && " · הקבצים גדולים ממייל אחד, ולכן נשלחו בכמה מיילים"}
             {state.skipped > 0 && ` · ${state.skipped} קבצים לא נכללו`}
           </span>
         )}

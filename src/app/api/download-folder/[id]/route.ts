@@ -393,13 +393,60 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ error }, { status });
     };
     if (body.byteLength > EMAIL_MAX_ZIP_BYTES) {
-      // הזיפ גדול ממגבלת הצרופה של ג'ימייל – במקום להיכשל, שולחים מייל עם כפתור הורדה לכל קובץ (הקבצים יורדים בנפרד מהאתר)
-      const listed = allowed.map((m) => ({ title: m.title, href: `${siteUrl()}/api/download/${m.id}` }));
-      const tpl = templates.fileLinks(user.name, cat.title, listed, 0);
-      const linksSent = await sendMail({ to: user.email, subject: tpl.subject, text: tpl.text, html: tpl.html, kind: "material", userId: user.id });
-      if (!linksSent.ok) return fail("שליחת המייל נכשלה, נסי שוב בעוד רגע", 502, "email_send_failed");
-      await logAudit({ actorId: user.id, action: "download.folder.links_email", entityType: "category", entityId: categoryId, details: { folder: cat.title, files: listed.length, reason: "zip_too_large", zipMB: Math.round(body.byteLength / 1048576) } });
-      return NextResponse.json({ ok: true, email: user.email, files: listed.length, skipped: 0, links: true, tooLarge: true });
+      // הזיפ גדול ממגבלת הצרופה של ג'ימייל – מפצלים לכמה מיילים, בכל אחד זיפ מצורף (חלק i מתוך n). הקבצים תמיד מצורפים ממש, לא קישורים.
+      // רק קובץ בודד שגדול לבדו מהמגבלה נשלח כקישור הורדה (אין דרך לצרף אותו).
+      const esc2 = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const parts: Ready[][] = [];
+      const oversize: Ready[] = [];
+      let cur: Ready[] = [];
+      let curBytes = 0;
+      for (const r of ready) {
+        if (r.bytes.byteLength > EMAIL_MAX_ZIP_BYTES - 1024 * 1024) {
+          oversize.push(r);
+          continue;
+        }
+        if (cur.length && curBytes + r.bytes.byteLength > EMAIL_MAX_ZIP_BYTES - 1024 * 1024) {
+          parts.push(cur);
+          cur = [];
+          curBytes = 0;
+        }
+        cur.push(r);
+        curBytes += r.bytes.byteLength;
+      }
+      if (cur.length) parts.push(cur);
+      const total = parts.length + (oversize.length ? 1 : 0);
+      let n = 0;
+      for (const group of parts) {
+        n++;
+        const z = new JSZip();
+        const usedNames = new Set<string>();
+        for (const r of group) {
+          let name = r.name;
+          if (usedNames.has(name)) name = `${r.m.id}-${name}`;
+          usedNames.add(name);
+          z.file(name, r.bytes);
+        }
+        const partBody = await z.generateAsync({ type: "uint8array", compression: "STORE" });
+        const names = group.map((r) => r.name);
+        const title = `${cat.title} – כל הקבצים (חלק ${n} מתוך ${total})`;
+        const partSent = await sendMail({
+          to: user.email,
+          subject: title,
+          text: [`שלום ${user.name},`, "", `הקבצים גדולים מכדי להישלח במייל אחד, ולכן נשלחו בכמה מיילים. זהו חלק ${n} מתוך ${total}: זיפ עם ${group.length} קבצים מהתיקייה "${cat.title}".`, "כל קובץ מוטבע במספר האישי שלך.", "", ...names].join(String.fromCharCode(10)),
+          html: layoutHtml(title, `<p>שלום ${esc2(user.name)},</p><p>הקבצים גדולים מכדי להישלח במייל אחד, ולכן נשלחו בכמה מיילים. זהו <b>חלק ${n} מתוך ${total}</b>: זיפ מצורף עם <b>${group.length}</b> קבצים מהתיקייה <b>${esc2(cat.title)}</b>. כל קובץ מוטבע במספר האישי שלך.</p><ul>${names.map((x) => `<li>${esc2(x)}</li>`).join("")}</ul>`),
+          attachment: { fileName: `${safeEntryName(cat.title)} - חלק ${n}.zip`, base64: Buffer.from(partBody).toString("base64"), mimeType: "application/zip" },
+          kind: "folder-zip",
+          userId: user.id,
+        });
+        if (!partSent.ok) return fail("שליחת המייל נכשלה, נסי שוב בעוד רגע", 502, "email_send_failed");
+      }
+      if (oversize.length) {
+        const tpl = templates.fileLinks(user.name, cat.title, oversize.map((r) => ({ title: r.m.title, href: `${siteUrl()}/api/download/${r.m.id}` })), 0);
+        const linksSent = await sendMail({ to: user.email, subject: `${tpl.subject} (חלק ${total} מתוך ${total})`, text: tpl.text, html: tpl.html, kind: "material", userId: user.id });
+        if (!linksSent.ok) return fail("שליחת המייל נכשלה, נסי שוב בעוד רגע", 502, "email_send_failed");
+      }
+      await logAudit({ actorId: user.id, action: "download.folder.split_email", entityType: "category", entityId: categoryId, details: { folder: cat.title, files: ready.length, parts: total, zipMB: Math.round(body.byteLength / 1048576) } });
+      return NextResponse.json({ ok: true, email: user.email, files: ready.length, skipped: 0, parts: total });
     }
     const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const list = ready.map((r) => r.name);

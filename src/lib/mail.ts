@@ -46,8 +46,15 @@ const redactTokens = (s: string) => s.replace(/([?&]token=)[^&\s"'<>]+/g, "$1***
  * לא משתמשים ב-VERCEL_PROJECT_PRODUCTION_URL: מאז שהדומיין נוסף לפרויקט הוא הפך לכתובת הראשית והמיילים הפנו אליו. */
 const ACTIVE_SITE_URL = "https://bagrut-materials.vercel.app";
 
+/**
+ * כתובת האתר בקישורי מייל. ב-.env וב-.env.local הערך NEXT_PUBLIC_SITE_URL הוא localhost (לפיתוח) – סקריפט שרץ מקומית ושולח מייל אמיתי
+ * (שליחה חוזרת, בדיקות) הכניס קישורי localhost ללוגו ולכפתורים. לכן ערך localhost נחשב רק בשרת הפיתוח של Next (NODE_ENV=development);
+ * בכל מקום אחר משתמשים בכתובת הפעילה.
+ */
 export function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL ? ACTIVE_SITE_URL : "http://localhost:3000");
+  const env = process.env.NEXT_PUBLIC_SITE_URL;
+  if (env && !/localhost|127\.0\.0\.1|\[::1\]/i.test(env)) return env;
+  return process.env.NODE_ENV === "development" ? (env ?? "http://localhost:3000") : ACTIVE_SITE_URL;
 }
 
 export function adminEmail() {
