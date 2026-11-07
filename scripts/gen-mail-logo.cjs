@@ -75,22 +75,29 @@ async function region(meta, { x0, x1, y0, y1 }, cell, k, widthPx) {
     centers = centers.map((c, i) => (sum[i][3] ? [sum[i][0] / sum[i][3], sum[i][1] / sum[i][3], sum[i][2] / sum[i][3]] : c));
     centers[0] = [255, 255, 255]; // רקע לבן = בלי bgcolor (שקוף על כרטיס המייל הלבן)
   }
+  // קידוד קצר: מלבנים (colspan+rowspan) במקום ריצות, בלי מרכאות ובלי תגי סגירה (אופציונליים ב-HTML) – מקטין ~40% ומאפשר רזולוציה כפולה
+  // תחת מגבלת ג'ימייל (~102KB). הרקע הלבן הוא גם מלבנים (תאים בלי bgcolor) כדי שהטבלה תישאר רציפה.
   const w = COLS * cell;
-  let html = `<table role="presentation" dir="ltr" cellpadding="0" cellspacing="0" border="0" align="center" width="${w}" style="width:${w}px;max-width:100%;margin:0 auto;border-collapse:collapse;table-layout:fixed">`;
-  html += `<tr height="1">${`<td width="${cell}" height="1"></td>`.repeat(COLS)}</tr>`; // שורת מידות קבועה לעמודות (לא כל לקוח מייל מכבד colgroup)
+  const used = new Uint8Array(n);
+  const rowsHtml = Array.from({ length: ROWS }, () => "");
   for (let r = 0; r < ROWS; r++) {
-    html += `<tr height="${cell}">`;
-    let c = 0;
-    while (c < COLS) {
-      const a = assign[r * COLS + c];
-      let e = c;
-      while (e < COLS && assign[r * COLS + e] === a) e++;
-      const span = e - c;
-      html += `<td${span > 1 ? ` colspan="${span}"` : ""}${a === 0 ? "" : ` bgcolor="${hex(centers[a])}"`}></td>`;
-      c = e;
+    for (let x = 0; x < COLS; x++) {
+      if (used[r * COLS + x]) continue;
+      const col = assign[r * COLS + x];
+      let cw = 0;
+      while (x + cw < COLS && !used[r * COLS + x + cw] && assign[r * COLS + x + cw] === col) cw++;
+      let ch = 1;
+      grow: while (r + ch < ROWS) {
+        for (let i = 0; i < cw; i++) if (used[(r + ch) * COLS + x + i] || assign[(r + ch) * COLS + x + i] !== col) break grow;
+        ch++;
+      }
+      for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) used[(r + j) * COLS + x + i] = 1;
+      rowsHtml[r] += `<td${cw > 1 ? ` colspan=${cw}` : ""}${ch > 1 ? ` rowspan=${ch}` : ""}${col === 0 ? "" : ` bgcolor=${hex(centers[col])}`}>`;
     }
-    html += "</tr>";
   }
+  let html = `<table role=presentation dir=ltr cellpadding=0 cellspacing=0 border=0 align=center width=${w} style="width:${w}px;max-width:100%;margin:0 auto;border-collapse:collapse;font-size:0;line-height:0">`;
+  html += `<tr height=1>${`<td width=${cell} height=1>`.repeat(COLS)}`; // שורת מידות קבועה לעמודות (לא כל לקוח מייל מכבד colgroup)
+  for (let r = 0; r < ROWS; r++) html += `<tr height=${cell}>${rowsHtml[r]}`;
   html += "</table>";
   return { html, rows: ROWS, cols: COLS };
 }
@@ -99,9 +106,9 @@ async function region(meta, { x0, x1, y0, y1 }, cell, k, widthPx) {
   const meta = await sharp(SRC).metadata();
   // פריסה בשתי עמודות (בלי תפר חוצה): שמאל = אגוזים + חצי הבית (2px) לכל הגובה; ימין = חצי הבית העליון (2px) ומתחתיו הכיתוב (1px, חד יותר)
   const half = WIDTH_PX / 2;
-  const left = await region(meta, { x0: 0.04, x1: 0.5, y0: 0.03, y1: 0.86 }, 2, 12, half);
+  const left = await region(meta, { x0: 0.04, x1: 0.5, y0: 0.03, y1: 0.86 }, 1, 7, half);
   const leftBottom = await region(meta, { x0: 0.04, x1: 0.5, y0: 0.86, y1: 0.97 }, 1, 4, half);
-  const rightTop = await region(meta, { x0: 0.5, x1: 0.96, y0: 0.03, y1: 0.69 }, 2, 12, half);
+  const rightTop = await region(meta, { x0: 0.5, x1: 0.96, y0: 0.03, y1: 0.69 }, 1, 7, half);
   const rightBottom = await region(meta, { x0: 0.5, x1: 0.96, y0: 0.69, y1: 0.97 }, 1, 4, half);
   const html = `<table role="presentation" dir="ltr" cellpadding="0" cellspacing="0" border="0" align="center" width="${WIDTH_PX}" style="width:${WIDTH_PX}px;max-width:100%;margin:0 auto;border-collapse:collapse" aria-label="לו״ז העניין – בית לחומרי הבגרות"><tr><td valign="top" width="${half}">${left.html}${leftBottom.html}</td><td valign="top" width="${half}">${rightTop.html}${rightBottom.html}</td></tr></table>`;
   fs.writeFileSync(
