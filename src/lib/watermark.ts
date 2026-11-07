@@ -8,6 +8,7 @@ import { SITE_NAME } from "./constants";
 import { DIAGONAL_DEG, diagonalOrigin, fitDiagonalSize } from "./watermark-geometry";
 import { replaceHeaderLogoWithVector } from "./pdf-vector-logo";
 import { meshifyLargeImages } from "./pdf-mesh-images";
+import { sweepUnreferencedObjects } from "./pdf-sweep";
 
 let fontBytes: Uint8Array | null = null;
 async function loadFont() {
@@ -322,6 +323,12 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo,
   pdf.setProducer(SITE_NAME);
   pdf.setSubject(`Licensed to ${info.personalCode}`);
   pdf.setKeywords([SITE_NAME, info.personalCode]);
+  // תמונות שהוחלפו בוקטור משאירות יתומים (מסכות שקיפות וכד'); נטפרי סורק כל אובייקט ומציג "הקובץ יסונן" גם בשלושה יתומים
+  try {
+    sweepUnreferencedObjects(pdf);
+  } catch (e) {
+    console.error("watermark: sweep failed", e instanceof Error ? e.message : e);
+  }
   return pdf.save();
 }
 
