@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, gt, gte, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { downloads, materials, purchases } from "@/db/schema";
-import { getDescendantIds } from "@/lib/data";
+import { expandMirrorIds, getDescendantIds } from "@/lib/data";
 
 type Purchase = typeof purchases.$inferSelect;
 
@@ -31,7 +31,7 @@ async function isUnused(userId: number, p: Purchase): Promise<boolean> {
     return hit.length === 0;
   }
   if (p.plan === "bundle" && p.categoryId) {
-    const catIds = await getDescendantIds(p.categoryId);
+    const catIds = await expandMirrorIds(await getDescendantIds(p.categoryId));
     if (!catIds.length) return true;
     const hit = await db
       .select({ id: downloads.id })

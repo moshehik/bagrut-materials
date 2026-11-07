@@ -12,7 +12,7 @@ import { getPlanPrices } from "@/lib/pricing";
 import { getCurrentUser } from "@/lib/session";
 import { getBool } from "@/lib/settings";
 import { sendMailInBackground, templates } from "@/lib/mail";
-import { chainToHref, getCategoryChain, getDescendantIds } from "@/lib/data";
+import { chainToHref, expandMirrorIds, getCategoryChain, getDescendantIds } from "@/lib/data";
 import { logAudit } from "@/lib/audit";
 import { termFields } from "@/lib/purchase-helpers";
 
@@ -130,13 +130,14 @@ export async function purchaseAction(_prev: PurchaseState, form: FormData): Prom
       if (c.status !== "active") {
         return denied("folder_inactive", "התיקייה מושהית זמנית ואינה זמינה לרכישה", { categoryId: c.id });
       }
-      const ids = await getDescendantIds(c.id);
+      const treeIds = await getDescendantIds(c.id);
+      const ids = await expandMirrorIds(treeIds); // תיקייה משקפת (data.ts CATEGORY_MIRRORS) – גם חומרי תיקיית המקור
       const ms = ids.length
         ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
         : [];
       const amount = bundlePriceFor({
         bundlePrice: c.bundlePrice,
-        isLeaf: ids.length <= 1,
+        isLeaf: treeIds.length <= 1,
         materialsTotal: ms.reduce((s, x) => s + x.price, 0),
       });
       bundleCategoryId = c.id;

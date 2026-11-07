@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ColourSvgDefs, CARD_NUT_SRCS } from "@/components/colour-svg";
 import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
 import { MaterialTypeCard } from "@/components/material-type-card";
@@ -42,6 +43,7 @@ export default function TourDemoFixPage() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
+      <ColourSvgDefs srcs={CARD_NUT_SRCS} />
       <TourFixSwap before={card(false)} after={card(true)} />
     </div>
   );

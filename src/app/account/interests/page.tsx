@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getRootSubjects } from "@/lib/data";
 import { SUBJECT_ICONS, SUBJECT_HOUSES, subjectDisplayTitle } from "@/lib/constants";
 import { inlineHouse } from "@/lib/inline-images";
+import { ColourSvg } from "@/components/colour-svg";
 import { updateInterestsAction } from "@/lib/actions/profile";
 import { AccountTitle, Notice, Panel } from "@/components/account-ui";
 
@@ -55,8 +56,7 @@ export default async function AccountInterestsPage({
                   <Check className="h-5 w-5" strokeWidth={3} />
                 </span>
                 {SUBJECT_HOUSES[r.slug] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="gate-pick-house !w-16" src={inlineHouse(SUBJECT_HOUSES[r.slug])} alt="" width={356} height={266} />
+                  <ColourSvg className="gate-pick-house !w-16" src={inlineHouse(SUBJECT_HOUSES[r.slug]) as string} width={356} height={266} small />
                 ) : (
                   <span className="w-16 text-center text-2xl" aria-hidden>
                     {r.icon ?? SUBJECT_ICONS[r.slug] ?? "📘"}

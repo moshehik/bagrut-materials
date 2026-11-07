@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ColourSvgDefs, CARD_NUT_SRCS } from "@/components/colour-svg";
 import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
 import { CARD_ROWS, EXTRA_TYPES, type CardType } from "@/lib/material-card-types";
@@ -36,6 +37,7 @@ export default function CardPreviewPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
+      <ColourSvgDefs srcs={CARD_NUT_SRCS} />
       <h1 className="font-display text-3xl font-black">דוגמת כרטיסיות – {folder}</h1>
       <p className="mt-2 text-muted">נתוני דמה בלבד. עמוד זה לא קיים באתר החי.</p>
 

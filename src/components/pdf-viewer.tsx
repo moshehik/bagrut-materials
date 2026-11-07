@@ -447,6 +447,8 @@ export function FileViewerButton({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // ה-<dialog> נכנס ל-HTML רק אחרי הלחיצה הראשונה (בדף יחידה יש כרטיס לכל קובץ, וכל מסמך קטן יותר = טעינה מהירה יותר בנטפרי)
+  const [armed, setArmed] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -461,22 +463,33 @@ export function FileViewerButton({
     const onClose = () => setOpen(false);
     d.addEventListener("close", onClose);
     return () => d.removeEventListener("close", onClose);
-  }, []);
+  }, [armed]);
 
   return (
     <>
-      <button type="button" className={className} data-tip={tip} aria-label={label} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className={className}
+        data-tip={tip}
+        aria-label={label}
+        onClick={() => {
+          setArmed(true);
+          setOpen(true);
+        }}
+      >
         {children}
       </button>
-      <dialog ref={ref} className="view-dialog">
-        <div className="view-dialog-head">
-          <h3>{title}</h3>
-          <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setOpen(false)}>
-            <X className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
-        {open && <PdfViewer src={src} className="view-dialog-viewer" />}
-      </dialog>
+      {armed && (
+        <dialog ref={ref} className="view-dialog">
+          <div className="view-dialog-head">
+            <h3>{title}</h3>
+            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setOpen(false)}>
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          {open && <PdfViewer src={src} className="view-dialog-viewer" />}
+        </dialog>
+      )}
     </>
   );
 }

@@ -9,7 +9,6 @@ import { SUBJECT_HOUSES } from "@/lib/constants";
 import { inlineHouse, inlineLessonIcon } from "@/lib/inline-images";
 import type { Category } from "@/db/schema";
 import type { CSSProperties } from "react";
-import Image from "next/image";
 import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { HeroTitle } from "@/components/hero-title";
 import { HeroClock } from "@/components/hero-clock";
@@ -19,7 +18,8 @@ import { GoatCalendarArt } from "@/components/goat-calendar-art";
 import { IconMaterials, IconSubjects, IconLessonTypes, IconFree } from "@/components/kind-icons";
 import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { CountUp } from "@/components/count-up";
-import { nutForLevel } from "@/lib/nut-images";
+import { inlineNut } from "@/lib/inline-site-images";
+import { ColourSvg } from "@/components/colour-svg";
 import { CARD_ROWS, CARD_STYLES, type CardType } from "@/lib/material-card-types";
 import { MapDraw } from "@/components/map-draw";
 import { FaqSection } from "@/components/faq-section";
@@ -360,15 +360,16 @@ function HouseCluster({ subjects }: { subjects: Category[] }) {
               aria-label={`פתיחת ${title}`}
             >
               {SUBJECT_HOUSES[c.slug] ? (
-                <img
+                <ColourSvg
                   className={s.snowHouseImg}
-                  src={inlineHouse(SUBJECT_HOUSES[c.slug])}
-                  alt=""
+                  src={inlineHouse(SUBJECT_HOUSES[c.slug]) as string}
                   width={356}
                   height={266}
+                  small
+                  align="bottom"
                 />
               ) : (
-                <Image className={s.snowNut} src={nutForLevel(c.slug, 0)} alt="" aria-hidden />
+                <ColourSvg className={s.snowNut} src={inlineNut(c.slug, 0)} />
               )}
               <span className={s.houseLabel}>{title}</span>
             </Link>

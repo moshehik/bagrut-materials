@@ -12,6 +12,7 @@ import {
   type MaterialKind,
   type User,
 } from "@/db/schema";
+import { cache } from "react";
 import { getBool } from "./settings";
 import { rankItems, scoreItem, tokenize } from "./search-match";
 
@@ -84,27 +85,168 @@ export async function getIdsWithChildren(ids: number[], isAdmin: boolean): Promi
  *  ונשארות בטבלה רק למנהלת – למשתמשת הן היו מוצגות ככרטיס שנופל ב-502. */
 export const materialServable = sql`${materials.fileUrl} LIKE 'drive://%'`;
 
-/** חומרים – למנהלת הכל, למשתמשות רק פעילים שהקובץ שלהם קיים (בדרייב) */
+/**
+ * מראות קטגוריות (ר' docs/category-mirror.md): תיקיות בעץ אחד שמציגות את החומרים של תיקייה תואמת בעץ אחר, בלי להעתיק קבצים/שורות.
+ * כל זוג = [קידומת נתיב-slugs של התיקיות המשקפות, קידומת נתיב-slugs של המקור]. הקידומת כוללת את התיקייה עצמה ואת כל תתי-התיקיות.
+ * משקפים רק תיקייה שאין לה חומרים משלה (בכל סטטוס) – העתק אמיתי/העלאה עתידית לתיקייה המשקפת ממשיכים לעבוד כרגיל.
+ * הוספת זוג = שורה אחת כאן.
+ */
+export const CATEGORY_MIRRORS: ReadonlyArray<readonly [string, string]> = [
+  [
+    "torah/3-units/internal/school-based-electives/chalufa-a",
+    "torah/5-units/school-based-electives/chalufa-a",
+  ],
+];
+
+type MirrorMap = {
+  /** תיקייה משקפת → תיקיית המקור */
+  toSource: Map<number, number>;
+  /** תיקיית מקור → התיקיות שמשקפות אותה */
+  toAliases: Map<number, number[]>;
+  parentOf: Map<number, number | null>;
+};
+const EMPTY_MIRROR: MirrorMap = { toSource: new Map(), toAliases: new Map(), parentOf: new Map() };
+const MIRROR_TTL_MS = 60_000;
+let mirrorCache: { at: number; data: MirrorMap } | null = null;
+let mirrorInflight: Promise<MirrorMap> | null = null;
+
+async function computeMirrorMap(): Promise<MirrorMap> {
+  const rows = await db
+    .select({ id: categories.id, slug: categories.slug, parentId: categories.parentId })
+    .from(categories);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const pathOf = (id: number): string => {
+    const parts: string[] = [];
+    let cur = byId.get(id);
+    for (let i = 0; cur && i < 14; i++) {
+      parts.unshift(cur.slug);
+      cur = cur.parentId !== null ? byId.get(cur.parentId) : undefined;
+    }
+    return parts.join("/");
+  };
+  const idByPath = new Map<string, number>();
+  const paths = new Map<number, string>();
+  for (const r of rows) {
+    const p = pathOf(r.id);
+    paths.set(r.id, p);
+    idByPath.set(p, r.id);
+  }
+  const candidates = new Map<number, number>();
+  for (const [id, p] of paths) {
+    for (const [from, to] of CATEGORY_MIRRORS) {
+      if (p !== from && !p.startsWith(from + "/")) continue;
+      const src = idByPath.get(to + p.slice(from.length));
+      if (src !== undefined && src !== id) candidates.set(id, src);
+      break;
+    }
+  }
+  const toSource = new Map<number, number>();
+  const toAliases = new Map<number, number[]>();
+  if (candidates.size > 0) {
+    const own = await db
+      .selectDistinct({ categoryId: materials.categoryId })
+      .from(materials)
+      .where(inArray(materials.categoryId, [...candidates.keys()]));
+    const ownIds = new Set(own.map((o) => o.categoryId));
+    for (const [id, src] of candidates) {
+      if (ownIds.has(id)) continue;
+      toSource.set(id, src);
+      toAliases.set(src, [...(toAliases.get(src) ?? []), id]);
+    }
+  }
+  return { toSource, toAliases, parentOf: new Map(rows.map((r) => [r.id, r.parentId])) };
+}
+
+async function loadMirrorMap(): Promise<MirrorMap> {
+  if (CATEGORY_MIRRORS.length === 0) return EMPTY_MIRROR;
+  if (mirrorCache && Date.now() - mirrorCache.at < MIRROR_TTL_MS) return mirrorCache.data;
+  if (mirrorInflight) return mirrorInflight;
+  mirrorInflight = computeMirrorMap()
+    .then((data) => {
+      mirrorCache = { at: Date.now(), data };
+      return data;
+    })
+    .catch((e) => {
+      // כשל במראה לא מפיל עמוד: ממשיכים עם המפה האחרונה שהייתה (או בלי מראות)
+      console.error("[category-mirror] failed:", e instanceof Error ? e.message : e);
+      return mirrorCache?.data ?? EMPTY_MIRROR;
+    })
+    .finally(() => {
+      mirrorInflight = null;
+    });
+  return mirrorInflight;
+}
+
+/** כל המראות הפעילות: תיקייה משקפת → תיקיית המקור (לשימוש ב-SQL/סקריפטים) */
+export async function getMirrorMap(): Promise<ReadonlyMap<number, number>> {
+  return (await loadMirrorMap()).toSource;
+}
+
+/** מזהה הקטגוריה שממנה נטענים החומרים של התיקייה: תיקיית המקור אם התיקייה משקפת, אחרת היא עצמה */
+export async function mirrorSourceId(categoryId: number): Promise<number> {
+  return (await loadMirrorMap()).toSource.get(categoryId) ?? categoryId;
+}
+
+/** הרשימה + תיקיית המקור של כל תיקייה משקפת בה (בלי כפילויות) – לספירה/מחיר/הורדה של תיקייה שלמה */
+export async function expandMirrorIds(ids: number[]): Promise<number[]> {
+  const { toSource } = await loadMirrorMap();
+  if (toSource.size === 0) return ids;
+  const out = new Set(ids);
+  for (const id of ids) {
+    const src = toSource.get(id);
+    if (src !== undefined) out.add(src);
+  }
+  return [...out];
+}
+
+/**
+ * מזהים קשורים דרך מראה בשני הכיוונים, כולל אבותיהם: לתיקייה משקפת – תיקיות המקור (ואבותיהן);
+ * לתיקיית מקור – התיקיות המשקפות אותה (ואבותיהן). לבדיקות כיסוי רכישה ("קובץ מורחב" שנרכש בעץ אחד מכסה את החומרים בשני העצים).
+ */
+export async function mirrorRelatedIds(ids: number[]): Promise<number[]> {
+  const { toSource, toAliases, parentOf } = await loadMirrorMap();
+  if (toSource.size === 0) return ids;
+  const out = new Set(ids);
+  const addWithAncestors = (start: number) => {
+    let cur: number | null | undefined = start;
+    for (let i = 0; cur !== null && cur !== undefined && i < 14; i++) {
+      out.add(cur);
+      cur = parentOf.get(cur);
+    }
+  };
+  for (const id of ids) {
+    const src = toSource.get(id);
+    if (src !== undefined) addWithAncestors(src);
+    for (const alias of toAliases.get(id) ?? []) addWithAncestors(alias);
+  }
+  return [...out];
+}
+
+/** חומרים – למנהלת הכל, למשתמשות רק פעילים שהקובץ שלהם קיים (בדרייב). תיקייה משקפת מציגה את חומרי תיקיית המקור (ר' CATEGORY_MIRRORS) */
 export async function getVisibleMaterials(categoryId: number, isAdmin: boolean) {
-  if (isAdmin) return getMaterials(categoryId);
+  const sourceId = await mirrorSourceId(categoryId);
+  if (isAdmin) return getMaterials(sourceId);
   return db
     .select()
     .from(materials)
-    .where(and(eq(materials.categoryId, categoryId), eq(materials.status, "active"), materialServable))
+    .where(and(eq(materials.categoryId, sourceId), eq(materials.status, "active"), materialServable))
     .orderBy(asc(materials.sort), asc(materials.id));
 }
 
-/** פותר נתיב slugs לרשימת קטגוריות (breadcrumbs). מחזיר null אם לא נמצא. */
+/**
+ * פותר נתיב slugs לרשימת קטגוריות (breadcrumbs). מחזיר null אם לא נמצא.
+ * שאילתה אחת (כל הקטגוריות שה-slug שלהן מופיע בנתיב) והרכבת השרשרת בזיכרון – קודם הייתה שאילתה לכל רמה, ברצף (6-8 רמות בדף יחידה).
+ */
 export async function resolvePath(slugs: string[]): Promise<Category[] | null> {
+  if (slugs.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(categories)
+    .where(inArray(categories.slug, [...new Set(slugs)]));
   const chain: Category[] = [];
   let parentId: number | null = null;
   for (const slug of slugs) {
-    const cond: SQL | undefined =
-      parentId === null
-        ? and(isNull(categories.parentId), eq(categories.slug, slug))
-        : and(eq(categories.parentId, parentId), eq(categories.slug, slug));
-    const rows: Category[] = await db.select().from(categories).where(cond).limit(1);
-    const c = rows[0];
+    const c: Category | undefined = rows.find((r) => r.slug === slug && r.parentId === parentId);
     if (!c) return null;
     chain.push(c);
     parentId = c.id;
@@ -112,17 +254,40 @@ export async function resolvePath(slugs: string[]): Promise<Category[] | null> {
   return chain;
 }
 
+/** כמו resolvePath, אבל פעם אחת לבקשה (generateMetadata והדף עצמו קוראים לאותו נתיב) */
+const resolvePathCached = cache(async (key: string) => resolvePath(JSON.parse(key) as string[]));
+export function resolvePathOnce(slugs: string[]): Promise<Category[] | null> {
+  return resolvePathCached(JSON.stringify(slugs));
+}
+
+/** שרשרת האבות של קטגוריה (root→היא) בשאילתה אחת (רקורסיבית) – קודם שאילתה לכל רמה, ברצף */
 export async function getCategoryChain(id: number): Promise<Category[]> {
+  const rows = await db
+    .select()
+    .from(categories)
+    .where(
+      sql`${categories.id} IN (
+        WITH RECURSIVE anc AS (
+          SELECT id, parent_id FROM categories WHERE id = ${id}
+          UNION ALL
+          SELECT c.id, c.parent_id FROM categories c JOIN anc ON c.id = anc.parent_id
+        ) SELECT id FROM anc
+      )`,
+    );
+  const byId = new Map(rows.map((r) => [r.id, r]));
   const chain: Category[] = [];
   let cur: number | null = id;
   while (cur !== null) {
-    const [c] = await db.select().from(categories).where(eq(categories.id, cur)).limit(1);
+    const c: Category | undefined = byId.get(cur);
     if (!c) break;
     chain.unshift(c);
     cur = c.parentId;
   }
   return chain;
 }
+
+/** כמו getCategoryChain, פעם אחת לבקשה לכל קטגוריה (checkEntitlement על רשימת חומרים של תיקייה משקפת – כולם מאותה תיקיית מקור) */
+export const getCategoryChainOnce = cache(getCategoryChain);
 
 type ChainNode = Pick<Category, "id" | "parentId" | "slug" | "title" | "status">;
 
@@ -455,11 +620,23 @@ let freeIdsCache: { at: number; ids: Set<number> } | null = null;
 export async function getFreeCategoryIds(): Promise<Set<number>> {
   if (freeIdsCache && Date.now() - freeIdsCache.at < SEARCH_INDEX_TTL_MS) return freeIdsCache.ids;
   try {
+    // חומרי תיקיית מקור נחשבים גם כחומרי התיקייה המשקפת (ר' CATEGORY_MIRRORS), כך שגם היא ואבותיה מקבלים תגית "חינם"
+    const mirrorPairs = [...(await getMirrorMap())];
+    const mirrorBase = mirrorPairs.length
+      ? sql`
+        UNION ALL
+        SELECT m.id AS mid, m.access, c.id AS cid, c.parent_id
+        FROM materials m
+        JOIN (VALUES ${sql.join(mirrorPairs.map(([d, s]) => sql`(${d}::int, ${s}::int)`), sql`, `)}) AS v(dst, src) ON v.src = m.category_id
+        JOIN categories c ON c.id = v.dst
+        WHERE m.status = 'active' AND m.file_url LIKE 'drive://%'`
+      : sql``;
     const rows = await db.execute<{ cid: number }>(sql`
       WITH RECURSIVE anc AS (
         SELECT m.id AS mid, m.access, c.id AS cid, c.parent_id
         FROM materials m JOIN categories c ON c.id = m.category_id
         WHERE m.status = 'active' AND m.file_url LIKE 'drive://%'
+        ${mirrorBase}
         UNION ALL
         SELECT anc.mid, anc.access, c.id, c.parent_id
         FROM anc JOIN categories c ON c.id = anc.parent_id
@@ -498,6 +675,13 @@ export async function getDescendantIds(rootId: number): Promise<number[]> {
 }
 
 export async function countMaterialsUnder(rootId: number, isAdmin = false): Promise<number> {
+  // חומרי תיקיית המקור של כל תיקייה משקפת בתת-העץ נספרים גם הם (ר' CATEGORY_MIRRORS); שורה שבשני המקומות נספרת פעם אחת
+  const mirrorPairs = [...(await getMirrorMap())];
+  const mirrorClause = mirrorPairs.length
+    ? sql`OR category_id IN (
+        SELECT v.src FROM (VALUES ${sql.join(mirrorPairs.map(([d, s]) => sql`(${d}::int, ${s}::int)`), sql`, `)}) AS v(dst, src)
+        WHERE v.dst IN (SELECT id FROM tree))`
+    : sql``;
   const rows = await db.execute<{ n: number }>(sql`
     WITH RECURSIVE tree AS (
       SELECT id FROM categories WHERE id = ${rootId}
@@ -505,7 +689,7 @@ export async function countMaterialsUnder(rootId: number, isAdmin = false): Prom
       SELECT c.id FROM categories c JOIN tree t ON c.parent_id = t.id
     )
     SELECT count(*)::int AS n FROM materials
-    WHERE category_id IN (SELECT id FROM tree) ${isAdmin ? sql`` : sql`AND status = 'active'`}
+    WHERE (category_id IN (SELECT id FROM tree) ${mirrorClause}) ${isAdmin ? sql`` : sql`AND status = 'active'`}
   `);
   return Number(rows.rows[0]?.n ?? 0);
 }
@@ -540,16 +724,22 @@ export async function getActivePurchases(userId: number) {
     );
 }
 
-/** בודק האם המשתמשת רשאית להוריד את החומר */
+/**
+ * בודק האם המשתמשת רשאית להוריד את החומר.
+ * ctx (רשות) – לקריאה על רשימת חומרים: שרשרת הקטגוריות ורכישות פעילות שכבר נטענו פעם אחת, כדי לא לשאול את ה-DB מחדש לכל חומר
+ * (בדף יחידה עם 10 חומרים זה היה 10×(רמות העץ) שאילתות ועוד שאילתת רכישות לכל חומר). chain תקף רק לחומר ש-categoryId שלו הוא האחרון בשרשרת.
+ */
 export async function checkEntitlement(
   user: User | null,
   material: Material,
+  ctx?: { chain?: Category[]; active?: Promise<Awaited<ReturnType<typeof getActivePurchases>>> },
 ): Promise<Entitlement> {
   if (user?.role === "admin") return { ok: true, via: "admin" };
   if (user?.suspended) return { ok: false, reason: "suspended" };
   if (material.status !== "active") return { ok: false, reason: "suspended" };
 
-  const chain = await getCategoryChain(material.categoryId);
+  const hinted = ctx?.chain && ctx.chain[ctx.chain.length - 1]?.id === material.categoryId ? ctx.chain : null;
+  const chain = hinted ?? (await getCategoryChainOnce(material.categoryId));
   if (chainSuspended(chain)) return { ok: false, reason: "suspended" };
   const chainIds = new Set(chain.map((c) => c.id));
 
@@ -565,11 +755,14 @@ export async function checkEntitlement(
   if (!user) return { ok: false, reason: "login" };
 
   // אין הבחנה בין סוגי חומרים (אין יותר "פרימיום"): כל רכישה/מנוי שמכסה את החומר פותחת אותו, מכל סוג
-  const active = await getActivePurchases(user.id);
+  const active = await (ctx?.active ?? getActivePurchases(user.id));
 
   // רכישה בודדת של החומר עצמו
   const single = active.find((p) => p.plan === "single" && p.materialId === material.id);
   if (single) return { ok: true, via: "single", purchaseId: single.id };
+
+  // תיקיות שמשקפות את תיקיית החומר (CATEGORY_MIRRORS) ואבותיהן: "קובץ מורחב"/מנוי שנרכשו דרך העץ המשקף מכסים גם את החומר
+  for (const id of await mirrorRelatedIds([...chainIds])) chainIds.add(id);
 
   // רכישת תיקייה מורחבת שמכילה את החומר
   const bundle = active.find(
@@ -611,6 +804,7 @@ export async function getUserDownloadCounts(
 
 /** יחידה חינמית = יש בה חומרים וכולם חינמיים (אותה הגדרה כמו hasPaid בדף היחידה) */
 export async function isFreeUnit(categoryId: number) {
+  categoryId = await mirrorSourceId(categoryId);
   const [row] = await db
     .select({
       total: sql<number>`count(*)::int`,
@@ -643,7 +837,7 @@ export async function userCanUseUnitForum(user: User | null, categoryId: number)
   const [row] = await db
     .select({ id: materials.id })
     .from(materials)
-    .where(and(inArray(materials.id, singleIds), eq(materials.categoryId, categoryId)))
+    .where(and(inArray(materials.id, singleIds), eq(materials.categoryId, await mirrorSourceId(categoryId))))
     .limit(1);
   return !!row;
 }

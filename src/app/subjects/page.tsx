@@ -7,6 +7,9 @@ import { getMyRootSubjectIds } from "@/lib/home-personal";
 import type { Category } from "@/db/schema";
 import { AnimatedGrid } from "@/components/animated-grid";
 import { SubjectCard } from "@/components/subject-card";
+import { ColourSvgDefs } from "@/components/colour-svg";
+import { inlineNut } from "@/lib/inline-site-images";
+import { SUBJECT_HOUSES } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EmptySheet } from "@/components/empty-sheet";
 export const metadata: Metadata = { title: "המקצועות" };
@@ -83,6 +86,8 @@ export default async function SubjectsPage({
       {rows.length === 0 ? (
         <EmptySheet />
       ) : (
+        <>
+        <ColourSvgDefs srcs={rows.filter(({ subject: s }) => !SUBJECT_HOUSES[s.slug]).map(({ subject: s }) => inlineNut(s.slug, 0) + "@s")} />
         <AnimatedGrid className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {rows.map(({ subject: s, count }) => (
             <SubjectCard
@@ -98,6 +103,7 @@ export default async function SubjectsPage({
             />
           ))}
         </AnimatedGrid>
+        </>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { ColourSvg } from "@/components/colour-svg";
 import { inlineSite } from "@/lib/inline-site-images";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -57,11 +58,8 @@ export default async function PricingPage() {
 
   // תמונת אגוזים מתחת לכרטיס המסלול (קישוט בלבד)
   const decor = (name: string) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <ColourSvg
       src={`/images/plan-nuts/${name}.png`}
-      alt=""
-      aria-hidden
       className="plan-nuts"
       style={{ height: name === "single" ? "5.5rem" : name === "daily" ? "6.5rem" : "8.5rem" }}
     />

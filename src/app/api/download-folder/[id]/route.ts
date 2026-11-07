@@ -4,7 +4,7 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, downloads, materials, type Material } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
-import { checkEntitlement, getDescendantIds, getCategoryChain, chainToHref, getUserDownloadCounts } from "@/lib/data";
+import { checkEntitlement, expandMirrorIds, getDescendantIds,getCategoryChain, chainToHref, getUserDownloadCounts } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
@@ -178,7 +178,8 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     );
   }
 
-  const ids = await getDescendantIds(categoryId);
+  // תיקייה משקפת (data.ts CATEGORY_MIRRORS) – גם חומרי תיקיית המקור
+  const ids = await expandMirrorIds(await getDescendantIds(categoryId));
   const all = ids.length
     ? await db
         .select()

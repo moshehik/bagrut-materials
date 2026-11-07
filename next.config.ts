@@ -12,6 +12,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // potrace (+jimp 0.14) משמש לציור-מחדש וקטורי של תמונות ב-PDF (src/lib/image-vectorize.ts): נטען מ-node_modules ולא נארז
+  serverExternalPackages: ["potrace", "jimp"],
   images: {
     qualities: [75, 100],
   },

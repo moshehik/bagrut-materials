@@ -3,7 +3,7 @@ import { count, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, materials, type NedarimPayment } from "@/db/schema";
 import { MATERIAL_KINDS } from "@/lib/constants";
-import { chainSuspended, chainToHref, getActivePurchases, getCategoryChain, getDescendantIds } from "@/lib/data";
+import { chainSuspended, chainToHref, expandMirrorIds, getActivePurchases, getCategoryChain, getDescendantIds, mirrorRelatedIds } from "@/lib/data";
 import { bundleAmountFor } from "@/lib/purchase-helpers";
 import { ITEM_COVERED_TEXT, itemAlreadyCovered, itemSuccessHref, orderKindOf, type ItemCoverage, type PayableItemKind } from "./logic";
 
@@ -61,7 +61,8 @@ export async function loadPayableItem(ref: { kind: "single"; materialId: number 
   if (c.status !== "active") return { ok: false, reason: "folder_inactive", error: "התיקייה מושהית זמנית ואינה זמינה לרכישה" };
   const chain = await getCategoryChain(c.id);
   if (!chain.length || chainSuspended(chain)) return { ok: false, reason: "chain_inactive", error: "התיקייה מושהית זמנית ואינה זמינה לרכישה" };
-  const ids = await getDescendantIds(c.id);
+  const treeIds = await getDescendantIds(c.id);
+  const ids = await expandMirrorIds(treeIds); // תיקייה משקפת (data.ts CATEGORY_MIRRORS) – גם חומרי תיקיית המקור
   const [cnt] = ids.length ? await db.select({ n: count() }).from(materials).where(inArray(materials.categoryId, ids)) : [{ n: 0 }];
   const n = Number(cnt?.n ?? 0);
   const amount = await bundleAmountFor(c); // אותו חישוב כמו בקופה הישנה (מחיר ידני / 15 ₪ ליחידה / 70% מסכום החומרים)
@@ -74,7 +75,7 @@ export async function loadPayableItem(ref: { kind: "single"; materialId: number 
       materialId: null,
       categoryId: c.id,
       title: c.title,
-      subtitle: `${n} חומרים בתיקייה ובכל תתי-הפרקים שלה${!c.bundlePrice && ids.length > 1 ? " · 30% הנחה לעומת רכישה בודדת" : ""}`,
+      subtitle: `${n} חומרים בתיקייה ובכל תתי-הפרקים שלה${!c.bundlePrice && treeIds.length > 1 ?" · 30% הנחה לעומת רכישה בודדת" : ""}`,
       crumbs: chain.slice(0, -1).map((x) => x.title),
       href: chainToHref(chain),
       listAmount: amount,
@@ -86,7 +87,9 @@ export async function loadPayableItem(ref: { kind: "single"; materialId: number 
 /** "כבר שלך" – רכישה כפולה של אותו פריט / תיקיית-אב / מנוי שמכסה (itemAlreadyCovered על הרכישות הפעילות) */
 export async function itemCoverageFor(userId: number, item: PayableItem): Promise<{ coverage: ItemCoverage; text: string } | null> {
   const active = await getActivePurchases(userId);
-  const coverage = itemAlreadyCovered(item.kind, { materialId: item.materialId, categoryId: item.categoryId, chainIds: item.chainIds }, active);
+  // כיסוי גם דרך תיקיות שמשקפות / מקור (data.ts CATEGORY_MIRRORS): קובץ מורחב שנרכש באחד העצים מכסה את אותם חומרים בעץ השני
+  const chainIds = await mirrorRelatedIds(item.chainIds);
+  const coverage = itemAlreadyCovered(item.kind, { materialId: item.materialId, categoryId: item.categoryId, chainIds }, active);
   return coverage ? { coverage, text: ITEM_COVERED_TEXT[coverage] } : null;
 }
 

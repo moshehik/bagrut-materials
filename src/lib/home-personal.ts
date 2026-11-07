@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, inArray, max } from "drizzle-orm";
-import { materialServable } from "@/lib/data";
+import { getMirrorMap, materialServable } from "@/lib/data";
 import { db } from "@/db";
 import { categories, downloads, materials, type Category, type User } from "@/db/schema";
 import { getActivePurchases } from "./data";
@@ -36,7 +36,10 @@ async function loadTree(): Promise<Tree> {
       children.set(c.parentId, list);
     }
   }
-  return { byId, children, roots, withMaterials: new Set(mats.map((m) => m.categoryId)) };
+  const withMaterials = new Set(mats.map((m) => m.categoryId));
+  // תיקייה משקפת (data.ts CATEGORY_MIRRORS) שתיקיית המקור שלה מלאה – גם היא "שיעור"
+  for (const [alias, src] of await getMirrorMap()) if (withMaterials.has(src)) withMaterials.add(alias);
+  return { byId, children, roots, withMaterials };
 }
 
 /** שרשרת root→node (null אם אחד האבות לא פעיל) */

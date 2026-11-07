@@ -1,4 +1,4 @@
-import { inlineUi } from "@/lib/inline-images";
+import { ColourSvg } from "@/components/colour-svg";
 
 /**
  * באנר ההוראות הקבוע שמופיע מיד בכניסה לתיקיית מאגר השיחות (חגים / אקטואליה והשקפה,
@@ -7,7 +7,7 @@ import { inlineUi } from "@/lib/inline-images";
  */
 const RULES = [
   {
-    nut: inlineUi("/images/nuts/one-05.webp"),
+    nut: "/images/nuts/one-05.webp",
     text: (
       <>
         כל שיחה שמועלית צריכה להתאים למסירה של{" "}
@@ -17,7 +17,7 @@ const RULES = [
     ),
   },
   {
-    nut: inlineUi("/images/nuts/two-01.webp"),
+    nut: "/images/nuts/two-01.webp",
     text: (
       <>
         אחרי שמעבירים שיעור אפשר לסמן &quot;השתמשתי בו&quot; — כך כולן יודעות אילו שיעורים הכי בשימוש.
@@ -25,7 +25,7 @@ const RULES = [
     ),
   },
   {
-    nut: inlineUi("/images/nuts/one-03.webp"),
+    nut: "/images/nuts/one-03.webp",
     text: (
       <>
         יש רעיון למשחק, פעילות, סיפור או מדרש שמשלים שיחה קיימת? לוחצות על ה-&quot;+&quot; ליד
@@ -41,8 +41,7 @@ export function SichaIntro({ folderTitle }: { folderTitle: string }) {
       <span className="gold-ring" aria-hidden="true" />
 
       <div className="flex items-center gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={inlineUi("/images/nuts/many-04.webp")} alt="" aria-hidden className="h-14 w-auto shrink-0" />
+        <ColourSvg src="/images/nuts/many-04.webp" className="h-14 w-auto shrink-0" />
         <div className="min-w-0">
           <h2 id="sicha-intro-h" className="text-2xl md:text-3xl">
             ברוכה הבאה למאגר השיחות!
@@ -58,7 +57,7 @@ export function SichaIntro({ folderTitle }: { folderTitle: string }) {
         {RULES.map(({ nut, text }, i) => (
           <li key={i} className="gate-card flex items-start gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={nut} alt="" aria-hidden className="h-9 w-9 shrink-0 object-contain" />
+            <ColourSvg src={nut} className="h-9 w-9 shrink-0 object-contain" />
             <span className="text-base leading-snug">{text}</span>
           </li>
         ))}

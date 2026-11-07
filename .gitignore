@@ -87,3 +87,6 @@ public/_demo/
 
 # קבצי עבודה של הסוכן (agent-edit-file / agent-fix-suggest / agent-general-fix) - קבצי docx חיים שהורדו לעריכה
 /_agent_work/
+
+# פלט בדיקות ציור-מחדש וקטורי של תמונות ב-PDF (scripts/warm-pdf-cache.ts)
+/_vec_pdf_out/

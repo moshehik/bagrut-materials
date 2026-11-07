@@ -1,4 +1,5 @@
-import { Eye, Fingerprint, Mail, PauseCircle } from "lucide-react";
+import { Eye, PauseCircle } from "lucide-react";
+import { MailIcon, PrintIcon } from "@/components/card-icons";
 import { EmailMaterialButton } from "@/components/email-material-button";
 import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
@@ -6,6 +7,7 @@ import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/mate
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
 import { FIX_TIPS, FixRequestButton, type CardFix } from "@/components/material-fixes";
+import { ColourSvg } from "@/components/colour-svg";
 import { inlineUi } from "@/lib/inline-images";
 import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { PrivateVersionNote } from "@/components/material-private-version";
@@ -50,9 +52,8 @@ const MAIL_TIP = "הקובץ ישלח אליך ישירות למייל.";
 export function MailNut() {
   return (
     <span className="mtc-nut mtc-mailnut" aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={inlineUi("/images/nuts/one-01.webp")} alt="" width={40} height={40} />
-      <Mail className="mtc-mailnut-icon" strokeWidth={1.3} />
+      <ColourSvg src="/images/nuts/one-01.webp" width={40} height={40} shared small />
+      <MailIcon className="mtc-mailnut-icon" />
     </span>
   );
 }
@@ -155,9 +156,9 @@ export function MaterialTypeCard({
     >
       {m.access === "free" && <span className="mtc-free">{guestFree ? "חינם בהרשמה" : "חינם"}</span>}
       <header className="mtc-head">
-        {hasLineIcon(s.art) ? (
+        {hasLineIcon(s.art) || hasLineIcon(`card-${s.art}`) ? (
           // איור קו כ-SVG בתוך הדף (נטפרי חוסם תמונות)
-          <LineIcon name={s.art} className="mtc-art" color="#fff" />
+          <LineIcon name={hasLineIcon(s.art) ? s.art : `card-${s.art}`} className="mtc-art" color="#fff" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -215,7 +216,7 @@ export function MaterialTypeCard({
           aria-label="החומר שלך, נשאר שלך"
           tabIndex={0}
         >
-          <Fingerprint className="mtc-print-icon" strokeWidth={1.4} aria-hidden />
+          <PrintIcon className="mtc-print-icon" />
         </div>
 
         {viewOnly ? (
@@ -230,7 +231,7 @@ export function MaterialTypeCard({
             state={trialOffer}
             className="mtc-download"
           >
-            <img src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+            <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
             <span>להורדה חינם</span>
           </FreeTrialDownload>
         ) : target ? (
@@ -246,7 +247,7 @@ export function MaterialTypeCard({
             }
             aria-label={`הורדת ${s.label}${guestFree ? " – חינם בהרשמה" : ""}`}
           >
-            <img src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+            <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
             <span>להורדה</span>
           </a>
         ) : (
@@ -266,8 +267,7 @@ export function MaterialTypeCard({
             tip={isDailySubstitute ? DAILY_SUBSTITUTE_VIEW_TIP : undefined}
             label={`צפייה ב${s.label} באתר`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={inlineUi("/images/nuts/one-10.webp")} alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+            <ColourSvg src="/images/nuts/one-10.webp" width={40} height={40} className="mtc-nut" shared small />
             <span>לצפייה</span>
           </CardViewer>
         ) : (
@@ -279,8 +279,7 @@ export function MaterialTypeCard({
               data-tip="לצפייה בקובץ צריך קודם להשלים את השלב הבא"
               aria-label={`צפייה ב${s.label} באתר`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={inlineUi("/images/nuts/one-10.webp")} alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+              <ColourSvg src="/images/nuts/one-10.webp" width={40} height={40} className="mtc-nut" shared small />
               <span>לצפייה</span>
             </a>
           )
@@ -325,7 +324,7 @@ export function MaterialTypeCard({
             materialId={m.id}
             materialTitle={heading.full}
             lockedHref={lockedHref}
-            nutSrc={inlineUi("/images/nuts/one-02.webp")}
+            nut={<ColourSvg src="/images/nuts/one-02.webp" width={40} height={40} className="mtc-rownut" shared small />}
             viewSrc={canFix ? (fixesViewSrc ?? plainViewSrc) : plainViewSrc}
             demo={fixDemo}
             fixes={canFix ? fixes : []}
@@ -333,8 +332,7 @@ export function MaterialTypeCard({
           />
           {canFix && (
             <a href={`${target}?fixes=all`} className="mtc-row" data-tip={FIX_TIPS.download}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={inlineUi("/images/mat-cards/nut-download-light.webp")} alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
+              <ColourSvg src="/images/mat-cards/nut-download-light.webp" width={40} height={40} className="mtc-rownut" shared small />
               <span>להורדת הקובץ המתוקן</span>
             </a>
           )}

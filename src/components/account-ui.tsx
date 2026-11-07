@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, Filter, UserRound } from "lucide-react";
 import { formatHebrewDate } from "@/lib/hebrew-date";
 import { inlineLessonIcon, inlineUi } from "@/lib/inline-images";
+import { ColourSvg } from "@/components/colour-svg";
 import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { CARD_ROWS, CARD_STYLES, EXTRA_TYPES, type CardType } from "@/lib/material-card-types";
 
@@ -164,8 +165,7 @@ export function AccountMenu({ hrefs }: { hrefs?: Record<string, string> }) {
                 <span className="block text-2xl leading-tight">{t.title}</span>
                 <span className="gate-soft mt-1 block text-base leading-snug">{t.text}</span>
               </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={inlineUi(t.nut)} alt="" aria-hidden className="acc-tile-nut" />
+              <ColourSvg src={t.nut} className="acc-tile-nut" />
             </Link>
           </li>
         ))}
@@ -189,13 +189,7 @@ const PLAN_NUT: Record<string, string> = {
 
 export function PlanNut({ plan, className = "acc-plan-nut" }: { plan: string; className?: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={inlineUi(`/images/plan-nuts/${PLAN_NUT[plan] ?? "single"}.png`)}
-      alt=""
-      aria-hidden
-      className={className}
-    />
+    <ColourSvg src={`/images/plan-nuts/${PLAN_NUT[plan] ?? "single"}.png`} className={className} />
   );
 }
 

@@ -7,6 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
 const potrace = require("potrace");
+const { minifyPath } = require("./path-minify.cjs");
 
 const root = path.join(__dirname, "..");
 const NAMES = ["teacher", "student"];
@@ -26,7 +27,7 @@ const trace = (buf, opts) => new Promise((res, rej) => potrace.trace(buf, opts, 
     const raw = await sharp(img).grayscale().png().toBuffer();
     const svg = await trace(raw, { threshold: 170, turdSize: 10, optTolerance: 1.0, blackOnWhite: true });
     const vb = svg.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number);
-    const d = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(" ");
+    const d = minifyPath([...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(" "));
     out[n] = { w: vb[2], h: vb[3], d };
     console.log(n, vb.join("x"), "path bytes", d.length);
   }
@@ -36,7 +37,7 @@ const trace = (buf, opts) => new Promise((res, rej) => potrace.trace(buf, opts, 
     const raw = await sharp(alpha).negate().png().toBuffer();
     const svg = await trace(raw, { threshold: 160, turdSize: 8, optTolerance: 1.0, blackOnWhite: true });
     const vb = svg.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number);
-    const d = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(" ");
+    const d = minifyPath([...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(" "));
     out["card-" + n] = { w: vb[2], h: vb[3], d };
     console.log("card-" + n, vb.join("x"), "path bytes", d.length);
   }

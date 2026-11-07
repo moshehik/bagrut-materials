@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ColourSvgDefs, CARD_NUT_SRCS } from "@/components/colour-svg";
 import { PartyPopper } from "lucide-react";
 import { SichaIntro } from "@/components/sichot/sicha-intro";
 import { SichaUploadForm } from "@/components/sichot/sicha-upload-form";
@@ -56,6 +57,7 @@ export default function SichotPreviewPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 space-y-14">
+      <ColourSvgDefs srcs={CARD_NUT_SRCS} />
       <div>
         <h1 className="font-display text-3xl font-black">דוגמת מאגר שיחות – {folder}</h1>
         <p className="mt-2 text-muted">נתוני דמה בלבד. עמוד זה לא קיים באתר החי.</p>

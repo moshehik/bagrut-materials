@@ -8,7 +8,7 @@ import { ShoppingBag, FolderOpen, CalendarDays, ChevronLeft } from "lucide-react
 import { db } from "@/db";
 import { categories, materials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
-import { getCategoryChain, chainToHref, getDescendantIds, getRootSubjects } from "@/lib/data";
+import { getCategoryChain, chainToHref, getDescendantIds, expandMirrorIds, getRootSubjects } from "@/lib/data";
 import {
   PLANS,
   MATERIAL_KINDS,
@@ -150,11 +150,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     const [c] = await db.select().from(categories).where(eq(categories.id, bundleId)).limit(1);
     if (!c) redirect("/subjects");
     const chain = await getCategoryChain(c.id);
-    const ids = await getDescendantIds(c.id);
+    const treeIds = await getDescendantIds(c.id);
+    const ids = await expandMirrorIds(treeIds); // תיקייה משקפת (data.ts CATEGORY_MIRRORS) – גם חומרי תיקיית המקור
     const ms = ids.length
       ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
       : [];
-    const price = bundlePriceFor({ bundlePrice: c.bundlePrice, isLeaf: ids.length <= 1, materialsTotal: ms.reduce((s, x) => s + x.price, 0) });
+    const price = bundlePriceFor({ bundlePrice: c.bundlePrice, isLeaf: treeIds.length <= 1, materialsTotal: ms.reduce((s, x) => s + x.price, 0) });
     heading = "קובץ מורחב – תיקייה שלמה";
     summary = (
       <div className="flex gap-4">
@@ -166,7 +167,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <h2 className="mt-1 text-2xl leading-snug">{c.title}</h2>
           <p className="gate-soft text-base">
             {ms.length} חומרים בתיקייה ובכל תתי-הפרקים שלה
-            {!c.bundlePrice && ids.length > 1 && ms.length > 0 && " · 30% הנחה לעומת רכישה בודדת"}
+            {!c.bundlePrice && treeIds.length > 1 && ms.length > 0 && " · 30% הנחה לעומת רכישה בודדת"}
           </p>
           <Link href={chainToHref(chain)} className="text-base underline">
             חזרה לתיקייה

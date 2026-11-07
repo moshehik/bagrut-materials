@@ -1,3 +1,4 @@
+import { ColourSvg } from "@/components/colour-svg";
 import { inlineUi } from "@/lib/inline-images";
 import { Download } from "lucide-react";
 import { EmailMaterialButton } from "@/components/email-material-button";
@@ -41,14 +42,13 @@ export function SichaFileCard({
 
       <div className="mtc-body sicha-file-body">
         <a href={`/api/sichot/download/${sichaId}${q}`} className="mtc-download" data-tip="להורדת הקובץ למחשב" aria-label={`הורדת ${title}`}>
-          <img src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+          <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
           <span>להורדה</span>
         </a>
 
         {canViewInSite(fileName) && (
           <FileViewerButton src={`/api/sichot/preview/${sichaId}${q}`} title={title} className="mtc-download" label={`צפייה ב${title} באתר`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={inlineUi("/images/nuts/one-10.webp")} alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+            <ColourSvg src="/images/nuts/one-10.webp" width={40} height={40} className="mtc-nut" shared small />
             <span>לצפייה</span>
           </FileViewerButton>
         )}

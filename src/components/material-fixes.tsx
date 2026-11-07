@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Download, Plus, Sparkles, X } from "lucide-react";
@@ -43,11 +43,6 @@ function useDialog(open: boolean, onClose: () => void, modal = true) {
     return () => d.removeEventListener("close", onClose);
   }, [onClose]);
   return ref;
-}
-
-function Nut({ src }: { src: string }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" width={40} height={40} className="mtc-rownut" aria-hidden />;
 }
 
 /** התשובה ל"איך תרצי לתקן?": "" = עוד לא נבחר; self = היא כותבת את התיקון; אחרת סיבה מהרשימה, וג'מיני מנסח הצעה */
@@ -196,7 +191,7 @@ export function FixRequestButton({
   materialId,
   materialTitle,
   lockedHref,
-  nutSrc,
+  nut,
   viewSrc: viewSrcOverride,
   demo = false,
   fixes = [],
@@ -212,11 +207,15 @@ export function FixRequestButton({
   demo?: boolean;
   /** אם אין גישה לקובץ – לאן לשלוח במקום לפתוח את החלון (התחברות / רכישה) */
   lockedHref?: string | null;
-  nutSrc: string;
+  /** אגוז הכפתור – מגיע מהשרת (ColourSvg) כדי לא להכניס את נתוני האיורים לחבילת הלקוח */
+  nut: ReactNode;
   /** רק לדוגמאות פיתוח: קובץ PDF קבוע להצגה במקום הצפייה האמיתית */
   viewSrc?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // ארבעת ה-<dialog> (עריכה, ביטול, אישור הערה, "גם בדף השני") לא נכנסים ל-HTML של הדף עד הלחיצה הראשונה:
+  // בדף יחידה עם 10 כרטיסים הם היו ~47KB שנטפרי מחזיק ומסרוק לפני שהדף מוצג. בהדגמה (סיור) הם תמיד קיימים.
+  const [armed, setArmed] = useState(false);
   // בהדגמה (סיור) החלון נשתל ישירות ב-body, כדי שיהיה מרוכז במסך ולא יושפע מהמיכל שהכרטיסייה בתוכו
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -489,7 +488,7 @@ export function FixRequestButton({
 
   const label = (
     <>
-      <Nut src={nutSrc} />
+      {nut}
       <span>לעריכת שינויים בקובץ</span>
     </>
   );
@@ -776,10 +775,15 @@ export function FixRequestButton({
           {label}
         </a>
       ) : (
-        <button type="button" className="mtc-row" data-tip={FIX_TIPS.edit} onClick={() => setOpen(true)}>
+        <button type="button" className="mtc-row" data-tip={FIX_TIPS.edit} onClick={() => {
+          setArmed(true);
+          setOpen(true);
+        }}>
           {label}
         </button>
       )}
+      {!lockedHref && (demo || armed) && (
+        <>
       {demo ? (mounted ? createPortal(dialogEl, document.body) : null) : dialogEl}
       {/* אישור ביטול תיקון – חלונית צפה בעיצוב חלוניות האתר */}
       <dialog
@@ -867,6 +871,8 @@ export function FixRequestButton({
           </div>
         </div>
       </dialog>
+        </>
+      )}
     </>
   );
 }

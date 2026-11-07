@@ -3,7 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { materials, purchases, type Category, type Plan } from "@/db/schema";
 import { PLANS, bundlePriceFor } from "./constants";
-import { getDescendantIds } from "./data";
+import { expandMirrorIds, getDescendantIds } from "./data";
 import type { PlanPrices } from "./pricing";
 
 export function addDays(days: number, from: Date = new Date()) {
@@ -43,13 +43,14 @@ export async function hasActiveSamePlan(userId: number, plan: Plan): Promise<boo
 
 /** מחיר קובץ מורחב לתיקייה – בדיוק כמו ב-purchaseAction */
 export async function bundleAmountFor(c: Pick<Category, "id" | "bundlePrice">): Promise<number> {
-  const ids = await getDescendantIds(c.id);
+  const treeIds = await getDescendantIds(c.id);
+  const ids = await expandMirrorIds(treeIds); // תיקייה משקפת (data.ts CATEGORY_MIRRORS) – גם חומרי תיקיית המקור
   const ms = ids.length
     ? await db.select({ price: materials.price }).from(materials).where(inArray(materials.categoryId, ids))
     : [];
   return bundlePriceFor({
     bundlePrice: c.bundlePrice,
-    isLeaf: ids.length <= 1,
+    isLeaf: treeIds.length <= 1,
     materialsTotal: ms.reduce((s, x) => s + x.price, 0),
   });
 }

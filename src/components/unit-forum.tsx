@@ -25,13 +25,12 @@ export async function UnitForum({
   user: User | null;
 }) {
   // מנויה / מי שרכשה ביחידה – יכולה לכתוב (ר' userCanUseUnitForum)
-  const canUse = await userCanUseUnitForum(user, category.id);
-  const isAdmin = user?.role === "admin";
+  // כל השאילתות הבלתי תלויות בבת אחת (קודם: 4-5 סבבי DB ברצף ב-SSR של כל דף יחידה)
   // יחידה חינמית: כולן צופות (גם בלי הרשמה); כתיבה – רק בהרשמה (מחוברת). ביחידה בתשלום – רק מנויה/רוכשת
-  const freeUnit = await isFreeUnit(category.id);
-  const canView = canUse || freeUnit;
-
-  const threads = await db
+  const [canUse, freeUnit, threads, myReports] = await Promise.all([
+    userCanUseUnitForum(user, category.id),
+    isFreeUnit(category.id),
+    db
     .select({
       id: forumThreads.id,
       kind: forumThreads.kind,
@@ -44,7 +43,17 @@ export async function UnitForum({
     .innerJoin(users, eq(forumThreads.userId, users.id))
     .where(eq(forumThreads.categoryId, category.id))
     .orderBy(desc(forumThreads.createdAt))
-    .limit(50);
+    .limit(50),
+    // דיווחים פתוחים של המשתמשת הנוכחית – כדי שה-V יישאר גם אחרי רענון
+    user
+      ? db
+          .select({ threadId: forumReports.threadId, postId: forumReports.postId })
+          .from(forumReports)
+          .where(and(eq(forumReports.reporterId, user.id), eq(forumReports.status, "open")))
+      : Promise.resolve([] as { threadId: number; postId: number | null }[]),
+  ]);
+  const isAdmin = user?.role === "admin";
+  const canView = canUse || freeUnit;
 
   const posts = threads.length
     ? await db
@@ -67,13 +76,6 @@ export async function UnitForum({
         .orderBy(asc(forumPosts.createdAt))
     : [];
 
-  // דיווחים פתוחים של המשתמשת הנוכחית – כדי שה-V יישאר גם אחרי רענון
-  const myReports = user
-    ? await db
-        .select({ threadId: forumReports.threadId, postId: forumReports.postId })
-        .from(forumReports)
-        .where(and(eq(forumReports.reporterId, user.id), eq(forumReports.status, "open")))
-    : [];
   const reportedThreads = new Set(myReports.map((r) => r.threadId));
   const reportedPosts = new Set(myReports.map((r) => r.postId));
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
 import { inlineHouse } from "@/lib/inline-images";
+import { ColourSvg } from "./colour-svg";
 import { SubjectIcon } from "./subject-icons";
 import { inlineNut } from "@/lib/inline-site-images";
 import s from "./subject-card.module.css";
@@ -78,13 +79,12 @@ export function SubjectCard({
         {house ? (
           <div className={s.houseStack}>
             <div className={s.houseWrap}>
-              <img className={s.house} src={house} alt="" width={356} height={266} />
+              <ColourSvg className={s.house} src={house} width={356} height={266} />
             </div>
             <span className={s.houseLabel}>{title}</span>
           </div>
         ) : nutKey ? (
-          // eslint-disable-next-line @next/next/no-img-element -- מוטמע ב-HTML (מסנן תוכן מחליף קובצי תמונה רגילים)
-          <img className={s.nut} src={inlineNut(nutKey, nutDepth)} alt="" aria-hidden />
+          <ColourSvg className={s.nut} src={inlineNut(nutKey, nutDepth)} shared small />
         ) : (
           <SubjectIcon slug={rootSlug || slug} className={s.folderIcon} />
         )}

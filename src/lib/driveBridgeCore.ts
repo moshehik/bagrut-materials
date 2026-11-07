@@ -624,7 +624,7 @@ export function isOfficeMime(mimeType: string) {
   return mimeType in OFFICE_TO_GOOGLE_MIME;
 }
 
-type ConvertArgs = { bytes: Uint8Array; mimeType: string; name: string };
+type ConvertArgs = { bytes: Uint8Array; mimeType: string; name: string; /** false = בלי ציור-מחדש וקטורי של תמונות גוף (ר' vectorizeBodyImages; לסקריפטי בדיקה) */ vectorizeImages?: boolean };
 type Budget = ReturnType<typeof budgetClock>;
 
 async function convertOfficeToPdfViaDrive({ bytes, mimeType, name }: ConvertArgs, budget: Budget): Promise<Uint8Array> {
@@ -773,9 +773,37 @@ async function prepareOfficeForConvert(args: ConvertArgs): Promise<ConvertArgs> 
   return bytes === args.bytes ? args : { ...args, bytes };
 }
 
+// --- תמונות גוף ב-PDF → ציור וקטורי (נטפרי מחליף כל תמונה בתוך PDF; נתיבים וקטוריים עוברים, ר' docs/netfree.md) ---
+// רץ על ה-PDF *המומר* (לפני הטבעת סימן המים, ולפני שמירה במטמון – כך כל קובץ משלם פעם אחת). רק ל-docx (מצגות הן
+// PDF של תמונות בלבד – אין מה לצייר מחדש). לא זורק לעולם: כל כשל ← מחזיר את ה-PDF כפי שהוא.
+export const VECTORIZE_IMAGES_BUDGET_MS = 40_000;
+/** החזרה: ה-PDF (אולי מעובד) + complete=false כשנגמר הזמן באמצע (אז לא שומרים במטמון, כדי שלא יקפא חלקי) */
+async function vectorizeBodyImages(pdf: Uint8Array, args: ConvertArgs, budget: Budget): Promise<{ pdf: Uint8Array; changed: boolean; complete: boolean }> {
+  const unchanged = { pdf, changed: false, complete: true };
+  if (args.vectorizeImages === false || !isDocxForBlankLines(args.mimeType, args.name)) return unchanged;
+  try {
+    const { pdfMayHaveBodyImages, vectorizePdfImages } = await import("./pdf-vectorize-images");
+    if (!pdfMayHaveBodyImages(pdf)) return unchanged;
+    const allowance = Math.min(VECTORIZE_IMAGES_BUDGET_MS, budget.remaining() - 8_000);
+    if (allowance < 3_000) return { pdf, changed: false, complete: false };
+    const { PDFDocument } = await import("pdf-lib");
+    const doc = await PDFDocument.load(pdf, { ignoreEncryption: true, updateMetadata: false });
+    const stats = { timedOut: false };
+    const n = await vectorizePdfImages(doc, { deadline: Date.now() + allowance, stats });
+    if (n === 0) return { pdf, changed: false, complete: !stats.timedOut };
+    return { pdf: await doc.save({ useObjectStreams: false }), changed: true, complete: !stats.timedOut };
+  } catch (e) {
+    console.warn("[convert] ציור-מחדש וקטורי של תמונות נכשל, ממשיכים עם ה-PDF המקורי:", e instanceof Error ? e.message : e);
+    return unchanged;
+  }
+}
+
 /** המרה "לפי דרישה" בלי מטמון — ההתנהגות המקורית. כל המסלול (Oracle ← Drive) בתוך CONVERT_TOTAL_BUDGET_MS. */
 export async function convertOfficeToPdf(args: ConvertArgs): Promise<Uint8Array> {
-  return convertWithBudget(await prepareOfficeForConvert(args), budgetClock(CONVERT_TOTAL_BUDGET_MS));
+  const budget = budgetClock(CONVERT_TOTAL_BUDGET_MS);
+  const rest = await prepareOfficeForConvert(args);
+  const pdf = await convertWithBudget(rest, budget);
+  return (await vectorizeBodyImages(pdf, rest, budget)).pdf;
 }
 
 // --- מטמון ה-PDF המומר (לא מוטבע) בדרייב ---
@@ -830,7 +858,7 @@ const isValidDriveId = (id: string) => /^[A-Za-z0-9_-]{10,}$/.test(id);
 async function findCachedPdf(fileId: string, md5: string, budget: Budget): Promise<Uint8Array | null> {
   const q = `appProperties has { key='pdfOf' and value='${fileId}' } and appProperties has { key='md5' and value='${md5}' } and trashed = false`;
   const res = await driveFetchAuthed(
-    `${DRIVE_API}?${new URLSearchParams({ q, fields: "files(id,size)", pageSize: "1" })}`,
+    `${DRIVE_API}?${new URLSearchParams({ q, fields: "files(id,size)", orderBy: "createdTime desc", pageSize: "1" })}`,
     {},
     { tries: 1, timeoutMs: budget.slice(PDF_CACHE_LOOKUP_TIMEOUT_MS) },
   );
@@ -900,13 +928,27 @@ export async function convertOfficeToPdfCached(
   if (key) {
     try {
       const hit = await findCachedPdf(key.fileId, key.md5, budget);
-      if (hit) return hit;
+      if (hit) {
+        // רשומות שנשמרו לפני שהתמונות עברו לווקטור: מעבדים אותן עכשיו ומחליפים את הרשומה (פעם אחת לקובץ)
+        const upgraded = await vectorizeBodyImages(hit, rest, budget);
+        if (upgraded.changed && upgraded.complete) {
+          const task = () =>
+            storeCachedPdf(key.fileId, key.md5, rest.name, upgraded.pdf).catch((e) => {
+              console.warn("[pdf-cache] עדכון רשומה לווקטור נכשל:", e instanceof Error ? e.message : e);
+            });
+          if (defer) defer(task);
+          else void task();
+        }
+        return upgraded.pdf;
+      }
     } catch (e) {
       console.warn("[pdf-cache] חיפוש במטמון נכשל, ממירים רגיל:", e instanceof Error ? e.message : e);
     }
   }
-  const pdf = await convertWithBudget(rest, budget);
-  if (key) {
+  const converted = await convertWithBudget(rest, budget);
+  const vec = await vectorizeBodyImages(converted, rest, budget);
+  const pdf = vec.pdf;
+  if (key && vec.complete) {
     const task = () =>
       storeCachedPdf(key.fileId, key.md5, rest.name, pdf).catch((e) => {
         console.warn("[pdf-cache] שמירה במטמון נכשלה (לא משפיע על הבקשה):", e instanceof Error ? e.message : e);

@@ -1,3 +1,4 @@
+import { ColourSvg } from "@/components/colour-svg";
 import { inlineUi } from "@/lib/inline-images";
 
 /**
@@ -40,15 +41,7 @@ export function ForumCard({ folderTitle }: { folderTitle: string }) {
 
       <a href="#unit-forum" className="mtc-body mtc-forum-body" aria-label={`כניסה לפורום – ${folderTitle}`}>
         <span className="mtc-forum-text">בואי לתרום מהידע שלך על החומר הזה ולהיתרם</span>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={inlineUi("/images/nuts/many-03.webp")}
-          alt=""
-          width={120}
-          height={120}
-          className="mtc-forum-nuts"
-          aria-hidden
-        />
+        <ColourSvg src="/images/nuts/many-03.webp" width={120} height={120} className="mtc-forum-nuts" shared />
       </a>
     </article>
   );

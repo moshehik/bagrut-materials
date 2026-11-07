@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 type Props = {
@@ -11,22 +11,23 @@ type Props = {
   here: string;
   /** "header" = הכפתור הכחול בכרטיס הפרק (במקום "התחברי כדי להוריד קבצים") */
   variant?: "header";
-  /** תמונות האגוזים כ-data URI (נטפרי חוסם קובצי תמונה רגילים; ר' src/lib/inline-images.ts) – מגיעות מהשרת */
-  nutDownloadSrc?: string;
-  nutMailSrc?: string;
+  /** אגוזי הכפתורים (ColourSvg) – מגיעים מהשרת: נטפרי חוסם קובצי תמונה, ולא רוצים את נתוני הווקטורים בחבילת הלקוח */
+  nutDownload?: ReactNode;
+  nutMail?: ReactNode;
 };
 
 /** אגוז ההורדה – אותו אגוז כמו בכרטיסיות התיקייה */
-function DownloadNut({ src }: { src?: string }) {
-  return <img src={src ?? "/images/mat-cards/nut-download.webp"} alt="" width={84} height={67} className="fa-itemnut" aria-hidden />;
+function DownloadNut({ nut }: { nut?: ReactNode }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return nut ?? <img src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="fa-itemnut" aria-hidden />;
 }
 
 /** אגוז המייל – כמו בכרטיסיות: אגוז לוז עם אייקון מייל חרות */
-function MailNut({ src }: { src?: string }) {
+function MailNut({ nut }: { nut?: ReactNode }) {
   return (
     <span className="mtc-mailnut fa-itemnut" aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src ?? "/images/nuts/one-01.webp"} alt="" width={40} height={40} />
+      {nut ?? <img src="/images/nuts/one-01.webp" alt="" width={40} height={40} />}
       <Mail className="mtc-mailnut-icon" strokeWidth={1.3} />
     </span>
   );
@@ -43,7 +44,7 @@ type State =
  * ההורדה היא קישור רגיל (<a>) כדי שאגוז הטעינה של ההורדות יזהה אותו;
  * השליחה למייל היא POST לאותו נתיב (/api/download-folder/[id]) – הכול עובר דרך הדומיין שלנו (נטפרי).
  */
-export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownloadSrc, nutMailSrc }: Props) {
+export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownload, nutMail }: Props) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -116,17 +117,17 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
       {open && (
         <div className="fa-menu" role="menu">
           <a role="menuitem" href={loggedIn ? endpoint : loginHref} className="fa-item" onClick={() => setOpen(false)}>
-            <DownloadNut src={nutDownloadSrc} />
+            <DownloadNut nut={nutDownload} />
             להורדה
           </a>
           {loggedIn ? (
             <button type="button" role="menuitem" className="fa-item" onClick={sendByMail}>
-              <MailNut src={nutMailSrc} />
+              <MailNut nut={nutMail} />
               לשליחה למייל שלי
             </button>
           ) : (
             <a role="menuitem" href={loginHref} className="fa-item">
-              <MailNut src={nutMailSrc} />
+              <MailNut nut={nutMail} />
               לשליחה למייל שלי
             </a>
           )}

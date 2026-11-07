@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { FolderOpen, Package, ArrowRight, LogIn } from "lucide-react";
 import { FingerprintMark, WatermarkText } from "@/components/watermark-notice";
 import {
-  resolvePath,
+  resolvePathOnce,
+  getActivePurchases,
   getVisibleChildren,
   getVisibleMaterials,
   chainSuspended,
@@ -35,10 +36,10 @@ import { AnimatedGrid, Reveal } from "@/components/animated-grid";
 import { UnitForum } from "@/components/unit-forum";
 import { SichotModule } from "@/components/sichot/sichot-module";
 import { SichotVideos } from "@/components/sichot/sichot-videos";
-import Image from "next/image";
-import { nutForLevel } from "@/lib/nut-images";
+import { ColourSvg, ColourSvgDefs, CARD_NUT_SRCS } from "@/components/colour-svg";
+import { inlineNut } from "@/lib/inline-site-images";
 import { SUBJECT_HOUSES } from "@/lib/constants";
-import { inlineHouse, inlineUi } from "@/lib/inline-images";
+import { inlineHouse } from "@/lib/inline-images";
 import { folderExplainer } from "@/lib/folder-explainer";
 import { FOLDER_INTROS } from "@/lib/folder-intros";
 import { ExplainInline } from "@/components/folder-explain-button";
@@ -88,7 +89,7 @@ function decode(path: string[]) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
-  const chain = await resolvePath(decode(path)).catch(() => null);
+  const chain = await resolvePathOnce(decode(path)).catch(() => null);
   if (!chain) return { title: "לא נמצא" };
   return {
     title: chain.map((c) => c.title).reverse().join(" · "),
@@ -99,14 +100,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { path } = await params;
   const { dlall, sicha, video } = await searchParams;
-  const chain = await resolvePath(decode(path)).catch(() => null);
+  // הנתיב והמשתמשת בלתי תלויים זה בזה – במקביל (generateMetadata כבר פתר את הנתיב; resolvePathOnce מחזיר את אותה תוצאה בלי שאילתה נוספת)
+  const [chain, user] = await Promise.all([resolvePathOnce(decode(path)).catch(() => null), getCurrentUser()]);
   if (!chain || chain.length === 0) notFound();
 
   const category = chain[chain.length - 1];
   const root = chain[0];
   const here = chainToHref(chain);
 
-  const user = await getCurrentUser();
   const isAdmin = user?.role === "admin";
 
   // תיקייה מושהית – מוסתרת מהמשתמשות (מנהלת רואה)
@@ -131,31 +132,23 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     getVisibleMaterials(category.id, isAdmin),
   ]);
 
-  const childCounts = await Promise.all(
-    children.map((c) => countMaterialsUnder(c.id, isAdmin).catch(() => 0)),
-  );
-
-  // תיקיות שכל חומריהן חינמיים – מדבקת "חינם" בכרטיס
-  const freeIds = children.length > 0 ? await getFreeCategoryIds() : new Set<number>();
-
-  const entitlements: Entitlement[] = await Promise.all(
-    mats.map((m) => checkEntitlement(user, m)),
-  );
-
-  const downloadCounts = user
-    ? await getUserDownloadCounts(user.id, mats.map((m) => m.id))
-    : new Map<number, number>();
-
-  const fixesByMaterial = await getFixesForViewer(
-    mats.map((m) => m.id),
-    user?.id,
-  );
-  // ההערות הכלליות של המבקרת על הקבצים + גרסאות פרטיות מתוקנות שלה (ר' src/lib/private-versions.ts)
-  const correctionByMaterial = await getCorrectionStateForViewer(
-    mats.map((m) => m.id),
-    user?.id,
-  );
-  const freeTrial = await getFreeTrialState(user).catch(() => "off" as const);
+  // כל שאר הנתונים בבת אחת (קודם: 7 שלבים ברצף, ובתוך checkEntitlement שאילתה לכל רמה בעץ לכל חומר).
+  // כל החומרים בתיקייה אחת, ולכן שרשרת הקטגוריות שכבר נטענה משמשת את כולם, והרכישות הפעילות נטענות פעם אחת.
+  const needsPurchases = !!user && !isAdmin && mats.some((m) => m.access !== "free");
+  const activePurchases = needsPurchases ? getActivePurchases(user!.id) : undefined;
+  activePurchases?.catch(() => undefined); // אם אף בדיקת זכאות לא תחכה לה – לא להשאיר דחייה לא מטופלת
+  const matIds = mats.map((m) => m.id);
+  const [childCounts, freeIds, entitlements, downloadCounts, fixesByMaterial, correctionByMaterial, freeTrial] = await Promise.all([
+    Promise.all(children.map((c) => countMaterialsUnder(c.id, isAdmin).catch(() => 0))),
+    // תיקיות שכל חומריהן חינמיים – מדבקת "חינם" בכרטיס
+    children.length > 0 ? getFreeCategoryIds() : Promise.resolve(new Set<number>()),
+    Promise.all(mats.map((m) => checkEntitlement(user, m, { chain, active: activePurchases }))) as Promise<Entitlement[]>,
+    user ? getUserDownloadCounts(user.id, matIds) : Promise.resolve(new Map<number, number>()),
+    getFixesForViewer(matIds, user?.id),
+    // ההערות הכלליות של המבקרת על הקבצים + גרסאות פרטיות מתוקנות שלה (ר' src/lib/private-versions.ts)
+    getCorrectionStateForViewer(matIds, user?.id),
+    getFreeTrialState(user).catch(() => "off" as const),
+  ]);
 
   // כל חומר מסווג לסוג כרטיסייה לפי שמו; מה ששייך לאותה שורה בעיצוב מוצג יחד
   type Item = { m: Material; ent: Entitlement };
@@ -227,7 +220,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   // האגוז נקבע לפי המקצוע והעומק בלבד: כל התיקיות באותה רמה באותו מקצוע מקבלות בדיוק אותה תמונה,
   // רמה אחת פנימה מקבלת תמונה אחרת, וכל מקצוע רץ על מסלול תמונות משלו
   const depth = chain.length - 1;
-  const nutImg = nutForLevel(root.slug, depth);
+  const nutImg = inlineNut(root.slug, depth);
   const houseImg = depth === 0 ? inlineHouse(SUBJECT_HOUSES[root.slug]) : undefined;
 
   // הסברים בסגנון תרשים הזרימה (כפתור "הסבר" וחלונית) במקום טקסט התיאור
@@ -243,6 +236,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      {/* הגדרות משותפות של אגוזים צבעוניים (SVG) – כרטיסי התיקיות והכפתורים מציירים אותם ב-<use> */}
+      <ColourSvgDefs srcs={[...(mats.length > 0 || isSichotFolder ? CARD_NUT_SRCS : []), ...(children.length > 0 ? [inlineNut(root.slug, depth + 1) + "@s"] : [])]} />
       {/* תיקיית קבצים (לא תיקיית-אב): נרשמת ברשימת "ביקרת לאחרונה" של חלון החיפוש */}
       {isUnit && mats.length > 0 && (
         <RememberFolder
@@ -272,23 +267,19 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             {houseImg ? (
               // מקצוע ראשי (למשל תורה): תמונת הבית של המקצוע, בלי רקע
               <span className="chapter-nut chapter-house animate-float">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <ColourSvg
                   src={houseImg}
-                  alt=""
                   width={356}
                   height={266}
                   className="object-contain drop-shadow-[0_4px_6px_rgba(31,45,51,0.2)]"
-                  aria-hidden
                 />
               </span>
             ) : (
               <span className="chapter-nut animate-float">
-                <Image
+                <ColourSvg
                   src={nutImg}
-                  alt=""
+                  small
                   className="h-[4.25rem] w-[4.25rem] object-contain drop-shadow-[0_4px_6px_rgba(31,45,51,0.2)]"
-                  aria-hidden
                 />
               </span>
             )}
@@ -341,7 +332,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             {/* אורחת: במקום "התחברי כדי להוריד קבצים" – "הורידי את כל החומרים"; בעמידה עליו נפתחות ההורדה והשליחה למייל (שתיהן מובילות להתחברות) */}
             {showGuestLogin && isUnit && (
               <div className="chapter-login">
-                <FolderAllActions categoryId={category.id} loggedIn={false} here={here} variant="header" nutDownloadSrc={inlineUi("/images/mat-cards/nut-download.webp")} nutMailSrc={inlineUi("/images/nuts/one-01.webp")} />
+                <FolderAllActions categoryId={category.id} loggedIn={false} here={here} variant="header" nutDownload={<ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="fa-itemnut" shared small />} nutMail={<ColourSvg src="/images/nuts/one-01.webp" width={40} height={40} shared small />} />
               </div>
             )}
           </div>
@@ -421,7 +412,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
           {showAllActions && !!user && (
             <div className="mt-6">
-              <FolderAllActions categoryId={category.id} loggedIn={!!user} here={here} nutDownloadSrc={inlineUi("/images/mat-cards/nut-download.webp")} nutMailSrc={inlineUi("/images/nuts/one-01.webp")} />
+              <FolderAllActions categoryId={category.id} loggedIn={!!user} here={here} nutDownload={<ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="fa-itemnut" shared small />} nutMail={<ColourSvg src="/images/nuts/one-01.webp" width={40} height={40} shared small />} />
             </div>
           )}
           {showBundle && !ownsAll && (
