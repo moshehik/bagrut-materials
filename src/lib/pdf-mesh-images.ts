@@ -18,12 +18,12 @@ import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, decodePD
  */
 const deflateAsync = promisify(deflate);
 /**
- * ברירת מחדל = הגרסה שנבדקה ועברה בנטפרי (512 עמודות, בלי predictor). 1024 עמודות + predictor (2026-11-09) הופיעו כרקע לבן בנטפרי –
- * עד שנבדק מה בדיוק נחסם (ר' /netfree-test/mesh-variants), לא משתמשים בהם בייצור.
+ * ברירת מחדל: 1024 עמודות + predictor. נבדק בנטפרי אצל המורה (2026-11-09, /netfree-test/index.html, גרסאות ד׳ ו-ה׳): שתיהן מציגות רקע.
+ * שימי לב: בהורדה מלאה אחת (18 שקפים, ~20MB) הרקעים הופיעו לבנים בנטפרי והסיבה לא הוכחה (ייתכן גודל הקובץ / תמונות רסטר שנשארו) – לאמת בהורדה אמיתית.
  */
 export type MeshOptions = { cols?: number; predictor?: boolean };
-const GRID_COLS = 512;
-const MAX_VERTICES = 700_000;
+const GRID_COLS = 1024;
+const MAX_VERTICES = 1_600_000;
 const MIN_PLACED_PT = 150;
 const MIN_IMAGE_PX = 500;
 const TIME_BUDGET_MS = 25_000;
@@ -113,7 +113,7 @@ async function buildMesh(obj: PDFRawStream, started: number, opts: MeshOptions):
     const rgb = await gridPixels(obj, cols, rows);
     if (!rgb) return null;
     const raw = meshBytes(rgb, cols, rows);
-    return { bytes: await deflateAsync(opts.predictor ? packMesh(raw, cols) : raw), cols, predictor: !!opts.predictor };
+    return { bytes: await deflateAsync(opts.predictor ?? true ? packMesh(raw, cols) : raw), cols, predictor: opts.predictor ?? true };
   } catch (e) {
     console.error("pdf mesh: image failed", e instanceof Error ? e.message : e);
     return null;
