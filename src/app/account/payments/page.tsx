@@ -1,3 +1,4 @@
+import { inlineSite } from "@/lib/inline-site-images";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -57,7 +58,7 @@ export default async function AccountPaymentsPage({ searchParams }: { searchPara
     <div className="acc-glass mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="gate-title animate-fade-up flex flex-col items-center justify-center gap-x-8 gap-y-3 text-center sm:flex-row sm:text-start">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/logo-black.png" alt="לו״ז העניין" className="w-44 sm:w-52" />
+        <img src={inlineSite("/images/logo-black.png")} alt="לו״ז העניין" className="w-44 sm:w-52" />
         <div>
           <h1 className="text-4xl md:text-5xl">היסטוריית תשלומים</h1>
           <p className="mt-2 max-w-md">{total.toLocaleString("he-IL")} תנועות.</p>

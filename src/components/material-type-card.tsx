@@ -7,6 +7,7 @@ import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/mate
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
 import { FIX_TIPS, FixRequestButton, type CardFix } from "@/components/material-fixes";
+import { inlineUi } from "@/lib/inline-images";
 import { PrivateVersionNote } from "@/components/material-private-version";
 import type { CorrectionState } from "@/lib/private-version-logic";
 import { FreeTrialDownload } from "@/components/free-trial-download";
@@ -50,7 +51,7 @@ export function MailNut() {
   return (
     <span className="mtc-nut mtc-mailnut" aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/nuts/one-01.webp" alt="" width={40} height={40} />
+      <img src={inlineUi("/images/nuts/one-01.webp")} alt="" width={40} height={40} />
       <Mail className="mtc-mailnut-icon" strokeWidth={1.3} />
     </span>
   );
@@ -155,7 +156,7 @@ export function MaterialTypeCard({
       {m.access === "free" && <span className="mtc-free">{guestFree ? "חינם בהרשמה" : "חינם"}</span>}
       <header className="mtc-head">
         <Image
-          src={`/images/mat-cards/art4/${s.art}.${s.extra ? "svg" : "webp"}`}
+          src={inlineUi(`/images/mat-cards/art4/${s.art}.${s.extra ? "svg" : "webp"}`)}
           alt=""
           width={120}
           height={120}
@@ -168,7 +169,7 @@ export function MaterialTypeCard({
               {/* שם הסוג: הכתב המדויק מהעיצוב, כתמונה שקופה */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/images/mat-cards/label-${type}.webp`}
+                src={inlineUi(`/images/mat-cards/label-${type}.webp`)}
                 alt=""
                 width={size[0]}
                 height={size[1]}
@@ -223,7 +224,7 @@ export function MaterialTypeCard({
             state={trialOffer}
             className="mtc-download"
           >
-            <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+            <Image src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
             <span>להורדה חינם</span>
           </FreeTrialDownload>
         ) : target ? (
@@ -239,7 +240,7 @@ export function MaterialTypeCard({
             }
             aria-label={`הורדת ${s.label}${guestFree ? " – חינם בהרשמה" : ""}`}
           >
-            <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+            <Image src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
             <span>להורדה</span>
           </a>
         ) : (
@@ -260,7 +261,7 @@ export function MaterialTypeCard({
             label={`צפייה ב${s.label} באתר`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+            <img src={inlineUi("/images/nuts/one-10.webp")} alt="" width={40} height={40} className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
           </CardViewer>
         ) : (
@@ -273,7 +274,7 @@ export function MaterialTypeCard({
               aria-label={`צפייה ב${s.label} באתר`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+              <img src={inlineUi("/images/nuts/one-10.webp")} alt="" width={40} height={40} className="mtc-nut" aria-hidden />
               <span>לצפייה</span>
             </a>
           )
@@ -318,7 +319,7 @@ export function MaterialTypeCard({
             materialId={m.id}
             materialTitle={heading.full}
             lockedHref={lockedHref}
-            nutSrc="/images/nuts/one-02.webp"
+            nutSrc={inlineUi("/images/nuts/one-02.webp")}
             viewSrc={canFix ? (fixesViewSrc ?? plainViewSrc) : plainViewSrc}
             demo={fixDemo}
             fixes={canFix ? fixes : []}
@@ -327,7 +328,7 @@ export function MaterialTypeCard({
           {canFix && (
             <a href={`${target}?fixes=all`} className="mtc-row" data-tip={FIX_TIPS.download}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/mat-cards/nut-download-light.webp" alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
+              <img src={inlineUi("/images/mat-cards/nut-download-light.webp")} alt="" width={40} height={40} className="mtc-rownut" aria-hidden />
               <span>להורדת הקובץ המתוקן</span>
             </a>
           )}

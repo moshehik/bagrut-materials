@@ -1,3 +1,4 @@
+import { inlineSite } from "@/lib/inline-site-images";
 import Link from "next/link";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { MessageCircle, Lock, Sparkles, LogIn } from "lucide-react";
@@ -97,7 +98,7 @@ export async function UnitForum({
         {/* הלוגו, ואחריו הכותרת */}
         <div className="flex flex-col items-center text-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-gate-logo" />
+          <img src={inlineSite("/images/logo-white.png")} alt="לו״ז העניין" width={1491} height={871} className="fix-gate-logo" />
           <h2 id="unit-forum-h" className="text-3xl sm:text-4xl leading-tight">
             פורום על {category.title}
           </h2>

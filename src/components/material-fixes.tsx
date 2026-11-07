@@ -1,5 +1,6 @@
 "use client";
 
+import { LOGO_WHITE_SM } from "@/lib/inline-site-logo.generated";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -519,7 +520,7 @@ export function FixRequestButton({
       <div className="fix-dialog-box">
         <div className="fix-dialog-head fix-dialog-head-centered">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
+          <img src={LOGO_WHITE_SM} alt="לו״ז העניין" width={1491} height={871} className="fix-head-logo" />
           <div className="fix-head-title">
             <h3>לעריכת שינויים בקובץ</h3>
             <p className="fix-dialog-sub">{materialTitle}</p>

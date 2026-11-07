@@ -1,3 +1,4 @@
+import { inlineUi } from "@/lib/inline-images";
 
 /**
  * באנר ההוראות הקבוע שמופיע מיד בכניסה לתיקיית מאגר השיחות (חגים / אקטואליה והשקפה,
@@ -6,7 +7,7 @@
  */
 const RULES = [
   {
-    nut: "/images/nuts/one-05.webp",
+    nut: inlineUi("/images/nuts/one-05.webp"),
     text: (
       <>
         כל שיחה שמועלית צריכה להתאים למסירה של{" "}
@@ -16,7 +17,7 @@ const RULES = [
     ),
   },
   {
-    nut: "/images/nuts/two-01.webp",
+    nut: inlineUi("/images/nuts/two-01.webp"),
     text: (
       <>
         אחרי שמעבירים שיעור אפשר לסמן &quot;השתמשתי בו&quot; — כך כולן יודעות אילו שיעורים הכי בשימוש.
@@ -24,7 +25,7 @@ const RULES = [
     ),
   },
   {
-    nut: "/images/nuts/one-03.webp",
+    nut: inlineUi("/images/nuts/one-03.webp"),
     text: (
       <>
         יש רעיון למשחק, פעילות, סיפור או מדרש שמשלים שיחה קיימת? לוחצות על ה-&quot;+&quot; ליד
@@ -41,7 +42,7 @@ export function SichaIntro({ folderTitle }: { folderTitle: string }) {
 
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/nuts/many-04.webp" alt="" aria-hidden className="h-14 w-auto shrink-0" />
+        <img src={inlineUi("/images/nuts/many-04.webp")} alt="" aria-hidden className="h-14 w-auto shrink-0" />
         <div className="min-w-0">
           <h2 id="sicha-intro-h" className="text-2xl md:text-3xl">
             ברוכה הבאה למאגר השיחות!

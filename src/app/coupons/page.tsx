@@ -1,3 +1,4 @@
+import { inlineSite } from "@/lib/inline-site-images";
 import type { Metadata } from "next";
 import { formatHebrewDate } from "@/lib/hebrew-date";
 import Link from "next/link";
@@ -61,7 +62,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
           {mine.map((c) => (
             <div key={c.id} className="coupon gate-card mt-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/logo-black.png" alt="" className="coupon-logo" />
+              <img src={inlineSite("/images/logo-black.png", "sm")} alt="" className="coupon-logo" />
               <div className="coupon-main">
                 <span className="gate-badge">
                   <Ticket className="inline h-3.5 w-3.5" aria-hidden /> קופון אישי
@@ -104,7 +105,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
         </p>
         <div className="coupon gate-card mt-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-black.png" alt="לו״ז העניין" className="coupon-logo" />
+          <img src={inlineSite("/images/logo-black.png", "sm")} alt="לו״ז העניין" className="coupon-logo" />
           <div className="coupon-main">
             <span className="gate-badge">
               <Ticket className="inline h-3.5 w-3.5" aria-hidden /> מחיר היכרות
@@ -131,7 +132,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
         {/* קופון ההשקה לממלאות מקום */}
         <div className="coupon gate-card mt-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-black.png" alt="" className="coupon-logo" />
+          <img src={inlineSite("/images/logo-black.png", "sm")} alt="" className="coupon-logo" />
           <div className="coupon-main">
             <span className="gate-badge">
               <Ticket className="inline h-3.5 w-3.5" aria-hidden /> מחיר היכרות
@@ -154,7 +155,7 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
 
         <div className="coupon gate-card mt-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-black.png" alt="" className="coupon-logo" />
+          <img src={inlineSite("/images/logo-black.png", "sm")} alt="" className="coupon-logo" />
           <div className="coupon-main">
             <span className="gate-badge">
               <Ticket className="inline h-3.5 w-3.5" aria-hidden /> מבצע

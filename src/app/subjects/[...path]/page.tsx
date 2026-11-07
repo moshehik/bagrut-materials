@@ -38,7 +38,7 @@ import { SichotVideos } from "@/components/sichot/sichot-videos";
 import Image from "next/image";
 import { nutForLevel } from "@/lib/nut-images";
 import { SUBJECT_HOUSES } from "@/lib/constants";
-import { inlineHouse } from "@/lib/inline-images";
+import { inlineHouse, inlineUi } from "@/lib/inline-images";
 import { folderExplainer } from "@/lib/folder-explainer";
 import { FOLDER_INTROS } from "@/lib/folder-intros";
 import { ExplainInline } from "@/components/folder-explain-button";
@@ -341,7 +341,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             {/* אורחת: במקום "התחברי כדי להוריד קבצים" – "הורידי את כל החומרים"; בעמידה עליו נפתחות ההורדה והשליחה למייל (שתיהן מובילות להתחברות) */}
             {showGuestLogin && isUnit && (
               <div className="chapter-login">
-                <FolderAllActions categoryId={category.id} loggedIn={false} here={here} variant="header" />
+                <FolderAllActions categoryId={category.id} loggedIn={false} here={here} variant="header" nutDownloadSrc={inlineUi("/images/mat-cards/nut-download.webp")} nutMailSrc={inlineUi("/images/nuts/one-01.webp")} />
               </div>
             )}
           </div>
@@ -421,7 +421,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
           {showAllActions && !!user && (
             <div className="mt-6">
-              <FolderAllActions categoryId={category.id} loggedIn={!!user} here={here} />
+              <FolderAllActions categoryId={category.id} loggedIn={!!user} here={here} nutDownloadSrc={inlineUi("/images/mat-cards/nut-download.webp")} nutMailSrc={inlineUi("/images/nuts/one-01.webp")} />
             </div>
           )}
           {showBundle && !ownsAll && (

@@ -1,3 +1,4 @@
+import { inlineSite } from "@/lib/inline-site-images";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -39,7 +40,7 @@ export default async function OfferPage({ params }: { params: Promise<{ slug: st
         <span className="gold-ring" aria-hidden="true" />
         <div className="gate-card">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-black.png" alt="לו״ז העניין" className="mx-auto w-40 sm:w-48" />
+          <img src={inlineSite("/images/logo-black.png")} alt="לו״ז העניין" className="mx-auto w-40 sm:w-48" />
           <p className="gate-badge mt-4 inline-block">מבצע ל-{c.totalSeats} הנרשמות הראשונות</p>
           <h1 id="offer-h" className="mt-2 text-3xl sm:text-4xl">
             {c.percent}% הנחה על ה{PLANS.yearly.label}

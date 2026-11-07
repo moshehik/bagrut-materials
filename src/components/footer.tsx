@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE_MOTTO } from "@/lib/constants";
+import { inlineSite } from "@/lib/inline-site-images";
 
 export function Footer() {
   return (
@@ -8,7 +9,7 @@ export function Footer() {
         <div className="md:col-span-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/logo-white.png"
+            src={inlineSite("/images/logo-white.png")}
             alt="לו״ז העניין – בית לחומרי הבגרות"
             width={1491}
             height={871}

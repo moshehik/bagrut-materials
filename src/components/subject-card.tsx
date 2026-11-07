@@ -2,9 +2,8 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { SUBJECT_HOUSES, SUBJECT_HOUSE_COLORS } from "@/lib/constants";
 import { inlineHouse } from "@/lib/inline-images";
-import Image from "next/image";
 import { SubjectIcon } from "./subject-icons";
-import { nutForLevel } from "@/lib/nut-images";
+import { inlineNut } from "@/lib/inline-site-images";
 import s from "./subject-card.module.css";
 
 type Props = {
@@ -84,7 +83,8 @@ export function SubjectCard({
             <span className={s.houseLabel}>{title}</span>
           </div>
         ) : nutKey ? (
-          <Image className={s.nut} src={nutForLevel(nutKey, nutDepth)} alt="" aria-hidden />
+          // eslint-disable-next-line @next/next/no-img-element -- מוטמע ב-HTML (מסנן תוכן מחליף קובצי תמונה רגילים)
+          <img className={s.nut} src={inlineNut(nutKey, nutDepth)} alt="" aria-hidden />
         ) : (
           <SubjectIcon slug={rootSlug || slug} className={s.folderIcon} />
         )}

@@ -7,6 +7,7 @@ import { Menu, X, LogIn, UserRound, ShieldCheck } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { DizzyButton } from "@/components/dizzy-button";
 import { SearchTriggerButton, SiteSearchOverlay } from "@/components/site-search";
+import { LOGO_WHITE_SM } from "@/lib/inline-site-logo.generated";
 
 type HeaderUser = { id: number; name: string; role: "user" | "admin" } | null;
 
@@ -21,11 +22,12 @@ const NAV = [
 ];
 
 /** לוגו "לו״ז העניין" — איור העז והלוח (רקע שקוף) */
-export function Logo({ className = "", variant = "color" }: { className?: string; variant?: "color" | "white" }) {
+/** src: נתיב/‏data URI מוטמע (מקומפוננטת שרת) — מסנן התוכן מחליף את קובץ הלוגו הרגיל; הלבן בכותרת מוטמע מראש (LOGO_WHITE_SM) */
+export function Logo({ className = "", variant = "color", src }: { className?: string; variant?: "color" | "white"; src?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={variant === "white" ? "/images/logo-white.png" : "/images/logo.png"}
+      src={src ?? (variant === "white" ? LOGO_WHITE_SM : "/images/logo.png")}
       alt="לו״ז העניין – בית לחומרי הבגרות"
       width={1491}
       height={871}

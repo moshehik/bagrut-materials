@@ -1,3 +1,4 @@
+import { inlineSite } from "@/lib/inline-site-images";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -72,7 +73,7 @@ export default async function PricingPage() {
       <div className="gate-title animate-fade-up flex flex-col items-center justify-center gap-x-8 gap-y-3 text-center sm:flex-row sm:text-start">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/logo-black.png"
+          src={inlineSite("/images/logo-black.png")}
           alt="לו״ז העניין"
           className="w-44 sm:w-52"
         />

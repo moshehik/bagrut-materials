@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, Filter, UserRound } from "lucide-react";
 import { formatHebrewDate } from "@/lib/hebrew-date";
+import { inlineLessonIcon, inlineUi } from "@/lib/inline-images";
 import { CARD_ROWS, CARD_STYLES, EXTRA_TYPES, type CardType } from "@/lib/material-card-types";
 
 /** רכיבי האזור האישי (שרת): כותרת עמוד, חלונית כחולה והודעת סטטוס – בעיצוב חלוניות "שימי לב!" */
@@ -163,7 +164,7 @@ export function AccountMenu({ hrefs }: { hrefs?: Record<string, string> }) {
                 <span className="gate-soft mt-1 block text-base leading-snug">{t.text}</span>
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={t.nut} alt="" aria-hidden className="acc-tile-nut" />
+              <img src={inlineUi(t.nut)} alt="" aria-hidden className="acc-tile-nut" />
             </Link>
           </li>
         ))}
@@ -189,7 +190,7 @@ export function PlanNut({ plan, className = "acc-plan-nut" }: { plan: string; cl
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/images/plan-nuts/${PLAN_NUT[plan] ?? "single"}.png`}
+      src={inlineUi(`/images/plan-nuts/${PLAN_NUT[plan] ?? "single"}.png`)}
       alt=""
       aria-hidden
       className={className}
@@ -230,7 +231,7 @@ export function TypeIcon({
           style={{ background: CARD_STYLES[extraType].strip }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/images/mat-cards/art4/${CARD_STYLES[extraType].art}.svg`} alt="" className="h-[78%] w-[78%] object-contain" />
+          <img src={inlineUi(`/images/mat-cards/art4/${CARD_STYLES[extraType].art}.svg`)} alt="" className="h-[78%] w-[78%] object-contain" />
         </span>
       </span>
     );
@@ -240,7 +241,7 @@ export function TypeIcon({
     <span className={`acc-ico relative grid shrink-0 place-items-center ${ICON_COVER.has(type) ? "overflow-hidden" : ""} ${className}`} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`/images/lesson-icons-v2/${art}.png`}
+        src={inlineLessonIcon(art)}
         alt=""
         className={ICON_COVER.has(type) ? "h-full w-full object-cover object-center" : "max-h-full max-w-full object-contain"}
         style={ICON_ZOOM[type] ? { transform: `scale(${ICON_ZOOM[type]})` } : undefined}

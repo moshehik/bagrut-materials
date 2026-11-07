@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Logo } from "@/components/header";
+import { inlineSite } from "@/lib/inline-site-images";
 
 /** מעטפת עיצובית משותפת לדפי התחברות/הרשמה */
 export function AuthShell({
@@ -25,7 +26,7 @@ export function AuthShell({
           {logoHeader ? (
             <div className="flex flex-col items-center text-center mb-6">
               <h1 className="sr-only">{title}</h1>
-              <Logo className="h-20 sm:h-24" />
+              <Logo className="h-20 sm:h-24" src={inlineSite("/images/logo.png")} />
               <p className="sr-only">{subtitle}</p>
             </div>
           ) : (

@@ -1,3 +1,4 @@
+import { inlineSite } from "@/lib/inline-site-images";
 import type { Metadata } from "next";
 import { type FeedEntry } from "@/components/forum-feed";
 import { ForumTourDemo } from "@/components/forum-tour-demo";
@@ -41,7 +42,7 @@ export default function TourDemoForumPage() {
         <span className="gold-ring" aria-hidden="true" />
         <div className="flex flex-col items-center text-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-white.png" alt="לו״ז העניין" width={1491} height={871} className="fix-gate-logo" />
+          <img src={inlineSite("/images/logo-white.png")} alt="לו״ז העניין" width={1491} height={871} className="fix-gate-logo" />
           <h1 id="unit-forum-h" className="text-3xl sm:text-4xl leading-tight">
             פורום על פרק לדוגמה
           </h1>

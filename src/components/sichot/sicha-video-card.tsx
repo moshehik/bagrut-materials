@@ -1,3 +1,4 @@
+import { inlineUi } from "@/lib/inline-images";
 import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Folder, Video } from "lucide-react";
@@ -119,7 +120,7 @@ export function SichaVideoCard({ video, path }: { video: SichaVideoCardData; pat
           ) : (
             <>
               <a href={`/api/sichot/video/${video.id}`} className="mtc-download sicha-video-download" data-tip="להורדת הסרטון למחשב" aria-label={`הורדת ${video.title}`}>
-                <Image src="/images/mat-cards/nut-download.webp" alt="" width={84} height={67} className="mtc-nut" aria-hidden />
+                <Image src={inlineUi("/images/mat-cards/nut-download.webp")} alt="" width={84} height={67} className="mtc-nut" aria-hidden />
                 <span>להורדה</span>
               </a>
 
@@ -131,7 +132,7 @@ export function SichaVideoCard({ video, path }: { video: SichaVideoCardData; pat
                 label={`צפייה ב${video.title} באתר`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/nuts/one-10.webp" alt="" width={40} height={40} className="mtc-nut" aria-hidden />
+                <img src={inlineUi("/images/nuts/one-10.webp")} alt="" width={40} height={40} className="mtc-nut" aria-hidden />
                 <span>לצפייה</span>
               </VideoViewerButton>
 

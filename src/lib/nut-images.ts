@@ -79,3 +79,10 @@ function kindForDepth(depth: number): NutKind {
 export function nutForLevel(rootKey: string, depth: number): StaticImageData {
   return pickNut(kindForDepth(depth), hashKey(rootKey) + depth);
 }
+
+/** שם קובץ האגוז ("many-03" וכו', בלי סיומת) של אותה בחירה ש-nutForLevel עושה — לשימוש בהטמעת התמונה ב-HTML */
+export function nutNameForLevel(rootKey: string, depth: number): string {
+  const kind = kindForDepth(depth);
+  const idx = Math.abs(hashKey(rootKey) + depth) % NUTS[kind].length;
+  return `${kind}-${String(idx + 1).padStart(2, "0")}`;
+}

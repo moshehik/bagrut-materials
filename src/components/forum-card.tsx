@@ -1,3 +1,4 @@
+import { inlineUi } from "@/lib/inline-images";
 import Image from "next/image";
 
 /**
@@ -13,7 +14,7 @@ export function ForumCard({ folderTitle }: { folderTitle: string }) {
     >
       <header className="mtc-head">
         <Image
-          src="/images/mat-cards/art4/forum.webp"
+          src={inlineUi("/images/mat-cards/art4/forum.webp")}
           alt=""
           width={636}
           height={260}
@@ -23,7 +24,7 @@ export function ForumCard({ folderTitle }: { folderTitle: string }) {
         <h3 className="mtc-title" aria-label={`פורום - ${folderTitle}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/mat-cards/label-forum.webp"
+            src={inlineUi("/images/mat-cards/label-forum.webp")}
             alt=""
             width={108}
             height={30}
@@ -40,7 +41,7 @@ export function ForumCard({ folderTitle }: { folderTitle: string }) {
       <a href="#unit-forum" className="mtc-body mtc-forum-body" aria-label={`כניסה לפורום – ${folderTitle}`}>
         <span className="mtc-forum-text">בואי לתרום מהידע שלך על החומר הזה ולהיתרם</span>
         <Image
-          src="/images/nuts/many-03.webp"
+          src={inlineUi("/images/nuts/many-03.webp")}
           alt=""
           width={120}
           height={120}

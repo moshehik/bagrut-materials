@@ -1,5 +1,5 @@
 import "server-only";
-import { INLINE_HOUSES, INLINE_LESSON_ICONS } from "./inline-images.generated";
+import { INLINE_HOUSES, INLINE_LESSON_ICONS, INLINE_UI } from "./inline-images.generated";
 
 /**
  * תמונות שמוטמעות ב-HTML (data URI של WebP) במקום להיטען כקובץ נפרד — כי מסנן התוכן (אתרוג) מחליף חלק מקובצי
@@ -17,4 +17,9 @@ export function inlineHouse(src: string | undefined): string | undefined {
 /** שם אייקון שיעור ("enrichment" וכו') → data URI; אם אין — הנתיב הרגיל. */
 export function inlineLessonIcon(art: string): string {
   return INLINE_LESSON_ICONS[art] ?? `/images/lesson-icons-v2/${art}.png`;
+}
+
+/** תמונת ממשק של כרטיסיות החומרים ("/images/mat-cards/...", "/images/nuts/...") → data URI; אם אין — הנתיב המקורי. */
+export function inlineUi(src: string): string {
+  return INLINE_UI[src.replace(/^\/images\//, "")] ?? src;
 }
