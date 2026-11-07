@@ -17,8 +17,13 @@ import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, decodePD
  * מחזיר כמה תמונות הוחלפו. לעולם לא זורק החוצה (כשל בתמונה אחת משאיר אותה כמו שהיא).
  */
 const deflateAsync = promisify(deflate);
-const GRID_COLS = 1024;
-const MAX_VERTICES = 600_000;
+/**
+ * ברירת מחדל = הגרסה שנבדקה ועברה בנטפרי (512 עמודות, בלי predictor). 1024 עמודות + predictor (2026-11-09) הופיעו כרקע לבן בנטפרי –
+ * עד שנבדק מה בדיוק נחסם (ר' /netfree-test/mesh-variants), לא משתמשים בהם בייצור.
+ */
+export type MeshOptions = { cols?: number; predictor?: boolean };
+const GRID_COLS = 512;
+const MAX_VERTICES = 700_000;
 const MIN_PLACED_PT = 150;
 const MIN_IMAGE_PX = 500;
 const TIME_BUDGET_MS = 25_000;
@@ -95,19 +100,20 @@ function meshBytes(rgb: Buffer, cols: number, rows: number): Buffer {
   return out;
 }
 
-type Built = { bytes: Buffer; cols: number } | null;
+type Built = { bytes: Buffer; cols: number; predictor: boolean } | null;
 
 /** רשת מכווצת לתמונה אחת (או null אם לא נתמכת / חורגת מהמגבלות) */
-async function buildMesh(obj: PDFRawStream, started: number): Promise<Built> {
+async function buildMesh(obj: PDFRawStream, started: number, opts: MeshOptions): Promise<Built> {
   try {
     const w = Number(String(obj.dict.get(PDFName.of("Width"))));
     const h = Number(String(obj.dict.get(PDFName.of("Height"))));
-    const cols = Math.min(GRID_COLS, w);
+    const cols = Math.min(opts.cols ?? GRID_COLS, w);
     const rows = Math.max(2, Math.round((cols * h) / w));
     if (cols * rows > MAX_VERTICES || Date.now() - started > TIME_BUDGET_MS) return null;
     const rgb = await gridPixels(obj, cols, rows);
     if (!rgb) return null;
-    return { bytes: await deflateAsync(packMesh(meshBytes(rgb, cols, rows), cols)), cols };
+    const raw = meshBytes(rgb, cols, rows);
+    return { bytes: await deflateAsync(opts.predictor ? packMesh(raw, cols) : raw), cols, predictor: !!opts.predictor };
   } catch (e) {
     console.error("pdf mesh: image failed", e instanceof Error ? e.message : e);
     return null;
@@ -134,7 +140,7 @@ function limiter(max: number) {
     });
 }
 
-export async function meshifyLargeImages(pdf: PDFDocument): Promise<number> {
+export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {}): Promise<number> {
   const started = Date.now();
   const ctx = pdf.context;
   // בונים את כל הרשתות מראש במקביל (3 בו-זמנית); הלולאה שלמטה רק ממתינה לתוצאה של כל תמונה
@@ -153,7 +159,7 @@ export async function meshifyLargeImages(pdf: PDFDocument): Promise<number> {
       const w = Number(String(obj.dict.get(PDFName.of("Width"))));
       const h = Number(String(obj.dict.get(PDFName.of("Height"))));
       if (w < MIN_IMAGE_PX || h < MIN_IMAGE_PX * 0.3) continue;
-      built.set(raw, limit(() => buildMesh(obj, started)));
+      built.set(raw, limit(() => buildMesh(obj, started, opts)));
     }
   }
   const shadingFor = new Map<PDFRef, string | null>(); // ref תמונה → שם ההצללה (או null אם לא נתמכת)
@@ -217,7 +223,7 @@ export async function meshifyLargeImages(pdf: PDFDocument): Promise<number> {
             const ref = ctx.register(
               ctx.stream(mesh.bytes, {
                 Filter: "FlateDecode",
-                DecodeParms: { Predictor: 12, Colors: 7, BitsPerComponent: 8, Columns: mesh.cols },
+                ...(mesh.predictor ? { DecodeParms: { Predictor: 12, Colors: 7, BitsPerComponent: 8, Columns: mesh.cols } } : {}),
                 ShadingType: 5,
                 ColorSpace: "DeviceRGB",
                 BitsPerCoordinate: 16,
