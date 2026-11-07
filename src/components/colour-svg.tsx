@@ -51,7 +51,8 @@ type Props = {
  * (אחרי בדיקה חד-פעמית של נטפרי) באיכות המלאה, ואילו ה-SVG מוריד איכות (נבדק אצל המורה, 2026-11-08). אם עוד תמונה נחסמת –
  * מוסיפים אותה לכאן. (המפתחות קיימים ב-colour-svgs.generated.ts לכל התמונות.)
  */
-const SVG_ONLY = new Set(["/images/houses/house-yahadut.png", "/images/houses/house-ezrachut.png"]);
+// 2026-11-08: ריק – נטפרי אישר גם את מחשבת ישראל ואזרחות (כל תמונות המקצועות עולות), ושתי הגרסאות ה-SVG שיבשו את סידור הבתים בדף הבית.
+const SVG_ONLY = new Set<string>([]);
 
 export function ColourSvg({ src, className, style, width, height, shared, small, align }: Props) {
   const key = small && src + "@s" in COLOUR_SVGS ? src + "@s" : src;
@@ -63,7 +64,7 @@ export function ColourSvg({ src, className, style, width, height, shared, small,
   const cls = className ? `colour-svg ${className}` : "colour-svg";
   const useShared = shared && SHARE_VIA_USE;
   return (
-    <svg className={cls} style={style} viewBox={`0 0 ${data.w} ${data.h}`} preserveAspectRatio={align === "bottom" ? "xMidYMax meet" : undefined} width={width} height={height} aria-hidden focusable="false">
+    <svg className={cls} style={{ height: "auto", ...style }} viewBox={`0 0 ${data.w} ${data.h}`} preserveAspectRatio={align === "bottom" ? "xMidYMax meet" : undefined} width={width} height={height} aria-hidden focusable="false">
       {useShared ? (
         <use href={`#${idOf(key)}`} />
       ) : (

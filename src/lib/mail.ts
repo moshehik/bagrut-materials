@@ -1,3 +1,4 @@
+import { MAIL_LOGO_HTML } from "./mail-logo.generated";
 import "server-only";
 import { formatHebrewDate } from "./hebrew-date";
 import { db } from "@/db";
@@ -158,14 +159,7 @@ const MAIL = {
   line: "#e6dfd0",
 };
 
-/** אגוזי לוז מצוירים בצורות HTML/CSS (עיגולים חופפים) במקום תמונת לוגו: ג'ימייל לא מציג SVG מוטבע ומשרת את התמונות דרך פרוקסי,
- * ונטפרי מטשטש אותן. בלי תמונות ובלי SVG – עובר בכל לקוח (ב-Outlook לשולחן העבודה פינות מעוגלות לא נתמכות והצורות ייראו מרובעות). */
-const nut = (w: number, h: number, bg: string, shine: string, ml: number) =>
-  `<span style="display:inline-block;width:${w}px;height:${h}px;margin-left:${ml}px;background:${bg};border-radius:50% 50% 46% 46%;border:1px solid #5a2f0e;vertical-align:bottom;box-shadow:inset 4px 4px 0 ${shine}"></span>`;
-const leaf = (bg: string, ml: number) =>
-  `<span style="display:inline-block;width:20px;height:14px;margin-left:${ml}px;background:${bg};border-radius:0 80% 0 80%;vertical-align:bottom"></span>`;
-const NUT_CLUSTER_HTML = `<div style="font-size:0;line-height:0;text-align:center;height:34px">${leaf("#6a9a2a", -6)}${nut(26, 30, "#8b4a1c", "#b0703a", -4)}${nut(30, 34, "#a8621f", "#cf9456", -6)}${nut(24, 26, "#d9b98a", "#f0dcb8", -4)}${leaf("#7fb03a", -8)}</div>`;
-
+/** לוגו האתר כטבלת תאים צבעוניים (scripts/gen-mail-logo.cjs) – HTML רגיל, בלי תמונות/SVG: עובד בכל לקוח מייל ובנטפרי. */
 export function layoutHtml(title: string, bodyHtml: string, cta?: { label: string; href: string }) {
   const site = siteUrl();
   // אותם פונטים כמו באתר (Assistant לגוף, גברת לוין לכותרות). נטענים מ-Google Fonts בלקוחות שתומכים (Apple Mail, Outlook חדש, אפליקציות מובייל);
@@ -193,7 +187,7 @@ export function layoutHtml(title: string, bodyHtml: string, cta?: { label: strin
   </td></tr>
   <tr><td style="background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};border-radius:0 0 16px 16px;padding:8px 30px 26px" align="center">
     <div style="border-top:1px dashed ${MAIL.line};margin:0 0 18px"></div>
-    <a href="${site}" style="text-decoration:none;display:block;text-align:center">${NUT_CLUSTER_HTML}<span style="display:block;font-family:${hand};font-size:30px;line-height:1.2;color:${MAIL.navy};margin-top:6px">${esc(SITE_NAME)}</span><span style="display:block;font-size:13px;color:${MAIL.muted};margin-top:2px">בית לחומרי הבגרות</span></a>
+    <a href="${site}" style="text-decoration:none;display:block;text-align:center">${MAIL_LOGO_HTML}<span style="display:block;font-family:${hand};font-size:30px;line-height:1.2;color:${MAIL.navy};margin-top:4px">${esc(SITE_NAME)}</span><span style="display:block;font-size:13px;color:${MAIL.muted};margin-top:2px">בית לחומרי הבגרות</span></a>
     <div style="font-size:13px;color:${MAIL.navy};font-weight:700;margin-top:10px">${esc(SITE_MOTTO)}</div>
   </td></tr>
   <tr><td align="center" style="padding:16px 10px 0;color:${MAIL.muted};font-size:11.5px;line-height:1.6">
