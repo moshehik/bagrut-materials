@@ -187,7 +187,7 @@ export function layoutHtml(title: string, bodyHtml: string, cta?: { label: strin
   </td></tr>
   <tr><td style="background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};border-radius:0 0 16px 16px;padding:8px 30px 26px" align="center">
     <div style="border-top:1px dashed ${MAIL.line};margin:0 0 18px"></div>
-    <a href="${site}" style="text-decoration:none;display:block;text-align:center">${MAIL_LOGO_HTML}<span style="display:block;font-family:${hand};font-size:30px;line-height:1.2;color:${MAIL.navy};margin-top:4px">${esc(SITE_NAME)}</span><span style="display:block;font-size:13px;color:${MAIL.muted};margin-top:2px">בית לחומרי הבגרות</span></a>
+    <a href="${site}" style="text-decoration:none;display:block;text-align:center">${MAIL_LOGO_HTML}</a>
     <div style="font-size:13px;color:${MAIL.navy};font-weight:700;margin-top:10px">${esc(SITE_MOTTO)}</div>
   </td></tr>
   <tr><td align="center" style="padding:16px 10px 0;color:${MAIL.muted};font-size:11.5px;line-height:1.6">
