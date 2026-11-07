@@ -121,10 +121,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!video || (video.status !== "active" && user.role !== "admin")) return json({ ok: false, error: "הסרטון לא נמצא" }, 404);
 
   const link = `${siteUrl()}${chainToHref(await getCategoryChain(video.categoryId))}?video=${video.id}`;
-  const tpl = templates.manual(
-    `${video.title} – ${SITE_NAME}`,
-    `שלום ${user.name},\n\nכמבוקש, הקישור לסרטון "${video.title}":\n${link}\n\nהסרטון נפתח באתר לצפייה, ואפשר גם להוריד אותו משם.\n\nבהצלחה בשיעור!`,
-  );
+  const tpl = templates.videoLinks(user.name, video.title, [{ label: "לצפייה בסרטון באתר", href: link }]);
   const r = await sendMail({
     to: user.email,
     subject: tpl.subject,

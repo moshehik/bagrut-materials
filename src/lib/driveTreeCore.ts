@@ -621,6 +621,12 @@ export async function loadLinkedDriveIds(): Promise<Set<string>> {
   } catch {
     /* הטבלה עוד לא קיימת — מתעלמים */
   }
+  try {
+    // עותקי שיתוף הסרטונים (video_share_shards) – שורות שריון זמניות ("pending:…") לא מזהות קובץ אמיתי ולכן מסוננות
+    add(await db.execute(sql.raw(`select 'drive://' || file_id as u from video_share_shards where file_id not like 'pending:%'`)));
+  } catch {
+    /* הטבלה עוד לא קיימת — מתעלמים */
+  }
   for (const t of ["sichot", "sicha_files", "sell_offers"]) {
     try {
       add(await db.execute(sql.raw(`select file_url as u from ${t} where file_url like 'drive://%'`)));

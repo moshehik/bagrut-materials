@@ -22,7 +22,7 @@ dotenv.config({ path: ".env.local" });
 
 import { db } from "../src/db";
 import { materials } from "../src/db/schema";
-import { driveIdFromUrl, getRootFolderId, PDF_CACHE_FOLDER_NAME } from "../src/lib/driveBridgeCore";
+import { driveIdFromUrl, getRootFolderId, PDF_CACHE_FOLDER_NAME, isShareCopiesItem } from "../src/lib/driveBridgeCore";
 import {
   FOLDER_MIME,
   ARCHIVE_FOLDER_NAME,
@@ -87,6 +87,8 @@ async function main() {
   const catFolders = new Set(all.map((c) => c.driveFolderId).filter(Boolean) as string[]);
   const linkedNames = new Set(rootChildren.filter((f) => linked.has(f.id)).map((f) => f.name));
   const classify = (f: DriveItem): { kind: ArchiveKind; reason: string } | null => {
+    // תיקיית/עותקי שיתוף הסרטונים (src/lib/drive-share.ts) – תיקיית מערכת, אף פעם לא "לא ברור"/יתום
+    if (isShareCopiesItem(f)) return null;
     if (f.mimeType === FOLDER_MIME) {
       if (catFolders.has(f.id) || f.name === ARCHIVE_FOLDER_NAME) return null;
       // מטמון ה-PDF המומר (convertOfficeToPdfCached) – תיקיית מערכת, לא "לא ברור"

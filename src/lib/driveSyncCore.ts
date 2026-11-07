@@ -14,7 +14,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { materials } from "@/db/schema";
-import { driveIdFromUrl, getRootFolderId } from "@/lib/driveBridgeCore";
+import { driveIdFromUrl, getRootFolderId, isShareCopiesItem } from "@/lib/driveBridgeCore";
 import { detectKind, stripExtension } from "@/lib/admin-utils";
 import {
   FOLDER_MIME,
@@ -177,7 +177,7 @@ export async function syncBatch(cursor: number, onlyCategoryId: number | undefin
       return (st.orphaned = results.filter((m): m is SyncMat => !!m));
     };
     for (const i of items) {
-      if (i.mimeType === FOLDER_MIME || i.appProperties.siteInfo === "1") continue;
+      if (i.mimeType === FOLDER_MIME || i.appProperties.siteInfo === "1" || isShareCopiesItem(i)) continue;
       const m = byFile.get(i.id);
       if (!m) {
         const n = cmpName(i.name);

@@ -443,7 +443,7 @@ export async function driveListChildren(
  */
 export async function driveCopyFile(
   fileId: string,
-  { name, parentId }: { name: string; parentId: string },
+  { name, parentId, appProperties, description }: { name: string; parentId: string; appProperties?: Record<string, string>; description?: string },
 ): Promise<{ fileId: string; size: number }> {
   // tries=1: העתקה יוצרת קובץ — ניסיון חוזר אחרי תשובה שאבדה היה מכפיל אותו (401 עדיין מנוסה שוב)
   const res = await driveFetchAuthed(
@@ -451,7 +451,7 @@ export async function driveCopyFile(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parents: [parentId] }),
+      body: JSON.stringify({ name, parents: [parentId], ...(appProperties ? { appProperties } : {}), ...(description ? { description } : {}) }),
     },
     { tries: 1 },
   );
@@ -819,6 +819,13 @@ export async function convertOfficeToPdf(args: ConvertArgs): Promise<Uint8Array>
 // הקוד האישי נשארות ב-route לכל בקשה — המטמון מכיל רק את מה שכל מורשית הייתה מקבלת ממילא.
 // כתיבה למטמון = best-effort: אף פעם לא מפילה בקשה; מומלץ להריץ אותה אחרי התשובה (defer=after).
 export const PDF_CACHE_FOLDER_NAME = "_pdf-cache";
+/** תיקיית עותקי השיתוף של סרטונים (src/lib/drive-share.ts): תיקיית מערכת מוסתרת תחת השורש, מתויגת appProperties.shareShards="1";
+ *  העותקים עצמם מתויגים shareShardOf=<fileId של המקור>. כל סורק ארכיון (סנכרון/אדריכלות/סייר) חייב לדלג עליהם. */
+export const SHARE_COPIES_FOLDER_NAME = "_video-share-copies";
+/** האם פריט בדרייב הוא תיקיית/עותק שיתוף של סרטון (לא חומר, לא להאמץ, לא "יתום"). */
+export function isShareCopiesItem(i: { name?: string; appProperties?: Record<string, string> | null }): boolean {
+  return i.name === SHARE_COPIES_FOLDER_NAME || i.appProperties?.shareShards === "1" || !!i.appProperties?.shareShardOf;
+}
 const PDF_CACHE_KEEP_PER_FILE = 3; // כמה גרסאות (md5 שונים) לשמור לכל קובץ מקור — הישנות נזרקות לאשפה
 const DRIVE_API = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
@@ -1011,10 +1018,10 @@ export async function driveListFiles(opts: { recursive?: boolean } = {}): Promis
         };
         for (const f of json.files ?? []) {
           if (f.mimeType === FOLDER_MIME_TYPE) {
-            if (recursive && f.name !== PDF_CACHE_FOLDER_NAME && f.appProperties?.pdfCache !== "1") nextFrontier.push(f.id);
+            if (recursive && f.name !== PDF_CACHE_FOLDER_NAME && f.appProperties?.pdfCache !== "1" && !isShareCopiesItem(f)) nextFrontier.push(f.id);
             continue;
           }
-          if (f.appProperties?.siteInfo === "1" || f.appProperties?.pdfCache === "1") continue;
+          if (f.appProperties?.siteInfo === "1" || f.appProperties?.pdfCache === "1" || isShareCopiesItem(f)) continue;
           const parent = f.parents?.[0] ?? null;
           files.push({
             id: f.id,

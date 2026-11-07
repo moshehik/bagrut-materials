@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement, getCategoryChain, chainToHref } from "@/lib/data";
 import { driveFetchAuthed } from "@/lib/driveBridgeCore";
 import { driveIdFromUrl } from "@/lib/driveBridge";
-import { shareDriveFileWithUser } from "@/lib/drive-share";
+import { shareVideoWithUser } from "@/lib/drive-share";
 import { contentDisposition, fileRouteError } from "@/lib/http-utils";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
@@ -231,15 +231,19 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   // קישור ישיר לקובץ בדרייב, עם הרשאת צפייה אישית לכתובת המייל של המשתמשת (נפתח רק בחשבון גוגל עם אותה כתובת).
   // אם השיתוף נכשל (למשל כתובת שאינה חשבון גוגל) – חוזרים לקישור לאתר, כמו קודם.
+  // לדרייב יש תקרה למספר המשתמשות לכל קובץ, ולכן השיתוף נעשה ברסיסים (עותקי שרת) – ר' src/lib/drive-share-core.ts.
   const fileId = driveIdFromUrl(material.fileUrl);
-  const shared = fileId ? await shareDriveFileWithUser(fileId, user.email) : null;
+  const shared = fileId
+    ? await shareVideoWithUser({ materialId: material.id, originalFileId: fileId, userId: user.id, email: user.email, title: material.title })
+    : null;
   const siteLink = `${siteUrl()}${chainToHref(await getCategoryChain(material.categoryId))}#material-${material.id}`;
-  const body = shared
-    ? `שלום ${user.name},\n\nכמבוקש, הקישור לסרטון "${material.title}" בדרייב:\n${shared.link}\n\nהסרטון שותף איתך אישית (${user.email}) – כדי לפתוח אותו צריך להיות מחוברת לגוגל באותה כתובת מייל.\nאפשר גם לצפות בו באתר: ${siteLink}\n\nבהצלחה בשיעור!`
-    : `שלום ${user.name},\n\nכמבוקש, הקישור לסרטון "${material.title}":\n${siteLink}\n\nהסרטון נפתח באתר לצפייה, ואפשר גם להוריד אותו משם.\n\nבהצלחה בשיעור!`;
-  const tpl = templates.manual(`${material.title} – ${SITE_NAME}`, body);
+  // כפתורים עם קישור מוטמע (לא כתובת גלויה): כפתור ראשי לאתר, ומשני לדרייב כשהשיתוף הצליח
+  const tpl = templates.videoLinks(user.name, material.title, [
+    { label: "לצפייה בסרטון באתר", href: siteLink },
+    ...(shared ? [{ label: "פתיחה בדרייב", href: shared.link, note: `הסרטון שותף איתך אישית (${user.email}) – צריך להיות מחוברת לגוגל באותה כתובת מייל` }] : []),
+  ]);
   const r = await sendMail({ to: user.email, subject: tpl.subject, text: tpl.text, html: tpl.html, kind: "material", userId: user.id });
   if (!r.ok) return json({ ok: false, error: "שליחת המייל נכשלה, נסי שוב בעוד רגע" }, 502);
-  await logAudit({ actorId: user.id, action: "material.video.email_link", entityType: "material", entityId: material.id, details: { driveShared: !!shared, ...(shared ? { sharedWith: user.email } : {}) } });
+  await logAudit({ actorId: user.id, action: "material.video.email_link", entityType: "material", entityId: material.id, details: { driveShared: !!shared, ...(shared ? { sharedWith: user.email, shard: shared.shard, shareReused: shared.reused, newShard: shared.newShard } : {}) } });
   return json({ ok: true, email: user.email });
 }

@@ -39,6 +39,7 @@ export const SETTING_DEFS = {
   logs_retention_days: { label: "שמירת לוגים (ימים)", type: "number", default: "365", group: "לוגים" },
   online_window_minutes: { label: '"מחוברות כעת" = פעילות ב-X דקות האחרונות', type: "number", default: "5", group: "לוגים" },
   drive_auto_sync: { label: "סנכרון אוטומטי של הדרייב (כל לילה, ב-GitHub; מצרף קבצים חדשים כטיוטה, מחבר החלפות, מעדכן מיקום וגודל — לא מוחק. כבוי כברירת מחדל וצריך גם להפעיל את התזמון ב-drive-sync.yml)", type: "boolean", default: "false", group: "דרייב" },
+  drive_share_cap: { label: "שיתוף סרטונים בדרייב – תקרה רכה למספר המורות לכל קובץ-סרטון. כשמגיעים אליה (או שדרייב מסרב בגלל מגבלה) האתר יוצר עותק חדש של הסרטון ומשתף עליו את הבאות. מגבלת דרייב האמיתית לא אומתה, לכן ברירת המחדל זהירה", type: "number", default: "90", group: "דרייב" },
   announcement: { label: "הודעה בראש האתר (ריק = ללא)", type: "textarea", default: "", group: "תוכן" },
   home_popup_enabled: { label: "הודעה צפה בדף הבית – מופעלת (מופיעה בכל כניסה לדף הבית, 3 שניות אחרי הטעינה; הטקסט נכתב עליה ואז היא נעלמת)", type: "boolean", default: "false", group: "הודעת דף הבית" },
   home_popup_title: { label: "כותרת ההודעה הצפה (ריק = \"יש חדש!\")", type: "text", default: "", group: "הודעת דף הבית" },

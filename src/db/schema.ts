@@ -242,6 +242,46 @@ export const materialFixes = pgTable(
 );
 
 /**
+ * "רסיסים" לשיתוף סרטון מלווה בדרייב (ר' src/lib/drive-share-core.ts): לדרייב יש תקרה למספר המשתמשות הבודדות שאפשר לשתף
+ * איתן קובץ אחד, ולכן כל חומר-סרטון יכול להיות מוגש מכמה קבצי דרייב זהים. רסיס 0 = הקובץ המקורי (נוסף בשיתוף הראשון);
+ * הבאים = עותקי שרת בתיקייה המוסתרת `_video-share-copies`. shareCount = כמה מורות שריינו מקום ברסיס (תקרה רכה:
+ * הגדרה drive_share_cap). file_id מתחיל ב-"pending:" = שורת-שריון זמנית בזמן שעותק נוצר (אחת לחומר). DDL: scripts/create-video-share-tables.ts.
+ */
+export const videoShareShards = pgTable(
+  "video_share_shards",
+  {
+    id: serial("id").primaryKey(),
+    materialId: integer("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    fileId: text("file_id").notNull().unique(),
+    shareCount: integer("share_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("video_share_shards_material_idx").on(t.materialId)],
+);
+
+/** על איזה רסיס שותף הסרטון עם כל מורה (אחד לכל חומר+מורה) – כך היא מקבלת תמיד את אותו קישור. */
+export const videoShares = pgTable(
+  "video_shares",
+  {
+    id: serial("id").primaryKey(),
+    materialId: integer("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    shardId: integer("shard_id")
+      .notNull()
+      .references(() => videoShareShards.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("video_shares_material_user_idx").on(t.materialId, t.userId), index("video_shares_shard_idx").on(t.shardId)],
+);
+
+/**
  * "גרסה פרטית" של חומר למורה אחת: קובץ docx שהסוכן ערך בעקבות תלונה כללית שלה (material_fixes, kind=general)
  * והחליט לא להחליף בו את הקובץ המשותף. הקובץ יושב בדרייב (drive://<id>, בתיקיית _ארכיון/גרסאות פרטיות) ומוגש
  * לה בלבד – ההורדה/הצפייה/המייל שלה מקבלים אותו במקום הקובץ המשותף (עם אותה הטבעה והמרה), ‎?original=1 מחזיר

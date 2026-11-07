@@ -307,6 +307,24 @@ export const templates = {
       ),
     };
   },
+  /** מייל קישורי סרטון: כפתורים עם קישור מוטמע (במקום כתובת גלויה). הראשון הוא הכפתור הראשי; השאר כפתורים משניים. */
+  videoLinks(name: string, title: string, links: { label: string; href: string; note?: string }[]) {
+    const lines = links.map((l) => `${l.label}: ${l.href}${l.note ? ` (${l.note})` : ""}`);
+    const text = ["שלום " + name + ",", "", `כמבוקש, הקישורים לסרטון "${title}":`, "", lines.join("\n\n"), "", "בהצלחה בשיעור!"].join("\n");
+    const [main, ...rest] = links;
+    const secondary = rest
+      .map(
+        (l) =>
+          `<table role="presentation" dir="rtl" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0;direction:rtl"><tr><td style="border:2px solid ${MAIL.navy};border-radius:999px"><a href="${esc(l.href)}" style="display:inline-block;color:${MAIL.navy};text-decoration:none;font-weight:700;font-size:15px;padding:9px 26px">${esc(l.label)}</a></td></tr></table>${l.note ? `<div style="color:${MAIL.muted};font-size:13px;margin-top:4px">${esc(l.note)}</div>` : ""}`,
+      )
+      .join("");
+    const html = layoutHtml(
+      `${title}`,
+      `<p>שלום ${esc(name)},</p><p>כמבוקש, הקישורים לסרטון <b>${esc(title)}</b>:</p>${secondary}`,
+      { label: main.label, href: main.href },
+    );
+    return { subject: `${title} – ${SITE_NAME}`, text, html };
+  },
   manual(subject: string, body: string) {
     return {
       subject,

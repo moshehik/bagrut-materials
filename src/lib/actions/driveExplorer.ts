@@ -7,7 +7,7 @@ import { categories, materials, driveEvents } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 import { slugify } from "@/lib/admin-utils";
-import { driveIdFromUrl } from "@/lib/driveBridgeCore";
+import { driveIdFromUrl, isShareCopiesItem } from "@/lib/driveBridgeCore";
 import {
   ARCHIVE_SUB,
   FOLDER_MIME,
@@ -153,7 +153,7 @@ export async function getFolderView(categoryId: number | null): Promise<FolderVi
     live = new Map(items.map((i) => [i.id, i]));
     const linkedIds = new Set(mats.map((m) => driveIdFromUrl(m.fileUrl)).filter(Boolean) as string[]);
     for (const i of items) {
-      if (i.mimeType === FOLDER_MIME) continue;
+      if (i.mimeType === FOLDER_MIME || isShareCopiesItem(i)) continue;
       if (i.name === INFO_FILE_NAME && i.appProperties.siteInfo === "1") {
         infoFile = { id: i.id, modifiedTime: i.modifiedTime };
         continue;
