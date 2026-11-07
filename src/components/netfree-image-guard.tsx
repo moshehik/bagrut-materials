@@ -32,8 +32,31 @@ function check(img: HTMLImageElement) {
   if (!key) return;
   const dims = NF_DIMS[key];
   if (!dims) return;
+  // הסימן המהימן: גודל הגוף שהתקבל (resource timing, אותו מקור) לעומת גודל קובץ המקור – התחליף של נטפרי (טשטוש/ריבוע)
+  // יכול לשמור על אותן מידות אבל לעולם לא על אותו גודל בתים. מידות משמשות כגיבוי כשאין רשומת תזמון.
+  const entry = performance.getEntriesByName(img.currentSrc || img.src)[0] as PerformanceResourceTiming | undefined;
+  const size = entry && entry.decodedBodySize > 0 ? entry.decodedBodySize : 0;
   const broken = img.naturalWidth === 0;
-  if (!broken && img.naturalWidth === dims[0] && img.naturalHeight === dims[1]) return;
+  const sameSize = size ? size === dims[2] : true;
+  const sameDims = img.naturalWidth === dims[0] && img.naturalHeight === dims[1];
+  if (!broken && sameSize && sameDims) {
+    // אין רשומת תזמון (תמונה מהמטמון): בודקים את גודל הגוף בבקשה מהמטמון, כי תחליף של נטפרי יכול לשמור על אותן מידות
+    if (!size && !img.dataset.nfChecked) {
+      img.dataset.nfChecked = "1";
+      void fetch(img.currentSrc || img.src, { cache: "force-cache" })
+        .then((r) => r.blob())
+        .then((b) => {
+          if (b.size !== dims[2]) swap(img, key);
+        })
+        .catch(() => {});
+    }
+    return;
+  }
+  swap(img, key);
+}
+
+function swap(img: HTMLImageElement, key: string) {
+  if (img.dataset.nf) return;
   img.dataset.nf = "1";
   void loadData().then((data) => {
     const uri = data[key];
@@ -46,6 +69,11 @@ function check(img: HTMLImageElement) {
 
 export function NetfreeImageGuard() {
   useEffect(() => {
+    try {
+      performance.setResourceTimingBufferSize(1500);
+    } catch {
+      /* ignore */
+    }
     const onLoad = (e: Event) => {
       if (e.target instanceof HTMLImageElement) check(e.target);
     };

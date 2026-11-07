@@ -1,6 +1,6 @@
 /**
  * מייצר את שני קובצי הנתונים של "מגן נטפרי" (src/components/netfree-image-guard.tsx):
- *   src/lib/netfree-dims.generated.ts  – מידות המקור של כל תמונה ("/images/..." → [רוחב, גובה]); קטן, נטען תמיד.
+ *   src/lib/netfree-dims.generated.ts  – מידות וגודל-קובץ המקור של כל תמונה ("/images/..." → [רוחב, גובה, בתים]); קטן, נטען תמיד.
  *   src/lib/netfree-data.generated.ts  – אותן תמונות כ-WebP בקידוד base64 (data URI); גדול, נטען בדפדפן רק אם נמצאה תמונה שנטפרי החליף.
  *
  * למה ככה (ולא data URI בתוך ה-HTML): מסנן התוכן (אתרוג/נטפרי) סורק גם תמונות מוטמעות ב-HTML ומשבש חלק מהן – והעתק
@@ -42,13 +42,13 @@ specs.push(["logo-white.png", 300, 85], ["logo-black.png", 480, 85], ["logo.png"
       continue; // בלי מידות – מגן הנטפרי לא בודק SVG (קבצים זעירים, אין תחליף מוכר)
     }
     const meta = await sharp(file).metadata();
-    dims[key] = [meta.width, meta.height];
+    dims[key] = [meta.width, meta.height, fs.statSync(file).size];
     const buf = await sharp(file).resize({ width: w, withoutEnlargement: true }).webp({ quality: q, alphaQuality: 100 }).toBuffer();
     data[key] = `data:image/webp;base64,${buf.toString("base64")}`;
     bytes += buf.length;
   }
   const head = "// קובץ שנוצר אוטומטית ע״י scripts/gen-netfree-images.cjs — לא לערוך ידנית.\n";
-  fs.writeFileSync(path.join(root, "src/lib/netfree-dims.generated.ts"), head + `export const NF_DIMS: Record<string, [number, number]> = ${JSON.stringify(dims)};\n`);
+  fs.writeFileSync(path.join(root, "src/lib/netfree-dims.generated.ts"), head + `export const NF_DIMS: Record<string, [number, number, number]> = ${JSON.stringify(dims)};\n`);
   fs.writeFileSync(path.join(root, "src/lib/netfree-data.generated.ts"), head + `export const NF_DATA: Record<string, string> = ${JSON.stringify(data)};\n`);
   console.log(`images: ${specs.length}, data ≈ ${Math.round(bytes / 1024)}KB`);
 })();
