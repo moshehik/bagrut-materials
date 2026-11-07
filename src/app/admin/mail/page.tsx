@@ -122,7 +122,7 @@ export default async function AdminMailPage({
                 {logs.map((l) => (
                   <tr key={l.id} className="border-t border-foreground/5 align-top">
                     <td className="py-2 pe-3 whitespace-nowrap text-muted">
-                      {l.sentAt.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}
+                      {l.sentAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" })}
                     </td>
                     <td className="py-2 pe-3" dir="ltr">
                       {l.to}

@@ -3,6 +3,7 @@ import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { downloads, purchases, type Material, type User } from "@/db/schema";
 import { getNumber } from "./settings";
+import { startOfIsraelDay } from "./israel-time";
 import type { Entitlement } from "./data";
 
 /*
@@ -48,9 +49,7 @@ export function viaMarker(kind: QuotaKind, via: EntitlementOk["via"]) {
 }
 
 function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return startOfIsraelDay(); // חצות בישראל, לא חצות UTC של השרת
 }
 
 /** המגבלה היומית שבתוקף למשתמשת (אישית, ואם אין – הכללית; 0 = ללא מגבלה) */

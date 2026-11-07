@@ -54,7 +54,7 @@ const STATUS_CLS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-700",
 };
 
-const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" }) : "—");
 
 export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentRowData; hasApi: boolean; highlight?: boolean }) {
   const [pending, startTransition] = useTransition();

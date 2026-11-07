@@ -73,8 +73,8 @@ export default async function AdminCouponsPage() {
                       שויך ל: {claimerName} ({claimerEmail})
                     </div>
                   )}
-                  {c.expiresAt && <div className="text-muted">בתוקף עד {c.expiresAt.toLocaleDateString("he-IL")}</div>}
-                  {c.usedAt && <div className="text-muted">מומש ב-{c.usedAt.toLocaleDateString("he-IL")}</div>}
+                  {c.expiresAt && <div className="text-muted">בתוקף עד {c.expiresAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</div>}
+                  {c.usedAt && <div className="text-muted">מומש ב-{c.usedAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</div>}
                   {c.note && <div className="text-muted">הערה: {c.note}</div>}
                 </div>
                 {c.status === "active" && (

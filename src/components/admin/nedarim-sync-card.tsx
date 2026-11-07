@@ -22,7 +22,7 @@ export type SyncCardData = {
   unmatched: { transactionId: string; amount: number; phone: string | null; email: string | null; comments: string | null; transactionAt: Date | null; fetchedAt: Date; approved: boolean }[];
 };
 
-const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" }) : "—");
 
 /** כרטיס "זיהוי תשלומים מול נדרים פלוס": מצב שער הקריאה (20 בשעה), רענון ידני, ועסקאות שעדיין לא שויכו */
 export function NedarimSyncCard({ data, hasApi, minIntervalMin }: { data: SyncCardData; hasApi: boolean; minIntervalMin: number }) {

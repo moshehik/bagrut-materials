@@ -45,7 +45,7 @@ export async function PendingFixesSection({ title = "ממתינות לטיפול
                 <b>{r.materialTitle}</b>
                 <span className="text-xs text-muted">{r.fileName}</span>
                 <span className="text-xs text-muted">
-                  {r.userName ?? "—"} · {r.createdAt.toLocaleDateString("he-IL")}
+                  {r.userName ?? "—"} · {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
                 </span>
               </div>
               {r.kind === "general" && <span className="chip bg-gold-soft text-[#7a5b00] mt-2">{r.reason === "commentators" ? "מפרשים נוספים (גרסה פרטית בלבד)" : "תלונה כללית (בלי סימון)"}</span>}

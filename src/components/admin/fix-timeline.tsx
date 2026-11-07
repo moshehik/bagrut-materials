@@ -32,7 +32,7 @@ export function FixTimeline({ entries }: { entries: FixTimelineEntry[] }) {
         const reason = (e.details.why ?? e.details.note ?? e.details.reason) as string | undefined;
         return (
           <li key={e.id}>
-            <span className="text-muted">{e.createdAt.toLocaleString("he-IL")}</span> · <b>{LABELS[e.action] ?? e.action}</b>
+            <span className="text-muted">{e.createdAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}</span> · <b>{LABELS[e.action] ?? e.action}</b>
             {e.actorId ? <span className="text-muted"> · משתמשת #{e.actorId}</span> : null}
             <div className="whitespace-pre-wrap">{e.summary}</div>
             {reason && <div className="text-muted">סיבה/הערה: {reason}</div>}

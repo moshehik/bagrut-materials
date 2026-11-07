@@ -37,7 +37,7 @@ const STATUS: Record<PurchaseStatus, { label: string; className: string }> = {
 };
 
 function fmt(d: Date | null) {
-  return d ? d.toLocaleDateString("he-IL") : "—";
+  return d ? d.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" }) : "—";
 }
 
 /** תווית המסלול; שורת "פרימיום בלבד" ישנה (מלפני ביטול הפרימיום) = single בלי חומר ועם מכסה 0 */

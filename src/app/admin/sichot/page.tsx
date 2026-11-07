@@ -73,7 +73,7 @@ export default async function AdminSichotPage() {
                   <span>{r.teacherName}</span>
                   <span dir="ltr">{r.teacherEmail}</span>
                   {r.categoryTitle && <span>· {r.categoryTitle}</span>}
-                  <span>· {r.createdAt.toLocaleDateString("he-IL")}</span>
+                  <span>· {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
                 </div>
               </div>
               <SichaModerationButtons id={r.id} title={r.title} status={r.status} />
@@ -110,7 +110,7 @@ export default async function AdminSichotPage() {
                   {r.displayName && <span>(מוצגת כ: {r.displayName})</span>}
                   <span dir="ltr">{r.teacherEmail}</span>
                   {r.categoryTitle && <span>· {r.categoryTitle}</span>}
-                  <span>· {r.createdAt.toLocaleDateString("he-IL")}</span>
+                  <span>· {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
                 </div>
               </div>
               <SichaModerationButtons id={r.id} title={r.title} status={r.status} kind="video" />

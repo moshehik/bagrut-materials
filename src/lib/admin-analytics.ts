@@ -1,3 +1,4 @@
+import { startOfIsraelDay } from "./israel-time";
 /** עזרים משותפים לעמודי הניתוח בניהול (ללא תלות בשרת) */
 
 export type SP = Record<string, string | string[] | undefined>;
@@ -20,9 +21,7 @@ export function parseDate(s: string, endOfDay = false): Date | null {
 }
 
 export function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return startOfIsraelDay();
 }
 
 export function daysAgo(n: number): Date {
@@ -36,7 +35,7 @@ export function minutesAgo(n: number): Date {
 export function fmtDateTime(d: Date | string | null | undefined): string {
   if (!d) return "—";
   const dt = typeof d === "string" ? new Date(d) : d;
-  return dt.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" });
+  return dt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" });
 }
 
 export function fmtDuration(sec: number | null | undefined): string {

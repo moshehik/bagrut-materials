@@ -10,7 +10,7 @@ import { removeNedarimSecret, setNedarimSecret, testNedarimApiKey, type SecretAc
  * write-only להחלפה (הערך לא חוזר לעולם – לא ב-HTML, לא ב-props, לא בתשובת ה-action), "בדיקת מפתח" (למפתח ה-API),
  * ו"הסרה מה-DB". הכרטיס מקבל רק SecretStatus – בלי ערכים.
  */
-const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" }) : "—");
 
 function SecretCard({ s, testable }: { s: SecretStatus; testable: boolean }) {
   const [state, formAction, pending] = useActionState<SecretActionState, FormData>(setNedarimSecret, undefined);

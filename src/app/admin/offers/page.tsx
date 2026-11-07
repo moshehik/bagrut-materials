@@ -71,7 +71,7 @@ export default async function AdminOffersPage() {
                       קובץ לדוגמה ↗
                     </a>
                   )}
-                  <span className="text-muted">{o.createdAt.toLocaleDateString("he-IL")}</span>
+                  <span className="text-muted">{o.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
                 </div>
                 <div className="rounded-xl bg-oak-soft/50 p-3 text-sm">
                   <div className="font-semibold">{o.userName}</div>

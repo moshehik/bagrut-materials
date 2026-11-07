@@ -305,7 +305,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               {ledger.map((t) => (
                 <tr key={t.id} className="border-t border-foreground/5 align-top">
                   <td className="py-2 pe-3 whitespace-nowrap text-xs">
-                    {t.createdAt.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}
+                    {t.createdAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" })}
                   </td>
                   <td className="py-2 pe-3">
                     {t.userId ? (

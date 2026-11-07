@@ -188,14 +188,16 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
                       </Td>
                       <Td className="max-w-[320px]">
                         <Link
-                          href={`/admin/materials?category=${r.categoryId}`}
+                          href={chain.length > 0 ? chainToHref(chain) : `/admin/materials?category=${r.categoryId}`}
+                          target="_blank"
+                          title={chain.map((c) => c.title).join(" › ")}
                           className="text-blue-deep hover:underline font-medium"
                         >
                           {kind?.icon} {r.materialTitle}
                         </Link>
                         {chain.length > 0 && (
-                          <div className="text-xs text-muted truncate">
-                            <Link href={chainToHref(chain)} className="hover:underline" target="_blank">
+                          <div className="text-xs text-muted truncate" title={chain.map((c) => c.title).join(" › ")}>
+                            <Link href={chainToHref(chain)} className="hover:underline" target="_blank" title={chain.map((c) => c.title).join(" › ")}>
                               {chain.map((c) => c.title).join(" › ")}
                             </Link>
                           </div>
@@ -224,13 +226,27 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
               key: t.id,
               value: Number(t.n),
               label: (
-                <Link href={`/admin/downloads?material=${t.id}`} className="hover:underline">
-                  {t.title}
-                </Link>
+                <>
+                  <Link
+                    href={chainToHref(chainOf(byId, t.categoryId))}
+                    target="_blank"
+                    title={chainOf(byId, t.categoryId).map((c) => c.title).join(" › ")}
+                    className="hover:underline"
+                  >
+                    {t.title}
+                  </Link>{" "}
+                  <Link href={`/admin/downloads?material=${t.id}`} className="text-xs text-muted hover:underline" title="סינון הורדות של החומר הזה">
+                    (סינון)
+                  </Link>
+                </>
               ),
-              sub: chainOf(byId, t.categoryId)
-                .map((c) => c.title)
-                .join(" › "),
+              sub: (
+                <span title={chainOf(byId, t.categoryId).map((c) => c.title).join(" › ")}>
+                  {chainOf(byId, t.categoryId)
+                    .map((c) => c.title)
+                    .join(" › ")}
+                </span>
+              ),
             }))}
           />
         </aside>

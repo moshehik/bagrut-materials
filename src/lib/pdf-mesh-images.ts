@@ -1,5 +1,7 @@
 import "server-only";
 import sharp from "sharp";
+import { deflate } from "node:zlib";
+import { promisify } from "node:util";
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, decodePDFRawStream } from "pdf-lib";
 
 /**
@@ -10,12 +12,13 @@ import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, decodePD
  * ר' docs/netfree.md.
  *
  * כל תמונה "גדולה" (רוחב מוצג ≥ MIN_PLACED_PT נק', בלי מסכת שקיפות, ‏DeviceRGB/‏DeviceGray, JPEG או Flate) → רשת של
- * GRID_COLS × (לפי יחס התמונה) קודקודים, כל אחד עם צבע (RGB). `cm … /ImX Do` ← `cm … 0 0 1 1 re W n /LuzMeshN sh`
+ * GRID_COLS × (לפי יחס התמונה) קודקודים (1024 – ב-512 השקף נראה מטושטש לעומת המקור, 2026-11-09; הקובץ נשאר קטן בזכות Predictor, ר' packMesh), כל אחד עם צבע (RGB). `cm … /ImX Do` ← `cm … 0 0 1 1 re W n /LuzMeshN sh`
  * (חיתוך לריבוע היחידה, כדי שההצללה לא תצבע את כל העמוד). תמונות עם שקיפות / קטנות / בפורמט אחר – לא נוגעים בהן.
  * מחזיר כמה תמונות הוחלפו. לעולם לא זורק החוצה (כשל בתמונה אחת משאיר אותה כמו שהיא).
  */
-const GRID_COLS = 512;
-const MAX_VERTICES = 160_000;
+const deflateAsync = promisify(deflate);
+const GRID_COLS = 1024;
+const MAX_VERTICES = 600_000;
 const MIN_PLACED_PT = 150;
 const MIN_IMAGE_PX = 500;
 const TIME_BUDGET_MS = 25_000;
@@ -54,6 +57,23 @@ async function gridPixels(obj: PDFRawStream, cols: number, rows: number): Promis
   return img.resize({ width: cols, height: rows, fit: "fill", kernel: "lanczos3" }).toColourspace("srgb").removeAlpha().raw().toBuffer();
 }
 
+/**
+ * דחיסה: ‏PNG-predictor מסוג Up (שורה פחות השורה שמעליה, ‏Colors=7 = בתים לקודקוד). קואורדינטות הקודקודים הופכות לאפסים והצבעים לדלתאות –
+ * קובץ קטן פי ~2.5 (1024 עמודות: ~1MB לשקף במקום ~2.8MB). פענוח הפרדיקטור סטנדרטי בכל קורא PDF.
+ */
+function packMesh(raw: Buffer, cols: number): Buffer {
+  const rowLen = cols * 7;
+  const rows = raw.length / rowLen;
+  const out = Buffer.alloc(rows * (rowLen + 1));
+  for (let r = 0; r < rows; r++) {
+    const o = r * (rowLen + 1);
+    out[o] = 2;
+    const base = r * rowLen;
+    for (let i = 0; i < rowLen; i++) out[o + 1 + i] = (raw[base + i] - (r > 0 ? raw[base - rowLen + i] : 0)) & 255;
+  }
+  return out;
+}
+
 /** רשת Gouraud (shading 5): קודקוד = x(16) y(16) r g b; שורה ראשונה למעלה (y=1) בריבוע יחידה */
 function meshBytes(rgb: Buffer, cols: number, rows: number): Buffer {
   const out = Buffer.alloc(cols * rows * 7);
@@ -75,9 +95,67 @@ function meshBytes(rgb: Buffer, cols: number, rows: number): Buffer {
   return out;
 }
 
+type Built = { bytes: Buffer; cols: number } | null;
+
+/** רשת מכווצת לתמונה אחת (או null אם לא נתמכת / חורגת מהמגבלות) */
+async function buildMesh(obj: PDFRawStream, started: number): Promise<Built> {
+  try {
+    const w = Number(String(obj.dict.get(PDFName.of("Width"))));
+    const h = Number(String(obj.dict.get(PDFName.of("Height"))));
+    const cols = Math.min(GRID_COLS, w);
+    const rows = Math.max(2, Math.round((cols * h) / w));
+    if (cols * rows > MAX_VERTICES || Date.now() - started > TIME_BUDGET_MS) return null;
+    const rgb = await gridPixels(obj, cols, rows);
+    if (!rgb) return null;
+    return { bytes: await deflateAsync(packMesh(meshBytes(rgb, cols, rows), cols)), cols };
+  } catch (e) {
+    console.error("pdf mesh: image failed", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** מגבלת מקביליות פשוטה: שינוי הגודל והדחיסה רצים ב-threadpool, ולכן כמה במקביל מקצר מצגת גדולה משמעותית */
+function limiter(max: number) {
+  let active = 0;
+  const queue: (() => void)[] = [];
+  return <T,>(fn: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const run = () => {
+        active++;
+        fn()
+          .then(resolve, reject)
+          .finally(() => {
+            active--;
+            queue.shift()?.();
+          });
+      };
+      if (active < max) run();
+      else queue.push(run);
+    });
+}
+
 export async function meshifyLargeImages(pdf: PDFDocument): Promise<number> {
   const started = Date.now();
   const ctx = pdf.context;
+  // בונים את כל הרשתות מראש במקביל (3 בו-זמנית); הלולאה שלמטה רק ממתינה לתוצאה של כל תמונה
+  const limit = limiter(3);
+  const built = new Map<PDFRef, Promise<Built>>();
+  for (const page of pdf.getPages()) {
+    const xo0 = page.node.Resources()?.lookupMaybe(PDFName.of("XObject"), PDFDict);
+    if (!xo0) continue;
+    for (const key of xo0.keys()) {
+      const raw = xo0.get(key);
+      if (!(raw instanceof PDFRef) || built.has(raw)) continue;
+      const obj = ctx.lookup(raw);
+      if (!(obj instanceof PDFRawStream)) continue;
+      if (String(obj.dict.get(PDFName.of("Subtype"))) !== "/Image") continue;
+      if (obj.dict.get(PDFName.of("SMask")) || obj.dict.get(PDFName.of("Mask"))) continue;
+      const w = Number(String(obj.dict.get(PDFName.of("Width"))));
+      const h = Number(String(obj.dict.get(PDFName.of("Height"))));
+      if (w < MIN_IMAGE_PX || h < MIN_IMAGE_PX * 0.3) continue;
+      built.set(raw, limit(() => buildMesh(obj, started)));
+    }
+  }
   const shadingFor = new Map<PDFRef, string | null>(); // ref תמונה → שם ההצללה (או null אם לא נתמכת)
   const shadingRefs = new Map<string, PDFRef>();
   const candidateRefs = new Set<PDFRef>();
@@ -134,30 +212,22 @@ export async function meshifyLargeImages(pdf: PDFDocument): Promise<number> {
         // הרשת נבנית פעם אחת לכל תמונה (גם אם מופיעה בכמה עמודים)
         if (!shadingFor.has(c.ref)) {
           let name: string | null = null;
-          try {
-            const w = Number(String(c.obj.dict.get(PDFName.of("Width"))));
-            const h = Number(String(c.obj.dict.get(PDFName.of("Height"))));
-            const cols = Math.min(GRID_COLS, w);
-            const rows = Math.max(2, Math.round((cols * h) / w));
-            if (cols * rows <= MAX_VERTICES && Date.now() - started <= TIME_BUDGET_MS) {
-              const rgb = await gridPixels(c.obj, cols, rows);
-              if (rgb) {
-                const ref = ctx.register(
-                  ctx.flateStream(meshBytes(rgb, cols, rows), {
-                    ShadingType: 5,
-                    ColorSpace: "DeviceRGB",
-                    BitsPerCoordinate: 16,
-                    BitsPerComponent: 8,
-                    VerticesPerRow: cols,
-                    Decode: [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-                  }),
-                );
-                name = `LuzMesh${++counter}`;
-                shadingRefs.set(name, ref);
-              }
-            }
-          } catch (e) {
-            console.error("pdf mesh: image failed", e instanceof Error ? e.message : e);
+          const mesh = await built.get(c.ref);
+          if (mesh) {
+            const ref = ctx.register(
+              ctx.stream(mesh.bytes, {
+                Filter: "FlateDecode",
+                DecodeParms: { Predictor: 12, Colors: 7, BitsPerComponent: 8, Columns: mesh.cols },
+                ShadingType: 5,
+                ColorSpace: "DeviceRGB",
+                BitsPerCoordinate: 16,
+                BitsPerComponent: 8,
+                VerticesPerRow: mesh.cols,
+                Decode: [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+              }),
+            );
+            name = `LuzMesh${++counter}`;
+            shadingRefs.set(name, ref);
           }
           shadingFor.set(c.ref, name);
         }

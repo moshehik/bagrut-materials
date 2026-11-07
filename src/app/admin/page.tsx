@@ -163,7 +163,7 @@ export default async function AdminDashboard() {
                 {latest.map((r) => (
                   <tr key={r.id} className="border-t border-foreground/5">
                     <td className="py-2 pe-3 whitespace-nowrap">
-                      {r.createdAt.toLocaleString("he-IL")}
+                      {r.createdAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}
                     </td>
                     <td className="py-2 pe-3">
                       {r.userName}{" "}

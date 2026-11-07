@@ -57,9 +57,32 @@ export function adminEmail() {
 /** גרסת הטקסט הרגיל: סימן כיוון ימין-לשמאל (RLM) בתחילת כל שורה, כדי שגם היא תוצג מימין לשמאל */
 const rtlPlain = (t: string) => t.split("\n").map((l) => (l.trim() ? "\u200F" + l : l)).join("\n");
 
+/** שגיאת מכסה יומית של גוגל (≈100 נמענים ליום לחשבון) – רק אז עוברים לסקריפט הגיבוי */
+const isQuotaError = (e?: string) => !!e && /too many times|quota|limit exceeded|service invoked|daily/i.test(e);
+/** אחרי שגיאת מכסה בסקריפט הראשי מדלגים עליו זמן מה (בתוך אותה instance), כדי לא לשלם סיבוב מיותר בכל מייל */
+let primaryBlockedUntil = 0;
+
+/**
+ * שליחה דרך MAIL_SCRIPT_URL; כשהמכסה היומית שלו נגמרה – דרך MAIL_SCRIPT_URL_2 (חשבון Gmail נוסף, "גיבוי למכסה", 2026-11-09).
+ * מחליפים רק על שגיאת מכסה מפורשת, כדי לא לשלוח כפול כשהראשון בעצם שלח.
+ */
 async function transportAppsScript(input: SendMailInput): Promise<{ ok: boolean; error?: string }> {
-  const url = process.env.MAIL_SCRIPT_URL;
-  if (!url) return { ok: false, error: "MAIL_SCRIPT_URL לא מוגדר" };
+  const primary = process.env.MAIL_SCRIPT_URL;
+  const backup = process.env.MAIL_SCRIPT_URL_2;
+  if (!primary && !backup) return { ok: false, error: "MAIL_SCRIPT_URL לא מוגדר" };
+  if (primary && !(backup && Date.now() < primaryBlockedUntil)) {
+    const r = await postToScript(primary, input);
+    if (r.ok || !backup || !isQuotaError(r.error)) return r;
+    primaryBlockedUntil = Date.now() + 60 * 60 * 1000;
+    console.warn("[mail] primary script quota exhausted – using backup script");
+  }
+  const r2 = await postToScript((backup ?? primary)!, input);
+  // הגיבוי נגמר גם הוא – מאפשרים לראשי לנסות שוב בשליחה הבאה (המכסה מתאפסת בחצות לפי שעון גוגל)
+  if (!r2.ok && isQuotaError(r2.error)) primaryBlockedUntil = 0;
+  return r2;
+}
+
+async function postToScript(url: string, input: SendMailInput): Promise<{ ok: boolean; error?: string }> {
 
   // הסקריפט מפענח fileName/fileContent תמיד – אם אין קובץ אמיתי שולחים placeholder זעיר, ו-noAttachment:true גורם לסקריפט לא לצרף אותו למייל
   const attachment = input.attachment ?? {

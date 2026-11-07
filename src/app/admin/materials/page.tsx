@@ -181,7 +181,7 @@ async function PickCategory() {
                 </Link>
                 <span className="text-muted">· {m.categoryTitle}</span>
                 <span className="ms-auto text-xs text-muted">
-                  {m.downloads} הורדות · {m.createdAt.toLocaleDateString("he-IL")}
+                  {m.downloads} הורדות · {m.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
                 </span>
               </li>
             ))}

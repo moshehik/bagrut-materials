@@ -57,7 +57,7 @@ export default async function AdminForumPage() {
                   <span dir="ltr">{t.userEmail}</span>
                   {t.categoryTitle && <span>· {t.categoryTitle}</span>}
                   <span>· {t.posts} תגובות</span>
-                  <span>· {t.createdAt.toLocaleDateString("he-IL")}</span>
+                  <span>· {t.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
                 </div>
               </div>
               <DeleteThreadButton id={t.id} title={t.title} />

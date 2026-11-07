@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 function fmtDateTime(d: Date | null) {
   if (!d) return "—";
-  return d.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" });
 }
 
 export default async function AdminUsersPage({
@@ -148,7 +148,7 @@ export default async function AdminUsersPage({
                     {u.personalCode}
                   </td>
                   <td className="py-2 pe-3 whitespace-nowrap">
-                    {u.createdAt.toLocaleDateString("he-IL")}
+                    {u.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
                   </td>
                   <td className="py-2 pe-3 whitespace-nowrap text-xs">{fmtDateTime(u.lastSeenAt)}</td>
                   <td className="py-2 pe-3">

@@ -62,7 +62,7 @@ export async function ForumReportsSection({ showEmpty = false }: { showEmpty?: b
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted">
                   {kindLabel} · כתבה: {code ? forumAuthor(code) : "—"} · דווח על ידי {forumAuthor(r.reporterCode)} ·{" "}
-                  {r.createdAt.toLocaleDateString("he-IL")}
+                  {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
                 </p>
                 {body ? (
                   <p className="text-sm mt-1 whitespace-pre-wrap">{body}</p>
