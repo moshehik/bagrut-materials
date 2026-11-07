@@ -63,7 +63,7 @@ type Who = { id: number; personalCode: string; name: string; email: string; phon
  * null = נכשל. למשתמשת רגילה כשל בהמרה/הטבעה = כשל (לא שולחים מקור בלי סימן מים); למנהלת – המקור.
  * גרסה פרטית מתוקנת של המורה (ר' src/lib/private-versions.ts) נכנסת לזיפ במקום הקובץ המשותף, כמו בהורדה בודדת.
  */
-async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: string; bytes: Uint8Array } | null> {
+async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: string; bytes: Uint8Array; label: string } | null> {
   const pv = isAdmin ? null : await getPrivateVersion(m.id, u.id);
   const src = chooseServedFile({ material: m, privateVersion: pv, wantOriginal: false });
   const file = await fetchFile(src.fileUrl);
@@ -81,7 +81,7 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   // מצגת: החתימה מתחת לתמונות
   const behind = { behindContent: classifyMaterial(m) === "presentation" };
   const safe = safeEntryName(m.fileName);
-  const original = { name: `${stem(safe)}-${tag}${ext(safe)}`, bytes: raw };
+  const original = { name: `${stem(safe)} ${tag}${ext(safe)}`, bytes: raw, label: safe };
   // מנהלת בלבד מקבלת את המקור כשההמרה/ההטבעה נכשלו
   const fallback = (stage: string, e: unknown) => {
     console.error(`folder zip: ${stage} failed`, m.id, e);
@@ -91,21 +91,21 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   if (isOffice && isDriveConfigured()) {
     try {
       const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(src.fileUrl), defer: after });
-      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo, behind) };
+      return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo, behind), label: `${stem(safe)}.pdf` };
     } catch (e) {
       return fallback("office->pdf", e);
     }
   }
   if (isPdf) {
     try {
-      return { name: `${stem(safe)}-${tag}.pdf`, bytes: await stampPdf(raw, stampInfo, behind) };
+      return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(raw, stampInfo, behind), label: `${stem(safe)}.pdf` };
     } catch (e) {
       return fallback("pdf stamp", e);
     }
   }
   if (isImage) {
     try {
-      return { name: original.name, bytes: await stampImage(raw, { personalCode: tag }) };
+      return { name: original.name, bytes: await stampImage(raw, { personalCode: tag }), label: safe };
     } catch (e) {
       return fallback("image stamp", e);
     }
@@ -337,7 +337,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
   };
 
   const who: Who = { id: user.id, personalCode: user.personalCode, name: user.name, email: user.email, phone: user.phone };
-  type Ready = { name: string; bytes: Uint8Array; m: Material; via: string };
+  type Ready = { name: string; bytes: Uint8Array; label: string; m: Material; via: string };
   const results: (Ready | null)[] = new Array(allowed.length).fill(null);
   let next = 0;
   try {
@@ -427,7 +427,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
           z.file(name, r.bytes);
         }
         const partBody = await z.generateAsync({ type: "uint8array", compression: "STORE" });
-        const names = group.map((r) => r.name);
+        const names = group.map((r) => r.label);
         const title = `${cat.title} – כל הקבצים (חלק ${n} מתוך ${total})`;
         const partSent = await sendMail({
           to: user.email,
@@ -449,7 +449,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: true, email: user.email, files: ready.length, skipped: 0, parts: total });
     }
     const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const list = ready.map((r) => r.name);
+    const list = ready.map((r) => r.label); // ברשימה במייל – שם הקובץ בלי המספר האישי (הוא מופיע בשם הקובץ המצורף)
     const sent = await sendMail({
       to: user.email,
       subject: `${cat.title} – כל הקבצים`,

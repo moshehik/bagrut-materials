@@ -30,8 +30,8 @@ export const maxDuration = 120;
 
 function withSuffix(fileName: string, suffix: string) {
   const dot = fileName.lastIndexOf(".");
-  if (dot <= 0) return `${fileName}-${suffix}`;
-  return `${fileName.slice(0, dot)}-${suffix}${fileName.slice(dot)}`;
+  if (dot <= 0) return `${fileName} ${suffix}`;
+  return `${fileName.slice(0, dot)} ${suffix}${fileName.slice(dot)}`;
 }
 
 function asPdfName(fileName: string) {
