@@ -80,7 +80,7 @@ async function build(src, bg, K, W) {
 
 (async () => {
   const color = await build(COLOR_SRC, [255, 255, 255], 11, 760);
-  const white = await build(WHITE_SRC, DECK_BG, 9, 520);
+  const white = await build(WHITE_SRC, DECK_BG, 14, 900);
   console.log("color ops bytes", color.ops.length, "white ops bytes", white.ops.length);
   fs.writeFileSync(
     path.join(__dirname, "..", "src/lib/pdf-logo.generated.ts"),

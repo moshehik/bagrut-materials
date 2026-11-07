@@ -1,0 +1,779 @@
+[
+ {
+  "oldId": 1895,
+  "newId": 2860,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "דף להרחבת השיעור – נחמיה ד'",
+  "newTitle": "דף להרחבת השיעור - פרק ד"
+ },
+ {
+  "oldId": 1869,
+  "newId": 2271,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "בוחן עם תשובות – עזרא ז'",
+  "newTitle": "בוחן עם תשובות - פרק ז"
+ },
+ {
+  "oldId": 1926,
+  "newId": 2835,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "דף שכפול למורה – נחמיה י\"ג",
+  "newTitle": "דף למורה - פרק יג"
+ },
+ {
+  "oldId": 1927,
+  "newId": 2833,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה י\"ג",
+  "newTitle": "דף לתלמידה - פרק יג"
+ },
+ {
+  "oldId": 1929,
+  "newId": 2838,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "דף העשרה – נחמיה י\"ג",
+  "newTitle": "דף העשרה - פרק יג"
+ },
+ {
+  "oldId": 1930,
+  "newId": 2836,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "דף להרחבת השיעור – נחמיה י\"ג",
+  "newTitle": "דף להרחבת השיעור - פרק יג"
+ },
+ {
+  "oldId": 1818,
+  "newId": 2917,
+  "path": "ktuvim/chalufot/kohelet/perek-1",
+  "oldTitle": "דף שכפול למורה – קהלת פרק א'",
+  "newTitle": "דף למורה - פרק א"
+ },
+ {
+  "oldId": 1820,
+  "newId": 2909,
+  "path": "ktuvim/chalufot/kohelet/perek-1",
+  "oldTitle": "דף מיומנויות וחווית למידה – קהלת פרק א'",
+  "newTitle": "דף מיומנויות וחווית למידה - פרק א"
+ },
+ {
+  "oldId": 1821,
+  "newId": 2908,
+  "path": "ktuvim/chalufot/kohelet/perek-1",
+  "oldTitle": "סיכום להכתבה – קהלת פרק א'",
+  "newTitle": "סיכום להכתבה - פרק א"
+ },
+ {
+  "oldId": 1823,
+  "newId": 2265,
+  "path": "ktuvim/chalufot/kohelet/perek-1",
+  "oldTitle": "בוחן – קהלת פרק א'",
+  "newTitle": "בוחן - פרק א"
+ },
+ {
+  "oldId": 1824,
+  "newId": 2266,
+  "path": "ktuvim/chalufot/kohelet/perek-1",
+  "oldTitle": "בוחן עם תשובות – קהלת פרק א'",
+  "newTitle": "בוחן עם תשובות - פרק א"
+ },
+ {
+  "oldId": 1850,
+  "newId": 2823,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "דף שכפול לתלמידה – עזרא א'",
+  "newTitle": "דף לתלמידה - פרק א"
+ },
+ {
+  "oldId": 1851,
+  "newId": 2884,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "סיכום להכתבה – עזרא א'",
+  "newTitle": "סיכום להכתבה - פרק א"
+ },
+ {
+  "oldId": 1852,
+  "newId": 2822,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "דף העשרה – עזרא א'",
+  "newTitle": "דף העשרה - פרק א"
+ },
+ {
+  "oldId": 1853,
+  "newId": 2821,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "דף להרחבת השיעור – עזרא א'",
+  "newTitle": "דף להרחבת השיעור - פרק א"
+ },
+ {
+  "oldId": 1855,
+  "newId": 2275,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "בוחן עם תשובות – עזרא א'",
+  "newTitle": "בוחן עם תשובות - פרק א"
+ },
+ {
+  "oldId": 1877,
+  "newId": 2842,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "דף שכפול למורה – נחמיה א'",
+  "newTitle": "דף למורה - פרק א"
+ },
+ {
+  "oldId": 1841,
+  "newId": 2903,
+  "path": "ktuvim/chalufot/kohelet/perek-12",
+  "oldTitle": "דף מיומנויות וחווית למידה – קהלת פרק י\"ב",
+  "newTitle": "דף מיומנויות וחווית למידה - פרק יב"
+ },
+ {
+  "oldId": 1847,
+  "newId": 2876,
+  "path": "ktuvim/chalufot/mishlei/perek-3",
+  "oldTitle": "סיכום להכתבה – משלי פרק ג'",
+  "newTitle": "סיכום להכתבה - פרק ג"
+ },
+ {
+  "oldId": 1879,
+  "newId": 2880,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "סיכום להכתבה – נחמיה א'",
+  "newTitle": "סיכום להכתבה - פרק א"
+ },
+ {
+  "oldId": 1919,
+  "newId": 2868,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "דף שכפול למורה – נחמיה ט'",
+  "newTitle": "דף למורה - פרק ט"
+ },
+ {
+  "oldId": 1923,
+  "newId": 2890,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "דף להרחבת השיעור – נחמיה ט'",
+  "newTitle": "דף להרחבת השיעור - פרק ט"
+ },
+ {
+  "oldId": 1858,
+  "newId": 2885,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "סיכום להכתבה – עזרא ג'",
+  "newTitle": "סיכום להכתבה - פרק ג"
+ },
+ {
+  "oldId": 1899,
+  "newId": 2862,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה ה'",
+  "newTitle": "דף לתלמידה - פרק ה"
+ },
+ {
+  "oldId": 1890,
+  "newId": 2287,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "בוחן עם תשובות – נחמיה ב'",
+  "newTitle": "בוחן עם תשובות - פרק ב"
+ },
+ {
+  "oldId": 1897,
+  "newId": 2284,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "בוחן עם תשובות – נחמיה ד'",
+  "newTitle": "בוחן עם תשובות - פרק ד"
+ },
+ {
+  "oldId": 1878,
+  "newId": 2840,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה א'",
+  "newTitle": "דף לתלמידה - פרק א"
+ },
+ {
+  "oldId": 1839,
+  "newId": 2905,
+  "path": "ktuvim/chalufot/kohelet/perek-12",
+  "oldTitle": "דף שכפול למורה – קהלת פרק י\"ב",
+  "newTitle": "דף למורה - פרק יב"
+ },
+ {
+  "oldId": 1840,
+  "newId": 2904,
+  "path": "ktuvim/chalufot/kohelet/perek-12",
+  "oldTitle": "דף שכפול לתלמידה – קהלת פרק י\"ב",
+  "newTitle": "דף לתלמידה - פרק יב"
+ },
+ {
+  "oldId": 1846,
+  "newId": 2877,
+  "path": "ktuvim/chalufot/mishlei/perek-1",
+  "oldTitle": "סיכום להכתבה – משלי פרק א'",
+  "newTitle": "סיכום להכתבה - פרק א"
+ },
+ {
+  "oldId": 1849,
+  "newId": 2824,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "דף שכפול למורה – עזרא א'",
+  "newTitle": "דף למורה - פרק א"
+ },
+ {
+  "oldId": 1892,
+  "newId": 2855,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה ד'",
+  "newTitle": "דף לתלמידה - פרק ד"
+ },
+ {
+  "oldId": 1914,
+  "newId": 2886,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "סיכום להכתבה – נחמיה ח'",
+  "newTitle": "סיכום להכתבה - פרק ח"
+ },
+ {
+  "oldId": 1911,
+  "newId": 2346,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "בוחן עם תשובות – נחמיה ו'",
+  "newTitle": "בוחן עם תשובות - פרק ו"
+ },
+ {
+  "oldId": 1924,
+  "newId": 2401,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "בוחן – נחמיה ט'",
+  "newTitle": "בוחן - פרק ט"
+ },
+ {
+  "oldId": 1925,
+  "newId": 2400,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "בוחן עם תשובות – נחמיה ט'",
+  "newTitle": "בוחן עם תשובות - פרק ט"
+ },
+ {
+  "oldId": 1928,
+  "newId": 2874,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "סיכום להכתבה – נחמיה י\"ג",
+  "newTitle": "סיכום להכתבה - פרק יג"
+ },
+ {
+  "oldId": 1931,
+  "newId": 2276,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "בוחן – נחמיה י\"ג",
+  "newTitle": "בוחן - פרק יג"
+ },
+ {
+  "oldId": 1932,
+  "newId": 2278,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-13",
+  "oldTitle": "בוחן עם תשובות – נחמיה י\"ג",
+  "newTitle": "בוחן עם תשובות - פרק יג"
+ },
+ {
+  "oldId": 1837,
+  "newId": 2315,
+  "path": "ktuvim/chalufot/kohelet/perek-7",
+  "oldTitle": "בוחן – קהלת פרק ז'",
+  "newTitle": "בוחן - פרק ז"
+ },
+ {
+  "oldId": 1834,
+  "newId": 2914,
+  "path": "ktuvim/chalufot/kohelet/perek-7",
+  "oldTitle": "דף מיומנויות וחווית למידה – קהלת פרק ז'",
+  "newTitle": "דף מיומנויות וחווית למידה - פרק ז"
+ },
+ {
+  "oldId": 1833,
+  "newId": 2906,
+  "path": "ktuvim/chalufot/kohelet/perek-7",
+  "oldTitle": "דף שכפול לתלמידה – קהלת פרק ז'",
+  "newTitle": "דף לתלמידה - פרק ז"
+ },
+ {
+  "oldId": 1835,
+  "newId": 2912,
+  "path": "ktuvim/chalufot/kohelet/perek-7",
+  "oldTitle": "סיכום להכתבה – קהלת פרק ז'",
+  "newTitle": "סיכום להכתבה - פרק ז"
+ },
+ {
+  "oldId": 1825,
+  "newId": 2911,
+  "path": "ktuvim/chalufot/kohelet/perek-3",
+  "oldTitle": "דף שכפול למורה – קהלת פרק ג'",
+  "newTitle": "דף למורה - פרק ג"
+ },
+ {
+  "oldId": 1826,
+  "newId": 2910,
+  "path": "ktuvim/chalufot/kohelet/perek-3",
+  "oldTitle": "דף שכפול לתלמידה – קהלת פרק ג'",
+  "newTitle": "דף לתלמידה - פרק ג"
+ },
+ {
+  "oldId": 1827,
+  "newId": 2918,
+  "path": "ktuvim/chalufot/kohelet/perek-3",
+  "oldTitle": "דף מיומנויות וחווית למידה – קהלת פרק ג'",
+  "newTitle": "דף מיומנויות וחווית למידה - פרק ג"
+ },
+ {
+  "oldId": 1828,
+  "newId": 2916,
+  "path": "ktuvim/chalufot/kohelet/perek-3",
+  "oldTitle": "סיכום להכתבה – קהלת פרק ג'",
+  "newTitle": "סיכום להכתבה - פרק ג"
+ },
+ {
+  "oldId": 1831,
+  "newId": 2264,
+  "path": "ktuvim/chalufot/kohelet/perek-3",
+  "oldTitle": "בוחן עם תשובות – קהלת פרק ג'",
+  "newTitle": "בוחן עם תשובות - פרק ג"
+ },
+ {
+  "oldId": 1830,
+  "newId": 2263,
+  "path": "ktuvim/chalufot/kohelet/perek-3",
+  "oldTitle": "בוחן – קהלת פרק ג'",
+  "newTitle": "בוחן - פרק ג"
+ },
+ {
+  "oldId": 1819,
+  "newId": 2915,
+  "path": "ktuvim/chalufot/kohelet/perek-1",
+  "oldTitle": "דף שכפול לתלמידה – קהלת פרק א'",
+  "newTitle": "דף לתלמידה - פרק א"
+ },
+ {
+  "oldId": 1842,
+  "newId": 2902,
+  "path": "ktuvim/chalufot/kohelet/perek-12",
+  "oldTitle": "סיכום להכתבה – קהלת פרק י\"ב",
+  "newTitle": "סיכום להכתבה - פרק יב"
+ },
+ {
+  "oldId": 1845,
+  "newId": 2314,
+  "path": "ktuvim/chalufot/kohelet/perek-12",
+  "oldTitle": "בוחן עם תשובות – קהלת פרק י\"ב",
+  "newTitle": "בוחן עם תשובות - פרק יב"
+ },
+ {
+  "oldId": 1844,
+  "newId": 2313,
+  "path": "ktuvim/chalufot/kohelet/perek-12",
+  "oldTitle": "בוחן – קהלת פרק י\"ב",
+  "newTitle": "בוחן - פרק יב"
+ },
+ {
+  "oldId": 1848,
+  "newId": 2875,
+  "path": "ktuvim/chalufot/mishlei/perek-31",
+  "oldTitle": "סיכום להכתבה – משלי פרק ל\"א",
+  "newTitle": "סיכום להכתבה - פרק לא"
+ },
+ {
+  "oldId": 1856,
+  "newId": 2843,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "דף שכפול למורה – עזרא ג'",
+  "newTitle": "דף למורה - פרק ג"
+ },
+ {
+  "oldId": 1863,
+  "newId": 2831,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "דף שכפול למורה – עזרא ז'",
+  "newTitle": "דף למורה - פרק ז"
+ },
+ {
+  "oldId": 1857,
+  "newId": 2841,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "דף שכפול לתלמידה – עזרא ג'",
+  "newTitle": "דף לתלמידה - פרק ג"
+ },
+ {
+  "oldId": 1864,
+  "newId": 2829,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "דף שכפול לתלמידה – עזרא ז'",
+  "newTitle": "דף לתלמידה - פרק ז"
+ },
+ {
+  "oldId": 1865,
+  "newId": 2883,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "סיכום להכתבה – עזרא ז'",
+  "newTitle": "סיכום להכתבה - פרק ז"
+ },
+ {
+  "oldId": 1859,
+  "newId": 2839,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "דף העשרה – עזרא ג'",
+  "newTitle": "דף העשרה - פרק ג"
+ },
+ {
+  "oldId": 1866,
+  "newId": 2834,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "דף העשרה – עזרא ז'",
+  "newTitle": "דף העשרה - פרק ז"
+ },
+ {
+  "oldId": 1860,
+  "newId": 2837,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "דף להרחבת השיעור – עזרא ג'",
+  "newTitle": "דף להרחבת השיעור - פרק ג"
+ },
+ {
+  "oldId": 1867,
+  "newId": 2832,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "דף להרחבת השיעור – עזרא ז'",
+  "newTitle": "דף להרחבת השיעור - פרק ז"
+ },
+ {
+  "oldId": 1861,
+  "newId": 2272,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "בוחן – עזרא ג'",
+  "newTitle": "בוחן - פרק ג"
+ },
+ {
+  "oldId": 1868,
+  "newId": 2270,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-7",
+  "oldTitle": "בוחן – עזרא ז'",
+  "newTitle": "בוחן - פרק ז"
+ },
+ {
+  "oldId": 1870,
+  "newId": 2827,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "דף שכפול למורה – עזרא ט'",
+  "newTitle": "דף למורה - פרק ט"
+ },
+ {
+  "oldId": 1862,
+  "newId": 2273,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-3",
+  "oldTitle": "בוחן עם תשובות – עזרא ג'",
+  "newTitle": "בוחן עם תשובות - פרק ג"
+ },
+ {
+  "oldId": 1854,
+  "newId": 2274,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-1",
+  "oldTitle": "בוחן – עזרא א'",
+  "newTitle": "בוחן - פרק א"
+ },
+ {
+  "oldId": 1887,
+  "newId": 2820,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "דף העשרה – נחמיה ב'",
+  "newTitle": "דף העשרה - פרק ב"
+ },
+ {
+  "oldId": 1888,
+  "newId": 2861,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "דף להרחבת השיעור – נחמיה ב'",
+  "newTitle": "דף להרחבת השיעור - פרק ב"
+ },
+ {
+  "oldId": 1875,
+  "newId": 2267,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "בוחן – עזרא ט'",
+  "newTitle": "בוחן - פרק ט"
+ },
+ {
+  "oldId": 1873,
+  "newId": 2828,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "דף העשרה – עזרא ט'",
+  "newTitle": "דף העשרה - פרק ט"
+ },
+ {
+  "oldId": 1874,
+  "newId": 2893,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "דף להרחבת השיעור – עזרא ט'",
+  "newTitle": "דף להרחבת השיעור - פרק ט"
+ },
+ {
+  "oldId": 1880,
+  "newId": 2846,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "דף העשרה – נחמיה א'",
+  "newTitle": "דף העשרה - פרק א"
+ },
+ {
+  "oldId": 1881,
+  "newId": 2844,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "דף להרחבת השיעור – נחמיה א'",
+  "newTitle": "דף להרחבת השיעור - פרק א"
+ },
+ {
+  "oldId": 1882,
+  "newId": 2402,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "בוחן – נחמיה א'",
+  "newTitle": "בוחן - פרק א"
+ },
+ {
+  "oldId": 1872,
+  "newId": 2888,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "סיכום להכתבה – עזרא ט'",
+  "newTitle": "סיכום להכתבה - פרק ט"
+ },
+ {
+  "oldId": 1871,
+  "newId": 2826,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "דף שכפול לתלמידה – עזרא ט'",
+  "newTitle": "דף לתלמידה - פרק ט"
+ },
+ {
+  "oldId": 1884,
+  "newId": 2848,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "דף שכפול למורה – נחמיה ב'",
+  "newTitle": "דף למורה - פרק ב"
+ },
+ {
+  "oldId": 1891,
+  "newId": 2856,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "דף שכפול למורה – נחמיה ד'",
+  "newTitle": "דף למורה - פרק ד"
+ },
+ {
+  "oldId": 1889,
+  "newId": 2286,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "בוחן – נחמיה ב'",
+  "newTitle": "בוחן - פרק ב"
+ },
+ {
+  "oldId": 1876,
+  "newId": 2269,
+  "path": "ktuvim/chalufot/ezra-nechemia/ezra/perek-9",
+  "oldTitle": "בוחן עם תשובות – עזרא ט'",
+  "newTitle": "בוחן עם תשובות - פרק ט"
+ },
+ {
+  "oldId": 1883,
+  "newId": 2403,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-1",
+  "oldTitle": "בוחן עם תשובות – נחמיה א'",
+  "newTitle": "בוחן עם תשובות - פרק א"
+ },
+ {
+  "oldId": 1885,
+  "newId": 2845,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה ב'",
+  "newTitle": "דף לתלמידה - פרק ב"
+ },
+ {
+  "oldId": 1898,
+  "newId": 2863,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "דף שכפול למורה – נחמיה ה'",
+  "newTitle": "דף למורה - פרק ה"
+ },
+ {
+  "oldId": 1886,
+  "newId": 2881,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-2",
+  "oldTitle": "סיכום להכתבה – נחמיה ב'",
+  "newTitle": "סיכום להכתבה - פרק ב"
+ },
+ {
+  "oldId": 1893,
+  "newId": 2879,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "סיכום להכתבה – נחמיה ד'",
+  "newTitle": "סיכום להכתבה - פרק ד"
+ },
+ {
+  "oldId": 1900,
+  "newId": 2878,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "סיכום להכתבה – נחמיה ה'",
+  "newTitle": "סיכום להכתבה - פרק ה"
+ },
+ {
+  "oldId": 1894,
+  "newId": 2857,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "דף העשרה – נחמיה ד'",
+  "newTitle": "דף העשרה - פרק ד"
+ },
+ {
+  "oldId": 1901,
+  "newId": 2859,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "דף העשרה – נחמיה ה'",
+  "newTitle": "דף העשרה - פרק ה"
+ },
+ {
+  "oldId": 1902,
+  "newId": 2858,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "דף להרחבת השיעור – נחמיה ה'",
+  "newTitle": "דף להרחבת השיעור - פרק ה"
+ },
+ {
+  "oldId": 1896,
+  "newId": 2283,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-4",
+  "oldTitle": "בוחן – נחמיה ד'",
+  "newTitle": "בוחן - פרק ד"
+ },
+ {
+  "oldId": 1903,
+  "newId": 2281,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "בוחן – נחמיה ה'",
+  "newTitle": "בוחן - פרק ה"
+ },
+ {
+  "oldId": 1904,
+  "newId": 2282,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-5",
+  "oldTitle": "בוחן עם תשובות – נחמיה ה'",
+  "newTitle": "בוחן עם תשובות - פרק ה"
+ },
+ {
+  "oldId": 1912,
+  "newId": 2853,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "דף שכפול למורה – נחמיה ח'",
+  "newTitle": "דף למורה - פרק ח"
+ },
+ {
+  "oldId": 1906,
+  "newId": 2847,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה ו'",
+  "newTitle": "דף לתלמידה - פרק ו"
+ },
+ {
+  "oldId": 1913,
+  "newId": 2852,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה ח'",
+  "newTitle": "דף לתלמידה - פרק ח"
+ },
+ {
+  "oldId": 1907,
+  "newId": 2882,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "סיכום להכתבה – נחמיה ו'",
+  "newTitle": "סיכום להכתבה - פרק ו"
+ },
+ {
+  "oldId": 1908,
+  "newId": 2850,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "דף העשרה – נחמיה ו'",
+  "newTitle": "דף העשרה - פרק ו"
+ },
+ {
+  "oldId": 1915,
+  "newId": 2854,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "דף העשרה – נחמיה ח'",
+  "newTitle": "דף העשרה - פרק ח"
+ },
+ {
+  "oldId": 1905,
+  "newId": 2849,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "דף שכפול למורה – נחמיה ו'",
+  "newTitle": "דף למורה - פרק ו"
+ },
+ {
+  "oldId": 1909,
+  "newId": 2851,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "דף להרחבת השיעור – נחמיה ו'",
+  "newTitle": "דף להרחבת השיעור - פרק ו"
+ },
+ {
+  "oldId": 1916,
+  "newId": 2891,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "דף להרחבת השיעור – נחמיה ח'",
+  "newTitle": "דף להרחבת השיעור - פרק ח"
+ },
+ {
+  "oldId": 1910,
+  "newId": 2345,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-6",
+  "oldTitle": "בוחן – נחמיה ו'",
+  "newTitle": "בוחן - פרק ו"
+ },
+ {
+  "oldId": 1917,
+  "newId": 2279,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "בוחן – נחמיה ח'",
+  "newTitle": "בוחן - פרק ח"
+ },
+ {
+  "oldId": 1920,
+  "newId": 2866,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "דף שכפול לתלמידה – נחמיה ט'",
+  "newTitle": "דף לתלמידה - פרק ט"
+ },
+ {
+  "oldId": 1918,
+  "newId": 2280,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-8",
+  "oldTitle": "בוחן עם תשובות – נחמיה ח'",
+  "newTitle": "בוחן עם תשובות - פרק ח"
+ },
+ {
+  "oldId": 1921,
+  "newId": 2873,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "סיכום להכתבה – נחמיה ט'",
+  "newTitle": "סיכום להכתבה - פרק ט"
+ },
+ {
+  "oldId": 1922,
+  "newId": 2887,
+  "path": "ktuvim/chalufot/ezra-nechemia/nechemia/perek-9",
+  "oldTitle": "דף העשרה – נחמיה ט'",
+  "newTitle": "דף העשרה - פרק ט"
+ },
+ {
+  "oldId": 1832,
+  "newId": 2907,
+  "path": "ktuvim/chalufot/kohelet/perek-7",
+  "oldTitle": "דף שכפול למורה – קהלת פרק ז'",
+  "newTitle": "דף למורה - פרק ז"
+ },
+ {
+  "oldId": 1838,
+  "newId": 2316,
+  "path": "ktuvim/chalufot/kohelet/perek-7",
+  "oldTitle": "בוחן עם תשובות – קהלת פרק ז'",
+  "newTitle": "בוחן עם תשובות - פרק ז"
+ }
+]

@@ -77,6 +77,7 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
     const contents = page.node.Contents();
     const refs: PDFRef[] = contents instanceof PDFArray ? (contents.asArray() as PDFRef[]) : contents ? [page.node.get(PDFName.of("Contents")) as PDFRef] : [];
     const pageH = page.getHeight();
+    const pageW = page.getWidth();
     const usedNames = new Set<string>();
     const doneKinds = new Set<string>(); // לוגו שכבר צויר בעמוד הזה (לכפילויות)
     const newRefs: PDFRef[] = [];
@@ -105,7 +106,12 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
             e = mul([+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]], e);
           }
           const widthPt = Math.hypot(e[0], e[1]);
-          if (widthPt < 30 || widthPt > 200 || Math.abs(e[1]) > 0.01 || Math.abs(e[2]) > 0.01 || Math.max(e[5], e[5] + e[3]) < pageH * 0.9) return all; // הלוגו צמוד לשפה העליונה (≥90% מהגובה); אייקון נורה בשליש העליון לא נספר
+          if (Math.abs(e[1]) > 0.01 || Math.abs(e[2]) > 0.01) return all;
+          // לוגו כותרת: רוחב 30–200 נק' וצמוד לשפה העליונה (≥90% מהגובה); אייקון נורה בשליש העליון לא נספר.
+          // לוגו גדול במרכז שקף הסיום של מצגת (הלבן, רוחב 200–80% מהעמוד): מוחלף גם הוא, בלי תנאי מיקום.
+          const closingLogo = c.kind.dedupe && widthPt > 200 && widthPt <= pageW * 0.8;
+          const headerLogo = widthPt >= 30 && widthPt <= 200 && Math.max(e[5], e[5] + e[3]) >= pageH * 0.9;
+          if (!closingLogo && !headerLogo) return all;
           changed = true;
           usedNames.add(c.name);
           if (c.kind.dedupe && doneKinds.has(c.kind.name)) return ""; // עותק נוסף של אותו לוגו – מוסרים
