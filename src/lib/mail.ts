@@ -57,8 +57,8 @@ export function adminEmail() {
 /** גרסת הטקסט הרגיל: סימן כיוון ימין-לשמאל (RLM) בתחילת כל שורה, כדי שגם היא תוצג מימין לשמאל */
 const rtlPlain = (t: string) => t.split("\n").map((l) => (l.trim() ? "\u200F" + l : l)).join("\n");
 
-/** שגיאת מכסה יומית של גוגל (≈100 נמענים ליום לחשבון) – רק אז עוברים לסקריפט הגיבוי */
-const isQuotaError = (e?: string) => !!e && /too many times|quota|limit exceeded|service invoked|daily/i.test(e);
+/** שגיאת מכסה יומית של גוגל (≈100 נמענים ליום לחשבון) – רק אז עוברים לסקריפט הגיבוי. הנוסח תלוי בשפת החשבון: אנגלית ("Service invoked too many times…") או עברית ("השירות הופעל יותר מדי פעמים…") */
+const isQuotaError = (e?: string) => !!e && /too many times|quota|limit exceeded|service invoked|daily|יותר מדי פעמים|הופעל יותר|מכסה|מגבלה/i.test(e);
 /** אחרי שגיאת מכסה בסקריפט הראשי מדלגים עליו זמן מה (בתוך אותה instance), כדי לא לשלם סיבוב מיותר בכל מייל */
 let primaryBlockedUntil = 0;
 
