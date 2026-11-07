@@ -81,7 +81,7 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   // מצגת: החתימה מתחת לתמונות
   const behind = { behindContent: classifyMaterial(m) === "presentation" };
   const safe = safeEntryName(m.fileName);
-  const original = { name: `${stem(safe)} ${tag}${ext(safe)}`, bytes: raw, label: safe };
+  const original = { name: `${stem(safe)} ${tag}${ext(safe)}`, bytes: raw, label: stem(safe) };
   // מנהלת בלבד מקבלת את המקור כשההמרה/ההטבעה נכשלו
   const fallback = (stage: string, e: unknown) => {
     console.error(`folder zip: ${stage} failed`, m.id, e);
@@ -91,21 +91,21 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   if (isOffice && isDriveConfigured()) {
     try {
       const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(src.fileUrl), defer: after });
-      return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo, behind), label: `${stem(safe)}.pdf` };
+      return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo, behind), label: stem(safe) };
     } catch (e) {
       return fallback("office->pdf", e);
     }
   }
   if (isPdf) {
     try {
-      return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(raw, stampInfo, behind), label: `${stem(safe)}.pdf` };
+      return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(raw, stampInfo, behind), label: stem(safe) };
     } catch (e) {
       return fallback("pdf stamp", e);
     }
   }
   if (isImage) {
     try {
-      return { name: original.name, bytes: await stampImage(raw, { personalCode: tag }), label: safe };
+      return { name: original.name, bytes: await stampImage(raw, { personalCode: tag }), label: stem(safe) };
     } catch (e) {
       return fallback("image stamp", e);
     }
