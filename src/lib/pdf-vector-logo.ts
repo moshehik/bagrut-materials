@@ -1,23 +1,53 @@
 import "server-only";
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, decodePDFRawStream } from "pdf-lib";
-import { PDF_LOGO_ASPECT, PDF_LOGO_OPS } from "./pdf-logo.generated";
+import { PDF_LOGO_ASPECT, PDF_LOGO_OPS, PDF_LOGO_WHITE_ASPECT, PDF_LOGO_WHITE_OPS } from "./pdf-logo.generated";
 
 /**
- * מחליף את תמונת לוגו הכותרת ב-PDF שהומר מ-Word בציור וקטורי שלו (נתיבי PDF בצבעים שטוחים).
+ * מחליף את תמונת לוגו הכותרת ב-PDF בציור וקטורי שלו (נתיבי PDF בצבעים שטוחים).
  *
  * למה: נטפרי מחליף כל תמונה בתוך PDF ב"התמונה לא נבדקה לפי הגדרותיך" (נראה כריבוע מטושטש במקום הלוגו),
- * אבל נתיבים וקטוריים ויזואליים עוברים בלי שינוי (נבדק ב-/netfree-test/pdf-1-plain.pdf, 2026-11-08).
- * הלוגו מצויר פעם אחת כ-Form XObject (נוצר ע"י scripts/gen-pdf-logo.cjs) ומוזכר מכל עמוד באותה מטריצת מיקום
- * (`q a 0 0 d e f cm /ImX Do Q` → `/LuzLogoVec Do`), כך שהמיקום והגודל נשארים כמו בתמונה.
+ * אבל נתיבים וקטוריים עוברים בלי שינוי (נבדק ב-/netfree-test/, 2026-11-08). ר' docs/netfree.md.
  *
- * מזהה את הלוגו לפי יחס 16:9 של התמונה + גודל מוצג קטן (30–200 נק' רוחב) בחלק העליון של העמוד – כדי לא לגעת
- * באיורים בתוכן הדף. מחזיר כמה מקומות הוחלפו.
+ * שני לוגואים (נוצרים ב-scripts/gen-pdf-logo.cjs), כל אחד כ-Form XObject שנוצר פעם אחת ומוזכר מכל עמוד באותה מטריצת
+ * מיקום של התמונה:
+ *  - הלוגו הצבעוני בכותרת דפי Word שהומרו (יחס 16:9): `… cm /ImX Do` → `… cm /LuzLogoVec Do`;
+ *  - הלוגו הלבן בכותרת מצגות (יחס 1491:871): המצגת מציירת אותו 7 פעמים בהיסט קטן (אפקט קו מתאר) – משאירים ציור אחד.
+ * זיהוי: יחס התמונה + רוחב מוצג 30–200 נק' + שליש עליון של העמוד – כדי לא לגעת באיורים בתוכן.
+ * מטריצות cm עוקבות (שרשרת) מחושבות יחד. מחזיר כמה עמודים השתנו.
  */
-const FORM_NAME = "LuzLogoVec";
+type Kind = { name: string; aspect: number; ops: string; dedupe: boolean };
+const KINDS: Kind[] = [
+  { name: "LuzLogoVec", aspect: PDF_LOGO_ASPECT, ops: PDF_LOGO_OPS, dedupe: false },
+  { name: "LuzLogoWhiteVec", aspect: PDF_LOGO_WHITE_ASPECT, ops: PDF_LOGO_WHITE_OPS, dedupe: true },
+];
+
+type M = [number, number, number, number, number, number];
+/** CTM' = M × CTM (סדר ההחלה של cm ב-PDF) */
+const mul = (m: M, e: M): M => [
+  m[0] * e[0] + m[1] * e[2],
+  m[0] * e[1] + m[1] * e[3],
+  m[2] * e[0] + m[3] * e[2],
+  m[2] * e[1] + m[3] * e[3],
+  m[4] * e[0] + m[5] * e[2] + e[4],
+  m[4] * e[1] + m[5] * e[3] + e[5],
+];
+
+const NUM = String.raw`-?[\d.]+`;
+const CM = String.raw`(?:${NUM}\s+){6}cm\s+`;
 
 export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
   const ctx = pdf.context;
-  let formRef: PDFRef | null = null;
+  const formRefs = new Map<string, PDFRef>();
+  const formFor = (k: Kind) => {
+    let r = formRefs.get(k.name);
+    if (!r) {
+      r = ctx.register(
+        ctx.flateStream(Buffer.from(k.ops, "latin1"), { Type: "XObject", Subtype: "Form", BBox: [0, 0, 1, 1], Resources: ctx.obj({}) }),
+      );
+      formRefs.set(k.name, r);
+    }
+    return r;
+  };
   let replaced = 0;
   const candidateRefs = new Set<PDFRef>();
   const stillUsed = new Set<PDFRef>();
@@ -28,8 +58,8 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
     const resources = page.node.Resources();
     const xo = resources?.lookupMaybe(PDFName.of("XObject"), PDFDict);
     if (!xo) continue;
-    // תמונות 16:9 קטנות (מועמדות ללוגו)
-    const cands: { name: string; ref: PDFRef }[] = [];
+    // תמונות שיחס הצלעות שלהן כמו של אחד הלוגואים (מועמדות)
+    const cands: { name: string; ref: PDFRef; kind: Kind }[] = [];
     for (const key of xo.keys()) {
       const raw = xo.get(key);
       if (!(raw instanceof PDFRef)) continue;
@@ -38,8 +68,9 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
       if (String(obj.dict.get(PDFName.of("Subtype"))) !== "/Image") continue;
       const w = Number(String(obj.dict.get(PDFName.of("Width"))));
       const h = Number(String(obj.dict.get(PDFName.of("Height"))));
-      if (!w || !h || Math.abs(w / h - PDF_LOGO_ASPECT) > 0.03 || w > 1600) continue;
-      cands.push({ name: key.decodeText(), ref: raw });
+      if (!w || !h || w > 2000) continue;
+      const kind = KINDS.find((k) => Math.abs(w / h - k.aspect) <= 0.03);
+      if (kind) cands.push({ name: key.decodeText(), ref: raw, kind });
     }
     if (cands.length === 0) continue;
 
@@ -47,12 +78,16 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
     const refs: PDFRef[] = contents instanceof PDFArray ? (contents.asArray() as PDFRef[]) : contents ? [page.node.get(PDFName.of("Contents")) as PDFRef] : [];
     const pageH = page.getHeight();
     const usedNames = new Set<string>();
+    const doneKinds = new Set<string>(); // לוגו שכבר צויר בעמוד הזה (לכפילויות)
     const newRefs: PDFRef[] = [];
     let pageChanged = false;
 
     for (const sref of refs) {
       const s = ctx.lookup(sref);
-      if (!(s instanceof PDFRawStream)) { newRefs.push(sref); continue; }
+      if (!(s instanceof PDFRawStream)) {
+        newRefs.push(sref);
+        continue;
+      }
       let text: string;
       try {
         text = Buffer.from(decodePDFRawStream(s).decode()).toString("latin1");
@@ -62,20 +97,26 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
       }
       let changed = false;
       for (const c of cands) {
-        const num = String.raw`(-?[\d.]+)`;
         const nameRe = c.name.replace(/[^\w]/g, (ch) => "\\" + ch);
-        const re = new RegExp(String.raw`${num}\s+${num}\s+${num}\s+${num}\s+${num}\s+${num}\s+cm\s+/${nameRe}\s+Do`, "g");
-        text = text.replace(re, (all, a, b, cc, d, e, f) => {
-          const [A, B, C, D, F] = [a, b, cc, d, f].map(Number);
-          const widthPt = Math.hypot(A, B);
-          // לוגו הכותרת: רוחב 30–200 נק', ללא הטיה, בשליש העליון של העמוד
-          if (widthPt < 30 || widthPt > 200 || Math.abs(B) > 0.01 || Math.abs(C) > 0.01 || !(F > pageH * 0.66 || F + D > pageH * 0.66)) return all;
+        const re = new RegExp(String.raw`((?:${CM})+)/${nameRe}\s+Do`, "g");
+        text = text.replace(re, (all, chain: string) => {
+          let e: M = [1, 0, 0, 1, 0, 0];
+          for (const m of chain.matchAll(new RegExp(String.raw`(${NUM})\s+(${NUM})\s+(${NUM})\s+(${NUM})\s+(${NUM})\s+(${NUM})\s+cm`, "g"))) {
+            e = mul([+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]], e);
+          }
+          const widthPt = Math.hypot(e[0], e[1]);
+          if (widthPt < 30 || widthPt > 200 || Math.abs(e[1]) > 0.01 || Math.abs(e[2]) > 0.01 || !(e[5] > pageH * 0.66 || e[5] + e[3] > pageH * 0.66)) return all;
           changed = true;
           usedNames.add(c.name);
-          return `${a} ${b} ${cc} ${d} ${e} ${f} cm /${FORM_NAME} Do`;
+          if (c.kind.dedupe && doneKinds.has(c.kind.name)) return ""; // עותק נוסף של אותו לוגו – מוסרים
+          doneKinds.add(c.kind.name);
+          return `${chain}/${c.kind.name} Do`;
         });
       }
-      if (!changed) { newRefs.push(sref); continue; }
+      if (!changed) {
+        newRefs.push(sref);
+        continue;
+      }
       newRefs.push(ctx.register(ctx.flateStream(Buffer.from(text, "latin1"))));
       pageChanged = true;
     }
@@ -84,20 +125,10 @@ export function replaceHeaderLogoWithVector(pdf: PDFDocument): number {
       continue;
     }
 
-    if (!formRef) {
-      formRef = ctx.register(
-        ctx.flateStream(Buffer.from(PDF_LOGO_OPS, "latin1"), {
-          Type: "XObject",
-          Subtype: "Form",
-          BBox: [0, 0, 1, 1],
-          Resources: ctx.obj({}),
-        }),
-      );
-    }
     page.node.set(PDFName.of("Contents"), ctx.obj(newRefs));
-    xo.set(PDFName.of(FORM_NAME), formRef);
     for (const c of cands) {
       if (usedNames.has(c.name)) {
+        xo.set(PDFName.of(c.kind.name), formFor(c.kind));
         pendingDeletes.push({ xo, name: c.name });
         candidateRefs.add(c.ref);
       } else {

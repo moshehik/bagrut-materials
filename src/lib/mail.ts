@@ -41,13 +41,12 @@ const joinAddr = (a?: string | string[]) => (Array.isArray(a) ? a.filter(Boolean
  */
 const redactTokens = (s: string) => s.replace(/([?&]token=)[^&\s"'<>]+/g, "$1***");
 
+/** הכתובת הפעילה של האתר. הדומיין loozhainyan.app עוד לא פעיל (2026-11-08) – רק בוורסל; כשיהיה פעיל מחליפים כאן (או מגדירים NEXT_PUBLIC_SITE_URL).
+ * לא משתמשים ב-VERCEL_PROJECT_PRODUCTION_URL: מאז שהדומיין נוסף לפרויקט הוא הפך לכתובת הראשית והמיילים הפנו אליו. */
+const ACTIVE_SITE_URL = "https://bagrut-materials.vercel.app";
+
 export function siteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000")
-  );
+  return process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL ? ACTIVE_SITE_URL : "http://localhost:3000");
 }
 
 export function adminEmail() {
@@ -145,7 +144,7 @@ const esc = (s: string) =>
 
 /**
  * עיצוב המייל – בסגנון האתר ("פנקס המורה"): נייר קרמי, כותרת בדיו כחול-נייבי, קו שוליים אדום,
- * קו מכחול אדום מתחת לכותרת (public/images/mail-underline.png), ובסוף – הלוגו של האתר (public/images/mail-logo.png, גרסה קלה של הלוגו).
+ * קו מכחול אדום מתחת לכותרת (קו HTML (border-bottom)), ובסוף – שם האתר כטקסט (בלי תמונות: נטפרי מחליף תמונות במייל שנפתח בו, וג'ימייל חוסם תמונות חיצוניות).
  * הכול inline + טבלאות, כדי שיוצג נכון ב-Gmail/Outlook.
  */
 const MAIL = {
@@ -175,7 +174,7 @@ export function layoutHtml(title: string, bodyHtml: string, cta?: { label: strin
   </td></tr>
   <tr><td dir="rtl" align="right" style="direction:rtl;text-align:right;background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};padding:30px 30px 8px;line-height:1.75;font-size:17px;color:${MAIL.ink}">
     <h2 style="margin:0 0 16px;font-family:${hand};color:${MAIL.navy};font-size:26px;line-height:1.35;font-weight:400">
-      <span style="display:inline-block">${esc(title.replace(/[!?.]+$/, ""))}<span style="color:${MAIL.red}">!</span><img src="${site}/images/mail-underline.png" width="100%" height="12" alt="" style="display:block;width:100%;height:12px;margin-top:3px;border:0"></span>
+      <span style="display:inline-block">${esc(title.replace(/[!?.]+$/, ""))}<span style="color:${MAIL.red}">!</span><span style="display:block;height:0;line-height:0;font-size:0;margin-top:5px;border-bottom:3px solid ${MAIL.red};border-radius:2px">&nbsp;</span></span>
     </h2>
     ${bodyHtml}
     ${
@@ -186,7 +185,7 @@ export function layoutHtml(title: string, bodyHtml: string, cta?: { label: strin
   </td></tr>
   <tr><td style="background:#ffffff;border:1px solid ${MAIL.line};border-top:0;border-right:5px solid ${MAIL.red};border-radius:0 0 16px 16px;padding:8px 30px 26px" align="center">
     <div style="border-top:1px dashed ${MAIL.line};margin:0 0 18px"></div>
-    <a href="${site}" style="text-decoration:none"><img src="${site}/images/mail-logo.png" width="220" alt="${esc(SITE_NAME)} – בית לחומרי הבגרות" style="display:block;margin:0 auto;width:220px;max-width:100%;height:auto;border:0"></a>
+    <a href="${site}" style="text-decoration:none;display:block;text-align:center"><span style="display:block;font-family:${hand};font-size:30px;line-height:1.2;color:${MAIL.navy}">${esc(SITE_NAME)}</span><span style="display:block;font-size:13px;color:${MAIL.muted};margin-top:2px">בית לחומרי הבגרות</span></a>
     <div style="font-size:13px;color:${MAIL.navy};font-weight:700;margin-top:10px">${esc(SITE_MOTTO)}</div>
   </td></tr>
   <tr><td align="center" style="padding:16px 10px 0;color:${MAIL.muted};font-size:11.5px;line-height:1.6">

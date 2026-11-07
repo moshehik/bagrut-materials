@@ -10,6 +10,8 @@ const potrace = require("potrace");
 
 const root = path.join(__dirname, "..");
 const NAMES = ["teacher", "student"];
+// איורי הכותרת הלבנים של כרטיסיות (art4/*.webp, צורה לבנה על שקוף) – נתיב לפי ערוץ השקיפות; המפתח "card-<שם>"
+const CARD_ART = ["presentation"];
 const trace = (buf, opts) => new Promise((res, rej) => potrace.trace(buf, opts, (e, s) => (e ? rej(e) : res(s))));
 
 (async () => {
@@ -27,6 +29,16 @@ const trace = (buf, opts) => new Promise((res, rej) => potrace.trace(buf, opts, 
     const d = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(" ");
     out[n] = { w: vb[2], h: vb[3], d };
     console.log(n, vb.join("x"), "path bytes", d.length);
+  }
+  for (const n of CARD_ART) {
+    const alpha = await sharp(path.join(root, "public/images/mat-cards/art4", n + ".webp")).resize({ width: 320 }).ensureAlpha().extractChannel(3).toBuffer();
+    // שקוף = לבן, אטום = שחור – potrace מצייר את השחור
+    const raw = await sharp(alpha).negate().png().toBuffer();
+    const svg = await trace(raw, { threshold: 160, turdSize: 8, optTolerance: 1.0, blackOnWhite: true });
+    const vb = svg.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number);
+    const d = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join(" ");
+    out["card-" + n] = { w: vb[2], h: vb[3], d };
+    console.log("card-" + n, vb.join("x"), "path bytes", d.length);
   }
   fs.writeFileSync(
     path.join(root, "src/lib/line-icons.generated.ts"),
