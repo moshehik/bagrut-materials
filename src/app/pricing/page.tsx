@@ -169,7 +169,7 @@ export default async function PricingPage() {
             </div>
             <p>לחודש × 12 חודשים</p>
             <p className="gate-soft text-base">
-              סה״כ <GateShekel agorot={prices.plans.yearly} /> לשנה, חיוב חד-פעמי
+              סה״כ <GateShekel agorot={prices.plans.yearly} /> לשנה
             </p>
             <hr className="gate-divider" />
             <ul className="mb-4 space-y-1 text-start">
