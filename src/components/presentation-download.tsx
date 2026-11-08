@@ -24,22 +24,11 @@ function logEdgeNotice(action: "shown" | "dismissed" | "regular" | "hq") {
   } catch {}
 }
 
-/** סמל דמוי Edge (גל כחול-ירוק) – ציור מוטמע, בלי תמונה (נטפרי/אתרוג חוסמים תמונות) */
-function EdgeMark({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-      <circle cx="24" cy="24" r="22" fill="#0e7bd8" />
-      <path d="M8 27c0-9 7-15 16-15 8 0 14 5 14 12 0 5-3 8-8 8-4 0-6-2-6-5 0-3 2-4 4-4h8" fill="none" stroke="#3fd0a0" strokeWidth="4.5" strokeLinecap="round" />
-      <path d="M10 31c2 7 9 11 17 10" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" opacity=".9" />
-    </svg>
-  );
-}
-
 /** הורדת שני חלקי "חדות מלאה" בלחיצה אחת: חלק 1 מיד, חלק 2 אחרי רגע (כמו "הורדה בקבצים נפרדים" של תיקייה) */
 export function downloadBothParts(href: string) {
   const sep = href.includes("?") ? "&" : "?";
-  startFileDownload(`${href}${sep}hq=1&part=1&of=2`);
-  window.setTimeout(() => startFileDownload(`${href}${sep}hq=1&part=2&of=2`), 1800);
+  startFileDownload(`${href}${sep}hq=1&part=1&of=2`, { asDownload: true });
+  window.setTimeout(() => startFileDownload(`${href}${sep}hq=1&part=2&of=2`, { asDownload: true }), 2500);
 }
 
 /**
@@ -52,9 +41,12 @@ export function PresentationDownloadGate({
   className,
   tip,
   label,
+  edgeMark,
   children,
 }: {
   href: string;
+  /** סמל Edge (ColourSvg מהשרת – SVG מוטמע, כי נטפרי חוסם תמונות) */
+  edgeMark?: React.ReactNode;
   className?: string;
   tip?: string;
   label?: string;
@@ -99,14 +91,21 @@ export function PresentationDownloadGate({
         className={className}
         data-tip={tip}
         aria-label={label}
+        data-dl-gate=""
         onClick={(e) => {
-          if (!isNetfreeCookie()) return; // לא בנטפרי – הורדה רגילה
+          // ההורדה מתחילה תמיד מכאן (startFileDownload), כדי שהודעת נטפרי תופיע לפני ובלי אגוז טעינה תקוע
+          e.preventDefault();
+          if (!isNetfreeCookie()) {
+            startFileDownload(href); // לא בנטפרי – הורדה רגילה
+            return;
+          }
           try {
-            if (localStorage.getItem(LOCAL_KEY) === "1") return;
+            if (localStorage.getItem(LOCAL_KEY) === "1") {
+              startFileDownload(href);
+              return;
+            }
           } catch {}
           if (checking.current) return;
-          e.preventDefault();
-          e.stopPropagation(); // לא להפעיל את אגוז הטעינה פעמיים (startFileDownload מפעיל אותו בעצמו)
           checking.current = true;
           // ההעדפה פר-משתמשת בשרת: אם כבר סימנה "אל תציגי לי שוב" (במכשיר אחר) – ממשיכים ישר להורדה
           fetch("/api/edge-notice", { cache: "no-store" })
@@ -133,12 +132,13 @@ export function PresentationDownloadGate({
         {open && (
           <div className="nf-block">
             <div className="nf-card" role="alert">
-              <EdgeMark className="mx-auto mb-2 h-12 w-12" />
-              <h4 className="nf-title">אי אפשר לצפות במצגת הזו ב-Edge</h4>
-              <p className="nf-text">בצפייה ב-Edge הרקעים של המצגת עלולים להיות לבנים על המסך (בהדפסה הם מופיעים). לצפייה תקינה אפשר לפתוח בכרום, או להוריד בחדות מלאה בשני קבצים.</p>
-              <label className="nf-text mt-2 flex items-center justify-center gap-2">
+              {edgeMark && <div className="mx-auto mb-2 flex justify-center">{edgeMark}</div>}
+              <h4 className="nf-title">ב-Edge לא ניתן לצפות במצגת</h4>
+              <p className="nf-text">הרקע יוצג לבן. אפשר לצפות בכרום, או להוריד בחדות מלאה.</p>
+              <label className="nf-check">
                 <input type="checkbox" checked={skip} onChange={(e) => setSkip(e.target.checked)} />
-                אל תציגי לי שוב
+                <span className="nf-check-box" aria-hidden="true" />
+                <span>אל תציגי לי שוב</span>
               </label>
               <div className="nf-actions">
                 <button type="button" className="nf-btn nf-btn-main" onClick={() => finish(true)}>

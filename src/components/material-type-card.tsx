@@ -244,7 +244,7 @@ export function MaterialTypeCard({
             <span>להורדה</span>
           </NetfreeDownloadGate>
         ) : target && type === "presentation" && entitlement.ok ? (
-          <PresentationDownloadGate href={target} className="mtc-download" tip="להורדת הקובץ למחשב" label={`הורדת ${s.label}`}>
+          <PresentationDownloadGate href={target} className="mtc-download" tip="להורדת הקובץ למחשב" label={`הורדת ${s.label}`} edgeMark={<ColourSvg src="/images/edge-logo.png" width={56} height={56} style={{ width: 56, height: 56 }} />}>
             <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
             <span>להורדה</span>
           </PresentationDownloadGate>

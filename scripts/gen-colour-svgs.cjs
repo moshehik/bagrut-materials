@@ -27,6 +27,8 @@ const GROUPS = [
   { dir: "images/plan-nuts", k: 10, w: 170, budget: 16000, median: 3, modeR: 1 },
   { dir: "images/houses", k: 14, w: 320, budget: 25000, median: 5, modeR: 1 },
   // גרסה קטנה של הבתים (מפתח "…png@s") לתצוגה ברוחב ~64px ברשימות בחירה — פי ~4 פחות בתים
+  // סמל Microsoft Edge בהודעת ההורדה של מצגת (נטפרי חוסם תמונות – מוטמע כ-SVG)
+  { dir: "images", only: ["edge-logo.png"], k: 10, w: 200, budget: 14000, median: 1, modeR: 1 },
   { dir: "images/houses", suffix: "@s", k: 9, w: 110, budget: 5500, median: 3, modeR: 1 },
 ];
 

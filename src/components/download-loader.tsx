@@ -16,9 +16,11 @@ const DONE_MS = 3200;
  * חשוב: לא להשתמש ב-redirect() של server action לנתיב קובץ – הראוטר מנווט "רך", מריץ את
  * נתיב ההורדה כמה פעמים, ומשאיר את הטופס במצב "טוען" לנצח (הדף לא נפרק אחרי הורדת attachment).
  */
-export function startFileDownload(href: string) {
+export function startFileDownload(href: string, opts: { asDownload?: boolean } = {}) {
   const a = document.createElement("a");
   a.href = href;
+  // כמה הורדות ברצף (חדות מלאה = 2 קבצים): בלי download הדפדפן מנווט, וניווט שני מבטל את הראשון שעוד לא התחיל; עם download כל הורדה עצמאית
+  if (opts.asDownload) a.download = "";
   a.style.display = "none";
   document.body.appendChild(a);
   a.click();
@@ -74,6 +76,8 @@ export function DownloadLoader() {
       const a = (e.target as Element | null)?.closest?.("a[href]");
       if (!(a instanceof HTMLAnchorElement)) return;
       if (a.target && a.target !== "_self") return;
+      // קישורים שמתחילים הורדה בעצמם דרך startFileDownload (ר' presentation-download.tsx) – כדי שלא יופעל אגוז טעינה שנתקע בלי הורדה
+      if (a.hasAttribute("data-dl-gate")) return;
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin || !DOWNLOAD_LINK.test(url.pathname)) return;
 

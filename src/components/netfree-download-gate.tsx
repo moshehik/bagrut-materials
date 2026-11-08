@@ -99,6 +99,7 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
         <a
           href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=1&of=2`}
           className="mtc-row"
+          data-dl-gate=""
           data-tip={"הורדה בחדות מלאה: מורידה שני קבצים (חלק 1 וחלק 2),\nכל אחד עד כ-17MB, ומוצגים גם ב-Edge"}
           onClick={(e) => {
             e.preventDefault();

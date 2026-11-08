@@ -5012,6 +5012,7 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
         <a
           href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=1&of=2`}
           className="mtc-row"
+          data-dl-gate=""
           data-tip={"הורדה בחדות מלאה: מורידה שני קבצים (חלק 1 וחלק 2),\nכל אחד עד כ-17MB, ומוצגים גם ב-Edge"}
           onClick={(e) => {
             e.preventDefault();
@@ -6662,6 +6663,8 @@ const GROUPS = [
   { dir: "images/plan-nuts", k: 10, w: 170, budget: 16000, median: 3, modeR: 1 },
   { dir: "images/houses", k: 14, w: 320, budget: 25000, median: 5, modeR: 1 },
   // גרסה קטנה של הבתים (מפתח "…png@s") לתצוגה ברוחב ~64px ברשימות בחירה — פי ~4 פחות בתים
+  // סמל Microsoft Edge בהודעת ההורדה של מצגת (נטפרי חוסם תמונות – מוטמע כ-SVG)
+  { dir: "images", only: ["edge-logo.png"], k: 10, w: 200, budget: 14000, median: 1, modeR: 1 },
   { dir: "images/houses", suffix: "@s", k: 9, w: 110, budget: 5500, median: 3, modeR: 1 },
 ];
 
@@ -6847,7 +6850,7 @@ async function preview(file, svgData, outFile) {
 // קובץ שנוצר אוטומטית ע״י scripts/gen-colour-svgs.cjs — לא לערוך ידנית.
 export type ColourSvgData = { w: number; h: number; layers: { fill: string; d: string }[] };
 export const COLOUR_SVGS: Record<string, ColourSvgData> = {"/images/nuts/many-01.webp":{"w":140,"h":70,"layers":[{"fill":"#b87f56","d":"M44 1C34 3 34 17 44 22C49 25 52 25 57 20C67 11 57-3 44 1M123 1C108 5 110 18 125 23C131 25 140 16 140 9C140 3 132-1 123 1M68 16C67 16 66 18 66 19C66 22 64 24 61 24C55 24 51 34 54 41C56 46 59 49 66 50C72 52 73 51 76 43C78 38 78 37 83 37C92 36 94 29 89 21C85 15 74 12 68 16M102 24C92 29 96 44 107 46C117 47 128 31 120 28C118 28 116 26 114 25C109 22 107 21 102 24M34 26C33 27 32 27 31 27C25 27 20 36 23 43C29 55 47 49 47 36C47 29 36 21 34 26M10 46C-4 53-2 67 13 70C26 71 32 50 19 45C15 44 13 44 10 46M82 47C76 50 73 57 76 63C81 72 96 72 101 63C106 53 94 42 82 47"},{"fill":"#934d2a","d":"M118 8C116 9 117 11 119 11C119 11 120 10 120 9C120 7 119 6 118 8M125 11C123 13 123 14 124 16C125 17 125 19 125 21C125 25 133 22 136 16C140 9 131 5 125 11M126 13C126 15 126 15 130 15C134 15 135 15 135 14C135 12 128 11 126 13M66 21C66 22 67 23 70 23C73 23 74 22 71 21C69 20 66 20 66 21M84 28C84 33 87 36 89 34C92 31 92 29 89 28C86 27 84 27 84 28M100 29C99 30 98 31 99 31C99 31 101 30 102 29C103 28 104 27 103 27C103 27 101 28 100 29M106 28C107 30 102 34 98 34C97 34 97 35 99 37C101 39 103 40 103 38C103 35 108 32 109 33C111 35 113 33 111 32C111 31 110 30 110 29C110 28 109 27 107 27C105 27 105 27 106 28M118 35C117 36 115 39 113 41C109 45 110 46 114 44C118 42 123 33 120 33C120 33 119 34 118 35M37 36C36 36 35 37 34 36C30 36 29 38 30 44C30 48 31 49 34 49C38 49 39 45 35 43C31 42 31 38 35 38C45 38 46 38 46 36C46 34 37 34 37 36M73 40C73 44 74 45 75 43C76 41 76 37 75 37C75 37 74 38 73 40M103 42C102 43 102 43 103 44C106 46 107 45 107 43C106 40 105 39 103 42M40 43C40 44 40 44 40 45C41 45 43 44 43 43C43 42 41 42 40 43M20 55C20 56 20 57 21 58C22 58 22 59 20 60C18 62 14 68 15 69C17 70 23 66 22 64C22 63 23 61 24 59C25 56 25 56 24 55C22 54 20 54 20 55M96 56C95 57 92 58 90 59C89 59 87 60 86 61C85 61 84 62 83 62C82 62 81 63 81 64C81 65 82 65 83 64C85 64 85 64 85 66C84 68 85 69 89 69C91 69 92 69 91 68C90 65 90 62 93 60C97 59 98 59 98 62C97 64 99 62 101 60C102 57 102 57 100 55C98 54 98 54 96 56M8 64C8 65 11 66 12 66C12 65 12 64 11 64C9 63 8 63 8 64"},{"fill":"#803c1b","d":"M126 13C126 15 126 15 130 15C134 15 135 15 135 14C135 12 128 11 126 13M67 23C67 24 67 25 68 25C70 25 76 32 76 34C76 35 77 36 79 36C83 37 86 35 
-… [נקטע: 1,129,287 תווים בקובץ המלא – נוצר מהסקריפט שלמעלה]
+… [נקטע: 1,133,131 תווים בקובץ המלא – נוצר מהסקריפט שלמעלה]
 ```
 
 ### `src/components/colour-svg.tsx`
@@ -6907,7 +6910,7 @@ type Props = {
  * מוסיפים אותה לכאן. (המפתחות קיימים ב-colour-svgs.generated.ts לכל התמונות.)
  */
 // 2026-11-08: נטפרי עדיין מציג את שני הבתים האלה כ"בבדיקה/נחסם" (בתים אחרים אושרו) – לכן SVG. הבעיה בסידור (גובה 266px מתכונת height) תוקנה: height:auto.
-const SVG_ONLY = new Set(["/images/houses/house-yahadut.png", "/images/houses/house-ezrachut.png"]);
+const SVG_ONLY = new Set(["/images/houses/house-yahadut.png", "/images/houses/house-ezrachut.png", "/images/edge-logo.png"]);
 
 export function ColourSvg({ src, className, style, width, height, shared, small, align }: Props) {
   const key = small && src + "@s" in COLOUR_SVGS ? src + "@s" : src;
@@ -8113,6 +8116,51 @@ const payload = { to, cc: '', subject, body: rtl(text), htmlBody: '', fromName, 
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
+}
+/* תיבת סימון מודרנית, מיושרת לימין (תחילת השורה ב-RTL) */
+.nf-check {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  cursor: pointer;
+  font-size: 1.05rem;
+  text-align: right;
+  user-select: none;
+}
+.nf-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.nf-check-box {
+  position: relative;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 0.45rem;
+  background: #fff;
+  transition: background 0.15s, transform 0.15s;
+}
+.nf-check:hover .nf-check-box {
+  transform: scale(1.06);
+}
+.nf-check input:focus-visible + .nf-check-box {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+.nf-check input:checked + .nf-check-box {
+  background: var(--sun);
+}
+.nf-check input:checked + .nf-check-box::after {
+  content: "";
+  position: absolute;
+  inset: 0.18rem 0.42rem 0.3rem 0.4rem;
+  border: solid #0a0a0a;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
 }
 .nf-btn-main {
   background: var(--sun);
