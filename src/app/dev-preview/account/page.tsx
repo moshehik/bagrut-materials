@@ -3,7 +3,10 @@ import { Check, Heart, ShoppingBag, UserRound, Fingerprint, XCircle, CheckCircle
 import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { EditNameForm, EditPhoneForm, ChangePasswordForm, ChangeEmailForm } from "@/components/profile-forms";
 import { AccountMenu, AccountTitle, Notice, Panel, PlanNut, TypeFilter } from "@/components/account-ui";
-import { SUBJECT_HOUSES, subjectDisplayTitle } from "@/lib/constants";
+import Link from "next/link";
+import { SUBJECT_HOUSES, YEARLY_INCLUDED_SUBJECTS, subjectDisplayTitle } from "@/lib/constants";
+import { inlineHouse } from "@/lib/inline-images";
+import { ColourSvg } from "@/components/colour-svg";
 import { getRootSubjects } from "@/lib/data";
 import { DownloadsCalendar } from "@/components/downloads-calendar";
 import type { CalGroup } from "@/lib/download-groups";
@@ -195,6 +198,53 @@ export default async function Page({
     );
   }
 
+  if (sp.p === "subjects") {
+    const roots = (await getRootSubjects()).map((r) => ({ id: r.id, slug: r.slug, title: subjectDisplayTitle(r.slug, r.title) }));
+    const mine = roots.slice(0, 2); // בהדמיה: שני מקצועות נבחרו, הראשון כבר הורדו ממנו
+    const free = roots.filter((r) => !mine.some((m) => m.id === r.id));
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <AccountTitle title="המקצועות במנוי השנתי" subtitle={`המנוי כולל עד ${YEARLY_INCLUDED_SUBJECTS} מקצועות באותו מחיר. אפשר להוסיף מקצוע בכל שלב, או להחליף מקצוע שעדיין לא הורדת ממנו.`} back backHref="/dev-preview/account?p=purchases" />
+        <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8">
+          <span className="gold-ring" aria-hidden="true" />
+          <h2 className="text-center text-3xl">המקצועות שלי</h2>
+          <p className="mt-1 text-center text-[#ffd45a]">כל עוד לא התבצעה הורדה במקצוע, אפשר להחליף אותו במקצוע אחר.</p>
+          <ul className="mt-6 space-y-4">
+            {mine.map((s, i) => (
+              <li key={s.id} className="gate-card gate-pick !cursor-default flex-wrap">
+                {SUBJECT_HOUSES[s.slug] && <ColourSvg className="gate-pick-house" src={inlineHouse(SUBJECT_HOUSES[s.slug]) as string} width={356} height={266} small />}
+                <span className="text-xl">{s.title}</span>
+                {i === 0 ? (
+                  <span className="ms-auto text-sm text-gray-500">בוצעה הורדה – אי אפשר להחליף</span>
+                ) : (
+                  <div className="ms-auto flex flex-wrap items-center gap-2">
+                    <select defaultValue="" className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base">
+                      <option value="" disabled>להחלפה במקצוע…</option>
+                      {free.map((x) => <option key={x.id}>{x.title}</option>)}
+                    </select>
+                    <button type="button" className="btn btn-gold btn-gate py-1">החלפה</button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8">
+          <span className="gold-ring" aria-hidden="true" />
+          <h2 className="text-center text-3xl">הוספת מקצוע</h2>
+          <p className="mt-1 text-center text-[#ffd45a]">אפשר להוסיף עוד מקצוע אחד, בלי תשלום נוסף. המקצוע שיתווסף יסתיים יחד עם המנוי – בתאריך {formatHebrewDate("2027-01-01T09:00:00Z")}.</p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <select defaultValue="" className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base">
+              <option value="" disabled>בחרי מקצוע…</option>
+              {free.map((x) => <option key={x.id}>{x.title}</option>)}
+            </select>
+            <button type="button" className="btn btn-gold btn-gate py-1">הוספה</button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (sp.p === "purchases") {
     return (
       <div className="acc-glass mx-auto max-w-4xl px-4 py-10 sm:px-6">
@@ -211,7 +261,7 @@ export default async function Page({
                   <div><dt className="gate-soft text-base">הורדות</dt><dd><bdi dir="ltr">{usage}</bdi><span className="acc-meter mt-1 block"><span style={{ width: `${pct}%` }} /></span></dd></div>
                   <div><dt className="gate-soft text-base">בתוקף עד</dt><dd>{end}</dd></div>
                 </dl>
-                <div className="mt-3 flex items-center gap-5 text-lg"><span className="gate-soft ms-auto flex items-center gap-1 text-base"><XCircle className="h-4 w-4" /> בקשת ביטול</span></div>
+                <div className="mt-3 flex items-center gap-5 text-lg">{plan === "yearly" && <Link href="/dev-preview/account?p=subjects" className="acc-link">המקצועות שלי</Link>}<span className="gate-soft ms-auto flex items-center gap-1 text-base"><XCircle className="h-4 w-4" /> בקשת ביטול</span></div>
                 </div>
               </li>
             ))}
