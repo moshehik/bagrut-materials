@@ -23,7 +23,8 @@ function FillLinePreview({ percent }: { percent: number }) {
   );
 }
 
-export function FillLineForm({ initialPercent }: { initialPercent: number }) {
+/** demo: הדגמה לסיור באתר (/tour-demo/personalize) – בלי שמירה אמיתית ובלי התחברות */
+export function FillLineForm({ initialPercent, demo }: { initialPercent: number; demo?: boolean }) {
   const [saved, setSaved] = useState(initialPercent);
   const [choice, setChoice] = useState(initialPercent);
   const [pending, start] = useTransition();
@@ -33,6 +34,7 @@ export function FillLineForm({ initialPercent }: { initialPercent: number }) {
 
   const save = (value: number) => {
     setMsg(null);
+    if (demo) return; // הדגמה: לא שומרים ולא פונים לשרת
     start(async () => {
       const r = await setFillLinePercentAction(value);
       if (r.ok && typeof r.fillLinePercent === "number") {
