@@ -562,6 +562,11 @@ export function PdfViewer({
             {isFs ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
           </button>
         )}
+        {!selectable && presentation && status === "ready" && numPages > 0 && (
+          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" data-tip="צפייה כמצגת" onClick={startSlideshow}>
+            <Presentation className="h-4 w-4" aria-hidden />
+          </button>
+        )}
         {!selectable && presentation && isNf && sharp < 2 && (
           <button
             type="button"
@@ -578,11 +583,6 @@ export function PdfViewer({
           </button>
         )}
         {sharpNote && <span className="pdfv-sharp-note">{sharpNote}</span>}
-        {!selectable && presentation && status === "ready" && numPages > 0 && (
-          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" data-tip="צפייה כמצגת" onClick={startSlideshow}>
-            <Presentation className="h-4 w-4" aria-hidden />
-          </button>
-        )}
       </div>
       {showSlides && (
         <div className="pdfv-slide-ui">
