@@ -4915,6 +4915,7 @@ export function NetfreeNotice({
 
 import { useEffect, useRef, useState } from "react";
 import { NetfreeNotice } from "@/components/netfree-notice";
+import { downloadBothParts } from "@/components/presentation-download";
 
 const isNetfreeCookie = () => {
   try {
@@ -5008,17 +5009,19 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
   return (
     <div className="mtc-lower mtc-lower-hq">
       <div className="mtc-tools">
-        {[1, 2].map((part) => (
-          <a
-            key={part}
-            href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=${part}&of=2`}
-            className="mtc-row"
-            data-tip={"הורדה בחדות מלאה בשני חלקים (כל חלק עד כ-17MB),\nכדי שנטפרי לא יחסום קובץ גדול"}
-          >
-            {nut}
-            <span>הורדה בחדות מלאה – חלק {part} מתוך 2</span>
-          </a>
-        ))}
+        <a
+          href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=1&of=2`}
+          className="mtc-row"
+          data-tip={"הורדה בחדות מלאה: מורידה שני קבצים (חלק 1 וחלק 2),\nכל אחד עד כ-17MB, ומוצגים גם ב-Edge"}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            downloadBothParts(href);
+          }}
+        >
+          {nut}
+          <span>הורדה בחדות מלאה (2 קבצים)</span>
+        </a>
       </div>
     </div>
   );
@@ -5031,7 +5034,7 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Maximize, X } from "lucide-react";
 import { NetfreeNotice } from "@/components/netfree-notice";
 import { probeNetfreeVideo } from "@/lib/netfree-probe";
 
@@ -5074,6 +5077,15 @@ export function VideoViewerButton({
   // תוך 10 שניות) ומציעים לפתוח את הסרטון בלשונית נפרדת, שם נטפרי מציג את כפתור הבקשה.
   const [blocked, setBlocked] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // מסך מלא לסרטון (גם הנגן המובנה של הדפדפן מציע, אבל כאן כפתור גלוי בכותרת החלון)
+  const fullscreen = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    const anyV = v as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+    if (v.requestFullscreen) void v.requestFullscreen().catch(() => {});
+    else anyV.webkitEnterFullscreen?.(); // iPhone
+  };
   const mailUrl = src.split("?")[0]; // POST לאותה כתובת שולח למייל קישור לסרטון (ר' /api/material-video, /api/sichot/video)
   // בדיקה מראש (פעם בכמה שעות, נשמרת בדפדפן): האם המסנן חוסם סרטונים? אם כן – מסבירים מיד במקום נגן שנכשל
   const [probe, setProbe] = useState<"idle" | "checking" | "blocked" | "ok">("idle");
@@ -5125,14 +5137,22 @@ export function VideoViewerButton({
       <dialog ref={ref} className="view-dialog">
         <div className="view-dialog-head">
           <h3>{title}</h3>
-          <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setOpen(false)}>
-            <X className="h-5 w-5" aria-hidden />
-          </button>
+          <span className="flex items-center gap-1">
+            {showPlayer && (
+              <button type="button" className="fix-close" aria-label="מסך מלא" data-tip="מסך מלא" onClick={fullscreen}>
+                <Maximize className="h-5 w-5" aria-hidden />
+              </button>
+            )}
+            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setOpen(false)}>
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </span>
         </div>
         {/* הנגן נטען רק כשהחלון פתוח, ונעלם (ועוצר) עם הסגירה */}
         {showPlayer && (
           <div className="view-dialog-viewer flex items-center justify-center bg-black">
             <video
+              ref={videoRef}
               src={src}
               controls
               autoPlay
@@ -5692,21 +5712,21 @@ export function PdfViewer({
             type="button"
             className="pdfv-fs-btn"
             aria-label={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
-            title={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
+            data-tip={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
             onClick={toggleFullscreen}
           >
             {isFs ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
           </button>
         )}
         {!selectable && presentation && status === "ready" && numPages > 0 && (
-          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" title="צפייה כמצגת" onClick={startSlideshow}>
+          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" data-tip="צפייה כמצגת" onClick={startSlideshow}>
             <Presentation className="h-4 w-4" aria-hidden />
           </button>
         )}
       </div>
       {showSlides && (
         <div className="pdfv-slide-ui">
-          <button type="button" className="pdfv-slide-btn pdfv-slide-exit" aria-label="יציאה מהמצגת" title="יציאה מהמצגת" onClick={exitSlideshow}>
+          <button type="button" className="pdfv-slide-btn pdfv-slide-exit" aria-label="יציאה מהמצגת" data-tip="יציאה מהמצגת" onClick={exitSlideshow}>
             <X className="h-5 w-5" aria-hidden />
           </button>
           <div className="pdfv-slide-nav">
@@ -5714,7 +5734,7 @@ export function PdfViewer({
               type="button"
               className="pdfv-slide-btn"
               aria-label="שקופית קודמת"
-              title="שקופית קודמת"
+              data-tip="שקופית קודמת"
               disabled={slideIndex <= 0}
               onClick={() => goTo(slideRef.current - 1)}
             >
@@ -5727,7 +5747,7 @@ export function PdfViewer({
               type="button"
               className="pdfv-slide-btn"
               aria-label="שקופית הבאה"
-              title="שקופית הבאה"
+              data-tip="שקופית הבאה"
               disabled={slideIndex >= numPages - 1}
               onClick={() => goTo(slideRef.current + 1)}
             >

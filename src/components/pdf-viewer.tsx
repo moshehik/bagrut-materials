@@ -534,21 +534,21 @@ export function PdfViewer({
             type="button"
             className="pdfv-fs-btn"
             aria-label={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
-            title={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
+            data-tip={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
             onClick={toggleFullscreen}
           >
             {isFs ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
           </button>
         )}
         {!selectable && presentation && status === "ready" && numPages > 0 && (
-          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" title="צפייה כמצגת" onClick={startSlideshow}>
+          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" data-tip="צפייה כמצגת" onClick={startSlideshow}>
             <Presentation className="h-4 w-4" aria-hidden />
           </button>
         )}
       </div>
       {showSlides && (
         <div className="pdfv-slide-ui">
-          <button type="button" className="pdfv-slide-btn pdfv-slide-exit" aria-label="יציאה מהמצגת" title="יציאה מהמצגת" onClick={exitSlideshow}>
+          <button type="button" className="pdfv-slide-btn pdfv-slide-exit" aria-label="יציאה מהמצגת" data-tip="יציאה מהמצגת" onClick={exitSlideshow}>
             <X className="h-5 w-5" aria-hidden />
           </button>
           <div className="pdfv-slide-nav">
@@ -556,7 +556,7 @@ export function PdfViewer({
               type="button"
               className="pdfv-slide-btn"
               aria-label="שקופית קודמת"
-              title="שקופית קודמת"
+              data-tip="שקופית קודמת"
               disabled={slideIndex <= 0}
               onClick={() => goTo(slideRef.current - 1)}
             >
@@ -569,7 +569,7 @@ export function PdfViewer({
               type="button"
               className="pdfv-slide-btn"
               aria-label="שקופית הבאה"
-              title="שקופית הבאה"
+              data-tip="שקופית הבאה"
               disabled={slideIndex >= numPages - 1}
               onClick={() => goTo(slideRef.current + 1)}
             >

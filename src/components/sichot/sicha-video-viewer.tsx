@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Maximize, X } from "lucide-react";
 import { NetfreeNotice } from "@/components/netfree-notice";
 import { probeNetfreeVideo } from "@/lib/netfree-probe";
 
@@ -44,6 +44,15 @@ export function VideoViewerButton({
   // תוך 10 שניות) ומציעים לפתוח את הסרטון בלשונית נפרדת, שם נטפרי מציג את כפתור הבקשה.
   const [blocked, setBlocked] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // מסך מלא לסרטון (גם הנגן המובנה של הדפדפן מציע, אבל כאן כפתור גלוי בכותרת החלון)
+  const fullscreen = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    const anyV = v as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+    if (v.requestFullscreen) void v.requestFullscreen().catch(() => {});
+    else anyV.webkitEnterFullscreen?.(); // iPhone
+  };
   const mailUrl = src.split("?")[0]; // POST לאותה כתובת שולח למייל קישור לסרטון (ר' /api/material-video, /api/sichot/video)
   // בדיקה מראש (פעם בכמה שעות, נשמרת בדפדפן): האם המסנן חוסם סרטונים? אם כן – מסבירים מיד במקום נגן שנכשל
   const [probe, setProbe] = useState<"idle" | "checking" | "blocked" | "ok">("idle");
@@ -95,14 +104,22 @@ export function VideoViewerButton({
       <dialog ref={ref} className="view-dialog">
         <div className="view-dialog-head">
           <h3>{title}</h3>
-          <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setOpen(false)}>
-            <X className="h-5 w-5" aria-hidden />
-          </button>
+          <span className="flex items-center gap-1">
+            {showPlayer && (
+              <button type="button" className="fix-close" aria-label="מסך מלא" data-tip="מסך מלא" onClick={fullscreen}>
+                <Maximize className="h-5 w-5" aria-hidden />
+              </button>
+            )}
+            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setOpen(false)}>
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </span>
         </div>
         {/* הנגן נטען רק כשהחלון פתוח, ונעלם (ועוצר) עם הסגירה */}
         {showPlayer && (
           <div className="view-dialog-viewer flex items-center justify-center bg-black">
             <video
+              ref={videoRef}
               src={src}
               controls
               autoPlay

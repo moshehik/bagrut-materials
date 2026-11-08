@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { KindBlob } from "@/components/kind-blob";
 import { ArrowLeft, BookOpen, Compass, Gift, Tags } from "lucide-react";
 import { TourLaunchButton } from "@/components/site-tour";
 import { getFreeTrialState } from "@/lib/free-trial";
@@ -146,26 +147,26 @@ export default async function HomePage({
         {/* ================= KINDS — נתוני האתר (קופצים מ-0 בכל כניסה). ההורדות והכניסות הוסתרו בכוונה עד שהמספרים יגדלו — stats.downloads/visits עדיין מחושבים ב-getHomeStats ================= */}
         <AnimatedGrid className={s.kinds}>
           <div className={s.kind}>
-            <img src="/images/kind-blob-1.png" alt="" className={s.kindBlob} />
+            <KindBlob n={1} className={s.kindBlob} />
             <IconMaterials className={s.kindIcon} />
             <b><CountUp value={stats.files} /></b>
             <span>חומרים באתר</span>
           </div>
           <div className={s.kind}>
-            <img src="/images/kind-blob-2.png" alt="" className={s.kindBlob} />
+            <KindBlob n={2} className={s.kindBlob} />
             <IconSubjects className={s.kindIcon} />
             <b><CountUp value={stats.subjects} /></b>
             <span>מקצועות בפריסה</span>
           </div>
           <div className={s.kind}>
-            <img src="/images/kind-blob-3.png" alt="" className={s.kindBlob} />
+            <KindBlob n={3} className={s.kindBlob} />
             <IconLessonTypes className={s.kindIcon} />
             {/* "עד": המפרט משתנה לפי סוג השיעור (ר' ההערה מתחת ל"מה לו״ז השיעור שלנו?"), לא בכל שיעור יש את כל הסוגים */}
             <b>עד <CountUp value={LESSON_ITEMS.length} /></b>
             <span>קבצי תוכן לשיעור</span>
           </div>
           <div className={s.kind}>
-            <img src="/images/kind-blob-4.png" alt="" className={s.kindBlob} />
+            <KindBlob n={4} className={s.kindBlob} />
             <IconFree className={s.kindIcon} />
             <b><CountUp value={stats.freeFiles} /></b>
             <span>קבצים פתוחים לכולן</span>

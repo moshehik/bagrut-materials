@@ -6,6 +6,7 @@ import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
 import { NetfreeDownloadGate, NetfreeHqRow } from "@/components/netfree-download-gate";
+import { PresentationDownloadGate } from "@/components/presentation-download";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
 import { FIX_TIPS, FixRequestButton, type CardFix } from "@/components/material-fixes";
 import { ColourSvg } from "@/components/colour-svg";
@@ -242,6 +243,11 @@ export function MaterialTypeCard({
             <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
             <span>להורדה</span>
           </NetfreeDownloadGate>
+        ) : target && type === "presentation" && entitlement.ok ? (
+          <PresentationDownloadGate href={target} className="mtc-download" tip="להורדת הקובץ למחשב" label={`הורדת ${s.label}`}>
+            <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
+            <span>להורדה</span>
+          </PresentationDownloadGate>
         ) : target ? (
           <a
             href={target}

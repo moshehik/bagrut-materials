@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { NetfreeNotice } from "@/components/netfree-notice";
+import { downloadBothParts } from "@/components/presentation-download";
 
 const isNetfreeCookie = () => {
   try {
@@ -95,17 +96,19 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
   return (
     <div className="mtc-lower mtc-lower-hq">
       <div className="mtc-tools">
-        {[1, 2].map((part) => (
-          <a
-            key={part}
-            href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=${part}&of=2`}
-            className="mtc-row"
-            data-tip={"הורדה בחדות מלאה בשני חלקים (כל חלק עד כ-17MB),\nכדי שנטפרי לא יחסום קובץ גדול"}
-          >
-            {nut}
-            <span>הורדה בחדות מלאה – חלק {part} מתוך 2</span>
-          </a>
-        ))}
+        <a
+          href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=1&of=2`}
+          className="mtc-row"
+          data-tip={"הורדה בחדות מלאה: מורידה שני קבצים (חלק 1 וחלק 2),\nכל אחד עד כ-17MB, ומוצגים גם ב-Edge"}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            downloadBothParts(href);
+          }}
+        >
+          {nut}
+          <span>הורדה בחדות מלאה (2 קבצים)</span>
+        </a>
       </div>
     </div>
   );
