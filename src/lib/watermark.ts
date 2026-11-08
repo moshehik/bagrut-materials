@@ -7,7 +7,7 @@ import path from "node:path";
 import { SITE_NAME } from "./constants";
 import { DIAGONAL_DEG, diagonalOrigin, fitDiagonalSize } from "./watermark-geometry";
 import { replaceHeaderLogoWithVector } from "./pdf-vector-logo";
-import { meshifyLargeImages } from "./pdf-mesh-images";
+import { meshifyLargeImages, type MeshOptions } from "./pdf-mesh-images";
 import { sweepUnreferencedObjects } from "./pdf-sweep";
 
 let fontBytes: Uint8Array | null = null;
@@ -148,6 +148,8 @@ function moveStampBehindContent(page: PDFPage) {
 export type StampOptions = {
   /** החתימה מתחת לתוכן העמוד ולא מעליו – למצגות, שאין לצייר בהן על גבי התמונות */
   behindContent?: boolean;
+  /** מצגות: false = בלי המרת הרקעים (תמונות מקוריות, למי שלא בנטפרי); אובייקט = הגדרות הרשת (ר' netfree-mode.ts) */
+  mesh?: false | MeshOptions;
 };
 
 /**
@@ -164,9 +166,9 @@ export async function stampPdf(input: Uint8Array | ArrayBuffer, info: StampInfo,
     console.error("watermark: vector logo failed", e instanceof Error ? e.message : e);
   }
   // מצגות: רקעי השקפים (תמונות) → רשת צבעים חלקה וקטורית (נטפרי מטשטש תמונות בתוך PDF, ר' pdf-mesh-images.ts)
-  if (opts.behindContent) {
+  if (opts.behindContent && opts.mesh !== false) {
     try {
-      await meshifyLargeImages(pdf);
+      await meshifyLargeImages(pdf, opts.mesh ?? {});
     } catch (e) {
       console.error("watermark: mesh images failed", e instanceof Error ? e.message : e);
     }

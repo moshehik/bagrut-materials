@@ -24,6 +24,7 @@ import {
 } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
 import { classifyMaterial, isVideoMaterial } from "@/lib/material-card-types";
+import { presentationMeshFor, type PresentationMesh } from "@/lib/netfree-mode";
 import { getPrivateVersion } from "@/lib/private-versions";
 import { chooseServedFile } from "@/lib/private-version-logic";
 
@@ -63,7 +64,7 @@ type Who = { id: number; personalCode: string; name: string; email: string; phon
  * null = נכשל. למשתמשת רגילה כשל בהמרה/הטבעה = כשל (לא שולחים מקור בלי סימן מים); למנהלת – המקור.
  * גרסה פרטית מתוקנת של המורה (ר' src/lib/private-versions.ts) נכנסת לזיפ במקום הקובץ המשותף, כמו בהורדה בודדת.
  */
-async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: string; bytes: Uint8Array; label: string } | null> {
+async function prepare(m: Material, u: Who, isAdmin: boolean, mesh: PresentationMesh): Promise<{ name: string; bytes: Uint8Array; label: string } | null> {
   const pv = isAdmin ? null : await getPrivateVersion(m.id, u.id);
   const src = chooseServedFile({ material: m, privateVersion: pv, wantOriginal: false });
   const file = await fetchFile(src.fileUrl);
@@ -79,7 +80,7 @@ async function prepare(m: Material, u: Who, isAdmin: boolean): Promise<{ name: s
   const raw = new Uint8Array(await new Response(file.stream).arrayBuffer());
   const tag = u.personalCode;
   // מצגת: החתימה מתחת לתמונות
-  const behind = { behindContent: classifyMaterial(m) === "presentation" };
+  const behind = { behindContent: classifyMaterial(m) === "presentation", mesh };
   const safe = safeEntryName(m.fileName);
   const original = { name: `${stem(safe)} ${tag}${ext(safe)}`, bytes: raw, label: stem(safe) };
   // מנהלת בלבד מקבלת את המקור כשההמרה/ההטבעה נכשלו
@@ -336,6 +337,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
     }
   };
 
+  const meshMode = presentationMeshFor(req);
   const who: Who = { id: user.id, personalCode: user.personalCode, name: user.name, email: user.email, phone: user.phone };
   type Ready = { name: string; bytes: Uint8Array; label: string; m: Material; via: string };
   const results: (Ready | null)[] = new Array(allowed.length).fill(null);
@@ -346,7 +348,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
         while (next < allowed.length) {
           const i = next++;
           try {
-            const out = await prepare(allowed[i], who, isAdmin);
+            const out = await prepare(allowed[i], who, isAdmin, meshMode);
             if (out) results[i] = { ...out, m: allowed[i], via: entOf.get(allowed[i].id)!.via };
           } catch (e) {
             console.error("folder zip: file failed", allowed[i].id, e);

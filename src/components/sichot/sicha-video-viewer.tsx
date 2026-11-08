@@ -1,35 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ShieldAlert, X } from "lucide-react";
+import { X } from "lucide-react";
+import { NetfreeNotice } from "@/components/netfree-notice";
 import { probeNetfreeVideo } from "@/lib/netfree-probe";
 
-/** הודעת חסימה בעיצוב האתר (חלון הצפייה החום עם מסגרת זהב). compact = פס תחת הנגן אחרי שהנגן עצמו נכשל */
-function BlockedNotice({ compact, onTry, href }: { compact?: boolean; onTry?: () => void; href?: string }) {
+/** הודעת חסימה בעיצוב האתר, הודעה אחת: ניסוח + שליחה למייל (ר' netfree-notice.tsx). compact = פס תחת הנגן אחרי שהנגן עצמו נכשל */
+function BlockedNotice({ compact, onTry, href, mailUrl }: { compact?: boolean; onTry?: () => void; href?: string; mailUrl: string }) {
   return (
-    <div className={compact ? "nf-block nf-compact" : "nf-block view-dialog-viewer"} role="alert">
-      <div className="nf-card">
-        <span className="nf-ico">
-          <ShieldAlert className="h-6 w-6" strokeWidth={1.75} aria-hidden />
-        </span>
-        <h4 className="nf-title">הצפייה בסרטון באתר חסומה בסינון שלך</h4>
-        <p className="nf-text">
-          נטפרי חוסם סרטונים. אפשר ללחוץ בכרטיס על כפתור המייל ולקבל קישור לסרטון, ולצפות בו משם.
-        </p>
-        <div className="nf-actions">
-          {onTry && (
-            <button type="button" className="nf-btn" onClick={onTry}>
-              לנסות לנגן בכל זאת
-            </button>
-          )}
-          {href && (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="nf-btn">
-              פתיחה בלשונית נפרדת
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
+    <NetfreeNotice mailUrl={mailUrl} compact={compact} className={compact ? "" : "view-dialog-viewer"}>
+      {onTry && (
+        <button type="button" className="nf-btn" onClick={onTry}>
+          לנסות לנגן בכל זאת
+        </button>
+      )}
+      {href && (
+        <a href={href} target="_blank" rel="noopener noreferrer" className="nf-btn">
+          פתיחה בלשונית נפרדת
+        </a>
+      )}
+    </NetfreeNotice>
   );
 }
 
@@ -54,6 +44,7 @@ export function VideoViewerButton({
   // תוך 10 שניות) ומציעים לפתוח את הסרטון בלשונית נפרדת, שם נטפרי מציג את כפתור הבקשה.
   const [blocked, setBlocked] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
+  const mailUrl = src.split("?")[0]; // POST לאותה כתובת שולח למייל קישור לסרטון (ר' /api/material-video, /api/sichot/video)
   // בדיקה מראש (פעם בכמה שעות, נשמרת בדפדפן): האם המסנן חוסם סרטונים? אם כן – מסבירים מיד במקום נגן שנכשל
   const [probe, setProbe] = useState<"idle" | "checking" | "blocked" | "ok">("idle");
   const [tryAnyway, setTryAnyway] = useState(false);
@@ -124,8 +115,8 @@ export function VideoViewerButton({
             />
           </div>
         )}
-        {open && probe === "blocked" && !tryAnyway && <BlockedNotice onTry={() => setTryAnyway(true)} />}
-        {showPlayer && blocked && <BlockedNotice compact href={src} />}
+        {open && probe === "blocked" && !tryAnyway && <BlockedNotice mailUrl={mailUrl} onTry={() => setTryAnyway(true)} />}
+        {showPlayer && blocked && <BlockedNotice mailUrl={mailUrl} compact href={src} />}
       </dialog>
     </>
   );

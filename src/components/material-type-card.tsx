@@ -5,6 +5,7 @@ import type { Material } from "@/db/schema";
 import type { Entitlement } from "@/lib/data";
 import { CARD_STYLES, LABEL_SIZES, cardHeading, type CardType } from "@/lib/material-card-types";
 import { FileViewerButton } from "@/components/pdf-viewer";
+import { NetfreeDownloadGate, NetfreeHqRow } from "@/components/netfree-download-gate";
 import { VideoViewerButton } from "@/components/sichot/sicha-video-viewer";
 import { FIX_TIPS, FixRequestButton, type CardFix } from "@/components/material-fixes";
 import { ColourSvg } from "@/components/colour-svg";
@@ -234,6 +235,11 @@ export function MaterialTypeCard({
             <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
             <span>להורדה חינם</span>
           </FreeTrialDownload>
+        ) : target && isVideo && entitlement.ok ? (
+          <NetfreeDownloadGate href={target} mailUrl={`/api/material-video/${m.id}`} className="mtc-download" tip="להורדת הקובץ למחשב" label={`הורדת ${s.label}`}>
+            <ColourSvg src="/images/mat-cards/nut-download.webp" width={84} height={67} className="mtc-nut" shared small />
+            <span>להורדה</span>
+          </NetfreeDownloadGate>
         ) : target ? (
           <a
             href={target}
@@ -314,6 +320,11 @@ export function MaterialTypeCard({
           )
         )}
       </div>
+
+      {/* מצגת למי שזוהתה כנטפרי: שורת הורדה בחדות מלאה (ההורדה הרגילה אצלה בגרסה קלה יותר) */}
+      {type === "presentation" && entitlement.ok && !viewOnly && target && (
+        <NetfreeHqRow href={target} nut={<ColourSvg src="/images/mat-cards/nut-download-light.webp" width={40} height={40} className="mtc-rownut" shared small />} />
+      )}
 
       {/* הריבוע התחתון: עריכת שינויים (בתוכה גם התיקונים שכבר נעשו: בחירה, ביטול של שלה, הורדה עם הנבחרים); ואם נעשו תיקונים – גם להורדת הקובץ המתוקן */}
       {/* סרטון ומצגת (קובץ PDF, לא Word) – אין בהם עריכת שינויים */}

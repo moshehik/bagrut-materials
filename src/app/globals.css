@@ -2268,6 +2268,25 @@ button.underline {
   gap: 0.6rem;
   margin-top: 1rem;
 }
+.nf-dialog {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: min(32rem, calc(100vw - 1.5rem));
+  margin: auto;
+  overflow: visible;
+}
+.nf-dialog::backdrop {
+  background: rgba(30, 25, 15, 0.6);
+}
+.nf-dialog .nf-card {
+  background: #291a0f;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(217, 164, 65, 0.15);
+}
+/* שורת "הורדה בחדות מלאה" שמתווספת למצגת: הגוף מעליה מאבד את הפינות התחתונות המעוגלות */
+.mtc-body-end:has(+ .mtc-lower-hq) {
+  border-radius: 0;
+}
 .nf-btn {
   border: 2px solid var(--sun);
   border-radius: 999px;
@@ -2279,6 +2298,14 @@ button.underline {
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
+}
+.nf-btn-main {
+  background: var(--sun);
+  color: #291a0f;
+}
+.nf-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .nf-btn:hover {
   background: var(--sun);

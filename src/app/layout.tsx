@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { AccessibilityWidget } from "@/components/accessibility-widget";
+import { NetfreeDetector } from "@/components/netfree-detector";
 import { NutScrollHandle } from "@/components/nut-scroll-handle";
 import { DownloadLoader } from "@/components/download-loader";
 import { NutTooltip } from "@/components/nut-tooltip";
@@ -68,6 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </main>
         <Footer />
         <AccessibilityWidget />
+        <NetfreeDetector />
         <NutScrollHandle />
         <DownloadLoader />
         <NutTooltip />
