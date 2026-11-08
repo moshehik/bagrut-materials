@@ -18,6 +18,7 @@ import { decodeDraft } from "@/lib/fix-draft";
 import { resolveServedFile } from "@/lib/private-versions";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
+import { getFillLineScale } from "@/lib/user-prefs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -181,6 +182,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
           mimeType: officeMimeFor(material.mime, material.fileName),
           name: material.fileName,
+          // ההגדרה האישית של המורה (צפייה מלאה בלבד; אורחת רואה את הקובץ כמו שנבנה)
+          fillScale: fullView && user ? await getFillLineScale(user.id) : undefined,
         })
       : raw;
   } catch (e) {

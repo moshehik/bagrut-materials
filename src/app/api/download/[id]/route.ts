@@ -21,6 +21,7 @@ import { parseOriginalParam } from "@/lib/private-version-logic";
 import { logFixEvent } from "@/lib/fix-events";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
+import { getFillLineScale } from "@/lib/user-prefs";
 import { sendMail, templates } from "@/lib/mail";
 import { SITE_NAME } from "@/lib/constants";
 import { TOO_MANY_MESSAGE, limitKey, tooMany } from "@/lib/rate-limit";
@@ -312,6 +313,8 @@ async function serve(req: NextRequest, ctx: Ctx) {
           // ה-mime שנשמר בחומר לא תמיד של Office (סנכרון דרייב) – נגזר מהסיומת לפני ההמרה
           mimeType: officeMimeFor(material.mime, material.fileName),
           name: material.fileName,
+          // ההגדרה האישית של המורה: יחס אורך קווי-המילוי (100% = בלי שינוי; כשל בקריאה = ברירת מחדל)
+          fillScale: await getFillLineScale(u.id),
         });
         const hqPart = classifyMaterial(material) === "presentation" ? hqPartOf(req) : null;
         out = await stampPdf(hqPart ? await pdfPart(pdfBytes, hqPart.part, hqPart.of) : pdfBytes, {

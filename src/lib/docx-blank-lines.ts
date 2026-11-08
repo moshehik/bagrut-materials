@@ -31,6 +31,7 @@
  */
 
 import JSZip from "jszip";
+import { scaleFillLinesXml } from "./docx-fill-scale";
 
 /** מכמה קווים תחתונים רצופים (כולל ריצה שנקטעת ב-tab) פסקה נחשבת "שורת מילוי" */
 const MIN_UNDERSCORES = 9; // ריצה בלתי-שבירה של 9+ (8 בודדים - רוחב ~4em - לא מותחים שורה); קו שביר נבנה מקטעים של עד 8
@@ -202,11 +203,13 @@ export function breakLongBlanksXml(xml: string): string | null {
  * נחשבת מיד "שורת מילוי"), אז קווים שבירים (שיטה B, היישור נשמר), ולבסוף שחרור יישור רק בפסקה
  * שנשארה בה ריצת קווים בלתי-שבירה. מחזיר null אם אף אחד מהם לא שינה דבר.
  */
-export function fixBlankLinesXml(xml: string): string | null {
+export function fixBlankLinesXml(xml: string, opts?: { fillScale?: number }): string | null {
   const filled = fillSpaceBlanksXml(xml);
-  const broken = breakLongBlanksXml(filled ?? xml);
-  const relaxed = relaxJustifiedBlankLinesXml(broken ?? filled ?? xml);
-  return relaxed ?? broken ?? filled;
+  // הגדרה אישית של המורה: יחס אורך קווי-המילוי (ר' docx-fill-scale.ts; undefined / 1 = בלי שינוי)
+  const scaled = opts?.fillScale !== undefined ? scaleFillLinesXml(filled ?? xml, opts.fillScale) : null;
+  const broken = breakLongBlanksXml(scaled ?? filled ?? xml);
+  const relaxed = relaxJustifiedBlankLinesXml(broken ?? scaled ?? filled ?? xml);
+  return relaxed ?? broken ?? scaled ?? filled;
 }
 
 /**
@@ -218,14 +221,14 @@ export function fixBlankLinesXml(xml: string): string | null {
  * תומך גם בנתיב עם backslash ("word\document.xml") שמופיע בחלק מהקבצים שנבנו ע"י סקריפט
  * (ר' normalizeDocxZipPaths ב-driveBridgeCore - רץ אחרי הפונקציה הזו).
  */
-export async function relaxJustifiedBlankLines(bytes: Uint8Array): Promise<Uint8Array> {
+export async function relaxJustifiedBlankLines(bytes: Uint8Array, opts?: { fillScale?: number }): Promise<Uint8Array> {
   try {
     const zip = await JSZip.loadAsync(bytes);
     const entryName = ["word/document.xml", "word" + String.fromCharCode(92) + "document.xml"].find((n) => zip.file(n));
     if (!entryName) return bytes;
     const entry = zip.file(entryName)!;
     const xml = await entry.async("string");
-    const patched = fixBlankLinesXml(xml);
+    const patched = fixBlankLinesXml(xml, opts);
     if (patched === null) return bytes;
     // החלפה במקום - שומרת את מיקום הרשומה בסדר ה-zip. חובה לשמר את ה-date המקורי: ברירת המחדל של JSZip
     // היא new Date(), ואז הבייטים (ומפתח המטמון md5 שנגזר מהם) משתנים בכל בקשה. createFolders:false -

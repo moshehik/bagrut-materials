@@ -132,6 +132,12 @@ const TILES = [
     nut: "/images/nuts/many-12.webp",
   },
   {
+    href: "/account/personalize",
+    title: "התאמה אישית",
+    text: "אורך קווי המילוי בקבצים שאת מורידה, ועוד",
+    nut: "/images/nuts/many-05.webp",
+  },
+  {
     href: "/account/purchases",
     title: "רכישות ומנויים",
     text: "המנויים הפעילים, ההורדות שנותרו ותוקף",

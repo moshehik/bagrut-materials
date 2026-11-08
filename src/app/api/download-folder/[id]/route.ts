@@ -23,6 +23,7 @@ import {
   type ReserveResult,
 } from "@/lib/download-quota";
 import { officeMimeFor } from "@/lib/office-mime";
+import { getFillLineScale } from "@/lib/user-prefs";
 import { classifyMaterial, isVideoMaterial } from "@/lib/material-card-types";
 import { presentationMeshFor, type PresentationMesh } from "@/lib/netfree-mode";
 import { getPrivateVersion } from "@/lib/private-versions";
@@ -64,7 +65,7 @@ type Who = { id: number; personalCode: string; name: string; email: string; phon
  * null = נכשל. למשתמשת רגילה כשל בהמרה/הטבעה = כשל (לא שולחים מקור בלי סימן מים); למנהלת – המקור.
  * גרסה פרטית מתוקנת של המורה (ר' src/lib/private-versions.ts) נכנסת לזיפ במקום הקובץ המשותף, כמו בהורדה בודדת.
  */
-async function prepare(m: Material, u: Who, isAdmin: boolean, mesh: PresentationMesh): Promise<{ name: string; bytes: Uint8Array; label: string } | null> {
+async function prepare(m: Material, u: Who, isAdmin: boolean, mesh: PresentationMesh, fillScale: number): Promise<{ name: string; bytes: Uint8Array; label: string } | null> {
   const pv = isAdmin ? null : await getPrivateVersion(m.id, u.id);
   const src = chooseServedFile({ material: m, privateVersion: pv, wantOriginal: false });
   const file = await fetchFile(src.fileUrl);
@@ -91,7 +92,7 @@ async function prepare(m: Material, u: Who, isAdmin: boolean, mesh: Presentation
 
   if (isOffice && isDriveConfigured()) {
     try {
-      const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(src.fileUrl), defer: after });
+      const pdf = await convertOfficeToPdfCached({ bytes: raw, mimeType: officeMimeFor(m.mime, m.fileName), name: m.fileName, fileId: driveIdFromUrl(src.fileUrl), defer: after, fillScale });
       return { name: `${stem(safe)} ${tag}.pdf`, bytes: await stampPdf(pdf, stampInfo, behind), label: stem(safe) };
     } catch (e) {
       return fallback("office->pdf", e);
@@ -339,6 +340,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
   };
 
   const meshMode = presentationMeshFor(req);
+  const fillScale = await getFillLineScale(user.id); // ההגדרה האישית: יחס אורך קווי-המילוי (פעם אחת לכל הזיפ)
   const who: Who = { id: user.id, personalCode: user.personalCode, name: user.name, email: user.email, phone: user.phone };
   type Ready = { name: string; bytes: Uint8Array; label: string; m: Material; via: string };
   const results: (Ready | null)[] = new Array(allowed.length).fill(null);
@@ -349,7 +351,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
         while (next < allowed.length) {
           const i = next++;
           try {
-            const out = await prepare(allowed[i], who, isAdmin, meshMode);
+            const out = await prepare(allowed[i], who, isAdmin, meshMode, fillScale);
             if (out) results[i] = { ...out, m: allowed[i], via: entOf.get(allowed[i].id)!.via };
           } catch (e) {
             console.error("folder zip: file failed", allowed[i].id, e);

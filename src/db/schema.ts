@@ -1048,6 +1048,21 @@ export const appSecrets = pgTable("app_secrets", {
 });
 
 /**
+ * הגדרות אישיות של מורה (שורה אחת למורה; שורה חסרה = ברירת המחדל של כל שדה). טבלה נפרדת ולא עמודות ב-users:
+ * drizzle בוחר את כל עמודות users במפורש בכל שאילתה, ועמודה חסרה ב-Neon הייתה שוברת את כל האתר; כאן קריאה
+ * שנכשלת (טבלה שעוד לא נוצרה) פשוט מחזירה ברירות מחדל (ר' src/lib/user-prefs.ts).
+ * יצירה: scripts/create-user-preferences-table.ts --apply
+ */
+export const userPreferences = pgTable("user_preferences", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** יחס אורך קווי-המילוי באחוזים (100 = כמו שהקובץ נבנה). טווח וצעד: src/lib/fill-line-pref.ts */
+  fillLinePercent: integer("fill_line_percent").notNull().default(100),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+/**
  * שער הקריאה הגלובלי ל-GetHistoryJson של נדרים (מוגבל ל-20 קריאות בשעה למוסד) – שורה יחידה (id = 1). ר' src/lib/nedarim/sync.ts:
  * נעילה אטומית (lock_until), מרווח מינימלי בין קריאות, LastId אינקרמנטלי, backoff בשגיאות.
  */
@@ -1236,6 +1251,7 @@ export type SichaSeminar = (typeof sichaSeminarEnum.enumValues)[number];
 export type NedarimPayment = typeof nedarimPayments.$inferSelect;
 export type NedarimPaymentEvent = typeof nedarimPaymentEvents.$inferSelect;
 export type AppSecret = typeof appSecrets.$inferSelect;
+export type UserPreferences = typeof userPreferences.$inferSelect;
 export type NedarimTransaction = typeof nedarimTransactions.$inferSelect;
 export type NedarimSyncState = typeof nedarimSyncState.$inferSelect;
 export type CategoryModule = (typeof categoryModuleEnum.enumValues)[number];

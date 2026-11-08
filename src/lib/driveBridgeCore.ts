@@ -624,7 +624,9 @@ export function isOfficeMime(mimeType: string) {
   return mimeType in OFFICE_TO_GOOGLE_MIME;
 }
 
-type ConvertArgs = { bytes: Uint8Array; mimeType: string; name: string; /** false = בלי ציור-מחדש וקטורי של תמונות גוף (ר' vectorizeBodyImages; לסקריפטי בדיקה) */ vectorizeImages?: boolean };
+type ConvertArgs = { bytes: Uint8Array; mimeType: string; name: string; /** false = בלי ציור-מחדש וקטורי של תמונות גוף (ר' vectorizeBodyImages; לסקריפטי בדיקה) */ vectorizeImages?: boolean;
+  /** מקדם אורך קווי-המילוי של המורה המקבלת (הגדרה אישית, ר' fill-line-pref.ts); חסר/1 = כמו שהקובץ נבנה */
+  fillScale?: number };
 type Budget = ReturnType<typeof budgetClock>;
 
 async function convertOfficeToPdfViaDrive({ bytes, mimeType, name }: ConvertArgs, budget: Budget): Promise<Uint8Array> {
@@ -764,7 +766,7 @@ async function convertWithBudget(args: ConvertArgs, budget: Budget): Promise<Uin
  */
 async function prepareOfficeForConvert(args: ConvertArgs): Promise<ConvertArgs> {
   if (!isDocxForBlankLines(args.mimeType, args.name)) return args;
-  let bytes = await relaxJustifiedBlankLines(args.bytes);
+  let bytes = await relaxJustifiedBlankLines(args.bytes, { fillScale: args.fillScale });
   bytes = await normalizeNikudCompat(bytes);
   bytes = await fitTablesToPage(bytes);
   bytes = await separateLineBorders(bytes);
@@ -826,7 +828,9 @@ export const SHARE_COPIES_FOLDER_NAME = "_video-share-copies";
 export function isShareCopiesItem(i: { name?: string; appProperties?: Record<string, string> | null }): boolean {
   return i.name === SHARE_COPIES_FOLDER_NAME || i.appProperties?.shareShards === "1" || !!i.appProperties?.shareShardOf;
 }
-const PDF_CACHE_KEEP_PER_FILE = 3; // כמה גרסאות (md5 שונים) לשמור לכל קובץ מקור — הישנות נזרקות לאשפה
+// כמה גרסאות (md5 שונים) לשמור לכל קובץ מקור — הישנות נזרקות לאשפה. 6 ולא 3: מורות עם יחס קווי-מילוי אישי
+// (fill-line-pref.ts) יוצרות רשומה נפרדת לכל יחס, ושלוש בלבד היו מוציאות זו את זו מהמטמון
+const PDF_CACHE_KEEP_PER_FILE = 6;
 const DRIVE_API = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
