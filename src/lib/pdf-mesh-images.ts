@@ -22,7 +22,7 @@ const deflateAsync = promisify(deflate);
  * שימי לב: בהורדה מלאה אחת (18 שקפים, ~20MB) הרקעים הופיעו לבנים בנטפרי והסיבה לא הוכחה (ייתכן גודל הקובץ / תמונות רסטר שנשארו) – לאמת בהורדה אמיתית.
  */
 /** tiles: מחלק את התמונה ל-tiles×tiles רשתות נפרדות (כל אחת עד cols/tiles עמודות) – לבדיקת מגבלת הנקודות של הקורא של Edge */
-export type MeshOptions = { cols?: number; predictor?: boolean; tiles?: number };
+export type MeshOptions = { cols?: number; predictor?: boolean; tiles?: number; /** שלב כימות הצבע (למשל 4): ערכים זהים ברצף = דחיסה טובה יותר בלי predictor */ quant?: number };
 const GRID_COLS = 1024;
 const MAX_VERTICES = 1_600_000;
 const MIN_PLACED_PT = 150;
@@ -120,6 +120,8 @@ async function buildMesh(obj: PDFRawStream, started: number, opts: MeshOptions):
     if (fullCols * fullRows > MAX_VERTICES || Date.now() - started > TIME_BUDGET_MS) return null;
     const rgb = await gridPixels(obj, fullCols, fullRows);
     if (!rgb) return null;
+    const q = opts.quant ?? 0;
+    if (q > 1) for (let i = 0; i < rgb.length; i++) rgb[i] = Math.min(255, Math.round(rgb[i] / q) * q);
     const parts: MeshPart[] = [];
     for (let ty = 0; ty < T; ty++) {
       for (let tx = 0; tx < T; tx++) {
