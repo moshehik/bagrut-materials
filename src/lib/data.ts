@@ -14,7 +14,7 @@ import {
 } from "@/db/schema";
 import { cache } from "react";
 import { getBool } from "./settings";
-import { rankItems, scoreItem, tokenize } from "./search-match";
+import { keyboardAlternates, rankItems, scoreItem, tokenize } from "./search-match";
 import { hasSichaAccess } from "./sicha-access";
 
 /**
@@ -439,7 +439,15 @@ const pathOf = (chain: ChainNode[], includeLast: boolean) =>
 export async function searchCatalog(query: string, isAdmin = false): Promise<SearchResult[]> {
   try {
     const smart = await searchCatalogSmart(query, isAdmin);
-    if (smart.length > 0) return smart;
+    // מקלדת בשפה הלא נכונה / CAPS LOCK (ר' keyboardAlternates): "akuo" ← "שלום", "קמעךןדי" ← "english". תוצאות המקור קודמות;
+    // מהמוקלד-בטעות מוסיפים רק כשיש תוצאה, בלי כפילויות. שאילתה עברית שמצאה תוצאות לא מנסים בכלל (אין סיבה לנחש).
+    const alts = /[a-z]/i.test(query) || smart.length === 0 ? keyboardAlternates(query) : [];
+    const merged = [...smart];
+    for (const alt of alts) {
+      const more = await searchCatalogSmart(alt, isAdmin).catch(() => [] as SearchResult[]);
+      for (const r of more) if (!merged.some((x) => x.type === r.type && x.id === r.id)) merged.push(r);
+    }
+    if (merged.length > 0) return merged;
     // אין תוצאה חכמה: הישן עדיין עשוי למצוא (למשל תיאור/תת-מחרוזת), כך שהחיפוש אף פעם לא גרוע מקודם
     return await searchCatalogLegacy(query, isAdmin);
   } catch (e) {

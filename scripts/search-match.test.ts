@@ -197,3 +197,36 @@ test("סיומת 'ות' לא הופכת לשורש: 'ספרות' לא מוצא '
   const items: M[] = [mat(90, "ספרות", []), mat(91, "ספר החינוך", []), mat(92, "פרק א", ["ספרות"])];
   assert.deepEqual(rankItems("ספרות", items, (x) => x).items.map((x) => x.id).sort(), [90, 92]);
 });
+
+// ---- מקלדת בשפה הלא נכונה ----
+import { keyboardAlternates } from "../src/lib/search-match";
+
+test("מקלדת: אנגלית ← עברית באותן לחיצות ('akuo' = שלום, 'tuvj' = אורח, 'rn' = רמ)", () => {
+  assert.deepEqual(keyboardAlternates("akuo"), ["שלום"]);
+  assert.deepEqual(keyboardAlternates("tkv"), ["אלה"]);
+});
+
+test("CAPS LOCK: אותיות גדולות באנגלית מומרות כמו קטנות", () => {
+  assert.deepEqual(keyboardAlternates("AKUO"), ["שלום"]);
+  assert.deepEqual(keyboardAlternates("Akuo"), ["שלום"]);
+});
+
+test("מקלדת: עברית ← אנגלית ('קמעךןדי' = english, לאנגלית שהוקלדה במקלדת עברית)", () => {
+  assert.deepEqual(keyboardAlternates("קמעךןדי"), ["english"]);
+});
+
+test("סימני פיסוק במקש: ',' = ת, '.' = ץ, ';' = ף; ספרות ורווחים נשארים", () => {
+  assert.deepEqual(keyboardAlternates("v,k,k 5"), ["התלתל 5"]);
+});
+
+test("שאילתה מעורבת, או בלי אותיות - אין חלופה", () => {
+  assert.deepEqual(keyboardAlternates("תהלים psalm"), []);
+  assert.deepEqual(keyboardAlternates("13"), []);
+  assert.deepEqual(keyboardAlternates(""), []);
+});
+
+test("המרה הלוך-חזור היא זהות", () => {
+  const he = "שלום עליכם תורה נביא כתובים";
+  const en = keyboardAlternates(he)[0];
+  assert.deepEqual(keyboardAlternates(en), [he]);
+});

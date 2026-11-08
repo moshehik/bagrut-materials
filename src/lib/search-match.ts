@@ -280,3 +280,30 @@ export function rankItems<T>(
   }
   return { items: [], approx: false };
 }
+
+// ---- מקלדת: שאילתה שהוקלדה בפריסה הלא נכונה ----
+
+/** פריסת המקלדת העברית הסטנדרטית (SI-1452): מקש באנגלית → האות שהוא מקליד בעברית */
+const EN_TO_HE: Record<string, string> = {
+  q: "/", w: "'", e: "ק", r: "ר", t: "א", y: "ט", u: "ו", i: "ן", o: "ם", p: "פ",
+  a: "ש", s: "ד", d: "ג", f: "כ", g: "ע", h: "י", j: "ח", k: "ל", l: "ך", ";": "ף", "'": ",",
+  z: "ז", x: "ס", c: "ב", v: "ה", b: "נ", n: "מ", m: "צ", ",": "ת", ".": "ץ", "/": ".",
+};
+const HE_TO_EN: Record<string, string> = Object.fromEntries(Object.entries(EN_TO_HE).map(([en, he]) => [he, en]));
+
+/**
+ * שאילתות חלופיות למי ששכחה להחליף שפה במקלדת (או שהייתה נעולה ב-CAPS LOCK באנגלית):
+ *  - רק אותיות לטיניות ("akuo", "TEKNV") ← אותן לחיצות בעברית ("שלום", "תורה"). אותיות גדולות (CAPS LOCK) מומרות כקטנות.
+ *  - רק אותיות עבריות ("קמעךןדי") ← אותן לחיצות באנגלית ("english"), למי שרצתה לכתוב באנגלית והמקלדת הייתה בעברית.
+ * ספרות ורווחים נשארים. מחזיר רשימה ריקה כשהשאילתה מעורבת (עברית+אנגלית) או שההמרה זהה למקור.
+ */
+export function keyboardAlternates(query: string): string[] {
+  const q = query.trim();
+  const hasHe = /[א-ת]/.test(q);
+  const hasLat = /[a-z]/i.test(q);
+  if (hasLat === hasHe) return [];
+  const conv = hasLat
+    ? [...q.toLowerCase()].map((c) => EN_TO_HE[c] ?? c).join("")
+    : [...q].map((c) => HE_TO_EN[c] ?? c).join("");
+  return conv !== q ? [conv] : [];
+}
