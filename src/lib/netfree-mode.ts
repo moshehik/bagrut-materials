@@ -13,7 +13,7 @@ export type PresentationMesh = false | MeshOptions;
 export const HQ_MAX_BYTES = 35 * 1024 * 1024;
 export const STD_MAX_BYTES = 20 * 1024 * 1024;
 
-type Reqish = { headers: Headers; nextUrl?: { searchParams: URLSearchParams }; cookies?: { get(name: string): { value: string } | undefined } };
+type Reqish = { method?: string; headers: Headers; nextUrl?: { searchParams: URLSearchParams }; cookies?: { get(name: string): { value: string } | undefined } };
 
 function cookieValue(req: Reqish, name: string): string | undefined {
   const viaApi = req.cookies?.get(name)?.value;
@@ -53,9 +53,14 @@ const OTHER_LADDER = [
 
 /** הורדת מצגת (וגם תיקיית קבצים) */
 export function presentationMeshFor(req: Reqish): PresentationMesh {
+  // שליחה למייל (POST): במייל אין סינון – הקובץ המקורי עם התמונות, לא הגרסה הוקטורית הכבדה
+  if (req.method === "POST") return false;
   const hq = req.nextUrl?.searchParams.get("hq") === "1";
   if (!hq && netfreeState(req) === "0") return false;
-  return { ladder: isChromeOnly(req) ? CHROME_LADDER : OTHER_LADDER, maxBytes: hq ? HQ_MAX_BYTES : STD_MAX_BYTES };
+  // ?mb=N (רק עם hq=1, לבדיקת סף הגודל של נטפרי): תקציב בגודל אחר, 5–150MB
+  const mbParam = hq ? Number(req.nextUrl?.searchParams.get("mb")) : NaN;
+  const budget = Number.isFinite(mbParam) && mbParam >= 5 && mbParam <= 150 ? mbParam * MB : hq ? HQ_MAX_BYTES : STD_MAX_BYTES;
+  return { ladder: isChromeOnly(req) ? CHROME_LADDER : OTHER_LADDER, maxBytes: budget };
 }
 
 /** צפייה במצגת באתר: מי שלא בנטפרי – הקובץ כמו שהוא; מי שבנטפרי – 512 עמודות (קל ומוצג בכל קורא) */

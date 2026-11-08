@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, CalendarDays, Check, ChevronLeft, CreditCard, Crown, ExternalLink, FileText, FolderOpen, Loader2, Lock, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, Check, ChevronLeft, CreditCard, Crown, ExternalLink, FileText, FolderOpen, Loader2, Lock, RefreshCw, Clock } from "lucide-react";
 import { GateShekel } from "@/components/gate-shekel";
 import { GateField, LocationFields } from "@/components/auth-forms";
 import { SUBJECT_HOUSES, YEARLY_INCLUDED_SUBJECTS } from "@/lib/constants";
@@ -478,7 +478,7 @@ export function PayClient(props: {
         <span className="gold-ring" aria-hidden="true" />
         <div className="gate-card text-center">
           <span className="gate-icon mx-auto">
-            {paid ? <Check className="h-6 w-6" strokeWidth={2} aria-hidden /> : failed ? <AlertCircle className="h-6 w-6" aria-hidden /> : <Loader2 className="h-6 w-6 animate-spin" aria-hidden />}
+            {paid ? <Check className="h-6 w-6" strokeWidth={2} aria-hidden /> : failed ? <AlertCircle className="h-6 w-6" aria-hidden /> : <Clock className="h-6 w-6" aria-hidden />}
           </span>
           <h2 className="mt-2 text-2xl">{paid ? paidTitle : failed ? "התשלום לא הושלם" : "הבקשה בטיפול"}</h2>
           <p className="gate-soft mt-2 text-lg">{info.text}</p>
