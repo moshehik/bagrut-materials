@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/db";
-import { materialFixes } from "@/db/schema";
+import { materialFixes, materialPrivateVersions } from "@/db/schema";
 import { compactText } from "@/lib/docx-fixes";
 
 /** own = התיקון של המורה עצמה (בקשה שהגישה) – חל אצלה מיד, בלי תלות בהחלטת הסוכן על שאר המורות */
@@ -13,7 +13,17 @@ export type PublicFix = {
   own: boolean;
   /** כשהטקסט חוזר כמה פעמים: כמה מופעים קדמו למקום שהמורה סימנה (מאפס) – ר' DocxFix.occurrence */
   occurrence?: number;
+  /**
+   * התיקון כבר בתוך הגרסה הפרטית הפעילה של המורה (הסוכן שילב אותו שם – material_fixes.embedded_version_id): לא מחילים אותו שוב
+   * בהגשה/הורדה (ר' withoutEmbedded), אבל הוא נשאר ברשימת התיקונים שלה כתיקון שחל.
+   */
+  embedded?: boolean;
 };
+
+/** התיקונים שעוד צריך להחיל על הקובץ המוגש (בלי אלה שכבר שולבו בגרסה הפרטית של המורה) */
+export function withoutEmbedded<T extends { embedded?: boolean }>(fixes: T[]): T[] {
+  return fixes.filter((f) => !f.embedded);
+}
 
 /**
  * התיקונים שמוצגים למבקרת: המפורסמים (לכולן) + התיקונים ה"פרטיים" שלה עצמה (status "private" –
@@ -40,6 +50,22 @@ export async function getFixesForViewer(
       .from(materialFixes)
       .where(and(inArray(materialFixes.materialId, materialIds), visible))
       .orderBy(asc(materialFixes.fixNumber), asc(materialFixes.id));
+
+    // תיקונים שהסוכן שילב בגרסה הפרטית של המורה: embedded רק כשהגרסה הזו עדיין הפעילה שלה (אחרת – הוסרה/הוחלפה, והתיקון חוזר להתחולל)
+    const activePv = new Map<number, number>();
+    if (userId && rows.some((r) => r.embeddedVersionId != null)) {
+      const pvs = await db
+        .select({ id: materialPrivateVersions.id, materialId: materialPrivateVersions.materialId })
+        .from(materialPrivateVersions)
+        .where(
+          and(
+            inArray(materialPrivateVersions.materialId, materialIds),
+            eq(materialPrivateVersions.userId, userId),
+            eq(materialPrivateVersions.status, "active"),
+          ),
+        );
+      for (const v of pvs) if ((activePv.get(v.materialId) ?? 0) < v.id) activePv.set(v.materialId, v.id);
+    }
 
     // מספרים זמניים לממתינות: אחרי המספר הגבוה ביותר שכבר ניתן לחומר (בכל סטטוס, גם של מורות אחרות)
     const pending = rows.filter((r) => r.status === "pending");
@@ -72,6 +98,7 @@ export async function getFixesForViewer(
         originalText: original,
         correctedText: corrected,
         own: r.status !== "published",
+        embedded: r.status !== "published" && r.embeddedVersionId != null && activePv.get(r.materialId) === r.embeddedVersionId ? true : undefined,
         // המופע נשמר ביחס לטקסט שסומן; אם הסוכן/מנהלת ניסחו טקסט מקורי אחר – לא חל עליו (אין משמעות למספר)
         occurrence: r.occurrence != null && (r.status === "pending" || compactText(original) === compactText(r.quoteText ?? "")) ? r.occurrence : undefined,
       });

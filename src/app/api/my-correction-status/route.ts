@@ -1,12 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { limitKey, rateLimit } from "@/lib/rate-limit";
-import { getCorrectionStateForViewer } from "@/lib/private-versions";
-import { correctionSignature } from "@/lib/private-version-logic";
+import { getCorrectionSignatures } from "@/lib/private-versions";
 
 /*
  * GET /api/my-correction-status?ids=1,2 – חתימה קצרה לכל חומר (ר' correctionSignature) של ההערות הכלליות של המשתמשת המחוברת.
- * מיועד לבדיקה זולה מהדפדפן (components/correction-live.tsx): שאילתת DB אחת (שתי טבלאות, לפי אינדקס), עד 20 חומרים,
+ * מיועד לבדיקה זולה מהדפדפן (components/correction-live.tsx, גם בחלון עריכת השינויים): שתי שאילתות קלות במקביל (מזהים וסטטוסים בלבד, לפי אינדקס), עד 20 חומרים,
  * 60 בקשות לשעה למשתמשת, בלי נתונים רגישים. הלקוח מפחית תדירות (backoff), עוצר בכרטיסייה ברקע, ומרענן את הדף רק כשהחתימה השתנתה.
  */
 export const runtime = "nodejs";
@@ -25,8 +24,8 @@ export async function GET(req: NextRequest) {
     .filter((n) => Number.isInteger(n) && n > 0)
     .slice(0, 20);
   if (ids.length === 0) return json({ sigs: {} });
-  const states = await getCorrectionStateForViewer(ids, user.id);
+  const map = await getCorrectionSignatures(ids, user.id);
   const sigs: Record<string, string> = {};
-  for (const id of ids) sigs[id] = correctionSignature(states.get(id));
+  for (const id of ids) sigs[id] = map.get(id) ?? "none";
   return json({ sigs });
 }

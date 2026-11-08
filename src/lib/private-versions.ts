@@ -16,9 +16,11 @@ import { driveFetchAuthed, driveIdFromUrl } from "@/lib/driveBridgeCore";
 import { driveCreateFolder, driveGet, drivePatch, ensureArchiveFolders } from "@/lib/driveTreeCore";
 import { logFixEvent } from "@/lib/fix-events";
 import { ilStamp } from "@/lib/agentFileReplace";
+import { sanitizeReplyForDisplay } from "@/lib/reply-text";
 import {
   GENERAL_VISIBLE_STATUSES,
   chooseServedFile,
+  correctionSignatureOf,
   isDriveUrlStrict,
   parseOriginalParam,
   privateVersionDriveName,
@@ -74,6 +76,10 @@ export async function getCorrectionStateForViewer(materialIds: number[], userId:
           status: materialFixes.status,
           replyText: materialFixes.replyText,
           createdAt: materialFixes.createdAt,
+          requestText: materialFixes.requestText,
+          parentId: materialFixes.parentId,
+          turn: materialFixes.turn,
+          reason: materialFixes.reason,
         })
         .from(materialFixes)
         .where(
@@ -94,9 +100,58 @@ export async function getCorrectionStateForViewer(materialIds: number[], userId:
       const s = get(v.materialId);
       if (!s.privateVersion || s.privateVersion.id < v.id) s.privateVersion = toInfo(v);
     }
-    for (const c of complaints) get(c.materialId).general.push({ id: c.id, status: c.status, replyText: c.replyText, createdAt: c.createdAt });
+    for (const c of complaints) {
+      get(c.materialId).general.push({
+        id: c.id,
+        status: c.status,
+        // רשת ביטחון: בלי אזכור ספריית המקור ("ספריא") בתשובות ישנות (ר' src/lib/reply-text.ts)
+        replyText: sanitizeReplyForDisplay(c.replyText),
+        createdAt: c.createdAt,
+        requestText: c.requestText,
+        parentId: c.parentId ?? null,
+        turn: c.turn ?? 1,
+        commentators: c.reason === "commentators",
+      });
+    }
+    // גם הערת הגרסה הפרטית (מוצגת למורה) עוברת את אותה רשת ביטחון
+    for (const s of out.values()) {
+      if (s.privateVersion?.note) s.privateVersion = { ...s.privateVersion, note: sanitizeReplyForDisplay(s.privateVersion.note) };
+    }
   } catch (e) {
     console.error("getCorrectionStateForViewer failed", e);
+  }
+  return out;
+}
+
+/**
+ * חתימות מצב ההערות הכלליות לכל חומר – שאילתה קלה לבדיקה התקופתית מהדפדפן (/api/my-correction-status): רק מזהים וסטטוסים,
+ * בלי טקסטים. אותה חתימה בדיוק כמו correctionSignature(getCorrectionStateForViewer(...)) – ר' correctionSignatureOf.
+ */
+export async function getCorrectionSignatures(materialIds: number[], userId: number): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (materialIds.length === 0) return out;
+  const [versions, complaints] = await Promise.all([
+    db
+      .select({ id: materialPrivateVersions.id, materialId: materialPrivateVersions.materialId })
+      .from(materialPrivateVersions)
+      .where(and(inArray(materialPrivateVersions.materialId, materialIds), eq(materialPrivateVersions.userId, userId), eq(materialPrivateVersions.status, "active"))),
+    db
+      .select({ id: materialFixes.id, materialId: materialFixes.materialId, status: materialFixes.status })
+      .from(materialFixes)
+      .where(
+        and(
+          inArray(materialFixes.materialId, materialIds),
+          eq(materialFixes.userId, userId),
+          eq(materialFixes.kind, "general"),
+          inArray(materialFixes.status, [...GENERAL_VISIBLE_STATUSES]),
+        ),
+      ),
+  ]);
+  for (const id of materialIds) {
+    const pv = versions.filter((v) => v.materialId === id).reduce((m, v) => Math.max(m, v.id), 0);
+    const gen = complaints.filter((c) => c.materialId === id);
+    // חומר בלי גרסה פרטית ובלי הערות – "none", כמו correctionSignature(undefined)
+    out.set(id, pv === 0 && gen.length === 0 ? "none" : correctionSignatureOf(pv || null, gen));
   }
   return out;
 }
@@ -271,6 +326,8 @@ export async function publishPrivateVersion(opts: {
   for (const p of previous) {
     await db.update(materialPrivateVersions).set({ status: "replaced", removedAt: new Date() }).where(eq(materialPrivateVersions.id, p.id));
     replacedVersionId = p.id;
+    // תיקונים מסומנים של המורה ששולבו בגרסה הקודמת – הגרסה החדשה נבנית ממנה, אז הם עוברים אליה (אחרת היו מוחלים שוב בהגשה)
+    await db.update(materialFixes).set({ embeddedVersionId: row.id }).where(eq(materialFixes.embeddedVersionId, p.id));
     parked.push({ versionId: p.id, ...(await parkInactiveFile(p.fileUrl, "replaced", `הוחלפה בגרסה #${row.id} (הערה #${fixId})`)) });
   }
   await logFixEvent({

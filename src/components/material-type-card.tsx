@@ -13,7 +13,7 @@ import { ColourSvg } from "@/components/colour-svg";
 import { inlineUi } from "@/lib/inline-images";
 import { LineIcon, hasLineIcon } from "@/components/line-icon";
 import { PrivateVersionNote } from "@/components/material-private-version";
-import type { CorrectionState } from "@/lib/private-version-logic";
+import { correctionSignature, threadViews, type CorrectionState } from "@/lib/private-version-logic";
 import { FreeTrialDownload } from "@/components/free-trial-download";
 import type { FreeTrialState } from "@/lib/free-trial";
 
@@ -349,6 +349,10 @@ export function MaterialTypeCard({
             demo={fixDemo}
             fixes={canFix ? fixes : []}
             downloadHref={canFix ? target : null}
+            // השיחה על ההערות הכלליות / מפרשים נוספים + מצב הגרסה הפרטית – מוצגים בתוך חלון העריכה (רק למי שמורשית לקובץ)
+            threads={entitlement.ok && !viewOnly && correction ? threadViews(correction.general) : undefined}
+            correctionSig={entitlement.ok && !viewOnly ? correctionSignature(correction) : undefined}
+            hasPrivateVersion={!!(entitlement.ok && !viewOnly && correction?.privateVersion)}
           />
           {canFix && (
             <a href={`${target}?fixes=all`} className="mtc-row" data-tip={FIX_TIPS.download}>

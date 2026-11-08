@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   bigint,
+  smallint,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -232,11 +233,24 @@ export const materialFixes = pgTable(
      * driveId, name, at}] – ר' keepFixArtifact ב-src/lib/general-fix.ts. ציר הזמן המלא – audit_logs (entity material_fix).
      */
     artifacts: text("artifacts"),
+    /**
+     * kind=general: שיחה עם הסוכן על אותה הערה (עד 5 הודעות של המורה). parent_id = מזהה ההערה הראשונה בשרשור (null בהערה
+     * הראשונה עצמה); turn = מספר ההודעה של המורה בשרשור (1 = הראשונה, עד 5; null נחשב 1). scripts/add-fix-thread-columns.ts.
+     */
+    parentId: integer("parent_id"),
+    turn: smallint("turn"),
+    /**
+     * תיקון מסומן של המורה (kind free/list/custom, status pending/private) שהסוכן שילב בתוך הגרסה הפרטית שלה (id של
+     * material_private_versions). כל עוד הגרסה הזו פעילה התיקון כבר בתוך הקובץ ולכן לא מוחל שוב בהגשה (אחרת "X ← X Y" היה
+     * הופך ל-"X Y Y"). כשהגרסה מוסרת – התיקון חוזר להתחולל בהגשה. ר' src/lib/fixes.ts, general-fix.ts.
+     */
+    embeddedVersionId: integer("embedded_version_id"),
     publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
     index("material_fixes_material_idx").on(t.materialId),
+    index("material_fixes_parent_idx").on(t.parentId),
     uniqueIndex("material_fixes_number_idx").on(t.materialId, t.fixNumber),
   ],
 );

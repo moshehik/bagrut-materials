@@ -13,7 +13,7 @@ import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl } from "@/lib/driveBridge";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
-import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
+import { getFixesForViewer, parseFixesParam, withoutEmbedded } from "@/lib/fixes";
 import { decodeDraft } from "@/lib/fix-draft";
 import { resolveServedFile } from "@/lib/private-versions";
 import { reserveDownloads, type Reservation, type ReserveResult } from "@/lib/download-quota";
@@ -153,7 +153,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if ((wantFixes || draft) && isDocxName(material.fileName)) {
     try {
       const published = (await getFixesForViewer([material.id], user?.id)).get(material.id) ?? [];
-      const chosen = !wantFixes ? [] : wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
+      // תיקונים שהסוכן כבר שילב בגרסה הפרטית שלה (embedded) לא מוחלים שוב
+      const chosen = !wantFixes ? [] : withoutEmbedded(wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number)));
       // הנוסח החדש שעוד לא נשלח מקבל את המספר הבא ברשימה, כמו שיופיע אחרי השליחה
       const nextNumber = published.reduce((m, f) => Math.max(m, f.number), 0) + 1;
       const toApply = [

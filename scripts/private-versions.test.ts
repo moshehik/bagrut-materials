@@ -60,8 +60,9 @@ test("drive name strips an old edit-date suffix, keeps the extension, no path ch
 });
 
 test("status labels and latest complaint", () => {
-  const older = { id: 1, status: "answered", replyText: "x", createdAt: new Date("2026-01-01") };
-  const newer = { id: 2, status: "pending", replyText: null, createdAt: new Date("2026-02-01") };
+  const base = { requestText: "t", parentId: null, turn: 1, commentators: false };
+  const older = { ...base, id: 1, status: "answered", replyText: "x", createdAt: new Date("2026-01-01") };
+  const newer = { ...base, id: 2, status: "pending", replyText: null, createdAt: new Date("2026-02-01") };
   assert.equal(latestGeneral([older, newer])?.id, 2);
   assert.equal(generalStatusLabel(newer)?.tone, "wait");
   assert.equal(generalStatusLabel(older)?.tone, "info");

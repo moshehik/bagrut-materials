@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Download, Plus, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Download, Hourglass, Plus, Sparkles, X } from "lucide-react";
 import {
   cancelOwnFix,
   mirrorFix,
@@ -16,6 +16,9 @@ import {
 import { FIX_REASONS, type FixReasonKey } from "@/lib/fix-writing-guidelines";
 import { PdfViewer, type PdfMark } from "@/components/pdf-viewer";
 import { encodeDraft } from "@/lib/fix-draft";
+import { FixThreads, type OptimisticMsg } from "@/components/fix-thread";
+import { useCorrectionPoll } from "@/components/correction-live";
+import type { ThreadView } from "@/lib/private-version-logic";
 
 /** own = התיקון של המורה עצמה: חל אצלה מיד (מסומן מראש), בלי תלות בהחלטה על שאר המורות */
 export type CardFix = { id?: number; number: number; originalText: string; correctedText: string; own?: boolean };
@@ -199,7 +202,16 @@ export function FixRequestButton({
   demo = false,
   fixes = [],
   downloadHref = null,
+  threads = [],
+  correctionSig,
+  hasPrivateVersion = false,
 }: {
+  /** שיחות ההערות הכלליות / מפרשים נוספים של המורה על הקובץ (ר' threadViews) – מוצגות בתוך החלון, עם שעון חול והמשך שיחה */
+  threads?: ThreadView[];
+  /** חתימת מצב ההערות (correctionSignature): הבדיקה התקופתית רצה כשהיא משתנה, והקובץ שבחלון נטען מחדש כשהגרסה הפרטית משתנה */
+  correctionSig?: string;
+  /** יש למורה גרסה פרטית מתוקנת פעילה (הקובץ שבחלון הוא כבר המתוקן) */
+  hasPrivateVersion?: boolean;
   materialId: number;
   materialTitle: string;
   /** תיקונים שכבר נעשו בקובץ (שלה + מה שפורסם) – מוצגים בתוך חלון העריכה: בחירה, ביטול של שלה והורדה עם הנבחרים */
@@ -228,6 +240,20 @@ export function FixRequestButton({
   const [activeId, setActiveId] = useState<number>(() => edits[0].id);
   /** עולה בכל שינוי בתיקונים – טוען מחדש את הקובץ שבחלון כך שיציג את מה שחל */
   const [viewVersion, setViewVersion] = useState(0);
+  // הערות כלליות / מפרשים: הודעות שנשלחו עכשיו ועוד לא הגיעו מהשרת (מוצגות מיד כ"נבדקת"); מתאפסות כשהנתונים מתרעננים
+  const [optimistic, setOptimistic] = useState<OptimisticMsg[]>([]);
+  useEffect(() => setOptimistic([]), [correctionSig]);
+  const waitingThread = threads.some((t) => t.items[t.items.length - 1]?.status === "pending") || optimistic.length > 0;
+  // בדיקה קלה ברקע בזמן שהחלון פתוח והודעה ממתינה לסוכן: כשהגיעה תשובה הנתונים מתרעננים והתשובה מופיעה כאן לבד
+  useCorrectionPoll(materialId, correctionSig ?? "none", open && !demo && !lockedHref && correctionSig !== undefined && waitingThread);
+  // הקובץ שבחלון נטען מחדש כשהקובץ שמוגש לה השתנה (נוצרה/הוחלפה גרסה פרטית, או שולב בקובץ המשותף) – לא על כל הודעה חדשה (כל טעינה נספרת צפייה)
+  const fileKey = correctionSig ? `${correctionSig.split("|")[0]}|${(correctionSig.match(/\d+:merged/g) ?? []).join(",")}` : "";
+  const lastFileKey = useRef(fileKey);
+  useEffect(() => {
+    if (lastFileKey.current === fileKey) return;
+    lastFileKey.current = fileKey;
+    setViewVersion((v) => v + 1);
+  }, [fileKey]);
   /** הנוסח החדש שעוד לא נשלח (ידני או מג'מיני), בקידוד לתצוגה המקדימה – הקובץ שבצד נטען איתו מחדש כמו ב"לצפייה בשינויים" */
   const [liveDraft, setLiveDraft] = useState<string | null>(null);
   // תיקונים שכבר נעשו: מה נבחר להורדה (שלה – מסומנים מראש)
@@ -306,12 +332,10 @@ export function FixRequestButton({
   const [generalText, setGeneralText] = useState("");
   const [generalResult, setGeneralResult] = useState<FixState>(undefined);
   const [generalPending, startGeneral] = useTransition();
-  /** אישור שליחת ההערה: חלונית צפה בעיצוב חלוניות האתר, ולא טקסט שנכנס בתוך החלון הגדול */
-  const [generalDone, setGeneralDone] = useState<FixMode | null>(null);
-  const generalDoneRef = useDialog(generalDone !== null, () => setGeneralDone(null), true);
   const sendGeneral = () => {
     if (mode === "mark") return;
     const sentMode = mode;
+    const sentText = generalText.trim();
     setGeneralResult(undefined);
     startGeneral(async () => {
       const res = await submitGeneralComplaint({
@@ -322,10 +346,15 @@ export function FixRequestButton({
       setGeneralResult(res);
       if (res?.ok) {
         setGeneralText("");
-        setMode("mark");
-        setGeneralDone(sentMode);
+        // נשארים באותו מצב: השעון "ההערה שלך נבדקת" מופיע כאן בחלון, והתשובה תגיע אליו לבד
+        addOptimistic({ key: `n${Date.now()}`, threadId: null, text: sentText, commentators: sentMode === "commentators" });
       }
     });
+  };
+  /** הודעה (חדשה או המשך) נשלחה: מוצגת מיד כממתינה, והנתונים מהשרת מתרעננים (הבדיקה התקופתית ממשיכה עד שתגיע תשובה) */
+  const addOptimistic = (m: OptimisticMsg) => {
+    setOptimistic((list) => [...list, m]);
+    router.refresh();
   };
   const close = () => {
     setOpen(false);
@@ -509,6 +538,12 @@ export function FixRequestButton({
     </>
   );
 
+  /** השרשורים של מצב מסוים (הערה כללית / מפרשים נוספים), כולל ההודעות שנשלחו עכשיו */
+  const threadsOf = (m: FixMode) => threads.filter((t) => t.commentators === (m === "commentators"));
+  const optimisticOf = (m: FixMode) => optimistic.filter((o) => o.commentators === (m === "commentators"));
+  /** יש במצב הזה הודעה שממתינה לסוכן – שעון חול על הלשונית (גם כשהיא בלשונית אחרת) */
+  const modeWaiting = (m: FixMode) =>
+    m !== "mark" && (optimisticOf(m).length > 0 || threadsOf(m).some((t) => t.items[t.items.length - 1]?.status === "pending"));
   const modeOption = (m: FixMode, text: string, tip: string) => (
     <button
       key={m}
@@ -520,6 +555,7 @@ export function FixRequestButton({
       onClick={() => setMode(m)}
     >
       {text}
+      {modeWaiting(m) && <Hourglass className="inline-block h-4 w-4 align-text-bottom ms-1" strokeWidth={1.75} aria-label="נבדקת" />}
     </button>
   );
 
@@ -576,6 +612,19 @@ export function FixRequestButton({
 
               {mode !== "mark" ? (
                 <div className="fix-general-box">
+                  {/* השיחה על ההערות הקודמות במצב הזה: ההודעות שלה, התשובות, שעון חול וההמשך (עד 5 הודעות) */}
+                  {(threadsOf(mode).length > 0 || optimisticOf(mode).length > 0) && (
+                    <div className="w-full">
+                      <FixThreads
+                        materialId={materialId}
+                        threads={threadsOf(mode)}
+                        optimistic={optimisticOf(mode)}
+                        hasPrivateVersion={hasPrivateVersion}
+                        onSent={addOptimistic}
+                      />
+                      <span className="fix-what-q">{mode === "general" ? "הערה חדשה" : "בקשה חדשה"}</span>
+                    </div>
+                  )}
                   <p className="fix-dialog-sub">
                     {mode === "general"
                       ? "למשל: הדף ארוך מדי, חסרה שאלה על…, שאלה 3 לא ברורה."
@@ -833,31 +882,6 @@ export function FixRequestButton({
                 לא, להשאיר
               </button>
             </div>
-          </div>
-        </div>
-      </dialog>
-      {/* אישור שליחת ההערה הכללית / בקשת המפרשים – אותה חלונית צפה כמו שאר החלוניות באתר */}
-      <dialog
-        ref={generalDoneRef}
-        className="fix-dialog fix-dialog-dark"
-        aria-label="ההערה נשלחה"
-        onClick={(e) => {
-          if (e.target === generalDoneRef.current) setGeneralDone(null);
-        }}
-      >
-        <div className="fix-dialog-box">
-          <div className="fix-dialog-head">
-            <h3>ההערה נשלחה</h3>
-            <button type="button" className="fix-close" aria-label="סגירה" onClick={() => setGeneralDone(null)}>
-              <X className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
-          <div className="fix-inner fix-done">
-            <p className="fix-dialog-sub">
-              {generalDone === "commentators"
-                ? "תודה! נוסיף את המפרשים, ותקבלי כאן קובץ מתוקן שנשמר רק אצלך."
-                : "תודה! נבדוק אותה, ואם צריך – תקבלי כאן קובץ מתוקן."}
-            </p>
           </div>
         </div>
       </dialog>

@@ -10,14 +10,16 @@
  * שורות משנות סטטוס בלבד. בלי "server-only" – רץ גם מסקריפט tsx.
  */
 import JSZip from "jszip";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
 import { convertOfficeToPdf, driveDownload, driveIdFromUrl } from "@/lib/driveBridgeCore";
 import { categoryPathNames, driveCreateFolder, ensureArchiveFolders, loadCategories } from "@/lib/driveTreeCore";
 import { replaceDocxInPlace } from "@/lib/agentFileReplace";
 import { checkEditedDocx, paragraphDiff, plainText, type EditCheckResult } from "@/lib/docx-edit-check";
-import { isDocxName } from "@/lib/docx-fixes";
+import { applyDocxFixes, compactText, isDocxName } from "@/lib/docx-fixes";
+import { getFixesForViewer } from "@/lib/fixes";
+import { REPLY_LIBRARY_ERROR, validateReplyText } from "@/lib/reply-text";
 import { logFixEvent } from "@/lib/fix-events";
 import { getPrivateVersion, publishPrivateVersion, removePrivateVersion, uploadFileToFolder } from "@/lib/private-versions";
 import type { AgentEventSource } from "@/lib/agentEvents";
@@ -130,7 +132,98 @@ export async function listPendingGeneral() {
     userName,
     complaint: fix.requestText,
     createdAt: fix.createdAt,
+    /** הודעת המשך בשרשור קיים (parentId = ההערה הראשונה, turn = מספר ההודעה של המורה) – ההיסטוריה המלאה ב---get */
+    parentId: fix.parentId ?? null,
+    turn: fix.turn ?? 1,
+    commentators: fix.reason === "commentators",
   }));
+}
+
+/* ---------- שרשור (שיחה עד 5 הודעות של המורה) ---------- */
+
+export type ThreadEntry = { fixId: number; turn: number; status: string; teacherText: string; agentReply: string | null; at: Date };
+
+/** כל ההודעות בשרשור של ההערה (של אותה מורה, אותו חומר), מהישנה לחדשה. שרשור בלי המשך = ההערה עצמה בלבד. */
+export async function loadThread(fix: { id: number; parentId: number | null; userId: number | null; materialId: number }): Promise<ThreadEntry[]> {
+  const root = fix.parentId ?? fix.id;
+  const rows = await db
+    .select()
+    .from(materialFixes)
+    .where(and(eq(materialFixes.materialId, fix.materialId), eq(materialFixes.kind, "general"), or(eq(materialFixes.id, root), eq(materialFixes.parentId, root))))
+    .orderBy(asc(materialFixes.id));
+  return rows
+    .filter((r) => r.userId === fix.userId && r.status !== "cancelled" && r.status !== "rejected")
+    .map((r, i) => ({ fixId: r.id, turn: r.turn ?? i + 1, status: r.status, teacherText: r.requestText, agentReply: r.replyText, at: r.createdAt }));
+}
+
+/* ---------- הקובץ שהמורה רואה (בסיס העריכה) ---------- */
+
+export type OwnFixInfo = { id: number; original: string; corrected: string; embeddedBefore: boolean };
+
+export type ViewerBase = {
+  bytes: Buffer;
+  /** מאיפה: הגרסה הפרטית הפעילה שלה, או הקובץ המשותף החי */
+  source: "private-version" | "shared";
+  privateVersionId: number | null;
+  /** התיקונים המסומנים של המורה (pending/private) שהוחלו על הבסיס עכשיו (לא היו בו עד כה) */
+  appliedOwnFixes: OwnFixInfo[];
+  /** תיקונים מסומנים שלה שנמצאים כבר בגרסה הפרטית הפעילה (embedded) */
+  alreadyEmbedded: OwnFixInfo[];
+  /** תיקונים מסומנים שלא נמצא להם מקום בבסיס (הטקסט המקורי לא נמצא) – לא נכנסו */
+  notApplied: OwnFixInfo[];
+  /** כל התיקונים המסומנים שלה (לבדיקה שהקובץ הערוך לא מאבד אותם) */
+  allOwnFixes: OwnFixInfo[];
+};
+
+/**
+ * הקובץ שהמורה רואה ושעליו הסוכן אמור לעבוד (כשמחליטים --private / --answer): הגרסה הפרטית הפעילה שלה (אם יש) – אחרת
+ * המשותף – ועליו התיקונים המסומנים שלה עצמה ("סימון בדף", pending/private) שעוד לא שולבו בגרסה הפרטית, מוחלים כמו בהורדה
+ * נקייה. כך גרסה פרטית חדשה לא מאבדת לא את הגרסה הפרטית הקודמת ולא תיקון ידני שהמורה עשתה (בלי זה: גרסה חדשה נבנתה מהמשותף
+ * והחליפה את הקודמת – "ההדגשות שנוספו בגרסה הקודמת לא נכללו", הערה #24).
+ * base="shared": רק המשותף החי, בלי כלום ממנה (ל---merge: מה שמתפרסם לכולן לא כולל תיקונים אישיים שלא נבדקו).
+ */
+export async function loadViewerBase(m: typeof materials.$inferSelect, userId: number | null, sharedBytes: Buffer, base: "viewer" | "shared" = "viewer"): Promise<ViewerBase> {
+  const empty: ViewerBase = { bytes: sharedBytes, source: "shared", privateVersionId: null, appliedOwnFixes: [], alreadyEmbedded: [], notApplied: [], allOwnFixes: [] };
+  if (base === "shared" || !userId || !isDocxName(m.fileName)) return empty;
+  let bytes = sharedBytes;
+  let source: ViewerBase["source"] = "shared";
+  const pv = await getPrivateVersion(m.id, userId);
+  if (pv) {
+    const pvDrive = driveIdFromUrl(pv.fileUrl);
+    if (!pvDrive) throw new Error(`לגרסה הפרטית הפעילה #${pv.id} אין קובץ דרייב תקין`);
+    bytes = Buffer.from((await driveDownload(pvDrive)).bytes);
+    source = "private-version";
+  }
+  const own = ((await getFixesForViewer([m.id], userId)).get(m.id) ?? []).filter((f) => f.own);
+  const info = (f: (typeof own)[number]): OwnFixInfo => ({ id: f.id, original: f.originalText, corrected: f.correctedText, embeddedBefore: !!f.embedded });
+  const allOwnFixes = own.map(info);
+  const alreadyEmbedded = allOwnFixes.filter((f) => f.embeddedBefore);
+  const toApply = own.filter((f) => !f.embedded);
+  let appliedIds: number[] = [];
+  if (toApply.length > 0) {
+    const r = await applyDocxFixes(
+      new Uint8Array(bytes),
+      toApply.map((f) => ({ id: f.id, originalText: f.originalText, correctedText: f.correctedText, occurrence: f.occurrence })),
+    );
+    appliedIds = r.applied;
+    if (r.applied.length > 0) bytes = Buffer.from(r.bytes);
+  }
+  return {
+    bytes,
+    source,
+    privateVersionId: pv?.id ?? null,
+    appliedOwnFixes: allOwnFixes.filter((f) => appliedIds.includes(f.id)),
+    alreadyEmbedded,
+    notApplied: allOwnFixes.filter((f) => !f.embeddedBefore && !appliedIds.includes(f.id)),
+    allOwnFixes,
+  };
+}
+
+/** האם הטקסט המתוקן של כל תיקון מסומן שלה נמצא בקובץ הערוך (השוואה דחוסה – בלי רווחים וניקוד) */
+export async function ownFixesPresence(editedBytes: Uint8Array | Buffer, own: OwnFixInfo[]): Promise<(OwnFixInfo & { present: boolean })[]> {
+  if (own.length === 0) return [];
+  const text = compactText(paragraphsOf(await docXmlOf(editedBytes)).join(" "));
+  return own.map((f) => ({ ...f, present: text.includes(compactText(f.corrected)) }));
 }
 
 async function docXmlOf(bytes: Uint8Array | Buffer): Promise<string> {
@@ -155,16 +248,31 @@ export type GetResult = {
   userName: string | null;
   complaint: string;
   existingPrivateVersion: { id: number; createdAt: Date; note: string | null } | null;
+  /** שיחה: ההערה הראשונה + הודעות ההמשך שלה ותשובות הסוכן (מהישנה לחדשה); thisTurn = מספר ההודעה הנוכחית של המורה */
+  thread: ThreadEntry[];
+  thisTurn: number;
+  /** על מה עובדים: "viewer" = מה שהמורה רואה (גרסה פרטית/משותף + תיקונים מסומנים שלה); "shared" = המשותף בלבד */
+  base: {
+    kind: "viewer" | "shared";
+    source: ViewerBase["source"];
+    privateVersionId: number | null;
+    appliedOwnFixes: OwnFixInfo[];
+    alreadyEmbedded: OwnFixInfo[];
+    notApplied: OwnFixInfo[];
+  };
   artifacts: FixArtifact[];
   paragraphs: string[];
   bytes: Uint8Array;
 };
 
 /** מוריד את הקובץ החי של ההערה; בפעם הראשונה שומר אותו כקובץ עבודה "original" (תמונת מצב של מה שהסוכן ראה). */
-export async function getComplaint(fixId: number, actor: Actor): Promise<GetResult> {
+export async function getComplaint(fixId: number, actor: Actor, opts: { base?: "viewer" | "shared" } = {}): Promise<GetResult> {
   const { fix, m, driveId, userName } = await loadComplaint(fixId);
   const dl = await driveDownload(driveId);
-  const bytes = new Uint8Array(dl.bytes);
+  const baseKind = opts.base ?? "viewer";
+  const vb = await loadViewerBase(m, fix.userId, Buffer.from(dl.bytes), baseKind);
+  const bytes = new Uint8Array(vb.bytes);
+  const thread = await loadThread(fix);
   const paragraphs = isDocxName(m.fileName) ? paragraphsOf(await docXmlOf(bytes)) : [];
   const { byId } = await loadCategories();
   const cat = byId.get(m.categoryId);
@@ -178,10 +286,21 @@ export async function getComplaint(fixId: number, actor: Actor): Promise<GetResu
     source: actor.source,
     ip: actor.ip ?? null,
     summary: `הסוכן הוריד את הקובץ החי "${m.fileName}" (${dl.size} בתים, דרייב ${driveId}) לבדיקת ההערה`,
-    details: { driveId, size: dl.size, paragraphs: paragraphs.length, via: actor.via, existingPrivateVersion: existing?.id ?? null },
+    details: { driveId, size: dl.size, paragraphs: paragraphs.length, via: actor.via, existingPrivateVersion: existing?.id ?? null, base: baseKind, baseSource: vb.source, appliedOwnFixes: vb.appliedOwnFixes.map((f) => f.id), alreadyEmbedded: vb.alreadyEmbedded.map((f) => f.id), turn: fix.turn ?? 1 },
   });
   if (!artifacts.some((a) => a.kind === "original")) {
-    const art = await keepFixArtifact({ fixId, materialId: m.id, kind: "original", name: m.fileName, bytes, actor, note: "הקובץ החי כפי שהיה כשהסוכן התחיל לטפל" });
+    const art = await keepFixArtifact({
+      fixId,
+      materialId: m.id,
+      kind: "original",
+      name: m.fileName,
+      bytes,
+      actor,
+      note:
+        baseKind === "viewer"
+          ? `הקובץ שהמורה רואה כפי שהיה כשהסוכן התחיל לטפל (${vb.source === "private-version" ? "הגרסה הפרטית שלה" : "המשותף"}${vb.appliedOwnFixes.length ? ` + ${vb.appliedOwnFixes.length} תיקונים מסומנים שלה` : ""})`
+          : "הקובץ המשותף החי כפי שהיה כשהסוכן התחיל לטפל",
+    });
     if (art) artifacts = [...artifacts, art];
   }
   return {
@@ -196,6 +315,9 @@ export async function getComplaint(fixId: number, actor: Actor): Promise<GetResu
     userName,
     complaint: fix.requestText,
     existingPrivateVersion: existing ? { id: existing.id, createdAt: existing.createdAt, note: existing.note } : null,
+    thread,
+    thisTurn: fix.turn ?? 1,
+    base: { kind: baseKind, source: vb.source, privateVersionId: vb.privateVersionId, appliedOwnFixes: vb.appliedOwnFixes, alreadyEmbedded: vb.alreadyEmbedded, notApplied: vb.notApplied },
     artifacts,
     paragraphs,
     bytes,
@@ -205,6 +327,10 @@ export async function getComplaint(fixId: number, actor: Actor): Promise<GetResu
 /* ---------- check (+ render) ---------- */
 
 export type CheckResult = EditCheckResult & {
+  /** מול מה נבדק: "viewer" = מה שהמורה רואה (ברירת מחדל, ל---private/--answer); "shared" = המשותף החי (ל---merge) */
+  against: "viewer" | "shared";
+  /** התיקונים המסומנים של המורה: האם התיקון המתוקן נמצא בקובץ הערוך (present=false = הערוך מאבד אותו) */
+  ownFixes: { id: number; original: string; corrected: string; present: boolean }[];
   diff: { removed: string[]; added: string[] };
   pdf: Uint8Array | null;
   renderError: string | null;
@@ -215,12 +341,20 @@ export type CheckResult = EditCheckResult & {
  * בודק docx ערוך מול הקובץ החי (תמיד החי עכשיו – לא original ישן), ולבקשה ממיר ל-PDF דרך צינור ההגשה האמיתי
  * (תיקוני-הגשה + Oracle/LibreOffice). הקובץ הערוך וה-PDF נשמרים כקבצי עבודה.
  */
-export async function checkEdited(opts: { fixId: number; bytes: Uint8Array | Buffer; render: boolean; actor: Actor; keep?: boolean }): Promise<CheckResult> {
+export async function checkEdited(opts: { fixId: number; bytes: Uint8Array | Buffer; render: boolean; actor: Actor; keep?: boolean; against?: "viewer" | "shared" }): Promise<CheckResult> {
   const { fix, m, driveId } = await loadComplaint(opts.fixId);
   if (!isDocxName(m.fileName)) throw new Error(`הקובץ "${m.fileName}" אינו docx — אי אפשר לערוך`);
+  const against = opts.against ?? "viewer";
   const live = Buffer.from((await driveDownload(driveId)).bytes);
-  const res = await checkEditedDocx(live, opts.bytes);
-  const diff = paragraphDiff(await docXmlOf(live), await docXmlOf(opts.bytes));
+  const vb = await loadViewerBase(m, fix.userId, live, against);
+  const base = vb.bytes;
+  const res = await checkEditedDocx(base, opts.bytes);
+  const diff = paragraphDiff(await docXmlOf(base), await docXmlOf(opts.bytes));
+  // תיקון ידני של המורה שהקובץ הערוך מאבד – אזהרה (הסוכן צריך לשלב אותו או לוודא שהסרתו מכוונת)
+  const ownFixes = against === "viewer" ? await ownFixesPresence(opts.bytes, vb.allOwnFixes) : [];
+  for (const f of ownFixes) {
+    if (!f.present) res.warnings.push(`התיקון הידני של המורה (#${f.id}) «${f.original.slice(0, 40)}» ← «${f.corrected.slice(0, 40)}» לא נמצא בקובץ הערוך – שלבו אותו בקובץ (או ודאו שהסרתו מכוונת)`);
+  }
   let pdf: Uint8Array | null = null;
   let renderError: string | null = null;
   if (opts.render && res.ok) {
@@ -238,7 +372,7 @@ export async function checkEdited(opts: { fixId: number; bytes: Uint8Array | Buf
     source: opts.actor.source,
     ip: opts.actor.ip ?? null,
     summary: `בדיקת docx ערוך: ${res.ok ? "עבר" : "נכשל"} (${res.errors.length} שגיאות, ${res.warnings.length} אזהרות)${opts.render ? pdf ? `, הומר ל-PDF (${pdf.length} בתים)` : `, המרה נכשלה: ${renderError}` : ""}`,
-    details: { ok: res.ok, errors: res.errors, warnings: res.warnings, stats: res.stats, added: diff.added.slice(0, 10), removed: diff.removed.slice(0, 10), via: opts.actor.via, status: fix.status },
+    details: { ok: res.ok, against, ownFixesMissing: ownFixes.filter((f) => !f.present).map((f) => f.id), errors: res.errors, warnings: res.warnings, stats: res.stats, added: diff.added.slice(0, 10), removed: diff.removed.slice(0, 10), via: opts.actor.via, status: fix.status },
   });
   const artifacts: FixArtifact[] = [];
   if (opts.keep !== false) {
@@ -249,18 +383,25 @@ export async function checkEdited(opts: { fixId: number; bytes: Uint8Array | Buf
       if (b) artifacts.push(b);
     }
   }
-  return { ...res, diff, pdf, renderError, artifacts };
+  return { ...res, against, ownFixes: ownFixes.map((f) => ({ id: f.id, original: f.original, corrected: f.corrected, present: f.present })), diff, pdf, renderError, artifacts };
 }
 
 /* ---------- החלטות ---------- */
 
-async function prepareEdited(fixId: number, bytes: Uint8Array | Buffer, note: string, actor: Actor) {
+/** תשובה למורה לא מזכירה את אתר/ספריית המקור (ר' src/lib/reply-text.ts) – זורק שגיאה ברורה כדי שהסוכן ינסח מחדש */
+function assertReplyText(note: string) {
+  const v = validateReplyText(note);
+  if (!v.ok) throw new Error(v.error || REPLY_LIBRARY_ERROR);
+}
+
+async function prepareEdited(fixId: number, bytes: Uint8Array | Buffer, note: string, actor: Actor, against: "viewer" | "shared" = "viewer") {
   if (!note || note.trim().length < 3) throw new Error('חובה note — מה תוקן, ניסוח אל המורה (בנקבה, בלי פרטים טכניים)');
   if (note.length > 600) throw new Error("ה-note ארוך מדי (עד 600 תווים)");
+  assertReplyText(note);
   const loaded = await loadComplaint(fixId);
   requirePending(loaded.fix);
   if (!isDocxName(loaded.m.fileName)) throw new Error(`הקובץ "${loaded.m.fileName}" אינו docx — אי אפשר לערוך; השתמשו ב-answer`);
-  const check = await checkEdited({ fixId, bytes, render: false, actor, keep: false });
+  const check = await checkEdited({ fixId, bytes, render: false, actor, keep: false, against });
   if (!check.ok) throw new Error("הקובץ הערוך לא עבר את הבדיקות מול הקובץ החי — לא נעשה כלום:\n- " + check.errors.join("\n- "));
   if (check.stats.changedEntries.length === 0) throw new Error("הקובץ הערוך זהה לקובץ החי — אין מה לפרסם (אם אין מה לשנות: answer)");
   return { ...loaded, note: note.trim(), check };
@@ -274,12 +415,17 @@ export async function decidePrivate(opts: { fixId: number; bytes: Uint8Array | B
   if (!p.fix.userId) throw new Error("להערה אין מבקשת (userId ריק) — אין למי לפרסם גרסה פרטית. answer או reject");
   const existing = await getPrivateVersion(p.m.id, p.fix.userId);
   const base = { fixId: opts.fixId, materialId: p.m.id, fileName: p.m.fileName, action: "private" };
-  const details = { userId: p.fix.userId, replacesPrivateVersion: existing?.id ?? null, stats: p.check.stats, warnings: p.check.warnings, note: p.note, via: opts.actor.via };
+  const details = { userId: p.fix.userId, replacesPrivateVersion: existing?.id ?? null, stats: p.check.stats, warnings: p.check.warnings, ownFixesMissing: p.check.ownFixes.filter((f) => !f.present).map((f) => f.id), turn: p.fix.turn ?? 1, note: p.note, via: opts.actor.via };
   if (!opts.apply) {
     await logFixEvent({ fixId: opts.fixId, materialId: p.m.id, action: "fix.general.private.dryrun", actorId: opts.actor.actorId ?? null, source: opts.actor.source, ip: opts.actor.ip ?? null, summary: `dry-run: גרסה פרטית למשתמשת #${p.fix.userId} (לא נכתב כלום)`, details });
     return { ...base, mode: "DRY-RUN", summary: "DRY-RUN: לא נכתב כלום. להחלה: apply", details };
   }
   const r = await publishPrivateVersion({ material: p.m, userId: p.fix.userId, fixId: opts.fixId, bytes: opts.bytes, note: p.note, via: `agent-general-fix/${opts.actor.via}`, actorId: opts.actor.actorId, ip: opts.actor.ip });
+  // התיקונים המסומנים של המורה שנמצאים בתוך הקובץ הערוך סומנו "שולבו בגרסה הזו" (לא יוחלו שוב בהגשה); אלה שאינם בו – חוזרים להתחולל בהגשה
+  const presentIds = p.check.ownFixes.filter((f) => f.present).map((f) => f.id);
+  const absentIds = p.check.ownFixes.filter((f) => !f.present).map((f) => f.id);
+  if (presentIds.length) await db.update(materialFixes).set({ embeddedVersionId: r.versionId }).where(inArray(materialFixes.id, presentIds));
+  if (absentIds.length) await db.update(materialFixes).set({ embeddedVersionId: null }).where(inArray(materialFixes.id, absentIds));
   await db
     .update(materialFixes)
     .set({ status: "private", replyText: p.note, adminNote: `הסוכן ערך גרסה פרטית למבקשת (גרסה #${r.versionId}, דרייב ${r.fileId}); הקובץ המשותף לא שונה`, publishedAt: new Date() })
@@ -302,7 +448,8 @@ export async function decidePrivate(opts: { fixId: number; bytes: Uint8Array | B
 export async function decideMerge(opts: { fixId: number; bytes: Uint8Array | Buffer; note: string; why: string; apply: boolean; actor: Actor }): Promise<DecisionResult> {
   const why = opts.why?.trim();
   if (!why || why.length < 5) throw new Error('חובה why — למה התיקון נכון לכל המורות ובמה אימתתם (נכנס לתיאור הקובץ ולגיבוי)');
-  const p = await prepareEdited(opts.fixId, opts.bytes, opts.note, opts.actor);
+  // --merge נבנה על המשותף החי בלבד (לא על הגרסה הפרטית של המורה ולא על תיקונים אישיים שלא נבדקו – זה מה שיתפרסם לכולן)
+  const p = await prepareEdited(opts.fixId, opts.bytes, opts.note, opts.actor, "shared");
   if (p.fix.reason === "commentators") throw new Error("בקשה למפרשים נוספים נשמרת תמיד כגרסה פרטית לאותה מורה (--private) – אסור --merge");
   const base = { fixId: opts.fixId, materialId: p.m.id, fileName: p.m.fileName, action: "merge" };
   const details = { stats: p.check.stats, warnings: p.check.warnings, note: p.note, why, via: opts.actor.via };
@@ -342,6 +489,7 @@ export async function decideMerge(opts: { fixId: number; bytes: Uint8Array | Buf
 export async function decideAnswer(opts: { fixId: number; note: string; apply: boolean; actor: Actor }): Promise<DecisionResult> {
   const note = opts.note?.trim();
   if (!note) throw new Error("חובה note — התשובה למורה");
+  assertReplyText(note);
   const { fix, m } = await loadComplaint(opts.fixId);
   requirePending(fix);
   const base = { fixId: opts.fixId, materialId: m.id, fileName: m.fileName, action: "answer" };

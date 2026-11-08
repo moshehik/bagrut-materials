@@ -22,7 +22,67 @@ export type GeneralComplaintView = {
   /** reply_text – ניסוח אל המורה; null כל עוד ממתינה */
   replyText: string | null;
   createdAt: Date;
+  /** מה שהמורה כתבה (ההודעה שלה בשרשור) */
+  requestText: string;
+  /** מזהה ההערה הראשונה בשרשור (null = זו ההערה הראשונה עצמה) */
+  parentId: number | null;
+  /** מספר ההודעה של המורה בשרשור (1..MAX_THREAD_TURNS) */
+  turn: number;
+  /** בקשה למפרשים נוספים (reason=commentators) */
+  commentators: boolean;
 };
+
+/** כמה הודעות של המורה מותרות בשרשור אחד (ההערה הראשונה + שאלות המשך) */
+export const MAX_THREAD_TURNS = 5;
+
+/** מזהה השרשור של שורת הערה (ההערה הראשונה בשרשור) */
+export const threadRootId = (g: { id: number; parentId: number | null }): number => g.parentId ?? g.id;
+
+export type GeneralThread = {
+  rootId: number;
+  /** ההודעות בסדר כרונולוגי (turn עולה) */
+  items: GeneralComplaintView[];
+  commentators: boolean;
+};
+
+/** מקבץ את ההערות הכלליות לשרשורים (לפי ההערה הראשונה), כרונולוגית; השרשורים בסדר פתיחתם */
+export function groupThreads(list: GeneralComplaintView[]): GeneralThread[] {
+  const byRoot = new Map<number, GeneralComplaintView[]>();
+  for (const g of list) {
+    const r = threadRootId(g);
+    byRoot.set(r, [...(byRoot.get(r) ?? []), g]);
+  }
+  return [...byRoot.entries()]
+    .map(([rootId, items]) => {
+      const sorted = [...items].sort((a, b) => a.turn - b.turn || a.id - b.id);
+      return { rootId, items: sorted, commentators: sorted[0]?.commentators ?? false };
+    })
+    .sort((a, b) => a.rootId - b.rootId);
+}
+
+/** שרשור כפי שהוא עובר לדפדפן (רכיב לקוח של חלון עריכת השינויים): רק נתונים פשוטים, בלי Date */
+export type ThreadView = {
+  rootId: number;
+  commentators: boolean;
+  items: { id: number; turn: number; status: string; text: string; reply: string | null; at: string }[];
+};
+
+export function threadViews(list: GeneralComplaintView[]): ThreadView[] {
+  return groupThreads(list).map((t) => ({
+    rootId: t.rootId,
+    commentators: t.commentators,
+    items: t.items.map((g) => ({ id: g.id, turn: g.turn, status: g.status, text: g.requestText, reply: g.replyText, at: g.createdAt.toISOString() })),
+  }));
+}
+
+/** מה אפשר לעשות עכשיו בשרשור: ממתין לתשובה / אפשר להמשיך (כמה הודעות נשארו) / מוצה */
+export function threadState(t: GeneralThread): { waiting: boolean; used: number; left: number; canReply: boolean } {
+  const used = t.items.length;
+  const last = t.items[t.items.length - 1];
+  const waiting = !!last && last.status === "pending";
+  const left = Math.max(0, MAX_THREAD_TURNS - used);
+  return { waiting, used, left, canReply: !waiting && left > 0 };
+}
 
 /** מצב התיקונים הכלליים של חומר אחד עבור המבקרת – מועבר לכרטיסייה */
 export type CorrectionState = {
@@ -36,9 +96,16 @@ export type CorrectionState = {
  */
 export function correctionSignature(state: CorrectionState | undefined): string {
   if (!state) return "none";
-  const pv = state.privateVersion ? `pv${state.privateVersion.id}` : "pv0";
-  const gen = state.general.map((g) => `${g.id}:${g.status}`).join(",");
-  return `${pv}|${gen}`;
+  return correctionSignatureOf(state.privateVersion?.id ?? null, state.general);
+}
+
+/** אותה חתימה מנתונים גולמיים (לשאילתת הסטטוס הקלה – בלי להוריד את כל המצב). ממוין לפי id, כדי שסדר שורות לא ישנה את החתימה */
+export function correctionSignatureOf(pvId: number | null, general: { id: number; status: string }[]): string {
+  const gen = [...general]
+    .sort((a, b) => a.id - b.id)
+    .map((g) => `${g.id}:${g.status}`)
+    .join(",");
+  return `${pvId ? `pv${pvId}` : "pv0"}|${gen}`;
 }
 
 export const GENERAL_VISIBLE_STATUSES = ["pending", "answered", "private", "merged"] as const;
@@ -107,7 +174,7 @@ export function timeAgoHe(then: Date, now: Date = new Date()): string | null {
   return null;
 }
 
-/** התלונה הכללית הרלוונטית להצגה: האחרונה שעוד לא הוסתרה (לפי createdAt) */
+/** התלונה הכללית הרלוונטית להצגה: האחרונה שעוד לא הוסתרה (לפי createdAt, ואז מזהה) */
 export function latestGeneral(list: GeneralComplaintView[]): GeneralComplaintView | undefined {
-  return [...list].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  return [...list].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id)[0];
 }

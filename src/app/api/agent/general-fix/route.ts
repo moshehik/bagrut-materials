@@ -57,13 +57,13 @@ export async function POST(req: NextRequest) {
       case "list":
         return json({ ok: true, pending: await listPendingGeneral() });
       case "get": {
-        const g = await getComplaint(r.fixId, actor);
+        const g = await getComplaint(r.fixId, actor, { base: r.base });
         const { bytes, ...info } = g;
         if (bytes.length > 3 * 1024 * 1024) return json({ ok: true, ...info, docxBase64: null, tooLarge: true, error: `הקובץ ${bytes.length} בתים – גדול מדי ל-API; עבדו במצב ישיר` });
         return json({ ok: true, ...info, docxBase64: Buffer.from(bytes).toString("base64") });
       }
       case "check": {
-        const c = await checkEdited({ fixId: r.fixId, bytes: docx(r.docxBase64), render: r.render, actor });
+        const c = await checkEdited({ fixId: r.fixId, bytes: docx(r.docxBase64), render: r.render, actor, against: r.against });
         const { pdf, ok: checkOk, ...rest } = c;
         // ok של התשובה = הקריאה הצליחה; תוצאת הבדיקה עצמה ב-checkOk (הסקריפט יוצא עם 2 כשהיא false)
         return json({ ok: true, ...rest, checkOk, pdfBase64: pdf ? Buffer.from(pdf).toString("base64") : null, pageImages: null, pageImagesNote: "אין ממיר PDF→תמונה בשרת (pdf-lib/sharp לא מרנדרים PDF) – לפתוח את ה-PDF מקומית" });

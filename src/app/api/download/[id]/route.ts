@@ -15,7 +15,7 @@ import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigur
 import { contentDisposition, fileRouteError } from "@/lib/http-utils";
 import { dlTokenOf, markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
-import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
+import { getFixesForViewer, parseFixesParam, withoutEmbedded } from "@/lib/fixes";
 import { getPrivateVersion, resolveServedFile } from "@/lib/private-versions";
 import { parseOriginalParam } from "@/lib/private-version-logic";
 import { logFixEvent } from "@/lib/fix-events";
@@ -278,7 +278,8 @@ async function serve(req: NextRequest, ctx: Ctx) {
       if (wantFixes && isDocxName(material.fileName)) {
         try {
           const published = (await getFixesForViewer([material.id], u.id)).get(material.id) ?? [];
-          const chosen = wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number));
+          // תיקונים שהסוכן כבר שילב בגרסה הפרטית שלה (embedded) לא מוחלים שוב
+          const chosen = withoutEmbedded(wantFixes === "all" ? published : published.filter((f) => wantFixes.includes(f.number)));
           if (chosen.length > 0) {
             const r = await applyDocxFixes(
               raw,

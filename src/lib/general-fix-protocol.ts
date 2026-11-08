@@ -7,6 +7,7 @@
  * בשגיאה ברורה – אז עובדים במצב ישיר מקומית). פעולות ההחלטה הן dry-run אלא אם apply=true.
  */
 import { z } from "zod";
+import { REPLY_LIBRARY_ERROR, mentionsSourceLibrary } from "@/lib/reply-text";
 
 /** docx מקסימלי שעובר ב-JSON (base64 מנפח ב-33%, ונשאר מקום לשאר הגוף מתחת ל-4.5MB) */
 export const MAX_DOCX_BYTES = 3 * 1024 * 1024;
@@ -14,16 +15,19 @@ export const MAX_BODY_BYTES = 4_400_000;
 
 const fixId = z.coerce.number().int().positive();
 const note = z.string().trim().min(3, "note קצר מדי").max(600, "note ארוך מדי (עד 600 תווים)");
+/** note שהמורה רואה (private / merge / answer): בלי אזכור אתר/ספריית המקור ("ספריא" וכד') – נדחה כדי שהסוכן ינסח מחדש */
+const replyNote = note.refine((t) => !mentionsSourceLibrary(t), { message: REPLY_LIBRARY_ERROR });
 const docxBase64 = z.string().min(100, "docxBase64 חסר/קצר מדי").max(Math.ceil((MAX_DOCX_BYTES * 4) / 3) + 16, `הקובץ גדול מ-${Math.round(MAX_DOCX_BYTES / 1048576)}MB – ה-API לא מקבל אותו; עבדו במצב ישיר (DRIVE_BRIDGE_* + ORACLE_CONVERT_URL)`);
 const apply = z.boolean().optional().default(false);
 
 export const agentRequestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("list") }),
-  z.object({ action: z.literal("get"), fixId }),
-  z.object({ action: z.literal("check"), fixId, docxBase64, render: z.boolean().optional().default(true) }),
-  z.object({ action: z.literal("private"), fixId, docxBase64, note, apply }),
-  z.object({ action: z.literal("merge"), fixId, docxBase64, note, why: z.string().trim().min(5, "why קצר מדי").max(1000), apply }),
-  z.object({ action: z.literal("answer"), fixId, note, apply }),
+  // base: viewer (ברירת מחדל) = הקובץ שהמורה רואה (הגרסה הפרטית שלה / המשותף + התיקונים המסומנים שלה); shared = המשותף החי בלבד (ל-merge)
+  z.object({ action: z.literal("get"), fixId, base: z.enum(["viewer", "shared"]).optional().default("viewer") }),
+  z.object({ action: z.literal("check"), fixId, docxBase64, render: z.boolean().optional().default(true), against: z.enum(["viewer", "shared"]).optional().default("viewer") }),
+  z.object({ action: z.literal("private"), fixId, docxBase64, note: replyNote, apply }),
+  z.object({ action: z.literal("merge"), fixId, docxBase64, note: replyNote, why: z.string().trim().min(5, "why קצר מדי").max(1000), apply }),
+  z.object({ action: z.literal("answer"), fixId, note: replyNote, apply }),
   z.object({ action: z.literal("reject"), fixId, note, apply }),
   z.object({ action: z.literal("removeVersion"), versionId: z.coerce.number().int().positive(), note, apply }),
 ]);
