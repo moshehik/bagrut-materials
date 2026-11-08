@@ -11,7 +11,8 @@ const isNetfreeCookie = () => {
   }
 };
 
-const LOCAL_KEY = "edge-notice-dismissed-v1";
+// v2: איפוס כללי של "אל תציגי לי שוב" (2026-11-09) – מפתח חדש בדפדפן + מועד איפוס בשרת (/api/edge-notice)
+const LOCAL_KEY = "edge-notice-dismissed-v2";
 
 function logEdgeNotice(action: "shown" | "dismissed" | "regular" | "hq") {
   try {

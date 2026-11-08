@@ -16,6 +16,9 @@ import { logAudit } from "@/lib/audit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** איפוס כללי של "אל תציגי לי שוב" (2026-11-09, לבדיקות): סימון שנעשה לפני המועד הזה לא נחשב. כדי לאפס שוב – מעדכנים את המועד לעכשיו. */
+const DISMISS_RESET_AT = new Date("2026-11-08T02:45:12.405Z");
+
 const ACTIONS = ["shown", "dismissed", "regular", "hq"] as const;
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -24,12 +27,12 @@ export async function GET() {
   if (!user) return json({ dismissed: false });
   try {
     const [last] = await db
-      .select({ action: auditLogs.action })
+      .select({ action: auditLogs.action, at: auditLogs.createdAt })
       .from(auditLogs)
       .where(and(eq(auditLogs.actorId, user.id), inArray(auditLogs.action, ["edge_notice.dismissed", "edge_notice.undismissed"])))
       .orderBy(desc(auditLogs.id))
       .limit(1);
-    return json({ dismissed: last?.action === "edge_notice.dismissed" });
+    return json({ dismissed: last?.action === "edge_notice.dismissed" && last.at > DISMISS_RESET_AT });
   } catch {
     return json({ dismissed: false });
   }
