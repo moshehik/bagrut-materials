@@ -40,6 +40,9 @@ function fillDays(days: number, rows: Row[], keyDay = "d", keyVal = "n"): Point[
   return out;
 }
 
+/** סינון בוטים/סורקים, זהה ל-BOT_UA ב-src/app/api/track/route.ts */
+const GUEST_NOT_BOT = sql.raw(`(user_agent IS NULL OR user_agent !~* 'bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit')`);
+
 const dayExpr = (col: string) => sql.raw(`to_char(date_trunc('day', ${col}), 'YYYY-MM-DD')`);
 
 export default async function AdminStatsPage({ searchParams }: { searchParams: Promise<SP> }) {
@@ -63,6 +66,10 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
     revenue30,
     activeSubs,
     buyers,
+    guestsToday,
+    guests7,
+    guests30,
+    guestsByDay,
     dlByDay,
     usersByDay,
     revByDay,
@@ -87,6 +94,11 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
       sql`SELECT count(*)::int n FROM purchases WHERE status = 'active' AND (ends_at IS NULL OR ends_at > now()) AND plan IN ('subject_monthly','custom_monthly','yearly','substitute_3m','substitute_daily')`,
     ),
     one(sql`SELECT count(DISTINCT user_id)::int n FROM purchases`),
+    // אורחות שונות = עוגיות-סשן אנונימיות (bagrut_sid) שונות בצפיות בלי משתמשת מחוברת; בוטים וסורקים מסוננים (כמו ב-api/track)
+    one(sql`SELECT count(DISTINCT session_id)::int n FROM page_views WHERE user_id IS NULL AND session_id IS NOT NULL AND ${GUEST_NOT_BOT} AND created_at >= ${today}`),
+    one(sql`SELECT count(DISTINCT session_id)::int n FROM page_views WHERE user_id IS NULL AND session_id IS NOT NULL AND ${GUEST_NOT_BOT} AND created_at >= ${d7}`),
+    one(sql`SELECT count(DISTINCT session_id)::int n FROM page_views WHERE user_id IS NULL AND session_id IS NOT NULL AND ${GUEST_NOT_BOT} AND created_at >= ${d30}`),
+    q(sql`SELECT ${dayExpr("created_at")} d, count(DISTINCT session_id)::int n FROM page_views WHERE user_id IS NULL AND session_id IS NOT NULL AND ${GUEST_NOT_BOT} AND created_at >= ${since} GROUP BY 1`),
     q(sql`SELECT ${dayExpr("created_at")} d, count(*)::int n FROM downloads WHERE created_at >= ${since} GROUP BY 1`),
     q(sql`SELECT ${dayExpr("created_at")} d, count(*)::int n FROM users WHERE created_at >= ${since} GROUP BY 1`),
     q(
@@ -149,6 +161,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
         <StatTile label="משתמשות" value={usersTotal.toLocaleString("he-IL")} hint={`+${usersNew7} השבוע · +${usersNew30} החודש`} tone="bg-blue-soft text-blue-deep" href="/admin/users" />
         <StatTile label="הורדות היום" value={dlToday.toLocaleString("he-IL")} hint={`${dl7} בשבוע · ${dl30} בחודש`} tone="bg-gold-soft text-gold" href="/admin/downloads" />
+        <StatTile label="אורחות שונות היום" value={guestsToday.toLocaleString("he-IL")} hint={`${guests7.toLocaleString("he-IL")} בשבוע · ${guests30.toLocaleString("he-IL")} בחודש`} tone="bg-sky-50 text-sky-700" href="/admin/online" />
         <StatTile label="צפיות בדפים (7 ימים)" value={views7.toLocaleString("he-IL")} tone="bg-pink-soft text-pink" href="/admin/activity" />
         <StatTile label="הכנסות 30 יום" value={money(revenue30)} tone="bg-emerald-50 text-emerald-700" href="/admin/finance" />
         <StatTile label="מנויים פעילים" value={activeSubs.toLocaleString("he-IL")} href="/admin/subscriptions" />
@@ -156,6 +169,11 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <section className="card p-5 lg:col-span-2">
+          <h3 className="font-bold mb-1">אורחות שונות לפי יום <span className="text-muted text-xs font-normal">({rangeLabel})</span></h3>
+          <p className="text-muted text-xs mb-2">אורחת = דפדפן אנונימי אחד (לא אדם): מי שנכנסה משני מכשירים או מחקה עוגיות נספרת פעמיים; מי שנרשמה אחר כך נספרת אורחת על הצפיות שלפני ההתחברות.</p>
+          <BarChart data={fillDays(days, guestsByDay)} color="var(--blue)" />
+        </section>
         <section className="card p-5">
           <h3 className="font-bold mb-2">הורדות לפי יום <span className="text-muted text-xs font-normal">({rangeLabel})</span></h3>
           <BarChart data={fillDays(days, dlByDay)} color="var(--gold)" />

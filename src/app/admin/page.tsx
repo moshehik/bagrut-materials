@@ -1,7 +1,7 @@
 import { requireAdminPage } from "@/lib/session";
 import Link from "next/link";
-import { and, count, desc, eq, gte, inArray, sum } from "drizzle-orm";
-import { Radio, Download, Activity, Wallet, BarChart3, ScrollText, Inbox } from "lucide-react";
+import { and, count, countDistinct, desc, eq, gte, inArray, isNull, sql, sum } from "drizzle-orm";
+import { Radio, Download, Activity, Wallet, BarChart3, ScrollText, Inbox, Users } from "lucide-react";
 import { db } from "@/db";
 import {
   users,
@@ -40,10 +40,23 @@ export default async function AdminDashboard() {
 
   const [agentEnabled, agentIdle] = await Promise.all([isLoopEnabled().catch(() => false), idleMinutes().catch(() => -1)]);
 
-  const [onlineNow, dlToday, viewsToday, revenue30] = await Promise.all([
+  const [onlineNow, dlToday, viewsToday, guestsToday, revenue30] = await Promise.all([
     safeCount(db.select({ n: count() }).from(users).where(gte(users.lastSeenAt, since))),
     safeCount(db.select({ n: count() }).from(downloads).where(gte(downloads.createdAt, today))),
     safeCount(db.select({ n: count() }).from(pageViews).where(gte(pageViews.createdAt, today))),
+    // אורחות שונות היום: עוגיות-סשן אנונימיות שונות, בלי בוטים (כמו ב-api/track ובדף הסטטיסטיקות)
+    safeCount(
+      db
+        .select({ n: countDistinct(pageViews.sessionId) })
+        .from(pageViews)
+        .where(
+          and(
+            gte(pageViews.createdAt, today),
+            isNull(pageViews.userId),
+            sql`(${pageViews.userAgent} IS NULL OR ${pageViews.userAgent} !~* 'bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit')`,
+          ),
+        ),
+    ),
     db
       .select({ s: sum(transactions.amount) })
       .from(transactions)
@@ -62,6 +75,7 @@ export default async function AdminDashboard() {
     { label: "הודעות למנהלת", value: openReports + pendingFixes, href: "/admin/inbox", icon: Inbox, tone: "bg-red-50 text-red-700" },
     { label: "מחוברות עכשיו", value: onlineNow, href: "/admin/online", icon: Radio, tone: "bg-emerald-50 text-emerald-700" },
     { label: "הורדות היום", value: dlToday, href: "/admin/downloads", icon: Download, tone: "bg-gold-soft text-gold" },
+    { label: "אורחות שונות היום", value: guestsToday, href: "/admin/stats", icon: Users, tone: "bg-sky-50 text-sky-700" },
     { label: "צפיות היום", value: viewsToday, href: "/admin/activity", icon: Activity, tone: "bg-pink-soft text-pink" },
     { label: "הכנסות 30 יום", value: formatPrice(revenue30), href: "/admin/finance", icon: Wallet, tone: "bg-blue-soft text-blue-deep" },
     { label: "סטטיסטיקות", value: "→", href: "/admin/stats", icon: BarChart3, tone: "bg-oak-soft text-oak-deep" },
