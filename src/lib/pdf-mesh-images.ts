@@ -18,11 +18,12 @@ import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, decodePD
  */
 const deflateAsync = promisify(deflate);
 /**
- * ברירת מחדל: 1024 עמודות + predictor. נבדק בנטפרי אצל המורה (2026-11-09, /netfree-test/index.html, גרסאות ד׳ ו-ה׳): שתיהן מציגות רקע.
- * שימי לב: בהורדה מלאה אחת (18 שקפים, ~20MB) הרקעים הופיעו לבנים בנטפרי והסיבה לא הוכחה (ייתכן גודל הקובץ / תמונות רסטר שנשארו) – לאמת בהורדה אמיתית.
+ * ברירת מחדל: 512 עמודות, בלי predictor – הגרסה היחידה שמוצגת גם בקורא ה-PDF המובנה של Microsoft Edge (נבדק אצל המורה, 2026-11-09,
+ * /netfree-test/index.html): ב-Edge רק 512 רגיל הציג רקע; 512+predictor, 768, 1024 ו-1280 הציגו לבן על המסך (ובהדפסה כן). כרום והדפסה מציגים את כולן.
+ * לא להעלות את ברירת המחדל בלי לבדוק מחדש ב-Edge. האפשרויות (cols / predictor) נשארו לצורך בדיקות.
  */
 export type MeshOptions = { cols?: number; predictor?: boolean };
-const GRID_COLS = 1024;
+const GRID_COLS = 512;
 const MAX_VERTICES = 1_600_000;
 const MIN_PLACED_PT = 150;
 const MIN_IMAGE_PX = 500;
@@ -113,7 +114,7 @@ async function buildMesh(obj: PDFRawStream, started: number, opts: MeshOptions):
     const rgb = await gridPixels(obj, cols, rows);
     if (!rgb) return null;
     const raw = meshBytes(rgb, cols, rows);
-    return { bytes: await deflateAsync(opts.predictor ?? true ? packMesh(raw, cols) : raw), cols, predictor: opts.predictor ?? true };
+    return { bytes: await deflateAsync(opts.predictor ?? false ? packMesh(raw, cols) : raw), cols, predictor: opts.predictor ?? false };
   } catch (e) {
     console.error("pdf mesh: image failed", e instanceof Error ? e.message : e);
     return null;
