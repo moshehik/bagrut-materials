@@ -7,7 +7,8 @@ import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { classifyMaterial } from "@/lib/material-card-types";
-import { presentationMeshFor, describeMeshMode } from "@/lib/netfree-mode";
+import { presentationMeshFor, describeMeshMode, hqPartOf } from "@/lib/netfree-mode";
+import { pdfPart } from "@/lib/pdf-parts";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
@@ -30,9 +31,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 function withSuffix(fileName: string, suffix: string) {
+  if (!suffix) return fileName;
   const dot = fileName.lastIndexOf(".");
   if (dot <= 0) return `${fileName} ${suffix}`;
   return `${fileName.slice(0, dot)} ${suffix}${fileName.slice(dot)}`;
+}
+
+/** סיומת שם הקובץ בהורדה בחלקים: "חלק 1 מתוך 2" (ריק כשאין חלוקה) */
+function partLabel(req: NextRequest, material: { mime?: string | null; fileName: string }): string {
+  const p = hqPartOf(req);
+  return p ? `חלק ${p.part} מתוך ${p.of}` : "";
 }
 
 function asPdfName(fileName: string) {
@@ -304,7 +312,8 @@ async function serve(req: NextRequest, ctx: Ctx) {
           mimeType: officeMimeFor(material.mime, material.fileName),
           name: material.fileName,
         });
-        out = await stampPdf(pdfBytes, {
+        const hqPart = classifyMaterial(material) === "presentation" ? hqPartOf(req) : null;
+        out = await stampPdf(hqPart ? await pdfPart(pdfBytes, hqPart.part, hqPart.of) : pdfBytes, {
           personalCode: u.personalCode,
           userName: u.name,
           email: u.email,
@@ -322,7 +331,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
           "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
           "Content-Length": String(out.byteLength),
           "Content-Disposition": contentDisposition(
-            converted ? withSuffix(asPdfName(baseName), u.personalCode) : withSuffix(baseName, u.personalCode),
+            converted ? withSuffix(withSuffix(asPdfName(baseName), partLabel(req, material)), u.personalCode) : withSuffix(baseName, u.personalCode),
           ),
           "Cache-Control": "private, no-store",
         },
@@ -331,7 +340,8 @@ async function serve(req: NextRequest, ctx: Ctx) {
       const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
       let out: Uint8Array;
       try {
-        out = await stampPdf(bytes, {
+        const hqPart = classifyMaterial(material) === "presentation" ? hqPartOf(req) : null;
+        out = await stampPdf(hqPart ? await pdfPart(bytes, hqPart.part, hqPart.of) : bytes, {
           personalCode: u.personalCode,
           userName: u.name,
           email: u.email,
@@ -348,7 +358,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Length": String(out.byteLength),
-          "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
+          "Content-Disposition": contentDisposition(withSuffix(withSuffix(material.fileName, partLabel(req, material)), u.personalCode)),
           "Cache-Control": "private, no-store",
         },
       });

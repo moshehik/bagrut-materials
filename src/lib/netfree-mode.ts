@@ -46,12 +46,24 @@ const PREDICTOR_LADDER = [
   { opts: { cols: 512, predictor: false }, estBytesPerImage: 0.8 * MB },
 ];
 
+/** "הורדה בחדות מלאה בשני חלקים": ?hq=1&part=1&of=2 (of 2–4) */
+export function hqPartOf(req: Reqish): { part: number; of: number } | null {
+  const sp = req.nextUrl?.searchParams;
+  if (!sp || sp.get("hq") !== "1") return null;
+  const of = Math.floor(Number(sp.get("of")));
+  const part = Math.floor(Number(sp.get("part")));
+  if (!Number.isFinite(of) || !Number.isFinite(part) || of < 2 || of > 4 || part < 1 || part > of) return null;
+  return { part, of };
+}
+
 /** הורדת מצגת (וגם תיקיית קבצים) */
 export function presentationMeshFor(req: Reqish): PresentationMesh {
   // שליחה למייל (POST): במייל אין סינון – הקובץ המקורי עם התמונות, לא הגרסה הוקטורית הכבדה
   if (req.method === "POST") return false;
   const hq = req.nextUrl?.searchParams.get("hq") === "1";
   if (!hq && netfreeState(req) === "0") return false;
+  // חדות מלאה בחלקים: בדיוק ההגדרה שמוצגת גם ב-Edge (4 רשתות קטנות לשקף, בלי predictor, כימות 8) – ~1.9MB לשקף, ולכן חצי מצגת ≈ 17MB
+  if (hqPartOf(req)) return { cols: 1023, tiles: 2, predictor: false, quant: 8 };
   // בדיקות סף נטפרי (רק עם hq=1): ?cols=&tiles=&pred=1&q= קובעים הגדרה ידנית (מבודד גודל מול מספר קודקודים)
   const sp = req.nextUrl?.searchParams;
   const forcedCols = hq && sp ? Number(sp.get("cols")) : NaN;
@@ -78,6 +90,7 @@ export function describeMeshMode(req: Reqish, mesh: PresentationMesh) {
   return {
     netfree: nf === "1" ? "yes" : nf === "0" ? "no" : "unknown",
     hq: req.nextUrl?.searchParams.get("hq") === "1",
+    part: hqPartOf(req),
     browser: isChromeOnly(req) ? "chrome" : /Edg\//.test(ua) ? "edge" : "other",
     mesh: mesh === false ? "original-images" : mesh.ladder ? `ladder(${Math.round((mesh.maxBytes ?? 0) / MB)}MB)` : `cols${mesh.cols ?? ""}`,
   };

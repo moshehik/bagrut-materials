@@ -95,10 +95,17 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
   return (
     <div className="mtc-lower mtc-lower-hq">
       <div className="mtc-tools">
-        <a href={`${href}${href.includes("?") ? "&" : "?"}hq=1`} className="mtc-row" data-tip={"הורדה בחדות מלאה – קובץ כבד יותר,\nוההורדה עשויה להימשך זמן"}>
-          {nut}
-          <span>הורדה בחדות מלאה</span>
-        </a>
+        {[1, 2].map((part) => (
+          <a
+            key={part}
+            href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=${part}&of=2`}
+            className="mtc-row"
+            data-tip={"הורדה בחדות מלאה בשני חלקים (כל חלק עד כ-17MB),\nכדי שנטפרי לא יחסום קובץ גדול"}
+          >
+            {nut}
+            <span>הורדה בחדות מלאה – חלק {part} מתוך 2</span>
+          </a>
+        ))}
       </div>
     </div>
   );

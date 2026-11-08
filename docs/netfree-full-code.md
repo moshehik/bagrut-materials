@@ -2004,12 +2004,24 @@ const PREDICTOR_LADDER = [
   { opts: { cols: 512, predictor: false }, estBytesPerImage: 0.8 * MB },
 ];
 
+/** "הורדה בחדות מלאה בשני חלקים": ?hq=1&part=1&of=2 (of 2–4) */
+export function hqPartOf(req: Reqish): { part: number; of: number } | null {
+  const sp = req.nextUrl?.searchParams;
+  if (!sp || sp.get("hq") !== "1") return null;
+  const of = Math.floor(Number(sp.get("of")));
+  const part = Math.floor(Number(sp.get("part")));
+  if (!Number.isFinite(of) || !Number.isFinite(part) || of < 2 || of > 4 || part < 1 || part > of) return null;
+  return { part, of };
+}
+
 /** הורדת מצגת (וגם תיקיית קבצים) */
 export function presentationMeshFor(req: Reqish): PresentationMesh {
   // שליחה למייל (POST): במייל אין סינון – הקובץ המקורי עם התמונות, לא הגרסה הוקטורית הכבדה
   if (req.method === "POST") return false;
   const hq = req.nextUrl?.searchParams.get("hq") === "1";
   if (!hq && netfreeState(req) === "0") return false;
+  // חדות מלאה בחלקים: בדיוק ההגדרה שמוצגת גם ב-Edge (4 רשתות קטנות לשקף, בלי predictor, כימות 8) – ~1.9MB לשקף, ולכן חצי מצגת ≈ 17MB
+  if (hqPartOf(req)) return { cols: 1023, tiles: 2, predictor: false, quant: 8 };
   // בדיקות סף נטפרי (רק עם hq=1): ?cols=&tiles=&pred=1&q= קובעים הגדרה ידנית (מבודד גודל מול מספר קודקודים)
   const sp = req.nextUrl?.searchParams;
   const forcedCols = hq && sp ? Number(sp.get("cols")) : NaN;
@@ -2036,6 +2048,7 @@ export function describeMeshMode(req: Reqish, mesh: PresentationMesh) {
   return {
     netfree: nf === "1" ? "yes" : nf === "0" ? "no" : "unknown",
     hq: req.nextUrl?.searchParams.get("hq") === "1",
+    part: hqPartOf(req),
     browser: isChromeOnly(req) ? "chrome" : /Edg\//.test(ua) ? "edge" : "other",
     mesh: mesh === false ? "original-images" : mesh.ladder ? `ladder(${Math.round((mesh.maxBytes ?? 0) / MB)}MB)` : `cols${mesh.cols ?? ""}`,
   };
@@ -2895,7 +2908,8 @@ import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { classifyMaterial } from "@/lib/material-card-types";
-import { presentationMeshFor, describeMeshMode } from "@/lib/netfree-mode";
+import { presentationMeshFor, describeMeshMode, hqPartOf } from "@/lib/netfree-mode";
+import { pdfPart } from "@/lib/pdf-parts";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
@@ -2918,9 +2932,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 function withSuffix(fileName: string, suffix: string) {
+  if (!suffix) return fileName;
   const dot = fileName.lastIndexOf(".");
   if (dot <= 0) return `${fileName} ${suffix}`;
   return `${fileName.slice(0, dot)} ${suffix}${fileName.slice(dot)}`;
+}
+
+/** סיומת שם הקובץ בהורדה בחלקים: "חלק 1 מתוך 2" (ריק כשאין חלוקה) */
+function partLabel(req: NextRequest, material: { mime?: string | null; fileName: string }): string {
+  const p = hqPartOf(req);
+  return p ? `חלק ${p.part} מתוך ${p.of}` : "";
 }
 
 function asPdfName(fileName: string) {
@@ -3192,7 +3213,8 @@ async function serve(req: NextRequest, ctx: Ctx) {
           mimeType: officeMimeFor(material.mime, material.fileName),
           name: material.fileName,
         });
-        out = await stampPdf(pdfBytes, {
+        const hqPart = classifyMaterial(material) === "presentation" ? hqPartOf(req) : null;
+        out = await stampPdf(hqPart ? await pdfPart(pdfBytes, hqPart.part, hqPart.of) : pdfBytes, {
           personalCode: u.personalCode,
           userName: u.name,
           email: u.email,
@@ -3210,7 +3232,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
           "Content-Type": converted ? "application/pdf" : (file.contentType ?? material.mime),
           "Content-Length": String(out.byteLength),
           "Content-Disposition": contentDisposition(
-            converted ? withSuffix(asPdfName(baseName), u.personalCode) : withSuffix(baseName, u.personalCode),
+            converted ? withSuffix(withSuffix(asPdfName(baseName), partLabel(req, material)), u.personalCode) : withSuffix(baseName, u.personalCode),
           ),
           "Cache-Control": "private, no-store",
         },
@@ -3219,7 +3241,8 @@ async function serve(req: NextRequest, ctx: Ctx) {
       const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
       let out: Uint8Array;
       try {
-        out = await stampPdf(bytes, {
+        const hqPart = classifyMaterial(material) === "presentation" ? hqPartOf(req) : null;
+        out = await stampPdf(hqPart ? await pdfPart(bytes, hqPart.part, hqPart.of) : bytes, {
           personalCode: u.personalCode,
           userName: u.name,
           email: u.email,
@@ -3236,7 +3259,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Length": String(out.byteLength),
-          "Content-Disposition": contentDisposition(withSuffix(material.fileName, u.personalCode)),
+          "Content-Disposition": contentDisposition(withSuffix(withSuffix(material.fileName, partLabel(req, material)), u.personalCode)),
           "Cache-Control": "private, no-store",
         },
       });
@@ -4985,10 +5008,17 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
   return (
     <div className="mtc-lower mtc-lower-hq">
       <div className="mtc-tools">
-        <a href={`${href}${href.includes("?") ? "&" : "?"}hq=1`} className="mtc-row" data-tip={"הורדה בחדות מלאה – קובץ כבד יותר,\nוההורדה עשויה להימשך זמן"}>
-          {nut}
-          <span>הורדה בחדות מלאה</span>
-        </a>
+        {[1, 2].map((part) => (
+          <a
+            key={part}
+            href={`${href}${href.includes("?") ? "&" : "?"}hq=1&part=${part}&of=2`}
+            className="mtc-row"
+            data-tip={"הורדה בחדות מלאה בשני חלקים (כל חלק עד כ-17MB),\nכדי שנטפרי לא יחסום קובץ גדול"}
+          >
+            {nut}
+            <span>הורדה בחדות מלאה – חלק {part} מתוך 2</span>
+          </a>
+        ))}
       </div>
     </div>
   );
