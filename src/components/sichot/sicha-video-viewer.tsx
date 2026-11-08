@@ -1,8 +1,37 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ShieldAlert, X } from "lucide-react";
 import { probeNetfreeVideo } from "@/lib/netfree-probe";
+
+/** הודעת חסימה בעיצוב האתר (חלון הצפייה החום עם מסגרת זהב). compact = פס תחת הנגן אחרי שהנגן עצמו נכשל */
+function BlockedNotice({ compact, onTry, href }: { compact?: boolean; onTry?: () => void; href?: string }) {
+  return (
+    <div className={compact ? "nf-block nf-compact" : "nf-block view-dialog-viewer"} role="alert">
+      <div className="nf-card">
+        <span className="nf-ico">
+          <ShieldAlert className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+        </span>
+        <h4 className="nf-title">הצפייה בסרטון באתר חסומה בסינון שלך</h4>
+        <p className="nf-text">
+          נטפרי חוסם סרטונים. אפשר ללחוץ בכרטיס על כפתור המייל ולקבל קישור לסרטון, ולצפות בו משם.
+        </p>
+        <div className="nf-actions">
+          {onTry && (
+            <button type="button" className="nf-btn" onClick={onTry}>
+              לנסות לנגן בכל זאת
+            </button>
+          )}
+          {href && (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="nf-btn">
+              פתיחה בלשונית נפרדת
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** כפתור "לצפייה": פותח את הסרטון בנגן בתוך חלון באתר (מוזרם דרך הדומיין שלנו, ר' /api/sichot/video/[id]?inline=1) */
 export function VideoViewerButton({
@@ -95,24 +124,8 @@ export function VideoViewerButton({
             />
           </div>
         )}
-        {open && probe === "blocked" && !tryAnyway && (
-          <div role="alert" className="bg-[#fff6d6] px-4 py-4 text-sm leading-relaxed text-[#3b2f10]">
-            <b>הצפייה בסרטון באתר חסומה בסינון שלך (נטפרי חוסם סרטונים).</b>
-            <div className="mt-1">אפשר ללחוץ על "קישור למייל" ולצפות מהקישור שיגיע, או להוריד את הקובץ.</div>
-            <button type="button" className="mt-2 font-bold underline" onClick={() => setTryAnyway(true)}>
-              לנסות לנגן בכל זאת
-            </button>
-          </div>
-        )}
-        {showPlayer && blocked && (
-          <div role="alert" className="bg-[#fff6d6] px-4 py-3 text-sm leading-relaxed text-[#3b2f10]">
-            הסרטון לא נטען. אם את גולשת דרך מסנן תוכן (נטפרי) – ייתכן שהוא חסום עד שייבדק.{" "}
-            <a href={src} target="_blank" rel="noopener noreferrer" className="font-bold underline">
-              פתיחה בלשונית נפרדת
-            </a>{" "}
-            (שם נטפרי מציג כפתור "שלח בקשה לבדיקה").
-          </div>
-        )}
+        {open && probe === "blocked" && !tryAnyway && <BlockedNotice onTry={() => setTryAnyway(true)} />}
+        {showPlayer && blocked && <BlockedNotice compact href={src} />}
       </dialog>
     </>
   );

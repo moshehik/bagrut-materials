@@ -2208,6 +2208,83 @@ button.underline {
   flex: 1;
 }
 
+/* הודעת "הצפייה בסרטון חסומה בסינון" – בתוך חלון הצפייה החום, מסגרת זהב וכתב-יד */
+.nf-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: #291a0f;
+  border-radius: 0.6rem;
+}
+.nf-block.nf-compact {
+  padding: 0.6rem;
+}
+.nf-card {
+  max-width: 30rem;
+  text-align: center;
+  border: 2px solid var(--sun);
+  border-radius: 1rem;
+  padding: 1.4rem 1.6rem 1.5rem;
+  background: rgba(255, 245, 230, 0.06);
+  box-shadow: 0 0 0 4px rgba(217, 164, 65, 0.15);
+}
+.nf-compact .nf-card {
+  max-width: none;
+  padding: 0.8rem 1.1rem;
+}
+.nf-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 999px;
+  background: var(--sun);
+  color: #291a0f;
+  margin-bottom: 0.5rem;
+}
+.nf-compact .nf-ico {
+  display: none;
+}
+.nf-title {
+  font-family: var(--font-hand);
+  font-size: 1.65rem;
+  line-height: 1.25;
+  color: #f3d78a;
+}
+.nf-compact .nf-title {
+  font-size: 1.2rem;
+}
+.nf-text {
+  margin-top: 0.5rem;
+  color: #fff5e6;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.nf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.nf-btn {
+  border: 2px solid var(--sun);
+  border-radius: 999px;
+  padding: 0.4rem 1.3rem;
+  background: transparent;
+  color: #f3d78a;
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.nf-btn:hover {
+  background: var(--sun);
+  color: #291a0f;
+}
+
 /* פסי גלילה אלגנטיים בחלונות (דקים, מעוגלים, כחול עמוק עם הילה זהובה) */
 .pdfv-scroll,
 .fix-dialog-box,
