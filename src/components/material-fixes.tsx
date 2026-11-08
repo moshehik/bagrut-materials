@@ -61,6 +61,8 @@ type Edit = {
   submitting: boolean;
   /** שגיאה מהשרת על התיקון הזה (למשל: הטקסט לא נמצא בקובץ) – התיקון נשאר פתוח לעריכה */
   submitError: string | null;
+  /** נבחרה סיבה מהרשימה והצעה מג'מיני עוד לא הוכנה: מופעל פעם אחת, ברגע שיש טקסט מסומן (ראי האפקט מתחת ל-askAI) */
+  autoAsk: boolean;
   /** המופע בקובץ, כפי שזוהה בשרת (גובר על מה שהסימון ב-PDF מדווח) */
   occ?: number;
   /** זיהוי הסימון בקובץ: busy = בבדיקה, ok = נמצא כמו שסומן, fixed = הותאם לטקסט שבקובץ, fail = לא זוהה */
@@ -80,6 +82,7 @@ const newEdit = (): Edit => ({
   aiError: null,
   submitting: false,
   submitError: null,
+  autoAsk: false,
   check: "idle",
   checkMsg: null,
 });
@@ -423,6 +426,19 @@ export function FixRequestButton({
       update(e.id, { busy: false, aiError: "לא הצלחנו להכין תיקון כרגע. נסי שוב." });
     }
   };
+  // בחירת סיבה ברשימה = בקשה אוטומטית להצעה (בלי ללחוץ "הכנת הצעה"): פעם אחת לכל בחירה, רק כשאין עדיין תיקון,
+  // יש טקסט מסומן (≥2 תווים) והזיהוי שלו בקובץ הסתיים. אחרי שההצעה הגיעה – "הצעה אחרת" והערה נשארות לליטוש ידני.
+  useEffect(() => {
+    const e = edits.find(
+      (x) => x.autoAsk && !!reasonOf(x.choice) && !x.applied && !x.busy && x.check !== "busy" && x.quote.trim().length >= 2,
+    );
+    if (!e) return;
+    update(e.id, { autoAsk: false });
+    // כשהסימון לא נמצא בקובץ אין טעם לבזבז הצעה (מכסה לשעה): היא תתקן את הסימון ותלחץ "הכנת הצעה"
+    if (e.check === "fail" || e.correction.trim()) return;
+    void askAI(e);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edits]);
   /** "החל תיקון": שולח את התיקון הזה מיד. הצלחה → חל אצלה והוא נשאר ברשימה במקומו (עם וי ו-X); כשל → נשאר פתוח לעריכה */
   const applyEdit = async (e: Edit) => {
     if (!canApplyEdit(e)) return;
@@ -682,11 +698,11 @@ export function FixRequestButton({
                                   value={e.quote}
                                   placeholder="עוד לא סימנת. סמני בקובץ משמאל…"
                                   onFocus={() => setActiveId(e.id)}
-                                  onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null, occ: undefined, check: "idle", checkMsg: null })}
+                                  onChange={(ev) => update(e.id, { quote: ev.target.value, mark: null, occ: undefined, check: "idle", checkMsg: null, autoAsk: false })}
                                 />
                               </label>
-                              {e.check === "busy" && <p className="fix-check">בודקת איפה זה בקובץ…</p>}
-                              {e.check === "fixed" && e.checkMsg && <p className="fix-check fix-check-fixed">{e.checkMsg}</p>}
+                              {e.check === "busy" && <p className="fix-verify">בודקת איפה זה בקובץ…</p>}
+                              {e.check === "fixed" && e.checkMsg && <p className="fix-verify fix-verify-fixed">{e.checkMsg}</p>}
                               {e.check === "fail" && e.checkMsg && <p className="fix-error">{e.checkMsg}</p>}
 
                               {!demo && (
@@ -696,7 +712,8 @@ export function FixRequestButton({
                                     labelledBy={`fix-how-${e.id}`}
                                     value={e.choice}
                                     onOpen={() => setActiveId(e.id)}
-                                    onChange={(choice) => update(e.id, { choice, aiError: null })}
+                                    // סיבה מהרשימה → ההצעה מוכנה אוטומטית (האפקט למעלה); "אני אתקן בעצמי" → כתיבה ידנית
+                                    onChange={(choice) => update(e.id, { choice, aiError: null, autoAsk: !!reasonOf(choice) && !e.correction.trim() })}
                                   />
                                 </div>
                               )}
@@ -707,7 +724,11 @@ export function FixRequestButton({
                                     rows={2}
                                     maxLength={1000}
                                     value={e.note}
-                                    placeholder="אפשר להוסיף כמה מילים משלך (לא חובה)"
+                                    placeholder={
+                                      e.correction.trim()
+                                        ? "רוצה לכוון את ההצעה? כתבי כמה מילים ולחצי ״הצעה אחרת״ (לא חובה)"
+                                        : "אפשר להוסיף כמה מילים משלך (לא חובה)"
+                                    }
                                     onFocus={() => setActiveId(e.id)}
                                     onChange={(ev) => update(e.id, { note: ev.target.value, aiError: null })}
                                   />
@@ -740,7 +761,8 @@ export function FixRequestButton({
                               )}
 
                               {e.submitError && <p className="fix-error">{e.submitError}</p>}
-                              {e.id === activeId && (
+                              {/* רק כשיש מה להחיל: אחרת כפתור כבוי וצמוד-לתחתית (sticky) כיסה את הרשימה "איך תרצי לתקן?" בכרטיס חדש וריק */}
+                              {e.id === activeId && (canApplyEdit(e) || e.submitting) && (
                                 <button type="button" className="fix-apply" disabled={!canApplyEdit(e)} onClick={() => applyEdit(e)}>
                                   <Check className="h-4 w-4" strokeWidth={2} aria-hidden />
                                   {e.submitting ? "מחילה…" : "החל תיקון"}

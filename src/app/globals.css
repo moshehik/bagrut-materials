@@ -1808,12 +1808,18 @@ svg.mtc-rownut.colour-svg {
   color: #b42318;
   font-size: 0.85rem;
 }
-.fix-check {
+/* הודעות זיהוי הסימון בקובץ ("בודקת איפה זה בקובץ…" / "התאמנו את הסימון…").
+   שם הקלאס שונה במכוון מ-.fix-check (הלחצן העגול של הוי ברשימת התיקונים, למטה): כששניהם נקראו
+   fix-check, כלל הלחצן העגול (רוחב/גובה 1.9rem, רקע כחול כהה, display:grid) חל גם על הפסקה,
+   והטקסט נדחס לעמודה צרה של מילים בודדות מעל השדות. */
+.fix-verify {
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.5;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
-.fix-check-fixed {
+.fix-verify-fixed {
   color: #8a5a00;
 }
 .fix-done {
@@ -1889,17 +1895,21 @@ svg.mtc-rownut.colour-svg {
   font-size: 1.25rem;
 }
 .fix-what-opts {
+  /* שלוש האפשרויות בשורה אחת (גם בחלון צר): הכפתורים מתכווצים במקום לרדת שורה */
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
 }
 .fix-what-opt {
-  padding: 0.3rem 0.95rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0.3rem clamp(0.45rem, 2vw, 0.95rem);
   border: 2px solid #0a0a0a;
   border-radius: 999px;
   background: #fff;
   font-family: var(--font-hand);
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 3.4vw, 1.1rem);
+  white-space: nowrap;
   cursor: pointer;
 }
 .fix-what-opt:hover {
@@ -2218,6 +2228,28 @@ button.underline {
 }
 .view-dialog .pdfv:fullscreen {
   background: #000;
+}
+/* כפתורי "טען בחדות מלאה" בצופה מצגות בנטפרי */
+.pdfv-sharp-btn {
+  padding: 0.15rem 0.7rem;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pdfv-sharp-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+.pdfv-sharp-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.pdfv-sharp-note {
+  font-size: 0.8rem;
+  opacity: 0.85;
 }
 .pdfv-fs-btn svg {
   display: block;
@@ -4862,7 +4894,7 @@ a.sicha-tag-video:hover {
 }
 .fix-edit > .fix-q,
 .fix-edit > .fix-ai,
-.fix-edit > .fix-check,
+.fix-edit > .fix-verify,
 .fix-edit > .fix-error,
 .fix-edit > .fix-apply,
 .fix-edit > .fix-edit-applied {
