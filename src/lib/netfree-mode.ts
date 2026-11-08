@@ -80,7 +80,12 @@ export function presentationMeshFor(req: Reqish): PresentationMesh {
 
 /** צפייה במצגת באתר: מי שלא בנטפרי – הקובץ כמו שהוא; מי שבנטפרי – 512 עמודות (קל ומוצג בכל קורא) */
 export function presentationPreviewMeshFor(req: Reqish): PresentationMesh {
-  return netfreeState(req) === "0" ? false : { cols: 512, predictor: false };
+  if (netfreeState(req) === "0") return false;
+  // ?sharp=1 ("טען בחדות מלאה") = 1024 עם predictor; ?sharp=2 ("טען בחדות מלאה ממש") = רזולוציית המקור. הצופה שלנו (pdf.js) מצייר על קנבס, ולכן predictor בסדר גם כש-Edge לא מציג אותו
+  const sharp = req.nextUrl?.searchParams.get("sharp");
+  if (sharp === "1") return { cols: 1024, predictor: true };
+  if (sharp === "2") return { cols: 1578, predictor: true };
+  return { cols: 512, predictor: false };
 }
 
 /** לתיעוד ביומן: האם המחשב היה מאחורי נטפרי (לפי הבדיקה ברקע בדפדפן), באיזה דפדפן ואיך הוכן הקובץ */

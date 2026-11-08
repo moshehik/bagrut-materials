@@ -52,7 +52,7 @@ type Props = {
  * מוסיפים אותה לכאן. (המפתחות קיימים ב-colour-svgs.generated.ts לכל התמונות.)
  */
 // 2026-11-08: נטפרי עדיין מציג את שני הבתים האלה כ"בבדיקה/נחסם" (בתים אחרים אושרו) – לכן SVG. הבעיה בסידור (גובה 266px מתכונת height) תוקנה: height:auto.
-const SVG_ONLY = new Set(["/images/houses/house-yahadut.png", "/images/houses/house-ezrachut.png", "/images/edge-logo.png"]);
+const SVG_ONLY = new Set(["/images/houses/house-yahadut.png", "/images/houses/house-ezrachut.png", "/images/edge-logo.png", "/images/chrome-logo.png"]);
 
 export function ColourSvg({ src, className, style, width, height, shared, small, align }: Props) {
   const key = small && src + "@s" in COLOUR_SVGS ? src + "@s" : src;

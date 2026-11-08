@@ -183,6 +183,21 @@ export function PdfViewer({
   const ctrlTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showSlides = slideshow && !selectable;
 
+  // מצגת במחשב מאחורי נטפרי: הצפייה נטענת קלה (512), ואפשר לבקש "חדות מלאה" (1024) ואז "חדות מלאה ממש" (רזולוציית המקור).
+  // נטפרי חוסם קבצים גדולים מאוד – אם הטעינה בחדות הגבוהה נכשלת חוזרים לרמה הקודמת ומציגים הודעה.
+  const [sharp, setSharp] = useState(0);
+  const [sharpNote, setSharpNote] = useState("");
+  const [isNf, setIsNf] = useState(false);
+  useEffect(() => {
+    if (!presentation) return;
+    const read = () => /(?:^|;\s*)nf=1(?:;|$)/.test(document.cookie);
+    setIsNf(read());
+    const h = (e: Event) => setIsNf(Boolean((e as CustomEvent).detail));
+    window.addEventListener("nf-detected", h);
+    return () => window.removeEventListener("nf-detected", h);
+  }, [presentation]);
+  const effSrc = sharp ? `${src}${src.includes("?") ? "&" : "?"}sharp=${sharp}` : src;
+
   // טעינת המסמך
   useEffect(() => {
     let cancelled = false;
@@ -190,7 +205,7 @@ export function PdfViewer({
     (async () => {
       try {
         const pdfjs = await loadPdfjs();
-        const task = pdfjs.getDocument({ url: src, withCredentials: true });
+        const task = pdfjs.getDocument({ url: effSrc, withCredentials: true });
         const doc = await task.promise;
         if (cancelled) {
           void doc.destroy();
@@ -204,7 +219,13 @@ export function PdfViewer({
         setDocVersion((v) => v + 1);
       } catch (e) {
         console.error("pdf viewer load failed", e);
-        if (!cancelled) setStatus("error");
+        if (!cancelled) {
+          if (sharp > 0) {
+            // הטעינה בחדות הגבוהה נכשלה (בנטפרי קובץ גדול נחסם): חוזרים לרמה הקודמת
+            setSharpNote("הטעינה בחדות הגבוהה נכשלה (נטפרי חוסם קבצים גדולים)");
+            setSharp(sharp - 1);
+          } else setStatus("error");
+        }
       }
     })();
     return () => {
@@ -212,7 +233,8 @@ export function PdfViewer({
       void docRef.current?.destroy?.();
       docRef.current = null;
     };
-  }, [src]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effSrc]);
 
   // רוחב המיכל (להתאמת העמוד לרוחב)
   useEffect(() => {
@@ -540,6 +562,22 @@ export function PdfViewer({
             {isFs ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
           </button>
         )}
+        {!selectable && presentation && isNf && sharp < 2 && (
+          <button
+            type="button"
+            className="pdfv-sharp-btn"
+            data-tip={sharp === 0 ? "טעינה בחדות גבוהה יותר (קובץ כבד יותר)" : "טעינה ברזולוציית המקור (קובץ כבד מאוד, ייתכן שנטפרי יחסום)"}
+            disabled={status === "loading"}
+            onClick={() => {
+              setSharpNote("");
+              setStatus("loading");
+              setSharp(sharp + 1);
+            }}
+          >
+            {sharp === 0 ? "טען בחדות מלאה" : "טען בחדות מלאה ממש"}
+          </button>
+        )}
+        {sharpNote && <span className="pdfv-sharp-note">{sharpNote}</span>}
         {!selectable && presentation && status === "ready" && numPages > 0 && (
           <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" data-tip="צפייה כמצגת" onClick={startSlideshow}>
             <Presentation className="h-4 w-4" aria-hidden />

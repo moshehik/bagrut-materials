@@ -1,6 +1,7 @@
 import { CheckCircle2, Hourglass, MessageSquareText } from "lucide-react";
 import { formatHebrewDate } from "@/lib/hebrew-date";
-import { generalStatusLabel, latestGeneral, timeAgoHe, type CorrectionState } from "@/lib/private-version-logic";
+import { correctionSignature, generalStatusLabel, latestGeneral, timeAgoHe, type CorrectionState } from "@/lib/private-version-logic";
+import { CorrectionLive } from "@/components/correction-live";
 
 /**
  * השורה בכרטיסייה שמספרת למורה מה קרה עם "ההערה הכללית על הקובץ" שלה (material_fixes kind=general):
@@ -8,7 +9,7 @@ import { generalStatusLabel, latestGeneral, timeAgoHe, type CorrectionState } fr
  * הגרסה המתוקנת (ר' src/lib/private-versions.ts), וכאן יש גם קישור לקובץ המקורי (?original=1).
  * רכיב שרת (בלי מצב) – מוצג רק למי שמורשית לקובץ ויש לה הערה/גרסה. מנהלת רואה ומוחקת גרסאות ב-/admin/fixes.
  */
-export function PrivateVersionNote({ state, downloadHref }: { state: CorrectionState | undefined; downloadHref: string | null }) {
+export function PrivateVersionNote({ state, downloadHref, materialId }: { state: CorrectionState | undefined; downloadHref: string | null; materialId?: number }) {
   if (!state) return null;
   const pv = state.privateVersion;
   const latest = latestGeneral(state.general);
@@ -20,6 +21,8 @@ export function PrivateVersionNote({ state, downloadHref }: { state: CorrectionS
   const date = (() => { const d = pv?.createdAt ?? latest?.createdAt; return d ? (timeAgoHe(d) ?? formatHebrewDate(d)) : null; })();
   return (
     <div className={`mtc-note mtc-note-${label.tone}`} role="status">
+      {/* ממתינה לסוכן: בדיקה ברקע (קלה, עם backoff) ורענון אוטומטי כשהגיעה תשובה */}
+      {label.tone === "wait" && materialId ? <CorrectionLive materialId={materialId} signature={correctionSignature(state)} /> : null}
       <p className="mtc-note-head">
         <Icon className="mtc-note-icon" strokeWidth={1.75} aria-hidden />
         <span>{label.text}</span>

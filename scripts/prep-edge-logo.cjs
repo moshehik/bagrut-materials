@@ -1,7 +1,7 @@
 /**
  * מכין את public/images/edge-logo.png מסמל Microsoft Edge שהמורה סיפקה: מסיר את הרקע הלבן (הצפה מהשוליים: פיקסלים בהירים שמחוברים לשוליים הופכים לשקופים,
  * כולל החור של ה-"e" שפתוח כלפי חוץ), וממזער ל-256px. אחר כך scripts/gen-colour-svgs.cjs הופך אותו ל-SVG מוטמע (נטפרי חוסם תמונות).
- * הרצה: node scripts/prep-edge-logo.cjs <נתיב-לתמונת-המקור>
+ * הרצה: node scripts/prep-edge-logo.cjs <נתיב-לתמונת-המקור> [שם-קובץ-יעד, ברירת מחדל edge-logo.png]  (גם לסמל Chrome: chrome-logo.png)
  */
 const fs = require("fs");
 const path = require("path");
@@ -42,7 +42,7 @@ const sharp = require("sharp");
       if (n && data[i * 4] > 200 && data[i * 4 + 1] > 200 && data[i * 4 + 2] > 200) out[i * 4 + 3] = 0;
     }
   }
-  const dest = path.join(__dirname, "..", "public", "images", "edge-logo.png");
+  const dest = path.join(__dirname, "..", "public", "images", process.argv[3] || "edge-logo.png");
   await sharp(out, { raw: { width: W, height: H, channels: 4 } }).png().toFile(dest);
   console.log("written", dest, "transparent px", bg.reduce((a, b) => a + b, 0));
 })();

@@ -30,6 +30,17 @@ export type CorrectionState = {
   general: GeneralComplaintView[];
 };
 
+/**
+ * חתימה קצרה של מצב ההערות הכלליות של חומר אחד: משתנה כשהסוכן ענה / נוצרה גרסה פרטית / שולבה לכולן.
+ * הלקוח משווה אותה (ר' /api/my-correction-status) ורק כשהיא משתנה מרענן את הדף – בלי להוריד את כל המצב בכל בדיקה.
+ */
+export function correctionSignature(state: CorrectionState | undefined): string {
+  if (!state) return "none";
+  const pv = state.privateVersion ? `pv${state.privateVersion.id}` : "pv0";
+  const gen = state.general.map((g) => `${g.id}:${g.status}`).join(",");
+  return `${pv}|${gen}`;
+}
+
 export const GENERAL_VISIBLE_STATUSES = ["pending", "answered", "private", "merged"] as const;
 
 /**

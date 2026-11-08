@@ -42,11 +42,14 @@ export function PresentationDownloadGate({
   tip,
   label,
   edgeMark,
+  chromeMark,
   children,
 }: {
   href: string;
   /** סמל Edge (ColourSvg מהשרת – SVG מוטמע, כי נטפרי חוסם תמונות) */
   edgeMark?: React.ReactNode;
+  /** סמל Chrome שמוצג ליד המילה "בכרום" בהודעה */
+  chromeMark?: React.ReactNode;
   className?: string;
   tip?: string;
   label?: string;
@@ -134,7 +137,7 @@ export function PresentationDownloadGate({
             <div className="nf-card" role="alert">
               {edgeMark && <div className="mx-auto mb-2 flex justify-center">{edgeMark}</div>}
               <h4 className="nf-title">ב-Edge לא ניתן לצפות במצגת</h4>
-              <p className="nf-text">הרקע יוצג לבן. אפשר לצפות בכרום, או להוריד בחדות מלאה.</p>
+              <p className="nf-text">הרקע יוצג לבן. אפשר לצפות בכרום {chromeMark && <span className="mx-0.5 inline-block align-[-5px]">{chromeMark}</span>}, או להוריד בחדות מלאה.</p>
               <label className="nf-check">
                 <input type="checkbox" checked={skip} onChange={(e) => setSkip(e.target.checked)} />
                 <span className="nf-check-box" aria-hidden="true" />
