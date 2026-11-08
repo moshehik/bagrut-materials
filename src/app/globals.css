@@ -5590,6 +5590,106 @@ a.sicha-tag-video:hover {
 .acc-chip.acc-chip-on .acc-ico img {
   filter: brightness(0) invert(1);
 }
+/* בחירת אורך קווי מילוי: לוח בצבע הקרם של האתר (#fbefc2, כמו שאר הלוחות והצ׳יפים) שעליו עומדים לחצנים כחולים עם כיתוב לבן; בעמידה עליהם – כחול בהיר יותר; נבחר – טבעת לבנה וסימון וי */
+.fl-board {
+  padding: 1rem 1.1rem 1.2rem;
+  border: 2.5px solid #0a0a0a;
+  border-radius: 1.2rem;
+  background: #fbefc2;
+}
+.fl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.fl-opts {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+.fl-chip,
+.fl-opt,
+.fl-save {
+  font-family: var(--font-hand);
+  background: #16244e;
+  color: #fff;
+  border: 2px solid #0a0a0a;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.fl-chip {
+  padding: 0.15rem 1.2rem;
+  border-radius: 999px;
+  font-size: 1.2rem;
+  line-height: 1.6;
+}
+.fl-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.45rem 1.1rem;
+  border-radius: 1rem;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  text-align: start;
+}
+.fl-chip:hover,
+.fl-chip:focus-visible,
+.fl-opt:hover,
+.fl-opt:focus-visible,
+.fl-save.fl-save-ready:hover {
+  transform: translateY(-2px);
+  background: #2c4290;
+}
+.fl-chip.fl-chip-on,
+.fl-opt.fl-opt-on {
+  background: #16244e;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #0a0a0a;
+}
+/* שורת ההשוואה "כרגיל": לא לחיצה, מקווקוות, על הלוח החום, לא משתנה בעמידה עליה */
+.fl-opt.fl-opt-ref,
+.fl-opt.fl-opt-ref:hover {
+  border: 2px dashed rgba(10, 10, 10, 0.55);
+  background: transparent;
+  color: #3d3320;
+  transform: none;
+  cursor: default;
+}
+.fl-opt-dot {
+  flex: 0 0 1.4rem;
+  height: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.fl-opt-ref .fl-opt-dot {
+  border-color: transparent;
+}
+.fl-opt-name {
+  flex: 0 0 9rem;
+  white-space: nowrap;
+}
+.fl-opt-line {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.fl-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 1.8rem;
+  border-radius: 999px;
+  font-size: 1.25rem;
+  line-height: 1.6;
+  opacity: 0.45;
+}
+.fl-save.fl-save-ready {
+  opacity: 1;
+}
 .cal-whole {
   display: inline-block;
   padding: 0 0.7rem;
