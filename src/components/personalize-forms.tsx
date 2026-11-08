@@ -23,6 +23,11 @@ function FillLinePreview({ percent }: { percent: number }) {
   );
 }
 
+const savedText = (percent: number) =>
+  percent === FILL_LINE_PERCENT_DEFAULT
+    ? "חזרנו לברירת המחדל. הקבצים יורדים כמו שנבנו."
+    : "ההגדרה נשמרה. כל קובץ שתורידי מעכשיו יופיע עם קווי מילוי באורך שבחרת.";
+
 /** demo: הדגמה לסיור באתר (/tour-demo/personalize) – בלי שמירה אמיתית ובלי התחברות */
 export function FillLineForm({ initialPercent, demo }: { initialPercent: number; demo?: boolean }) {
   const [saved, setSaved] = useState(initialPercent);
@@ -34,19 +39,19 @@ export function FillLineForm({ initialPercent, demo }: { initialPercent: number;
 
   const save = (value: number) => {
     setMsg(null);
-    if (demo) return; // הדגמה: לא שומרים ולא פונים לשרת
+    if (demo) {
+      // הדגמה: רק על המסך – לא שומרים ולא פונים לשרת, אבל מראים את אותה תגובה כמו בשמירה אמיתית
+      setSaved(value);
+      setChoice(value);
+      setMsg({ ok: true, text: savedText(value) });
+      return;
+    }
     start(async () => {
       const r = await setFillLinePercentAction(value);
       if (r.ok && typeof r.fillLinePercent === "number") {
         setSaved(r.fillLinePercent);
         setChoice(r.fillLinePercent);
-        setMsg({
-          ok: true,
-          text:
-            r.fillLinePercent === FILL_LINE_PERCENT_DEFAULT
-              ? "חזרנו לברירת המחדל. הקבצים יורדים כמו שנבנו."
-              : "ההגדרה נשמרה. כל קובץ שתורידי מעכשיו יופיע עם קווי מילוי באורך שבחרת.",
-        });
+        setMsg({ ok: true, text: savedText(r.fillLinePercent) });
       } else {
         setMsg({ ok: false, text: r.error ?? "לא ניתן לשמור כרגע, נסי שוב בעוד רגע" });
       }
@@ -65,6 +70,7 @@ export function FillLineForm({ initialPercent, demo }: { initialPercent: number;
             key={p}
             type="button"
             role="radio"
+            data-pct={p}
             aria-checked={choice === p}
             onClick={() => {
               setChoice(p);
@@ -90,7 +96,7 @@ export function FillLineForm({ initialPercent, demo }: { initialPercent: number;
       )}
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <button type="button" disabled={pending || !dirty} onClick={() => save(choice)} className="btn btn-gold btn-gate py-1.5 disabled:opacity-50">
+        <button type="button" data-pref-save disabled={pending || !dirty} onClick={() => save(choice)} className="btn btn-gold btn-gate py-1.5 disabled:opacity-50">
           {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />} שמירת ההגדרה
         </button>
         {saved !== FILL_LINE_PERCENT_DEFAULT && (

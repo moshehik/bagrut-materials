@@ -133,7 +133,7 @@ export default async function SubscriptionSubjectsPage({
                         name="categoryId"
                         required
                         defaultValue=""
-                        className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base"
+                        className="gate-select"
                       >
                         <option value="" disabled>להחלפה במקצוע…</option>
                         {subjects
@@ -171,7 +171,7 @@ export default async function SubscriptionSubjectsPage({
                 name="categoryId"
                 required
                 defaultValue=""
-                className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base"
+                className="gate-select"
               >
                 <option value="" disabled>בחרי מקצוע…</option>
                 {subjects

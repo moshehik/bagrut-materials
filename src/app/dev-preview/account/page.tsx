@@ -218,7 +218,7 @@ export default async function Page({
                   <span className="ms-auto text-sm text-gray-500">בוצעה הורדה – אי אפשר להחליף</span>
                 ) : (
                   <div className="ms-auto flex flex-wrap items-center gap-2">
-                    <select defaultValue="" className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base">
+                    <select defaultValue="" className="gate-select">
                       <option value="" disabled>להחלפה במקצוע…</option>
                       {free.map((x) => <option key={x.id}>{x.title}</option>)}
                     </select>
@@ -234,7 +234,7 @@ export default async function Page({
           <h2 className="text-center text-3xl">הוספת מקצוע</h2>
           <p className="mt-1 text-center text-[#ffd45a]">אפשר להוסיף עוד מקצוע אחד, בלי תשלום נוסף. המקצוע שיתווסף יסתיים יחד עם המנוי – בתאריך {formatHebrewDate("2027-01-01T09:00:00Z")}.</p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <select defaultValue="" className="rounded-lg border-2 border-black bg-white px-2 py-1 text-base">
+            <select defaultValue="" className="gate-select">
               <option value="" disabled>בחרי מקצוע…</option>
               {free.map((x) => <option key={x.id}>{x.title}</option>)}
             </select>

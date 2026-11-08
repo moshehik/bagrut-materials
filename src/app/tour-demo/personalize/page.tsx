@@ -18,7 +18,7 @@ export default function TourDemoPersonalizePage() {
       />
       <AccountMenu />
       <Panel id="fill-lines-h" title="אורך קווי המילוי" icon={Ruler}>
-        <FillLineForm initialPercent={150} demo />
+        <FillLineForm initialPercent={100} demo />
       </Panel>
     </div>
   );

@@ -4238,6 +4238,28 @@ a.sicha-tag-video:hover {
   outline: 3px solid #ffd45a;
   outline-offset: 2px;
 }
+/* רשימה נפתחת בעיצוב האתר (כתב היד, כמו "איך תרצי לתקן?"): ריפוד וגובה שורה נדיבים כדי שהאות הראשונה (ל) לא תיחתך */
+.gate-select {
+  min-width: 13rem;
+  max-width: 100%;
+  padding: 0.3rem 1.1rem 0.3rem 0.9rem;
+  border: 1.5px solid #0a0a0a;
+  border-radius: 999px;
+  background-color: #fff;
+  color: #000;
+  font-family: var(--font-hand);
+  font-size: 1.25rem;
+  line-height: 1.7;
+  cursor: pointer;
+}
+.gate-select option {
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+}
+.gate-select:focus-visible {
+  outline: 3px solid #ffd45a;
+  outline-offset: 2px;
+}
 .gate-google .text-muted {
   color: rgba(255, 255, 255, 0.75);
 }
