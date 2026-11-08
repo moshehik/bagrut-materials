@@ -483,9 +483,6 @@ export function PayClient(props: {
           <h2 className="mt-2 text-2xl">{paid ? paidTitle : failed ? "התשלום לא הושלם" : "הבקשה בטיפול"}</h2>
           <p className="gate-soft mt-2 text-lg">{info.text}</p>
           {info.label && <p className="mt-1 text-base">{info.label}</p>}
-          <p className="mt-3 text-base">
-            מזהה הבקשה: <b dir="ltr">{intent.reference}</b> – כדאי לשמור אותו לכל פנייה.
-          </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {paid && (
               <Link href={successHref} className="btn btn-gold btn-gate py-2">
@@ -534,8 +531,13 @@ export function PayClient(props: {
               {amount ? `לתשלום – ${orderLabel}` : "בקשת התשלום שלך"}
             </span>
             {amount > 0 && (
-              <span className="gate-price">
-                <GateShekel agorot={amount} />
+              <span className="flex flex-col items-end">
+                <span className="gate-price">
+                  <GateShekel agorot={amount} />
+                </span>
+                {(intent.termsText ?? info?.termsText) && (intent.termsText ?? info?.termsText) !== "תשלום אחד" ? (
+                  <span className="text-base">{intent.termsText ?? info?.termsText}</span>
+                ) : null}
               </span>
             )}
           </div>
@@ -543,9 +545,6 @@ export function PayClient(props: {
             <div className="w-full text-base">
               כולל {couponPercent}% הנחה {props.campaignSlug ? "מהמבצע" : "מהקופון שלך"} (במקום <GateShekel agorot={listAmount} />)
             </div>
-          ) : null}
-          {(intent.termsText ?? info?.termsText) && (intent.termsText ?? info?.termsText) !== "תשלום אחד" ? (
-            <div className="w-full text-base">אופן התשלום: {intent.termsText ?? info?.termsText}. הסכום ומספר התשלומים נעולים בדף של נדרים פלוס.</div>
           ) : null}
           {sameDayAdjust > 0 ? (
             <div className="w-full text-base">
@@ -555,10 +554,9 @@ export function PayClient(props: {
         </div>
 
         <div className="gate-card mt-4 space-y-3">
-          <h3 className="text-xl">{opened ? "שילמת? נבדוק מול נדרים פלוס" : "שלב 1 – התשלום בדף המאובטח של נדרים פלוס"}</h3>
+          <h3 className="text-xl">{opened ? "שילמת? נבדוק מול נדרים פלוס" : "התשלום בדף המאובטח של נדרים פלוס"}</h3>
           <p className="gate-soft text-base leading-relaxed">
-            הדף נפתח בלשונית חדשה עם הסכום נעול והפרטים שלך כבר ממולאים. <b>אין צורך להעתיק או להקליד שום פרט – רק לשלם.</b> אחרי
-            התשלום חזרי לכאן – {opens} אוטומטית ברגע שהתשלום יזוהה. <b>הבדיקה מול נדרים פלוס מתבצעת פעם בכמה דקות</b>, אז ייתכן שתצטרכי להמתין קצת. אין צורך לשלם פעמיים.
+            אחרי התשלום חזרי לכאן – {opens} אוטומטית ברגע שהתשלום יזוהה. <b>הבדיקה מול נדרים פלוס מתבצעת פעם בכמה דקות.</b>
           </p>
           <div className="flex flex-wrap gap-2">
             {hostedUrl ? (
@@ -568,20 +566,25 @@ export function PayClient(props: {
             ) : (
               <span className="text-base">טוענת את הקישור לדף התשלום…</span>
             )}
-            <button type="button" className="btn gate-skip py-2 !border-[#0a0a0a] !text-[#0a0a0a]" onClick={() => checkNow()} disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" aria-hidden />} שילמתי – בדקי עכשיו
-            </button>
+            {/* כפתור הבדיקה מופיע רק אחרי שנלחץ הכפתור שפותח את דף התשלום */}
+            {opened && (
+              <button type="button" className="btn gate-skip py-2 !border-[#0a0a0a] !text-[#0a0a0a]" onClick={() => checkNow()} disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" aria-hidden />} שילמתי – בדקי עכשיו
+              </button>
+            )}
           </div>
-          <p className="text-sm text-[#3b3000]">
-            {info?.status === "processing" ? info.text : info?.note ? info.note : last ? `נבדק לאחרונה ב-${last}${next ? ` · הבדיקה הבאה אחרי ${next}` : ""}` : "ממתינים לאישור התשלום…"}
-          </p>
+          {opened && (
+            <p className="text-sm text-[#3b3000]">
+              {info?.status === "processing" ? info.text : info?.note ? info.note : last ? `נבדק לאחרונה ב-${last}${next ? ` · הבדיקה הבאה אחרי ${next}` : ""}` : "ממתינים לאישור התשלום…"}
+            </p>
+          )}
         </div>
 
         <div className="mt-4">{errorStrip}</div>
 
         <div className="mt-4 text-center text-base">
           <p>
-            מזהה הבקשה: <b dir="ltr">{intent.reference}</b>. הדף לא נפתח או יש בעיה?{" "}
+            הדף לא נפתח או יש בעיה?{" "}
             <button type="button" className="underline" onClick={requestAssist} disabled={busy}>
               כתבי לנו ונעזור להשלים את התשלום
             </button>

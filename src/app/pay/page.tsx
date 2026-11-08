@@ -165,11 +165,6 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
         <img src={inlineSite("/images/logo-black.png")} alt="לו״ז העניין" className="w-44 sm:w-52" />
         <div>
           <h1 className="text-4xl md:text-5xl">{item ? item.label : "תשלום והפעלת מנוי"}</h1>
-          <p className="mt-2 max-w-md">
-            {item
-              ? `שלום ${user.name.split(" ")[0]}, בדקי את פרטי ההזמנה ושלמי בדף המאובטח של נדרים פלוס – ${item.kind === "bundle" ? "קבצי התיקייה ייפתחו להורדה" : "הקובץ ייפתח להורדה"} אוטומטית כשהתשלום יזוהה.`
-              : `שלום ${user.name.split(" ")[0]}, בחרי מסלול, אשרי את הפרטים ושלמי בדף המאובטח של נדרים פלוס – המנוי ייפתח אוטומטית כשהתשלום יזוהה.`}
-          </p>
         </div>
       </div>
 
