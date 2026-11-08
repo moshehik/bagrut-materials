@@ -602,7 +602,7 @@ export function PayClient(props: {
           )}
           <p className="mt-3 flex items-center justify-center gap-1.5 text-base opacity-80">
             <Lock className="h-4 w-4" aria-hidden />
-            פרטי הכרטיס מוקלדים רק בדף של נדרים פלוס (תקן PCI) – האתר לא מקבל ולא שומר אותם.
+            פרטי הכרטיס לא עוברים דרך האתר.
           </p>
         </div>
       </section>
