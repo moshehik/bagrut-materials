@@ -21,7 +21,8 @@ const deflateAsync = promisify(deflate);
  * ברירת מחדל: 1024 עמודות + predictor. נבדק בנטפרי אצל המורה (2026-11-09, /netfree-test/index.html, גרסאות ד׳ ו-ה׳): שתיהן מציגות רקע.
  * שימי לב: בהורדה מלאה אחת (18 שקפים, ~20MB) הרקעים הופיעו לבנים בנטפרי והסיבה לא הוכחה (ייתכן גודל הקובץ / תמונות רסטר שנשארו) – לאמת בהורדה אמיתית.
  */
-export type MeshOptions = { cols?: number; predictor?: boolean };
+/** tiles: מחלק את התמונה ל-tiles×tiles רשתות נפרדות (כל אחת עד cols/tiles עמודות) – לבדיקת מגבלת הנקודות של הקורא של Edge */
+export type MeshOptions = { cols?: number; predictor?: boolean; tiles?: number };
 const GRID_COLS = 1024;
 const MAX_VERTICES = 1_600_000;
 const MIN_PLACED_PT = 150;
@@ -100,20 +101,38 @@ function meshBytes(rgb: Buffer, cols: number, rows: number): Buffer {
   return out;
 }
 
-type Built = { bytes: Buffer; cols: number; predictor: boolean } | null;
+type MeshPart = { bytes: Buffer; cols: number };
+type Built = { parts: MeshPart[]; tiles: number; predictor: boolean } | null;
 
 /** רשת מכווצת לתמונה אחת (או null אם לא נתמכת / חורגת מהמגבלות) */
 async function buildMesh(obj: PDFRawStream, started: number, opts: MeshOptions): Promise<Built> {
   try {
     const w = Number(String(obj.dict.get(PDFName.of("Width"))));
     const h = Number(String(obj.dict.get(PDFName.of("Height"))));
-    const cols = Math.min(opts.cols ?? GRID_COLS, w);
-    const rows = Math.max(2, Math.round((cols * h) / w));
-    if (cols * rows > MAX_VERTICES || Date.now() - started > TIME_BUDGET_MS) return null;
-    const rgb = await gridPixels(obj, cols, rows);
+    const T = Math.max(1, Math.floor(opts.tiles ?? 1));
+    const predictor = opts.predictor ?? true;
+    const total = Math.min(opts.cols ?? GRID_COLS, w);
+    // עמודות/שורות לכל אריח; אריחים סמוכים חולקים עמודת/שורת קודקודים אחת, כדי שהצבעים יתחברו בלי תפר
+    const perCols = T === 1 ? total : Math.max(2, Math.round((total - 1) / T) + 1);
+    const perRows = Math.max(2, Math.round((perCols * h) / w));
+    const fullCols = T * (perCols - 1) + 1;
+    const fullRows = T * (perRows - 1) + 1;
+    if (fullCols * fullRows > MAX_VERTICES || Date.now() - started > TIME_BUDGET_MS) return null;
+    const rgb = await gridPixels(obj, fullCols, fullRows);
     if (!rgb) return null;
-    const raw = meshBytes(rgb, cols, rows);
-    return { bytes: await deflateAsync(opts.predictor ?? true ? packMesh(raw, cols) : raw), cols, predictor: opts.predictor ?? true };
+    const parts: MeshPart[] = [];
+    for (let ty = 0; ty < T; ty++) {
+      for (let tx = 0; tx < T; tx++) {
+        const sub = Buffer.alloc(perCols * perRows * 3);
+        for (let r = 0; r < perRows; r++) {
+          const from = ((ty * (perRows - 1) + r) * fullCols + tx * (perCols - 1)) * 3;
+          rgb.copy(sub, r * perCols * 3, from, from + perCols * 3);
+        }
+        const raw = meshBytes(sub, perCols, perRows);
+        parts.push({ bytes: await deflateAsync(predictor ? packMesh(raw, perCols) : raw), cols: perCols });
+      }
+    }
+    return { parts, tiles: T, predictor };
   } catch (e) {
     console.error("pdf mesh: image failed", e instanceof Error ? e.message : e);
     return null;
@@ -162,7 +181,7 @@ export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {
       built.set(raw, limit(() => buildMesh(obj, started, opts)));
     }
   }
-  const shadingFor = new Map<PDFRef, string | null>(); // ref תמונה → שם ההצללה (או null אם לא נתמכת)
+  const shadingFor = new Map<PDFRef, { names: string[]; tiles: number } | null>(); // ref תמונה → שמות ההצללות (אריח אחד או יותר), או null אם לא נתמכת
   const shadingRefs = new Map<string, PDFRef>();
   const candidateRefs = new Set<PDFRef>();
   const stillUsed = new Set<PDFRef>();
@@ -217,28 +236,33 @@ export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {
         if (matches.length === 0) continue;
         // הרשת נבנית פעם אחת לכל תמונה (גם אם מופיעה בכמה עמודים)
         if (!shadingFor.has(c.ref)) {
-          let name: string | null = null;
+          let entry: { names: string[]; tiles: number } | null = null;
           const mesh = await built.get(c.ref);
           if (mesh) {
-            const ref = ctx.register(
-              ctx.stream(mesh.bytes, {
-                Filter: "FlateDecode",
-                ...(mesh.predictor ? { DecodeParms: { Predictor: 12, Colors: 7, BitsPerComponent: 8, Columns: mesh.cols } } : {}),
-                ShadingType: 5,
-                ColorSpace: "DeviceRGB",
-                BitsPerCoordinate: 16,
-                BitsPerComponent: 8,
-                VerticesPerRow: mesh.cols,
-                Decode: [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-              }),
-            );
-            name = `LuzMesh${++counter}`;
-            shadingRefs.set(name, ref);
+            const names: string[] = [];
+            for (const part of mesh.parts) {
+              const ref = ctx.register(
+                ctx.stream(part.bytes, {
+                  Filter: "FlateDecode",
+                  ...(mesh.predictor ? { DecodeParms: { Predictor: 12, Colors: 7, BitsPerComponent: 8, Columns: part.cols } } : {}),
+                  ShadingType: 5,
+                  ColorSpace: "DeviceRGB",
+                  BitsPerCoordinate: 16,
+                  BitsPerComponent: 8,
+                  VerticesPerRow: part.cols,
+                  Decode: [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+                }),
+              );
+              const nm = `LuzMesh${++counter}`;
+              shadingRefs.set(nm, ref);
+              names.push(nm);
+            }
+            entry = { names, tiles: mesh.tiles };
           }
-          shadingFor.set(c.ref, name);
+          shadingFor.set(c.ref, entry);
         }
-        const shName = shadingFor.get(c.ref);
-        if (!shName) continue;
+        const shEntry = shadingFor.get(c.ref);
+        if (!shEntry) continue;
         text = text.replace(re, (all, chain: string) => {
           let e: M = [1, 0, 0, 1, 0, 0];
           for (const m of chain.matchAll(new RegExp(String.raw`(${NUM})\s+(${NUM})\s+(${NUM})\s+(${NUM})\s+(${NUM})\s+(${NUM})\s+cm`, "g"))) {
@@ -247,7 +271,16 @@ export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {
           if (Math.hypot(e[0], e[1]) < MIN_PLACED_PT) return all; // תמונה קטנה בעמוד – משאירים
           changed = true;
           usedNames.add(c.name);
-          return `${chain}0 0 1 1 re W n /${shName} sh`;
+          const T = shEntry.tiles;
+          if (T === 1) return `${chain}0 0 1 1 re W n /${shEntry.names[0]} sh`;
+          // כל אריח: q [הסטה וקנה מידה] cm → חיתוך לריבוע היחידה → sh → Q (שורה ראשונה למעלה, y גדל כלפי מעלה)
+          const k = 1 / T;
+          const tilesOut = shEntry.names.map((nm, i) => {
+            const tx = i % T;
+            const ty = Math.floor(i / T);
+            return `q ${k} 0 0 ${k} ${tx * k} ${1 - (ty + 1) * k} cm 0 0 1 1 re W n /${nm} sh Q`;
+          });
+          return `${chain}${tilesOut.join(" ")} `;
         });
       }
       if (!changed) {
@@ -269,8 +302,8 @@ export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {
     }
     for (const c of cands) {
       if (usedNames.has(c.name)) {
-        const shName = shadingFor.get(c.ref);
-        if (shName) shDict.set(PDFName.of(shName), shadingRefs.get(shName)!);
+        const shEntry = shadingFor.get(c.ref);
+        if (shEntry) for (const nm of shEntry.names) shDict.set(PDFName.of(nm), shadingRefs.get(nm)!);
         pendingDeletes.push({ xo, name: c.name });
         candidateRefs.add(c.ref);
       } else {
