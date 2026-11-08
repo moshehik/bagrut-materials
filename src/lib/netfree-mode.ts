@@ -10,8 +10,10 @@ import type { MeshOptions } from "./pdf-mesh-images";
  * ערך הקוקי נקבע בדפדפן ולכן ניתן לזיוף; ההשלכה רק על איכות הקובץ, לא על הרשאות. מצב ההורדה נרשם ביומן (details.presentation ב-action download).
  */
 export type PresentationMesh = false | MeshOptions;
-export const HQ_MAX_BYTES = 35 * 1024 * 1024;
-export const STD_MAX_BYTES = 20 * 1024 * 1024;
+// נבדק בנטפרי אצל המורה (2026-11-09): עברו קבצים של 13.6MB ו-17.6MB; נחסמו 23MB, 30MB ו-33MB (גם בהגדרות שונות) – כנראה סף גודל בסביבות 20MB.
+// לכן שני התקציבים מוגבלים ל-18MB, עד שיוכרע פתרון של חדות מלאה בכמה קבצים.
+export const HQ_MAX_BYTES = 18 * 1024 * 1024;
+export const STD_MAX_BYTES = 18 * 1024 * 1024;
 
 type Reqish = { method?: string; headers: Headers; nextUrl?: { searchParams: URLSearchParams }; cookies?: { get(name: string): { value: string } | undefined } };
 

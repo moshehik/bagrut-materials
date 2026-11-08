@@ -95,7 +95,7 @@ export function NetfreeHqRow({ href, nut }: { href: string; nut: React.ReactNode
   return (
     <div className="mtc-lower mtc-lower-hq">
       <div className="mtc-tools">
-        <a href={`${href}${href.includes("?") ? "&" : "?"}hq=1`} className="mtc-row" data-tip={"הורדה בחדות מלאה – קובץ כבד (עד כ-35MB),\nוההורדה עשויה להימשך זמן"}>
+        <a href={`${href}${href.includes("?") ? "&" : "?"}hq=1`} className="mtc-row" data-tip={"הורדה בחדות מלאה – קובץ כבד יותר,\nוההורדה עשויה להימשך זמן"}>
           {nut}
           <span>הורדה בחדות מלאה</span>
         </a>
