@@ -14,7 +14,7 @@ import {
 import { SITE_NAME } from "@/lib/constants";
 import { LegalPage, LegalLink } from "@/components/legal-page";
 
-export const metadata: Metadata = { title: "תנאי שימוש וזכויות יוצרים" };
+export const metadata: Metadata = { title: "תנאי שימוש וזכויות יוצרים", alternates: { canonical: "/terms" } };
 
 const ic = "h-6 w-6";
 

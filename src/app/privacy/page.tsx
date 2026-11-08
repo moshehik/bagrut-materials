@@ -14,7 +14,7 @@ import {
 import { SITE_NAME } from "@/lib/constants";
 import { LegalPage, LegalLink, LegalItem } from "@/components/legal-page";
 
-export const metadata: Metadata = { title: "מדיניות פרטיות" };
+export const metadata: Metadata = { title: "מדיניות פרטיות", alternates: { canonical: "/privacy" } };
 
 const ic = "h-6 w-6";
 

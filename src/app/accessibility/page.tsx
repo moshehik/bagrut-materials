@@ -16,6 +16,7 @@ import { LegalPage, LegalLink, LegalItem } from "@/components/legal-page";
 export const metadata: Metadata = {
   title: "הצהרת נגישות",
   description: "ההתאמות שבאתר לשימוש נגיש, איך משתמשים בכפתור הנגישות ואיך מדווחים על תקלה.",
+  alternates: { canonical: "/accessibility" },
 };
 
 const EMAIL = "loozhainyan@gmail.com";

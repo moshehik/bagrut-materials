@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { KindBlob } from "@/components/kind-blob";
 import { ArrowLeft, BookOpen, Compass, Gift, Tags } from "lucide-react";
@@ -28,7 +29,12 @@ import { HomePopup, type HomePopupData } from "@/components/home-popup";
 import { getSettings } from "@/lib/settings";
 import { getMySubjects } from "@/lib/home-personal";
 import { NextLessonButton } from "@/components/next-lesson-button";
+import { JsonLd } from "@/components/json-ld";
+import { homeJsonLd } from "@/lib/seo";
 import s from "./home.module.css";
+
+// דף הבית: הכותרת והתיאור מה-layout (SEO_DEFAULT_*); כאן רק הכתובת הקנונית
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export const dynamic = "force-dynamic";
 
@@ -343,6 +349,7 @@ function HouseCluster({ subjects }: { subjects: Category[] }) {
   const half = Math.floor(items.length / 2);
   return (
     <div className={s.snowHouses}>
+      <JsonLd data={homeJsonLd()} />
       <img
         src="/images/snow-mountain.webp"
         alt=""

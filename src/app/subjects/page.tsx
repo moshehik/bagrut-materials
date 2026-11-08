@@ -12,7 +12,7 @@ import { inlineNut } from "@/lib/inline-site-images";
 import { SUBJECT_HOUSES } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EmptySheet } from "@/components/empty-sheet";
-export const metadata: Metadata = { title: "המקצועות" };
+export const metadata: Metadata = { title: "המקצועות", description: "כל המקצועות והיחידות באתר: בוחרים מקצוע ויחידה ומגיעים לפרק המדויק, עם חומרי לימוד מוכנים להורדה.", alternates: { canonical: "/subjects" } };
 export const dynamic = "force-dynamic";
 
 async function load(

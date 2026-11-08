@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Bellefair, Gveret_Levin } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { SITE_NAME } from "@/lib/constants";
+import { OG_IMAGE_PATH, SEO_DEFAULT_DESCRIPTION, SEO_DEFAULT_TITLE, siteOrigin } from "@/lib/seo";
 import { getCurrentUser } from "@/lib/session";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
@@ -44,8 +45,23 @@ const bellefair = Bellefair({
 });
 
 export const metadata: Metadata = {
-  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
-  description: SITE_TAGLINE,
+  // metadataBase: כל כתובת יחסית בשדות מטא (canonical, תמונת שיתוף) נבנית ממנה. מקור אחד: siteOrigin() (ר' lib/seo.ts)
+  metadataBase: new URL(siteOrigin()),
+  title: { default: SEO_DEFAULT_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SEO_DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    locale: "he_IL",
+    siteName: SITE_NAME,
+    title: SEO_DEFAULT_TITLE,
+    description: SEO_DEFAULT_DESCRIPTION,
+    images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: SITE_NAME }],
+  },
+  twitter: { card: "summary_large_image", title: SEO_DEFAULT_TITLE, description: SEO_DEFAULT_DESCRIPTION, images: [OG_IMAGE_PATH] },
+  // אימות בעלות ב-Google Search Console (שיטת תגית HTML): מגדירים GOOGLE_SITE_VERIFICATION ב-Vercel – התגית מופיעה לבד
+  ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

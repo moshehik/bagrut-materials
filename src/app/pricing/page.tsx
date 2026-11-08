@@ -26,7 +26,7 @@ import { getActivePurchases } from "@/lib/data";
 import { GateShekel } from "@/components/gate-shekel";
 import { AnimatedGrid } from "@/components/animated-grid";
 
-export const metadata: Metadata = { title: "מסלולים ומחירים" };
+export const metadata: Metadata = { title: "מסלולים ומחירים", description: "מסלולים ומחירים: הורדה בודדת כשצריך דחוף, מנוי שנתי להכנה מלאה, ומסלולים לממלאות מקום.", alternates: { canonical: "/pricing" } };
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage() {

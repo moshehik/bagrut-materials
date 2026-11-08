@@ -9,7 +9,7 @@ import { BagrutMapTree, type MapNode } from "@/components/bagrut-map-tree";
 import { MapDraw } from "@/components/map-draw";
 import { NutScrollHandleHorizontal } from "@/components/nut-scroll-handle";
 
-export const metadata: Metadata = { title: "מפת הבגרות המלאה" };
+export const metadata: Metadata = { title: "מפת הבגרות המלאה", description: "תרשים של כל הבגרויות לפי סמל שאלון: רואים מה צריך ללמד בכל בגרות, ומכל ריבוע מגיעים ישר לחומרים המוכנים לפרק.", alternates: { canonical: "/map" } };
 export const dynamic = "force-dynamic";
 
 async function buildTree(isAdmin: boolean): Promise<MapNode[]> {

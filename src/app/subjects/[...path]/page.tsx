@@ -17,7 +17,7 @@ import {
   getFreeCategoryIds,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
-import { UNIT_BUNDLE_PRICE, formatPrice } from "@/lib/constants";
+import { SITE_NAME, UNIT_BUNDLE_PRICE, formatPrice } from "@/lib/constants";
 import type { Material } from "@/db/schema";
 import { CARD_ROWS, EXTRA_ROWS, classifyMaterial, presentationPart, type CardType } from "@/lib/material-card-types";
 import { MaterialTypeCard } from "@/components/material-type-card";
@@ -27,6 +27,8 @@ import { FolderAllActions } from "@/components/folder-all-actions";
 import { BackRowEnd } from "@/components/back-row-end";
 import { AutoFolderDownload } from "@/components/auto-folder-download";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, pageSeo } from "@/lib/seo";
 import { SubjectCard } from "@/components/subject-card";
 import { RememberFolder } from "@/components/remember-folder";
 import { getFixesForViewer } from "@/lib/fixes";
@@ -90,10 +92,18 @@ function decode(path: string[]) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const chain = await resolvePathOnce(decode(path)).catch(() => null);
-  if (!chain) return { title: "לא נמצא" };
+  if (!chain) return { title: "לא נמצא", robots: { index: false, follow: true } };
+  const title = chain.map((c) => c.title).reverse().join(" · ");
+  const last = chain[chain.length - 1];
+  const where = chain.map((c) => c.title).join(" › ");
   return {
-    title: chain.map((c) => c.title).reverse().join(" · "),
-    description: chain[chain.length - 1].description ?? undefined,
+    title,
+    // תיאור התיקייה אם נכתב; אחרת תיאור כללי שמכיל את מיקום התיקייה במפת הבגרות (מילות החיפוש של המורה)
+    ...pageSeo({
+      title,
+      description: last.description?.trim() || `חומרי לימוד לבגרות: ${where}. דפי שכפול לתלמידה ולמורה, בחנים ושאלות מבגרויות להורדה באתר ${SITE_NAME}.`,
+      path: chainToHref(chain),
+    }),
   };
 }
 
@@ -236,6 +246,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      <JsonLd data={breadcrumbJsonLd(chain.map((c, i) => ({ name: c.title, path: chainToHref(chain.slice(0, i + 1)) })))} />
       {/* הגדרות משותפות של אגוזים צבעוניים (SVG) – כרטיסי התיקיות והכפתורים מציירים אותם ב-<use> */}
       <ColourSvgDefs srcs={[...(mats.length > 0 || isSichotFolder ? CARD_NUT_SRCS : []), ...(children.length > 0 ? [inlineNut(root.slug, depth + 1) + "@s"] : [])]} />
       {/* תיקיית קבצים (לא תיקיית-אב): נרשמת ברשימת "ביקרת לאחרונה" של חלון החיפוש */}

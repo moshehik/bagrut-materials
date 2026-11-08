@@ -9,6 +9,7 @@ import { ContactForm } from "@/components/contact-form";
 export const metadata: Metadata = {
   title: "צרי קשר",
   description: "שאלה, בקשה לחומר שחסר או בעיה בהורדה – כתבי לנו ונחזור אלייך בהקדם.",
+  alternates: { canonical: "/contact" },
 };
 
 const EMAIL = "loozhainyan@gmail.com";
