@@ -11,6 +11,10 @@
  *  - כל מילה אחרת חייבת להופיע באחד השדות: כותרת הפריט, כותרת התיקייה שלו, כותרות האבות, התיאור, או (ל"תלמידה"/"מורה"...) סוג הקובץ.
  *  - מילה קצרה (אות-שתיים: מספר פרק, "בא") חייבת להופיע כמילה שלמה; מילה ארוכה - כתת-מחרוזת (בלי הסרת אות שימוש: "בשלח" ≠ "שלח").
  *  - אין תוצאה מלאה? תוצאות "קרובות": כולן חוץ ממילה אחת (כשיש לפחות 3 מילים חובה).
+ *  - גרסאות של מילה (ר' needlesOf): כתיב חסר/מלא (תהילים = תהלים, ירמיהו = ירמיה - משווים בלי י/ו שאינן ראשונות),
+ *    ריבוי/יחיד ("נביאים" ↔ "נביא"), שמות נרדפים וכינויים ("תנ"ך" ← תורה/נביא/כתובים, "לשון" ← מערכת הצורות/תחביר...),
+ *    ומספר באותיות/בספרות ("ג" = "3", "שלוש" = "3"). גרסה שאינה המילה עצמה מדורגת נמוך יותר, כך שהתאמה מדויקת תמיד קודמת.
+ *    עדיין בלי הסרת אות שימוש כללית ("בשלח" ≠ "שלח").
  */
 
 const NIKUD = /[֑-ׇ]/g;
@@ -58,11 +62,150 @@ function kindsOf(token: string): string[] {
   return [];
 }
 
-function hit(token: string, hay: string): boolean {
-  if (!hay) return false;
-  if (token.length <= 2) return (" " + hay + " ").includes(" " + token + " ");
-  // בלי הסרת אות שימוש כללית: "בשלח" ≠ "שלח" (שתי פרשיות שונות). אות שימוש מטופלת רק בסוג הקובץ (kindsOf)
-  return hay.includes(token);
+/** ערך מספרי של מספר עברי תקין עד 999 ("יג" → 13, "נא" → 51); null אם אינו מספר ("בא", "לא תקין") */
+export function fromHebrewNumeral(s: string): number | null {
+  if (!s || s.length > 4) return null;
+  const V: Record<string, number> = { א: 1, ב: 2, ג: 3, ד: 4, ה: 5, ו: 6, ז: 7, ח: 8, ט: 9, י: 10, כ: 20, ל: 30, מ: 40, נ: 50, ס: 60, ע: 70, פ: 80, צ: 90, ק: 100, ר: 200, ש: 300, ת: 400 };
+  let n = 0;
+  let stage = 0; // 0 = מאות, 1 = עשרות, 2 = יחידות
+  // 15 ו-16 נכתבים טו / טז (לא יה / יו)
+  const tail = /(טו|טז)$/.exec(s);
+  if (tail) {
+    n = tail[1] === "טו" ? 15 : 16;
+    s = s.slice(0, -2);
+    stage = 2;
+  }
+  for (const ch of s) {
+    const v = V[ch];
+    if (!v) return null;
+    const st = v >= 100 ? 0 : v >= 10 ? 1 : 2;
+    if (st < stage || (st > 0 && st === stage)) return null; // סדר גבוה→נמוך, עשרות/יחידות לכל היותר פעם אחת
+    stage = st;
+    n += v;
+  }
+  return n >= 1 && n <= 999 ? n : null;
+}
+
+/**
+ * כתיב חסר/מלא: בכל מילה (באורך 3+) מסירים את האות [ch] (י או ו) כשאינה האות הראשונה. "תהילים" ו"תהלים" שוות (בלי י'),
+ * "ירמיהו" ו"ירמיה" (בלי ו'). מסירים כל אות בנפרד ולא את שתיהן יחד, כדי שמילים שונות לא יתנגשו ("ספרות" ≠ "ספרית"/"סיפורת").
+ * מחילים על שני הצדדים (השאילתה והכותרת).
+ */
+export function looseBy(text: string, ch: "י" | "ו"): string {
+  const re = ch === "י" ? /י/g : /ו/g;
+  return text
+    .split(" ")
+    .map((w) => (w.length >= 3 ? w[0] + w.slice(1).replace(re, "") : w))
+    .join(" ");
+}
+/** תאימות לאחור ולבדיקות: הסרת י/ו יחד (לא משמש בהתאמה עצמה) */
+export const loose = (text: string): string => looseBy(looseBy(text, "י"), "ו");
+
+/**
+ * שמות נרדפים וכינויים (מפתח ותוצאה מנורמלים: בלי גרשיים/ניקוד). כל ערך הוא "או": מספיק שאחד מהם יופיע.
+ * רק כינויים שקיימים באמת בקטלוג או שמורות מחפשות בהם. אין כאן הסרת אות שימוש (ר' הערה בראש הקובץ).
+ */
+export const ALIASES: Record<string, string[]> = {
+  תנך: ["תורה", "נביא", "כתובים"],
+  מקרא: ["תורה", "נביא", "כתובים"],
+  נך: ["נביא", "כתובים"],
+  חומש: ["תורה"],
+  חומשים: ["תורה"],
+  לשון: ["מערכת הצורות", "תחביר", "הבעה והבנה"],
+  דקדוק: ["מערכת הצורות", "תחביר"],
+  הלכה: ["דינים"],
+  הלכות: ["דינים"],
+  הלכתי: ["דינים"],
+  הלכתית: ["דינים"],
+  דין: ["דינים"],
+  דינים: ["הלכות"],
+  יהדות: ["מחשבת ישראל"],
+  הגות: ["מחשבת ישראל"],
+  אנגלית: ["english"],
+  english: ["אנגלית"],
+  חשבון: ["מתמטיקה"],
+  מתמטיקה: ["חשבון"],
+  שלוש: ["3"],
+  שלושה: ["3"],
+  ארבע: ["4"],
+  ארבעה: ["4"],
+  חמש: ["5"],
+  חמישה: ["5"],
+  יחידות: ["יחל"],
+  יחידה: ["יחל"],
+  יחל: ["יחידות"],
+};
+
+type Needle = { text: string; weight: number; word?: boolean; stem?: boolean };
+
+const NEEDLE_CACHE = new Map<string, Needle[]>();
+
+/** ריבוי זכר: מסירים "ים" כשנשאר שורש של 3+ אותיות (נביאים → נביא). בכוונה לא "ות" ("ספרות" → "ספר" היא מילה אחרת); שורש של עד 4 אותיות מתאים רק כמילה שלמה (ר' hitWeight). בלי אות שימוש בתחילת המילה */
+function stemsOf(t: string): string[] {
+  const out: string[] = [];
+  for (const suf of ["ים"]) {
+    if (t.endsWith(suf) && t.length - suf.length >= 3) {
+      out.push(t.slice(0, -suf.length));
+      break;
+    }
+  }
+  return out;
+}
+
+/** כל הגרסאות שמילת חיפוש מתאימה להן, עם משקל (1 = המילה עצמה). נשמר במטמון קטן */
+export function needlesOf(token: string): Needle[] {
+  const hit = NEEDLE_CACHE.get(token);
+  if (hit) return hit;
+  const out: Needle[] = [{ text: token, weight: 1 }];
+  const seen = new Set([token]);
+  const add = (text: string, weight: number, word?: boolean, stem?: boolean) => {
+    const key = (word ? "w:" : "") + text;
+    if (!text || seen.has(key) || (seen.has(text) && !word)) return;
+    seen.add(key);
+    out.push({ text, weight, ...(word ? { word: true } : {}), ...(stem ? { stem: true } : {}) });
+  };
+  for (const st of stemsOf(token)) add(st, 0.9, false, true);
+  for (const base of [token, ...stemsOf(token)]) for (const al of ALIASES[base] ?? []) add(normalize(al), 0.7);
+  // מספר: "ג" ↔ "3", "יג" ↔ "13" (בכותרות כמו "בגרות 3 יחידות") - מילה שלמה בלבד
+  const num = token.length <= 3 ? fromHebrewNumeral(token) : null;
+  if (num !== null) add(String(num), 0.95, true);
+  if (NEEDLE_CACHE.size > 800) NEEDLE_CACHE.clear();
+  NEEDLE_CACHE.set(token, out);
+  return out;
+}
+
+type Prep = { t: string; ly: string; lv: string };
+const prep = (s: string | null | undefined): Prep => {
+  const t = normalize(s);
+  return { t, ly: looseBy(t, "י"), lv: looseBy(t, "ו") };
+};
+
+/** משקל ההתאמה הטובה ביותר של מילה (בכל גרסאותיה) בשדה; 0 = אין */
+function hitWeight(token: string, h: Prep): number {
+  if (!h.t) return 0;
+  let best = 0;
+  for (const n of needlesOf(token)) {
+    let w = 0;
+    if (n.word || n.text.length <= 2 || (n.stem && n.text.length < 5)) {
+      // מילה קצרה (מספר פרק, "בא") חייבת להופיע כמילה שלמה
+      w = (" " + h.t + " ").includes(" " + n.text + " ") ? n.weight : 0;
+    } else if (h.t.includes(n.text)) {
+      // בלי הסרת אות שימוש כללית: "בשלח" ≠ "שלח" (שתי פרשיות שונות). אות שימוש מטופלת רק בסוג הקובץ (kindsOf)
+      w = n.weight;
+    } else if (!(n.stem && n.text.length < 5)) {
+      // כתיב חסר/מלא. שורש קצר (עד 4 אותיות) לא משווים בכתיב חסר; מילה שנשארו בה 3 אותיות ("משל" ← משלי) רק כמילה שלמה, לא כתת-מחרוזת ("ממשלה")
+      for (const [ln, hay] of [[looseBy(n.text, "י"), h.ly], [looseBy(n.text, "ו"), h.lv]] as const) {
+        if (ln.length < 3) continue;
+        const ok = ln.length < 4 ? (" " + hay + " ").includes(" " + ln + " ") : hay.includes(ln);
+        if (ok) {
+          w = n.weight * 0.95;
+          break;
+        }
+      }
+    }
+    if (w > best) best = w;
+  }
+  return best;
 }
 
 export type SearchItem = {
@@ -79,22 +222,23 @@ export type Scored = { matched: number; required: number; score: number };
 
 /** דירוג פריט מול שאילתה מפוצלת. matched = כמה מילות חובה נמצאו (required = כמה יש) */
 export function scoreItem(tokens: string[], item: SearchItem, fillers: ReadonlySet<string> = FILLER_WORDS): Scored {
-  const title = normalize(item.title);
-  const leaf = normalize(item.ancestors[item.ancestors.length - 1] ?? "");
-  const anc = normalize(item.ancestors.join(" "));
-  const desc = normalize(item.description);
+  const title = prep(item.title);
+  const leaf = prep(item.ancestors[item.ancestors.length - 1] ?? "");
+  const anc = prep(item.ancestors.join(" "));
+  const desc = prep(item.description);
   let matched = 0;
   let required = 0;
   let score = 0;
   for (const t of tokens) {
     const filler = fillers.has(t);
     const kindHit = !!item.kind && kindsOf(t).includes(item.kind);
-    let s = 0;
-    if (hit(t, title)) s = 3;
-    else if (kindHit) s = 2.5;
-    else if (hit(t, leaf)) s = 2;
-    else if (hit(t, anc)) s = 1.5;
-    else if (hit(t, desc)) s = 0.8;
+    const s = Math.max(
+      3 * hitWeight(t, title),
+      kindHit ? 2.5 : 0,
+      2 * hitWeight(t, leaf),
+      1.5 * hitWeight(t, anc),
+      0.8 * hitWeight(t, desc),
+    );
     if (filler) {
       score += s > 0 ? 0.3 : 0;
       continue;
@@ -102,9 +246,11 @@ export function scoreItem(tokens: string[], item: SearchItem, fillers: ReadonlyS
     required++;
     if (s > 0) matched++;
     score += s;
+    // כותרת הפריט היא בדיוק המילה (או אחד מכינוייה): "נביא" → הצומת "נביא" לפני "דבורה הנביאה", "תנ"ך" → תורה/נביא/כתובים
+    if (title.t && needlesOf(t).some((n) => n.text === title.t)) score += 1.5;
   }
   // כל מילות החובה בכותרת הפריט עצמו - עדיפות גבוהה
-  if (required > 0 && tokens.filter((t) => !fillers.has(t)).every((t) => hit(t, title))) score += 2;
+  if (required > 0 && tokens.filter((t) => !fillers.has(t)).every((t) => hitWeight(t, title) > 0)) score += 2;
   return { matched, required, score };
 }
 
