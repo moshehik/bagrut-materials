@@ -6,7 +6,7 @@ import type { MeshOptions } from "./pdf-mesh-images";
  *  - לא בנטפרי (הדפדפן קבע nf=0 ברקע, ר' netfree-probe.ts): בלי המרה – התמונות המקוריות (~5MB למצגת של 18 שקפים).
  *  - בנטפרי (nf=1) או לא ידוע: רקעים וקטוריים (נטפרי מחליף תמונות ב-PDF), בגודל מוגבל לפי סולם הגדרות (ר' ladder ב-pdf-mesh-images.ts):
  *      הורדה רגילה – עד ~20MB; "הורדה בחדות מלאה" (?hq=1) – עד ~35MB; צפייה באתר – 512 עמודות רגיל (קל).
- *    כרום: אפשר predictor (קל יותר); קורא אחר (Edge וכו'): רק בלי predictor ועם רשתות עד ~150 אלף קודקודים (tiles) – נבדק, docs/netfree-techniques.md.
+ *    תמיד הגדרות שמוצגות ב-Edge (בלי predictor, רשתות עד ~150 אלף קודקודים): הקובץ נשמר ונפתח אחר כך בכל קורא, לא רק בדפדפן שהוריד – ב-Edge 17MB עם predictor לא הוצג.
  * ערך הקוקי נקבע בדפדפן ולכן ניתן לזיוף; ההשלכה רק על איכות הקובץ, לא על הרשאות. מצב ההורדה נרשם ביומן (details.presentation ב-action download).
  */
 export type PresentationMesh = false | MeshOptions;
@@ -36,13 +36,8 @@ function isChromeOnly(req: Reqish) {
 
 const MB = 1048576;
 // הערכות גודל לתמונה, נמדדו על מצגת "פרק י" (18 שקפים, 2026-11-09)
-const CHROME_LADDER = [
-  { opts: { cols: 1578, predictor: true }, estBytesPerImage: 1.75 * MB },
-  { opts: { cols: 1280, predictor: true }, estBytesPerImage: 1.45 * MB },
-  { opts: { cols: 1024, predictor: true }, estBytesPerImage: 1.0 * MB },
-  { opts: { cols: 512, predictor: false }, estBytesPerImage: 0.8 * MB },
-];
-const OTHER_LADDER = [
+/** רק הגדרות שמוצגות על המסך גם בקורא המובנה של Edge: בלי predictor, ועד ~150 אלף קודקודים לאובייקט הצללה (נבדק 2026-11-09) */
+const EDGE_SAFE_LADDER = [
   { opts: { cols: 1577, tiles: 4, predictor: false }, estBytesPerImage: 6.5 * MB },
   { opts: { cols: 1023, tiles: 2, predictor: false }, estBytesPerImage: 2.85 * MB },
   { opts: { cols: 1023, tiles: 2, predictor: false, quant: 4 }, estBytesPerImage: 2.2 * MB },
@@ -57,10 +52,19 @@ export function presentationMeshFor(req: Reqish): PresentationMesh {
   if (req.method === "POST") return false;
   const hq = req.nextUrl?.searchParams.get("hq") === "1";
   if (!hq && netfreeState(req) === "0") return false;
+  // בדיקות סף נטפרי (רק עם hq=1): ?cols=&tiles=&pred=1&q= קובעים הגדרה ידנית (מבודד גודל מול מספר קודקודים)
+  const sp = req.nextUrl?.searchParams;
+  const forcedCols = hq && sp ? Number(sp.get("cols")) : NaN;
+  if (Number.isFinite(forcedCols) && forcedCols >= 256 && forcedCols <= 1700) {
+    const tiles = Math.min(5, Math.max(1, Math.floor(Number(sp?.get("tiles")) || 1)));
+    const q = Math.min(16, Math.max(0, Math.floor(Number(sp?.get("q")) || 0)));
+    return { cols: Math.round(forcedCols), tiles, predictor: sp?.get("pred") === "1", ...(q > 1 ? { quant: q } : {}) };
+  }
   // ?mb=N (רק עם hq=1, לבדיקת סף הגודל של נטפרי): תקציב בגודל אחר, 5–150MB
   const mbParam = hq ? Number(req.nextUrl?.searchParams.get("mb")) : NaN;
   const budget = Number.isFinite(mbParam) && mbParam >= 5 && mbParam <= 150 ? mbParam * MB : hq ? HQ_MAX_BYTES : STD_MAX_BYTES;
-  return { ladder: isChromeOnly(req) ? CHROME_LADDER : OTHER_LADDER, maxBytes: budget };
+  // הקובץ נשמר ונפתח אחר כך בכל קורא (ברירת המחדל בווינדוס = Edge), ולכן תמיד ההגדרות שמוצגות ב-Edge, בלי קשר לדפדפן שהוריד
+  return { ladder: EDGE_SAFE_LADDER, maxBytes: budget };
 }
 
 /** צפייה במצגת באתר: מי שלא בנטפרי – הקובץ כמו שהוא; מי שבנטפרי – 512 עמודות (קל ומוצג בכל קורא) */
