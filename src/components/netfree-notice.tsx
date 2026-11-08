@@ -19,17 +19,18 @@ export function NetfreeNotice({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const [mail, setMail] = useState<{ s: "idle" | "sending" | "sent" | "error"; email?: string }>({ s: "idle" });
+  const [mail, setMail] = useState<{ s: "idle" | "sending" | "sent" | "error"; email?: string; error?: string; redirect?: string }>({ s: "idle" });
   const who = lastFilterKind() === "other" ? "בסינון שלך" : "בנטפרי";
   const send = async () => {
     if (!mailUrl || mail.s === "sending") return;
     setMail({ s: "sending" });
     try {
       const res = await fetch(mailUrl, { method: "POST" });
-      const data = (await res.json().catch(() => ({}))) as { email?: string };
-      setMail(res.ok ? { s: "sent", email: data.email } : { s: "error" });
+      // השרת מחזיר הסבר מדויק (לא מחוברת / המייל לא מאומת / אין הרשאה / שליחה נכשלה) וגם redirect לצעד החסר
+      const data = (await res.json().catch(() => ({}))) as { email?: string; error?: string; redirect?: string };
+      setMail(res.ok ? { s: "sent", email: data.email } : { s: "error", error: data.error, redirect: data.redirect });
     } catch {
-      setMail({ s: "error" });
+      setMail({ s: "error", error: "אין חיבור לשרת, נסי שוב בעוד רגע." });
     }
   };
   return (
@@ -46,7 +47,19 @@ export function NetfreeNotice({
             {mail.email && <bdi dir="ltr">{mail.email}</bdi>}
           </p>
         )}
-        {mail.s === "error" && <p className="nf-text">השליחה נכשלה, נסי שוב בעוד רגע.</p>}
+        {mail.s === "error" && (
+          <p className="nf-text" role="alert">
+            {mail.error ?? "השליחה נכשלה, נסי שוב בעוד רגע."}
+            {mail.redirect && (
+              <>
+                {" "}
+                <a href={mail.redirect} className="underline">
+                  להמשך
+                </a>
+              </>
+            )}
+          </p>
+        )}
         <div className="nf-actions">
           {mailUrl && mail.s !== "sent" && (
             <button type="button" className="nf-btn nf-btn-main" onClick={send} disabled={mail.s === "sending"}>

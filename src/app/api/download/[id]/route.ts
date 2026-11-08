@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { checkEntitlement } from "@/lib/data";
 import { stampPdf, stampImage } from "@/lib/watermark";
 import { classifyMaterial } from "@/lib/material-card-types";
-import { presentationMeshFor } from "@/lib/netfree-mode";
+import { presentationMeshFor, describeMeshMode } from "@/lib/netfree-mode";
 import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
@@ -405,7 +405,14 @@ async function serve(req: NextRequest, ctx: Ctx) {
       action: "download",
       entityType: "material",
       entityId: material.id,
-      details: { via: ent.via, title: material.title, privateVersion: served.privateVersion?.id ?? null, original: wantOriginal },
+      details: {
+        via: ent.via,
+        title: material.title,
+        privateVersion: served.privateVersion?.id ?? null,
+        original: wantOriginal,
+        // מצגות: האם המחשב היה מאחורי נטפרי (לפי הבדיקה ברקע בדפדפן) ואיך הוכן הקובץ
+        ...(classifyMaterial(material) === "presentation" ? { presentation: describeMeshMode(req, presentationMeshFor(req)) } : {}),
+      },
     });
     // המורה ביקשה במפורש את הקובץ המקורי למרות שיש לה גרסה פרטית – נרשם על ההערה (ציר הזמן ב-/admin/fixes)
     if (wantOriginal && !isAdmin) {

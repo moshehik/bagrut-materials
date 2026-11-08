@@ -22,7 +22,7 @@ const deflateAsync = promisify(deflate);
  * שימי לב: בהורדה מלאה אחת (18 שקפים, ~20MB) הרקעים הופיעו לבנים בנטפרי והסיבה לא הוכחה (ייתכן גודל הקובץ / תמונות רסטר שנשארו) – לאמת בהורדה אמיתית.
  */
 /** tiles: מחלק את התמונה ל-tiles×tiles רשתות נפרדות (כל אחת עד cols/tiles עמודות) – לבדיקת מגבלת הנקודות של הקורא של Edge */
-export type MeshOptions = { cols?: number; predictor?: boolean; tiles?: number; /** שלב כימות הצבע (למשל 4): ערכים זהים ברצף = דחיסה טובה יותר בלי predictor */ quant?: number };
+export type MeshOptions = { cols?: number; predictor?: boolean; tiles?: number; /** סולם הגדרות (מהחדה לקלה) עם הערכת גודל לתמונה, ותקציב כולל: נבחרת ההגדרה החדה ביותר שמספר התמונות × ההערכה נכנס בתקציב */ ladder?: { opts: MeshOptions; estBytesPerImage: number }[]; maxBytes?: number; /** שלב כימות הצבע (למשל 4): ערכים זהים ברצף = דחיסה טובה יותר בלי predictor */ quant?: number };
 const GRID_COLS = 1024;
 const MAX_VERTICES = 1_600_000;
 const MIN_PLACED_PT = 150;
@@ -161,12 +161,14 @@ function limiter(max: number) {
     });
 }
 
-export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {}): Promise<number> {
+export async function meshifyLargeImages(pdf: PDFDocument, optsIn: MeshOptions = {}): Promise<number> {
   const started = Date.now();
   const ctx = pdf.context;
+  let opts = optsIn;
   // בונים את כל הרשתות מראש במקביל (3 בו-זמנית); הלולאה שלמטה רק ממתינה לתוצאה של כל תמונה
   const limit = limiter(3);
   const built = new Map<PDFRef, Promise<Built>>();
+  const pending: [PDFRef, PDFRawStream][] = [];
   for (const page of pdf.getPages()) {
     const xo0 = page.node.Resources()?.lookupMaybe(PDFName.of("XObject"), PDFDict);
     if (!xo0) continue;
@@ -180,9 +182,16 @@ export async function meshifyLargeImages(pdf: PDFDocument, opts: MeshOptions = {
       const w = Number(String(obj.dict.get(PDFName.of("Width"))));
       const h = Number(String(obj.dict.get(PDFName.of("Height"))));
       if (w < MIN_IMAGE_PX || h < MIN_IMAGE_PX * 0.3) continue;
-      built.set(raw, limit(() => buildMesh(obj, started, opts)));
+      if (!pending.some(([r]) => r === raw)) pending.push([raw, obj]);
     }
   }
+  // בחירת ההגדרה מהסולם לפי מספר התמונות והתקציב (הערכה גסה: גודל לתמונה כפי שנמדד על מצגת של 18 שקפים)
+  if (opts.ladder?.length && opts.maxBytes) {
+    const budget = opts.maxBytes;
+    const pick = opts.ladder.find((l) => l.estBytesPerImage * pending.length <= budget) ?? opts.ladder[opts.ladder.length - 1];
+    opts = { ...pick.opts };
+  }
+  for (const [raw, obj] of pending) built.set(raw, limit(() => buildMesh(obj, started, opts)));
   const shadingFor = new Map<PDFRef, { names: string[]; tiles: number } | null>(); // ref תמונה → שמות ההצללות (אריח אחד או יותר), או null אם לא נתמכת
   const shadingRefs = new Map<string, PDFRef>();
   const candidateRefs = new Set<PDFRef>();
