@@ -2208,6 +2208,112 @@ button.underline {
   flex: 1;
 }
 
+/* מסך מלא וצפייה כמצגת בצופה: ברקע שחור, שקופית אחת בכל פעם, מותאמת לרוחב ולגובה (contain) */
+.pdfv:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+.view-dialog .pdfv:fullscreen {
+  background: #000;
+}
+.pdfv-fs-btn svg {
+  display: block;
+}
+.pdfv-slides .pdfv-bar {
+  display: none;
+}
+.pdfv-slides .pdfv-scroll {
+  position: relative;
+  container-type: size;
+  overflow: hidden;
+  padding: 0;
+  background: #000;
+  cursor: pointer;
+}
+.pdfv-slides .pdfv-pages {
+  position: absolute;
+  inset: 0;
+  justify-content: center;
+  align-items: center;
+}
+.pdfv-slides .pdfv-pagewrap {
+  display: none;
+}
+.pdfv-slides .pdfv-pagewrap.is-current {
+  display: block;
+  width: min(100cqw, calc(100cqh * var(--r, 1.7778))) !important;
+  height: auto !important;
+  aspect-ratio: var(--r, 1.7778);
+  box-shadow: none;
+}
+.pdfv-slide-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.pdfv-slides-idle .pdfv-slide-ui {
+  opacity: 0;
+}
+.pdfv-slides-idle .pdfv-slide-ui * {
+  pointer-events: none !important;
+}
+.pdfv-slides-idle .pdfv-scroll {
+  cursor: none;
+}
+.pdfv-slide-btn {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(41, 26, 15, 0.7);
+  color: #fff5e6;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 0.15s, background 0.15s;
+}
+.pdfv-slide-btn:hover:not(:disabled),
+.pdfv-slide-btn:focus-visible {
+  background: rgba(41, 26, 15, 0.92);
+  color: var(--sun);
+}
+.pdfv-slide-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.pdfv-slide-exit {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-start: 0.75rem;
+}
+.pdfv-slide-nav {
+  position: absolute;
+  inset-block-end: 0.9rem;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+.pdfv-slide-count {
+  min-width: 4rem;
+  text-align: center;
+  color: #fff5e6;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* הודעת "הצפייה בסרטון חסומה בסינון" – בתוך חלון הצפייה החום, מסגרת זהב וכתב-יד */
 .nf-block {
   display: flex;

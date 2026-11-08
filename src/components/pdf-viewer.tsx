@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Highlighter, Minus, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Highlighter, Maximize, Minimize, Minus, Plus, Presentation, X } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -146,9 +146,12 @@ export function PdfViewer({
   selectable = false,
   marks = [],
   onMark,
+  presentation = false,
 }: {
   src: string;
   className?: string;
+  /** מצגת: מוסיף לסרגל כפתור "צפייה כמצגת" (שקופית אחת במסך מלא, מעבר עם חיצים) */
+  presentation?: boolean;
   /** מאפשר לסמן טקסט בקובץ (שכבת טקסט + כפתור "סימון לתיקון") */
   selectable?: boolean;
   /** סימונים להצגה על העמודים */
@@ -169,6 +172,16 @@ export function PdfViewer({
   const [docVersion, setDocVersion] = useState(0);
   const [pending, setPending] = useState<PendingSelection | null>(null);
   const renderToken = useRef(0);
+  // מסך מלא / צפייה כמצגת. האינדקס נשמר ב-state וב-ref (לא ב-DOM) כדי לשרוד ציור-מחדש בכניסה למסך מלא
+  const [fsSupported, setFsSupported] = useState(false);
+  const [isFs, setIsFs] = useState(false);
+  const [numPages, setNumPages] = useState(0);
+  const [slideshow, setSlideshow] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const slideRef = useRef(0);
+  const [ctrlShown, setCtrlShown] = useState(true);
+  const ctrlTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showSlides = slideshow && !selectable;
 
   // טעינת המסמך
   useEffect(() => {
@@ -184,6 +197,9 @@ export function PdfViewer({
           return;
         }
         docRef.current = doc;
+        setNumPages(doc.numPages);
+        slideRef.current = 0;
+        setSlideIndex(0);
         setStatus("ready");
         setDocVersion((v) => v + 1);
       } catch (e) {
@@ -224,7 +240,9 @@ export function PdfViewer({
     const pdfjs = await loadPdfjs();
     const token = ++renderToken.current;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    const target = Math.max(240, width - 24) * zoom;
+    // במצגת: בגודל כל הרוחב (ה-CSS מכווץ לפי הגובה); בגלילה רגילה: רוחב פחות שוליים כפול הזום
+    const target = showSlides ? Math.max(240, width) : Math.max(240, width - 24) * zoom;
+    const curSlide = Math.min(slideRef.current, Math.max(0, doc.numPages - 1));
     const fragment = document.createDocumentFragment();
     const wraps: HTMLDivElement[] = [];
     for (let n = 1; n <= doc.numPages; n++) {
@@ -238,6 +256,8 @@ export function PdfViewer({
       const wrap = document.createElement("div");
       wrap.className = "pdfv-pagewrap";
       wrap.dataset.page = String(n);
+      wrap.style.setProperty("--r", String(base.width / base.height));
+      if (n - 1 === curSlide) wrap.classList.add("is-current");
       wrap.style.width = `${Math.floor(cssViewport.width)}px`;
       wrap.style.height = `${Math.floor(cssViewport.height)}px`;
 
@@ -287,11 +307,28 @@ export function PdfViewer({
     holder.replaceChildren(fragment);
     wrapsRef.current = wraps;
     setRenderVersion((v) => v + 1);
-  }, [width, zoom, selectable]);
+  }, [width, zoom, selectable, showSlides]);
 
   useEffect(() => {
     if (status === "ready") void renderAll();
   }, [status, renderAll, docVersion]);
+
+  // סימון השקופית הנוכחית (CSS מציג רק אותה במצב מצגת)
+  useEffect(() => {
+    wrapsRef.current.forEach((w, i) => w.classList.toggle("is-current", i === slideIndex));
+  }, [slideIndex, renderVersion, showSlides]);
+
+  // כניסה למצגת: מתחילים מראש הרשימה; יציאה: חוזרים לגלילה אל השקופית שנראתה
+  const prevShow = useRef(false);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (showSlides && !prevShow.current && host) {
+      host.scrollTop = 0;
+      host.scrollLeft = 0;
+    }
+    if (!showSlides && prevShow.current) wrapsRef.current[slideRef.current]?.scrollIntoView({ block: "start" });
+    prevShow.current = showSlides;
+  }, [showSlides]);
 
   // ציור הסימונים הוורודים על העמודים
   useEffect(() => {
@@ -382,8 +419,108 @@ export function PdfViewer({
     setPending(null);
   };
 
+  const goTo = useCallback((i: number) => {
+    const n = docRef.current?.numPages ?? 1;
+    const c = Math.max(0, Math.min(n - 1, i));
+    slideRef.current = c;
+    setSlideIndex(c);
+  }, []);
+
+  const showControls = useCallback(() => {
+    setCtrlShown(true);
+    clearTimeout(ctrlTimer.current);
+    ctrlTimer.current = setTimeout(() => setCtrlShown(false), 2500);
+  }, []);
+
+  useEffect(() => {
+    setFsSupported(typeof document !== "undefined" && !!document.fullscreenEnabled);
+  }, []);
+
+  // מעקב אחרי מצב מסך מלא (גם יציאה ב-Esc): יציאה ממסך מלא מסיימת גם את המצגת
+  useEffect(() => {
+    const el = rootRef.current;
+    const onFs = () => {
+      setIsFs(document.fullscreenElement === rootRef.current);
+      if (!document.fullscreenElement) setSlideshow(false);
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      if (el && document.fullscreenElement === el) void document.exitFullscreen().catch(() => {});
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void rootRef.current?.requestFullscreen?.().catch(() => {});
+  };
+
+  const startSlideshow = () => {
+    goTo(0);
+    setSlideshow(true);
+    showControls();
+    if (!document.fullscreenElement) void rootRef.current?.requestFullscreen?.().catch(() => {});
+  };
+
+  const exitSlideshow = () => {
+    setSlideshow(false);
+    clearTimeout(ctrlTimer.current);
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+  };
+
+  // מקשי מצגת (אתר ב-RTL: חץ שמאלה = הבאה, חץ ימינה = הקודמת). מחובר רק בזמן מצגת
+  useEffect(() => {
+    if (!showSlides) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      let next: number;
+      switch (e.key) {
+        case "ArrowLeft":
+        case "ArrowDown":
+        case "PageDown":
+        case " ":
+          next = slideRef.current + 1;
+          break;
+        case "ArrowRight":
+        case "ArrowUp":
+        case "PageUp":
+          next = slideRef.current - 1;
+          break;
+        case "Home":
+          next = 0;
+          break;
+        case "End":
+          next = (docRef.current?.numPages ?? 1) - 1;
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      goTo(next);
+      showControls();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [showSlides, goTo, showControls]);
+
+  useEffect(() => () => clearTimeout(ctrlTimer.current), []);
+
+  const onSlideClick = (e: React.MouseEvent) => {
+    if (!showSlides) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    // חצי שמאלי = הבאה, חצי ימני = הקודמת
+    goTo(slideRef.current + (e.clientX < r.left + r.width / 2 ? 1 : -1));
+    showControls();
+  };
+
   return (
-    <div ref={rootRef} className={`pdfv ${selectable ? "pdfv-selectable" : ""} ${className}`}>
+    <div
+      ref={rootRef}
+      className={`pdfv ${selectable ? "pdfv-selectable" : ""} ${showSlides ? "pdfv-slides" : ""} ${showSlides && !ctrlShown ? "pdfv-slides-idle" : ""} ${className}`}
+      onMouseMove={showSlides ? showControls : undefined}
+      onTouchStart={showSlides ? showControls : undefined}
+    >
       <div className="pdfv-bar">
         <button type="button" aria-label="הקטנה" onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}>
           <Minus className="h-4 w-4" aria-hidden />
@@ -392,12 +529,61 @@ export function PdfViewer({
         <button type="button" aria-label="הגדלה" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}>
           <Plus className="h-4 w-4" aria-hidden />
         </button>
+        {!selectable && fsSupported && (
+          <button
+            type="button"
+            className="pdfv-fs-btn"
+            aria-label={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
+            title={isFs ? "יציאה ממסך מלא" : "מסך מלא"}
+            onClick={toggleFullscreen}
+          >
+            {isFs ? <Minimize className="h-4 w-4" aria-hidden /> : <Maximize className="h-4 w-4" aria-hidden />}
+          </button>
+        )}
+        {!selectable && presentation && status === "ready" && numPages > 0 && (
+          <button type="button" className="pdfv-fs-btn" aria-label="צפייה כמצגת" title="צפייה כמצגת" onClick={startSlideshow}>
+            <Presentation className="h-4 w-4" aria-hidden />
+          </button>
+        )}
       </div>
+      {showSlides && (
+        <div className="pdfv-slide-ui">
+          <button type="button" className="pdfv-slide-btn pdfv-slide-exit" aria-label="יציאה מהמצגת" title="יציאה מהמצגת" onClick={exitSlideshow}>
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+          <div className="pdfv-slide-nav">
+            <button
+              type="button"
+              className="pdfv-slide-btn"
+              aria-label="שקופית קודמת"
+              title="שקופית קודמת"
+              disabled={slideIndex <= 0}
+              onClick={() => goTo(slideRef.current - 1)}
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
+            <span className="pdfv-slide-count" dir="ltr">
+              {slideIndex + 1} / {numPages}
+            </span>
+            <button
+              type="button"
+              className="pdfv-slide-btn"
+              aria-label="שקופית הבאה"
+              title="שקופית הבאה"
+              disabled={slideIndex >= numPages - 1}
+              onClick={() => goTo(slideRef.current + 1)}
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+        </div>
+      )}
       <div
         ref={hostRef}
         className="pdfv-scroll"
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
+        onClick={showSlides ? onSlideClick : undefined}
         onMouseUp={() => window.setTimeout(captureSelection, 0)}
         onTouchEnd={() => window.setTimeout(captureSelection, 350)}
       >
@@ -438,6 +624,7 @@ export function FileViewerButton({
   children,
   tip,
   label,
+  presentation,
 }: {
   src: string;
   title: string;
@@ -445,6 +632,8 @@ export function FileViewerButton({
   children: React.ReactNode;
   tip?: string;
   label?: string;
+  /** מצגת – מוסיף בצופה כפתור "צפייה כמצגת" */
+  presentation?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // ה-<dialog> נכנס ל-HTML רק אחרי הלחיצה הראשונה (בדף יחידה יש כרטיס לכל קובץ, וכל מסמך קטן יותר = טעינה מהירה יותר בנטפרי)
@@ -487,7 +676,7 @@ export function FileViewerButton({
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
-          {open && <PdfViewer src={src} className="view-dialog-viewer" />}
+          {open && <PdfViewer src={src} className="view-dialog-viewer" presentation={presentation} />}
         </dialog>
       )}
     </>

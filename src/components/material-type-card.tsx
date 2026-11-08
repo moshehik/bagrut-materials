@@ -82,6 +82,7 @@ function CardViewer({
   className,
   tip,
   label,
+  presentation = false,
   children,
 }: {
   isVideo: boolean;
@@ -90,6 +91,7 @@ function CardViewer({
   className?: string;
   tip?: string;
   label?: string;
+  presentation?: boolean;
   children: React.ReactNode;
 }) {
   return isVideo ? (
@@ -97,7 +99,7 @@ function CardViewer({
       {children}
     </VideoViewerButton>
   ) : (
-    <FileViewerButton src={`/api/preview/${materialId}`} title={title} className={className} tip={tip} label={label}>
+    <FileViewerButton src={`/api/preview/${materialId}`} title={title} className={className} tip={tip} label={label} presentation={presentation}>
       {children}
     </FileViewerButton>
   );
@@ -221,7 +223,7 @@ export function MaterialTypeCard({
         </div>
 
         {viewOnly ? (
-          <CardViewer isVideo={isVideo} materialId={m.id} title={heading.full} className="mtc-download">
+          <CardViewer isVideo={isVideo} materialId={m.id} title={heading.full} className="mtc-download" presentation={type === "presentation"}>
             <Eye className="mtc-nut" aria-hidden />
             <span>לצפייה</span>
           </CardViewer>
@@ -272,6 +274,7 @@ export function MaterialTypeCard({
             className="mtc-download"
             tip={isDailySubstitute ? DAILY_SUBSTITUTE_VIEW_TIP : undefined}
             label={`צפייה ב${s.label} באתר`}
+            presentation={type === "presentation"}
           >
             <ColourSvg src="/images/nuts/one-10.webp" width={40} height={40} className="mtc-nut" shared small />
             <span>לצפייה</span>
