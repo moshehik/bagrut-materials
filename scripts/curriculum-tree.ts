@@ -1153,8 +1153,8 @@ export const TREE: Node[] = [
                       perek(16, 'עד פסוק י"ז'),
                     ],
                   }),
-                  // נוסף לפי מיקוד תנ"ך תשפ"ז (3281): פרקים ט"ז-י"ט, כ"א נדרשים; פרק כ' הוצא. טרם הוכן חומר.
-                  notBuilt({
+                  // נוסף לפי מיקוד תנ"ך תשפ"ז (3281): פרקים ט"ז-י"ט, כ"א נדרשים; פרק כ' הוצא. הוכן חומר לפרקים ט"ז-י"ט, כ"א (2026-11-08).
+                  ready({
                     slug: "shoftim",
                     title: "פרשת שופטים",
                     children: [
@@ -1162,7 +1162,7 @@ export const TREE: Node[] = [
                       perek(17),
                       perek(18),
                       perek(19),
-                      notNeeded(perek(20)),
+                      notBuilt(notNeeded(perek(20))),
                       perek(21, "עד פסוק ט'"),
                     ],
                   }),
@@ -2976,7 +2976,12 @@ export const TREE: Node[] = [
     slug: "chevra",
     title: "חברה",
     description: "חברה אינה מקצוע בגרות רשמי במגזר החרדי.\nאין לה סמל שאלון.",
-    children: SICHOT_FOLDERS,
+    children: [
+      ...SICHOT_FOLDERS,
+      { slug: "haavarat-hamekomot", title: "העברת המקומות" },
+      { slug: "gibush-kitati", title: "גיבוש כיתתי" },
+      { slug: "mesar-bamischak", title: "מסר במשחק" },
+    ],
   },
   {
     slug: "kishurei-chaim",
