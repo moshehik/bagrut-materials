@@ -15,6 +15,7 @@ import {
 import { requireUser } from "@/lib/session";
 import { verifyUpload } from "@/lib/upload-id";
 import { logAudit } from "@/lib/audit";
+import { invalidateSichaAccess } from "@/lib/sicha-access";
 import { TOO_MANY_MESSAGE, limitKey, tooMany } from "@/lib/rate-limit";
 
 export type SichaActionState = { error?: string; ok?: boolean } | undefined;
@@ -111,6 +112,7 @@ export async function createSicha(input: {
     entityId: row.id,
     details: { categoryId, files: files.length, pseudonym: displayName ?? null },
   });
+  invalidateSichaAccess(user.id);
   revalidatePath(path);
   return { ok: true, id: row.id };
 }

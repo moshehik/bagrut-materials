@@ -149,7 +149,9 @@ export function Actions({
               ? "כלול במנוי שלך"
               : entitlement.via === "free"
                 ? "חינם"
-                : "";
+                : entitlement.via === "sicha"
+                  ? "בזכות השיחה שהעלית"
+                  : "";
     if (!m.allowDownload && entitlement.via !== "admin") {
       return (
         <>

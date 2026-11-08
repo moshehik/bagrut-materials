@@ -15,6 +15,7 @@ import {
 import { cache } from "react";
 import { getBool } from "./settings";
 import { rankItems, scoreItem, tokenize } from "./search-match";
+import { hasSichaAccess } from "./sicha-access";
 
 /**
  * מקצועות שורש. כברירת מחדל מוסתרים המושהים/טיוטות (למשתמשות);
@@ -697,7 +698,7 @@ export async function countMaterialsUnder(rootId: number, isAdmin = false): Prom
 export type Entitlement =
   | {
       ok: true;
-      via: "admin" | "single" | "bundle" | "subscription" | "free";
+      via: "admin" | "single" | "bundle" | "subscription" | "free" | "sicha";
       purchaseId?: number;
     }
   | {
@@ -784,6 +785,9 @@ export async function checkEntitlement(
     }
     return { ok: true, via: "subscription", purchaseId: s.id };
   }
+
+  // גישה בזכות שיחה שהמורה העלתה למאגר השיחות באותו מקצוע (3 חודשים לשיחה, עד שנה) – ר' sicha-access-calc.ts
+  if (chain[0] && (await hasSichaAccess(user.id, chain[0].id))) return { ok: true, via: "sicha" };
 
   return { ok: false, reason: "purchase" };
 }
