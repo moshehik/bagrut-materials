@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { FOLDER_FILES_EVENT, netfreeCookie } from "@/lib/netfree-client";
 
 type Props = {
   categoryId: number;
@@ -50,6 +51,14 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
   const [state, setState] = useState<State>({ kind: "idle" });
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // מאחורי נטפרי זיפ נחסם: מציגים רק הורדה בקבצים נפרדים ושליחה למייל בקישורים (העוגייה nf נקבעת ברקע; האירוע מעדכן)
+  const [nfBlocked, setNfBlocked] = useState(false);
+  useEffect(() => {
+    setNfBlocked(netfreeCookie() === true);
+    const h = (e: Event) => setNfBlocked(Boolean((e as CustomEvent).detail));
+    window.addEventListener("nf-detected", h);
+    return () => window.removeEventListener("nf-detected", h);
+  }, []);
 
   // סגירת התפריט בלחיצה בחוץ / Escape (למגע; בעכבר נסגר ביציאה מהכפתור)
   useEffect(() => {
@@ -104,6 +113,17 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
       setState({ kind: "error", message: "אין חיבור לשרת, נסי שוב בעוד רגע" });
     }
   }
+
+  // הפעלה אוטומטית אחרי רכישה (auto-folder-download.tsx): נטפרי = קבצים נפרדים במקום זיפ
+  const filesRef = useRef(downloadAsFiles);
+  filesRef.current = downloadAsFiles;
+  useEffect(() => {
+    const h = (e: Event) => {
+      if ((e as CustomEvent).detail?.categoryId === categoryId) void filesRef.current();
+    };
+    window.addEventListener(FOLDER_FILES_EVENT, h);
+    return () => window.removeEventListener(FOLDER_FILES_EVENT, h);
+  }, [categoryId]);
 
   async function sendByMail(asLinks = false) {
     if (sending) return;
@@ -167,20 +187,24 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
               להורדה בקבצים נפרדים
             </a>
           )}
-          <a role="menuitem" href={loggedIn ? endpoint : loginHref} className="fa-item" onClick={() => setOpen(false)}>
-            <DownloadNut nut={nutDownload} />
-            להורדה כזיפ אחד
-          </a>
+          {!nfBlocked && (
+            <a role="menuitem" href={loggedIn ? endpoint : loginHref} className="fa-item" onClick={() => setOpen(false)}>
+              <DownloadNut nut={nutDownload} />
+              להורדה כזיפ אחד
+            </a>
+          )}
           {loggedIn ? (
             <>
               <button type="button" role="menuitem" className="fa-item" onClick={() => sendByMail(true)}>
                 <MailNut nut={nutMail} />
                 לשליחה למייל – קישורים לקבצים
               </button>
-              <button type="button" role="menuitem" className="fa-item" onClick={() => sendByMail(false)}>
-                <MailNut nut={nutMail} />
-                לשליחה למייל כזיפ אחד
-              </button>
+              {!nfBlocked && (
+                <button type="button" role="menuitem" className="fa-item" onClick={() => sendByMail(false)}>
+                  <MailNut nut={nutMail} />
+                  לשליחה למייל כזיפ אחד
+                </button>
+              )}
             </>
           ) : (
             <a role="menuitem" href={loginHref} className="fa-item">
@@ -201,6 +225,7 @@ export function FolderAllActions({ categoryId, loggedIn, here, variant, nutDownl
           <span className="fa-ok">
             <CheckCircle2 className="h-4 w-4" aria-hidden />
             הורדת {state.total} קבצים התחילה{state.more > 0 ? ` · עוד ${state.more} קבצים לא נכללו (עד 40 בכל פעם)` : ""}
+            {" · אם הדפדפן שואל – אשרי הורדת מספר קבצים. קובץ שלא ירד אפשר להוריד בנפרד מהכרטיסייה שלו"}
           </span>
         )}
         {state.kind === "done" && (

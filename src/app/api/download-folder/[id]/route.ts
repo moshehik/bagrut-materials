@@ -25,7 +25,7 @@ import {
 import { officeMimeFor } from "@/lib/office-mime";
 import { getFillLineScale } from "@/lib/user-prefs";
 import { classifyMaterial, isVideoMaterial } from "@/lib/material-card-types";
-import { presentationMeshFor, type PresentationMesh } from "@/lib/netfree-mode";
+import { netfreeState, presentationMeshFor, type PresentationMesh } from "@/lib/netfree-mode";
 import { getPrivateVersion } from "@/lib/private-versions";
 import { chooseServedFile } from "@/lib/private-version-logic";
 
@@ -497,7 +497,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
       action: "download",
       entityType: "category",
       entityId: categoryId,
-      details: { folder: cat.title, files: ready.length, here, failedIds, skippedIds, ...(mode === "email" ? { via: "email" } : {}) },
+      details: { folder: cat.title, files: ready.length, here, failedIds, skippedIds, ...(mode === "email" ? { via: "email" } : {}), netfree: netfreeState(req) === "1" ? "yes" : netfreeState(req) === "0" ? "no" : "unknown", zipMB: Math.round(body.byteLength / 1048576) },
     });
   } catch (e) {
     console.error("folder download log failed", e);

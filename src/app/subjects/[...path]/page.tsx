@@ -431,7 +431,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               <FolderBundleBanner categoryId={category.id} price={bundlePrice} owned={ownsAll} />
             </div>
           )}
-          {showAllActions && !!user && dlall === "1" && <AutoFolderDownload href={`/api/download-folder/${category.id}`} />}
+          {showAllActions && !!user && dlall === "1" && <AutoFolderDownload href={`/api/download-folder/${category.id}`} categoryId={category.id} />}
 
           {cardRows.length > 0 && (
             <div className="mtc-grid mt-8">
