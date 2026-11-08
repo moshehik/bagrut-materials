@@ -591,9 +591,17 @@ export const downloads = pgTable(
     userAgent: text("user_agent"),
     /** דרך מה הותרה ההורדה: admin/single/bundle/subscription/free */
     via: varchar("via", { length: 20 }),
+    /** הטוקן ?dlt= של הדפדפן שהתחיל את ההורדה – מאפשר להחזיר למכסה הורדה שנכשלה בצד הדפדפן (/api/download-failed) */
+    dlToken: varchar("dl_token", { length: 32 }),
+    /** המנוי שהורדה זו ניכתה ממנו (via=subscription), להחזרת המכסה אם ההורדה נכשלה */
+    purchaseId: integer("purchase_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("downloads_user_idx").on(t.userId), index("downloads_created_idx").on(t.createdAt)],
+  (t) => [
+    index("downloads_user_idx").on(t.userId),
+    index("downloads_created_idx").on(t.createdAt),
+    index("downloads_token_idx").on(t.userId, t.dlToken),
+  ],
 );
 
 export const forumThreads = pgTable("forum_threads", {

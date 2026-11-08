@@ -44,6 +44,20 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
+/** דיווח (ירה-ושכח) שההורדה עם הטוקן הזה לא הגיעה – השרת מחזיר אותה למכסה אם זו אכן הורדה שלה */
+function reportFailedDownload(token: string) {
+  try {
+    void fetch("/api/download-failed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* אין מה לעשות – ההורדה פשוט תישאר נספרת */
+  }
+}
+
 /**
  * אגוז מסתובב בזמן שהשרת מכין קובץ להורדה (הטבעת מספר אישי / המרה ל-PDF).
  * מאזין ללחיצות על כל קישור הורדה באתר, ונעלם ברגע שהשרת מחזיר את הקובץ
@@ -93,7 +107,11 @@ export function DownloadLoader() {
         clearCookie(name);
         window.clearInterval(id);
         if (ready) setDone(true);
-        else setToken(null);
+        else {
+          // העוגייה לא הגיעה: ההורדה כנראה נכשלה בדרך (למשל נטפרי חסם) – מחזירים אותה למכסה (ר' /api/download-failed)
+          reportFailedDownload(token);
+          setToken(null);
+        }
       }
     }, POLL_MS);
     return () => window.clearInterval(id);

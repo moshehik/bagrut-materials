@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { downloads, purchases, type Material, type User } from "@/db/schema";
 import { getNumber } from "./settings";
 import { startOfIsraelDay } from "./israel-time";
+import { DL_TOKEN_RE } from "./download-ready";
 import type { Entitlement } from "./data";
 
 /*
@@ -162,8 +163,11 @@ export async function reserveDownloads(opts: {
   items: QuotaItem[];
   kind: QuotaKind;
   meta: { ip: string | null; userAgent: string | null };
+  /** טוקן ?dlt= של הדפדפן (ר' dlTokenOf) – נרשם בשורות כדי שאפשר יהיה להחזיר אותן אם ההורדה נכשלה בצד הדפדפן */
+  dlToken?: string | null;
 }): Promise<ReserveResult> {
   const { user, items, kind, meta } = opts;
+  const dlToken = opts.dlToken && DL_TOKEN_RE.test(opts.dlToken) ? opts.dlToken : null;
   if (items.length === 0) {
     return { ok: true, reservation: { entries: [], subscriptionUse: new Map(), release: async () => {} } };
   }
@@ -227,14 +231,15 @@ export async function reserveDownloads(opts: {
       items.map((it) => {
         const max = it.material.maxDownloadsPerUser;
         const maxPerUser = max !== null && max > 0 ? max : null;
-        return sql`(${user.id}::int, ${it.material.id}::int, ${user.personalCode}::varchar, ${meta.ip}::varchar, ${meta.userAgent}::text, ${viaMarker(kind, it.ent.via)}::varchar, ${maxPerUser}::int)`;
+        const purchaseId = it.ent.via === "subscription" && it.ent.purchaseId ? it.ent.purchaseId : null;
+        return sql`(${user.id}::int, ${it.material.id}::int, ${user.personalCode}::varchar, ${meta.ip}::varchar, ${meta.userAgent}::text, ${viaMarker(kind, it.ent.via)}::varchar, ${maxPerUser}::int, ${dlToken}::varchar, ${purchaseId}::int)`;
       }),
       sql`, `,
     );
     const res = await db.execute<{ id: number; material_id: number }>(sql`
-      INSERT INTO downloads (user_id, material_id, watermark, ip, user_agent, via)
-      SELECT v.user_id, v.material_id, v.watermark, v.ip, v.user_agent, v.via
-      FROM (VALUES ${values}) AS v(user_id, material_id, watermark, ip, user_agent, via, max_per_user)
+      INSERT INTO downloads (user_id, material_id, watermark, ip, user_agent, via, dl_token, purchase_id)
+      SELECT v.user_id, v.material_id, v.watermark, v.ip, v.user_agent, v.via, v.dl_token, v.purchase_id
+      FROM (VALUES ${values}) AS v(user_id, material_id, watermark, ip, user_agent, via, max_per_user, dl_token, purchase_id)
       WHERE (
         ${dailyLimit}::int <= 0
         OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.created_at >= ${start}::timestamp) + ${n}::int <= ${dailyLimit}::int
@@ -287,4 +292,37 @@ export async function reserveDownloads(opts: {
     }
     throw e;
   }
+}
+
+/** שורת downloads נחשבת "הורדה שנכשלה" רק אם נרשמה בטווח הזה לפני הדיווח */
+export const FAILED_RELEASE_MAX_AGE_MIN = 20;
+/** ... ולפחות כך וכך שניות לפני הדיווח (הלקוח מדווח רק אחרי 75 שניות בלי עוגיית "הקובץ הגיע") – חוסם "הורדתי ומיד החזרתי" */
+export const FAILED_RELEASE_MIN_AGE_SEC = 60;
+
+/**
+ * הורדה שנכשלה בצד הדפדפן (למשל נטפרי הוריד את הקובץ דרך ה-proxy וחסם אותו, כך שהעוגייה dl_<token> לא הגיעה):
+ * מוחקת את שורות downloads של המשתמשת עם הטוקן הזה ומזכה מנויים שנוכו (לפי purchase_id). פקודת DELETE ... RETURNING
+ * אחת – אטומית, ולכן אידמפוטנטית גם בקריאות מקבילות (הקריאה השנייה מוחקת 0 שורות ולא מזכה פעם שנייה).
+ * נוגעת אך ורק בשורות של userId הנתון. מחזירה כמה שורות שוחררו.
+ */
+export async function releaseFailedDownload(opts: { userId: number; token: string }): Promise<number> {
+  const { userId, token } = opts;
+  if (!DL_TOKEN_RE.test(token)) return 0;
+  const res = await db.execute<{ id: number; purchase_id: number | null }>(sql`
+    DELETE FROM downloads
+    WHERE user_id = ${userId}::int
+      AND dl_token = ${token}::varchar
+      AND created_at >= now() - ${`${FAILED_RELEASE_MAX_AGE_MIN} minutes`}::interval
+      AND created_at <= now() - ${`${FAILED_RELEASE_MIN_AGE_SEC} seconds`}::interval
+    RETURNING id, purchase_id
+  `);
+  const perPurchase = new Map<number, number>();
+  for (const r of res.rows) {
+    if (r.purchase_id !== null && r.purchase_id !== undefined) {
+      const pid = Number(r.purchase_id);
+      perPurchase.set(pid, (perPurchase.get(pid) ?? 0) + 1);
+    }
+  }
+  for (const [pid, n] of perPurchase) await refundSubscription(pid, n);
+  return res.rows.length;
 }

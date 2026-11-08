@@ -12,7 +12,7 @@ import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
 import { contentDisposition, fileRouteError } from "@/lib/http-utils";
-import { markDownloadReady } from "@/lib/download-ready";
+import { dlTokenOf, markDownloadReady } from "@/lib/download-ready";
 import { applyDocxFixes, isDocxName } from "@/lib/docx-fixes";
 import { getFixesForViewer, parseFixesParam } from "@/lib/fixes";
 import { getPrivateVersion, resolveServedFile } from "@/lib/private-versions";
@@ -187,7 +187,7 @@ async function serve(req: NextRequest, ctx: Ctx) {
     let r: ReserveResult;
     try {
       const meta = await requestMeta();
-      r = await reserveDownloads({ user: u, items: [{ material, ent }], kind: "download", meta });
+      r = await reserveDownloads({ user: u, items: [{ material, ent }], kind: "download", meta, dlToken: dlTokenOf(req.nextUrl) });
     } catch (e) {
       console.error("download limit check failed", e);
       await deny("limit_check_failed");

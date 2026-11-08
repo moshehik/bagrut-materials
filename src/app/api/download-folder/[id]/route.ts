@@ -10,7 +10,7 @@ import { logAudit, requestMeta } from "@/lib/audit";
 import { fetchFile } from "@/lib/file-source";
 import { isOfficeMime, convertOfficeToPdfCached, driveIdFromUrl, isDriveConfigured } from "@/lib/driveBridge";
 import { contentDisposition } from "@/lib/http-utils";
-import { markDownloadReady } from "@/lib/download-ready";
+import { dlTokenOf, markDownloadReady } from "@/lib/download-ready";
 import { sendMail, layoutHtml, siteUrl, templates } from "@/lib/mail";
 import { limitKey, rateLimit } from "@/lib/rate-limit";
 import {
@@ -308,6 +308,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
         items: allowed.map((m) => ({ material: m, ent: entOf.get(m.id)! })),
         kind: "download",
         meta,
+        dlToken: dlTokenOf(req.nextUrl),
       });
     } catch (e) {
       console.error("folder download quota reserve failed", e);
