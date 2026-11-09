@@ -4,13 +4,14 @@ import { useActionState, useState, useTransition } from "react";
 import { KeyRound, Loader2, PlugZap, Trash2 } from "lucide-react";
 import type { SecretStatus } from "@/lib/nedarim/secrets";
 import { removeNedarimSecret, setNedarimSecret, testNedarimApiKey, type SecretActionState } from "@/lib/actions/nedarim-admin";
+import { DT } from "@/components/admin/date-tip";
 
 /**
  * כרטיסי הסודות של נדרים פלוס ב-/admin/payments: מצב (מוגדר/לא, מקור DB/env, מתי ועל ידי מי, 4 תווים אחרונים), שדה
  * write-only להחלפה (הערך לא חוזר לעולם – לא ב-HTML, לא ב-props, לא בתשובת ה-action), "בדיקת מפתח" (למפתח ה-API),
  * ו"הסרה מה-DB". הכרטיס מקבל רק SecretStatus – בלי ערכים.
  */
-const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (d: Date | null) => <DT value={d} time />;
 
 function SecretCard({ s, testable }: { s: SecretStatus; testable: boolean }) {
   const [state, formAction, pending] = useActionState<SecretActionState, FormData>(setNedarimSecret, undefined);

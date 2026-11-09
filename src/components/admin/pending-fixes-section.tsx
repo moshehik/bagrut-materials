@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { materialFixes, materials, users } from "@/db/schema";
 import { FixPublishForm } from "@/components/admin/fix-publish-form";
 import { FIX_REASONS } from "@/lib/fix-writing-guidelines";
+import { DT } from "@/components/admin/date-tip";
 
 /** בקשות תיקון שממתינות לטיפול – משותף ל-/admin/fixes ול-/admin/inbox */
 export async function PendingFixesSection({ title = "ממתינות לטיפול" }: { title?: string }) {
@@ -45,7 +46,7 @@ export async function PendingFixesSection({ title = "ממתינות לטיפול
                 <b>{r.materialTitle}</b>
                 <span className="text-xs text-muted">{r.fileName}</span>
                 <span className="text-xs text-muted">
-                  {r.userName ?? "—"} · {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
+                  {r.userName ?? "—"} · <DT value={r.createdAt} />
                 </span>
               </div>
               {r.kind === "general" && <span className="chip bg-gold-soft text-[#7a5b00] mt-2">{r.reason === "commentators" ? "מפרשים נוספים (גרסה פרטית בלבד)" : "תלונה כללית (בלי סימון)"}</span>}

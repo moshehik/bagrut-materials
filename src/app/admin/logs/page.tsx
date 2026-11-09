@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { type SP, sp1, spInt, parseDate, fmtDateTime, qs, actionTone } from "@/lib/admin-analytics";
 import { Pagination, Th, Td, EmptyRow } from "@/components/admin/analytics-ui";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Pr
         <h2 className="font-display text-2xl font-bold">לוג פעולות</h2>
         <span className="chip bg-oak-soft text-oak-deep">{total.toLocaleString("he-IL")} רשומות</span>
         <a href={`/admin/logs/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
-          ייצוא CSV
+          הורדה לאקסל
         </a>
       </div>
 
@@ -153,7 +154,7 @@ export default async function AdminLogsPage({ searchParams }: { searchParams: Pr
                 const d = prettyDetails(r.details);
                 return (
                   <tr key={r.id} className="border-t border-foreground/5">
-                    <Td className="whitespace-nowrap text-xs">{fmtDateTime(r.createdAt)}</Td>
+                    <Td className="whitespace-nowrap text-xs"><DT value={r.createdAt} time /></Td>
                     <Td>
                       {r.actorId ? (
                         <>

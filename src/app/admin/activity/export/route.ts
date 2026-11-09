@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     .limit(50000);
 
   const csv = toCsv(
-    ["מזהה", "זמן", "מזהה משתמשת", "שם", "מייל", "סשן", "נתיב", "משך (שניות)", "מקור", "IP", "דפדפן", "User-Agent"],
+    ["מזהה", "זמן", "מזהה משתמשת", "שם", "מייל", "מזהה ביקור", "עמוד", "משך (שניות)", "מקור", "IP", "דפדפן", "User-Agent"],
     rows.map((r) => [
       r.id,
       r.createdAt.toISOString(),

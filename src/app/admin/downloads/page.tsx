@@ -6,7 +6,8 @@ import { categories, downloads, materials, users, type Category } from "@/db/sch
 import { chainToHref } from "@/lib/data";
 import { MATERIAL_KINDS } from "@/lib/constants";
 import { type SP, sp1, spInt, parseDate, startOfToday, daysAgo, fmtDateTime, qs } from "@/lib/admin-analytics";
-import { StatTile, Pagination, Th, Td, EmptyRow, TopList } from "@/components/admin/analytics-ui";
+import { StatTile, Pagination, Th, Td, EmptyRow, TopList, TipLink } from "@/components/admin/analytics-ui";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,7 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
           לוח שנה עברי
         </Link>
         <a href={`/admin/downloads/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs">
-          ייצוא CSV
+          הורדה לאקסל
         </a>
       </div>
 
@@ -180,7 +181,7 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
                   const kind = MATERIAL_KINDS[r.kind];
                   return (
                     <tr key={r.id} className="border-t border-foreground/5">
-                      <Td className="whitespace-nowrap text-xs">{fmtDateTime(r.createdAt)}</Td>
+                      <Td className="whitespace-nowrap text-xs"><DT value={r.createdAt} time /></Td>
                       <Td>
                         <Link href={`/admin/downloads?user=${r.userId}`} className="font-semibold hover:underline">
                           {r.userName}
@@ -190,21 +191,17 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
                         </div>
                       </Td>
                       <Td className="max-w-[320px]">
-                        <Link
-                          href={chain.length > 0 ? chainToHref(chain) : `/admin/materials?category=${r.categoryId}`}
-                          target="_blank"
-                          title={chain.map((c) => c.title).join(" › ")}
-                          className="text-blue-deep hover:underline font-medium"
-                        >
+                        <span className="font-medium">
                           {kind?.icon} {r.materialTitle}
-                        </Link>
-                        {chain.length > 0 && (
-                          <div className="text-xs text-muted truncate" title={chain.map((c) => c.title).join(" › ")}>
-                            <Link href={chainToHref(chain)} className="hover:underline" target="_blank" title={chain.map((c) => c.title).join(" › ")}>
-                              {chain.map((c) => c.title).join(" › ")}
-                            </Link>
-                          </div>
-                        )}
+                        </span>{" "}
+                        <TipLink
+                          href={chain.length > 0 ? chainToHref(chain) : `/admin/materials?category=${r.categoryId}`}
+                          tip={chain.length > 0 ? chain.map((c) => c.title).join(" › ") : undefined}
+                          newTab
+                          className="text-xs text-blue-deep hover:underline whitespace-nowrap"
+                        >
+                          לעמוד
+                        </TipLink>
                       </Td>
                       <Td>{via ? <span className={`chip ${via.tone}`}>{via.label}</span> : <span className="text-muted">—</span>}</Td>
                       <Td className="font-mono text-xs" dir="ltr">
@@ -233,18 +230,18 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
                   <Link
                     href={chainToHref(chainOf(byId, t.categoryId))}
                     target="_blank"
-                    title={chainOf(byId, t.categoryId).map((c) => c.title).join(" › ")}
+                    data-tip={chainOf(byId, t.categoryId).map((c) => c.title).join(" › ")}
                     className="hover:underline"
                   >
                     {t.title}
                   </Link>{" "}
-                  <Link href={`/admin/downloads?material=${t.id}`} className="text-xs text-muted hover:underline" title="סינון הורדות של החומר הזה">
+                  <Link href={`/admin/downloads?material=${t.id}`} className="text-xs text-muted hover:underline" data-tip="סינון הורדות של החומר הזה">
                     (סינון)
                   </Link>
                 </>
               ),
               sub: (
-                <span title={chainOf(byId, t.categoryId).map((c) => c.title).join(" › ")}>
+                <span data-tip={chainOf(byId, t.categoryId).map((c) => c.title).join(" › ")}>
                   {chainOf(byId, t.categoryId)
                     .map((c) => c.title)
                     .join(" › ")}

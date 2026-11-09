@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { requireAdminPage } from "@/lib/session";
-import { runDownloadAudit, type AuditFinding } from "@/lib/download-audit";
+import { runDownloadAudit, viaHe, type AuditFinding } from "@/lib/download-audit";
 import { type SP, sp1, parseDate, fmtDateTime } from "@/lib/admin-analytics";
 import { StatTile, Th, Td, EmptyRow } from "@/components/admin/analytics-ui";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,7 +17,7 @@ function FindingsTable({ rows, empty }: { rows: AuditFinding[]; empty: string })
             <Th>זמן</Th>
             <Th>משתמשת</Th>
             <Th>חומר</Th>
-            <Th>דרך שנרשמה</Th>
+            <Th>איך הותרה ההורדה</Th>
             <Th>הבעיה</Th>
           </tr>
         </thead>
@@ -26,7 +27,7 @@ function FindingsTable({ rows, empty }: { rows: AuditFinding[]; empty: string })
           ) : (
             rows.map((r) => (
               <tr key={r.downloadId} className="border-t border-foreground/5 align-top">
-                <Td className="whitespace-nowrap text-xs">{fmtDateTime(r.at)}</Td>
+                <Td className="whitespace-nowrap text-xs"><DT value={r.at} time /></Td>
                 <Td>
                   <Link href={`/admin/downloads?user=${r.userId}`} className="font-semibold hover:underline">
                     {r.userLabel}
@@ -37,8 +38,9 @@ function FindingsTable({ rows, empty }: { rows: AuditFinding[]; empty: string })
                     {r.materialTitle}
                   </Link>
                 </Td>
-                <Td className="font-mono text-xs" dir="ltr">
-                  {r.via || "—"}
+                <Td className="whitespace-nowrap">
+                  {r.via.startsWith("view:") ? "צפייה מלאה · " : ""}
+                  {viaHe(r.via.replace(/^view:/, ""))}
                 </Td>
                 <Td>
                   <div className="font-medium">{r.reason}</div>
@@ -125,7 +127,7 @@ export default async function DownloadAuditPage({ searchParams }: { searchParams
               : "לא נמצאה אף הורדה ללא הרשאה."}
             <span className="font-normal text-xs text-muted ms-3">
               {result.firstAt ? `טווח שנבדק: ${fmtDateTime(result.firstAt)} – ${fmtDateTime(result.lastAt)} · ` : ""}
-              הורצה {fmtDateTime(result.ranAt)}
+              הורצה <DT value={result.ranAt} time />
             </span>
           </div>
 

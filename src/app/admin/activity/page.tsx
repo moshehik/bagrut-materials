@@ -15,7 +15,9 @@ import {
   fmtDuration,
   qs,
 } from "@/lib/admin-analytics";
-import { StatTile, Pagination, Th, Td, EmptyRow, TopList } from "@/components/admin/analytics-ui";
+import { StatTile, Pagination, Th, Td, EmptyRow, TopList, TipLink } from "@/components/admin/analytics-ui";
+import { DT } from "@/components/admin/date-tip";
+import { loadPathLabeler } from "@/lib/path-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +93,7 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
   ]);
 
   const total = Number(totalRow?.n ?? 0);
+  const labelOf = await loadPathLabeler();
   const drillStats =
     userIdFilter !== null
       ? await db
@@ -112,14 +115,14 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
         <h2 className="font-display text-2xl font-bold">פעילות וגלישה</h2>
         <span className="chip bg-oak-soft text-oak-deep">{total.toLocaleString("he-IL")} רשומות</span>
         <a href={`/admin/activity/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
-          ייצוא CSV
+          הורדה לאקסל
         </a>
       </div>
 
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         <StatTile label="צפיות היום" value={Number(todayRow?.views ?? 0).toLocaleString("he-IL")} />
         <StatTile
-          label="סשנים ייחודיים היום"
+          label="גולשות שונות היום"
           value={Number(todayRow?.sessions ?? 0).toLocaleString("he-IL")}
           tone="bg-blue-soft text-blue-deep"
         />
@@ -137,10 +140,10 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
             </div>
             <div className="flex flex-wrap gap-2 text-xs ms-auto">
               <span className="chip bg-white text-foreground/80">צפיות: {Number(drillStats?.views ?? 0)}</span>
-              <span className="chip bg-white text-foreground/80">סשנים: {Number(drillStats?.sessions ?? 0)}</span>
+              <span className="chip bg-white text-foreground/80">ביקורים נפרדים: {Number(drillStats?.sessions ?? 0)}</span>
               <span className="chip bg-white text-foreground/80">סה״כ זמן: {fmtDuration(drillStats?.totalDur)}</span>
               <span className="chip bg-white text-foreground/80">
-                ראשונה: {fmtDateTime(drillStats?.first ?? null)} · אחרונה: {fmtDateTime(drillStats?.last ?? null)}
+                ראשונה: <DT value={drillStats?.first ?? null} time /> · אחרונה: <DT value={drillStats?.last ?? null} time />
               </span>
             </div>
             <Link href="/admin/activity" className="text-xs text-blue-deep hover:underline">
@@ -153,19 +156,19 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
       <form className="card p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 items-end text-sm" method="get">
         <label className="grid gap-1">
           <span className="text-xs text-muted">משתמשת (מזהה / מייל / שם)</span>
-          <input name="user" defaultValue={userQ} className="input !py-1.5" placeholder="12 או dana@" />
+          <input name="user" defaultValue={userQ} className="input !py-1.5" placeholder="מזהה, מייל או שם" />
         </label>
         <label className="grid gap-1">
-          <span className="text-xs text-muted">נתיב מכיל</span>
-          <input name="path" defaultValue={pathQ} className="input !py-1.5" placeholder="/subjects/" dir="ltr" />
+          <span className="text-xs text-muted">כתובת העמוד מכילה</span>
+          <input name="path" defaultValue={pathQ} className="input !py-1.5" placeholder="חלק מכתובת העמוד" />
         </label>
         <label className="grid gap-1">
           <span className="text-xs text-muted">מתאריך</span>
-          <input type="date" name="from" defaultValue={fromQ} className="input !py-1.5" />
+          <input type="date" name="from" lang="he" dir="rtl" defaultValue={fromQ} className="input !py-1.5" />
         </label>
         <label className="grid gap-1">
           <span className="text-xs text-muted">עד תאריך</span>
-          <input type="date" name="to" defaultValue={toQ} className="input !py-1.5" />
+          <input type="date" name="to" lang="he" dir="rtl" defaultValue={toQ} className="input !py-1.5" />
         </label>
         <label className="flex items-center gap-2 py-2">
           <input type="checkbox" name="li" value="1" defaultChecked={onlyLoggedIn} className="accent-oak" />
@@ -186,7 +189,7 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
               <tr>
                 <Th>זמן</Th>
                 <Th>משתמשת</Th>
-                <Th>נתיב</Th>
+                <Th>עמוד</Th>
                 <Th>משך</Th>
                 <Th>מקור</Th>
                 <Th>IP</Th>
@@ -199,38 +202,29 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className="border-t border-foreground/5">
-                    <Td className="whitespace-nowrap text-xs">{fmtDateTime(r.createdAt)}</Td>
+                    <Td className="whitespace-nowrap text-xs"><DT value={r.createdAt} time /></Td>
                     <Td>
                       {r.userId ? (
                         <>
                           <Link href={`/admin/activity?user=${r.userId}`} className="font-semibold hover:underline">
                             {r.userName}
                           </Link>
-                          <div className="text-xs">
-                            <Link
-                              href={`/admin/users?q=${encodeURIComponent(r.userEmail ?? "")}`}
-                              className="text-blue-deep hover:underline"
-                              dir="ltr"
-                            >
-                              {r.userEmail}
-                            </Link>
-                          </div>
+                          <div className="text-muted" dir="ltr">{r.userEmail}</div>
                         </>
                       ) : (
-                        <span className="text-muted text-xs" title={r.sessionId ?? ""}>
+                        <span className="text-muted text-xs" data-tip={r.sessionId ?? undefined}>
                           אורחת {r.sessionId ? `· ${r.sessionId.slice(0, 8)}` : ""}
                         </span>
                       )}
                     </Td>
-                    <Td className="max-w-[260px]">
-                      <Link href={r.path} className="text-blue-deep hover:underline break-all" dir="ltr" target="_blank">
-                        {r.path}
-                      </Link>
+                    <Td>
+                      <TipLink href={r.path} tip={`${labelOf(r.path).full}
+${r.path}`} newTab>
+                        {labelOf(r.path).short}
+                      </TipLink>
                     </Td>
                     <Td className="whitespace-nowrap tabular-nums">{fmtDuration(r.duration)}</Td>
-                    <Td className="max-w-[160px] truncate text-xs text-muted" title={r.referer ?? ""} dir="ltr">
-                      {r.referer ? r.referer.replace(/^https?:\/\//, "").slice(0, 40) : "—"}
-                    </Td>
+                    <Td>{r.referer ? <TipLink href={r.referer} newTab>מקור</TipLink> : "—"}</Td>
                     <Td className="font-mono text-xs" dir="ltr">
                       {r.ip ?? "—"}
                     </Td>
@@ -254,9 +248,14 @@ export default async function AdminActivityPage({ searchParams }: { searchParams
               key: p.path,
               value: Number(p.n),
               label: (
-                <Link href={`/admin/activity?path=${encodeURIComponent(p.path)}`} className="hover:underline" dir="ltr">
-                  {p.path}
-                </Link>
+                <TipLink
+                  href={`/admin/activity?path=${encodeURIComponent(p.path)}`}
+                  tip={`${labelOf(p.path).full}
+${p.path}`}
+                  className="hover:underline"
+                >
+                  {labelOf(p.path).short}
+                </TipLink>
               ),
             }))}
           />

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { sellOffers, users } from "@/db/schema";
 import { OfferStatusForm } from "@/components/admin/offer-status-form";
 import { formatPrice } from "@/lib/constants";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export default async function AdminOffersPage() {
                       קובץ לדוגמה ↗
                     </a>
                   )}
-                  <span className="text-muted">{o.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
+                  <span className="text-muted"><DT value={o.createdAt} /></span>
                 </div>
                 <div className="rounded-xl bg-oak-soft/50 p-3 text-sm">
                   <div className="font-semibold">{o.userName}</div>

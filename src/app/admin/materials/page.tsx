@@ -7,6 +7,7 @@ import { categories, materials } from "@/db/schema";
 import { getCategoryChain, getChildren, getMaterials, chainToHref } from "@/lib/data";
 import { UploadForm } from "@/components/admin/upload-form";
 import { MaterialRow } from "@/components/admin/material-row";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -181,7 +182,7 @@ async function PickCategory() {
                 </Link>
                 <span className="text-muted">· {m.categoryTitle}</span>
                 <span className="ms-auto text-xs text-muted">
-                  {m.downloads} הורדות · {m.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
+                  {m.downloads} הורדות · <DT value={m.createdAt} />
                 </span>
               </li>
             ))}

@@ -1,12 +1,14 @@
 import { requireAdminPage } from "@/lib/session";
-import Link from "next/link";
 import { and, countDistinct, desc, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { pageViews, users } from "@/db/schema";
+import { shortUA } from "@/lib/ua";
+import { loadPathLabeler } from "@/lib/path-labels";
 import { getNumber } from "@/lib/settings";
-import { agoText, fmtDateTime, minutesAgo } from "@/lib/admin-analytics";
-import { StatTile, Th, Td, EmptyRow } from "@/components/admin/analytics-ui";
+import { agoText, minutesAgo } from "@/lib/admin-analytics";
+import { StatTile, Th, Td, EmptyRow, TipLink } from "@/components/admin/analytics-ui";
 import { AutoRefresh } from "@/components/admin/auto-refresh";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,7 @@ export default async function AdminOnlinePage() {
   const windowMin = Math.max(1, await getNumber("online_window_minutes"));
   const since = minutesAgo(windowMin);
 
-  const [online, [anon]] = await Promise.all([
+  const [online, [anon], guestRows, labelOf] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -34,7 +36,35 @@ export default async function AdminOnlinePage() {
       .select({ n: countDistinct(pageViews.sessionId) })
       .from(pageViews)
       .where(and(gte(pageViews.createdAt, since), isNull(pageViews.userId))),
+    // אורחות (לא מחוברות) בחלון הזמן – הצפיות האחרונות; מקבצים לפי IP למטה
+    db
+      .select({
+        ip: pageViews.ip,
+        sessionId: pageViews.sessionId,
+        path: pageViews.path,
+        userAgent: pageViews.userAgent,
+        createdAt: pageViews.createdAt,
+      })
+      .from(pageViews)
+      .where(and(gte(pageViews.createdAt, since), isNull(pageViews.userId)))
+      .orderBy(desc(pageViews.createdAt))
+      .limit(2000),
+    loadPathLabeler(),
   ]);
+
+  type Guest = { ip: string; views: number; sessions: Set<string>; lastPath: string; userAgent: string | null; lastAt: Date };
+  const guestMap = new Map<string, Guest>();
+  for (const r of guestRows) {
+    const key = r.ip ?? "—";
+    const g = guestMap.get(key);
+    if (g) {
+      g.views++;
+      if (r.sessionId) g.sessions.add(r.sessionId);
+    } else {
+      guestMap.set(key, { ip: key, views: 1, sessions: new Set(r.sessionId ? [r.sessionId] : []), lastPath: r.path, userAgent: r.userAgent, lastAt: r.createdAt });
+    }
+  }
+  const guests = [...guestMap.values()];
 
   const anonCount = Number(anon?.n ?? 0);
 
@@ -54,7 +84,7 @@ export default async function AdminOnlinePage() {
 
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         <StatTile label="משתמשות רשומות" value={online.length} tone="bg-emerald-50 text-emerald-700" />
-        <StatTile label="אורחות (סשנים אנונימיים)" value={anonCount} tone="bg-blue-soft text-blue-deep" />
+        <StatTile label="אורחות (גולשות שלא התחברו)" value={anonCount} tone="bg-blue-soft text-blue-deep" />
         <StatTile label="סה״כ פעילות" value={online.length + anonCount} />
       </div>
 
@@ -64,7 +94,7 @@ export default async function AdminOnlinePage() {
             <tr>
               <Th>שם</Th>
               <Th>מייל</Th>
-              <Th>דרגה</Th>
+              <Th>תפקיד</Th>
               <Th>נמצאת ב</Th>
               <Th>IP</Th>
               <Th>נראתה</Th>
@@ -77,35 +107,67 @@ export default async function AdminOnlinePage() {
             ) : (
               online.map((u) => (
                 <tr key={u.id} className="border-t border-foreground/5">
-                  <Td className="font-semibold">
-                    {u.name}
-                    {u.role === "admin" && <span className="chip bg-oak-soft text-oak-deep ms-2">מנהלת</span>}
+                  <Td className="font-semibold">{u.name}</Td>
+                  <Td dir="ltr">{u.email}</Td>
+                  <Td>
+                    <span className={`chip ${u.role === "admin" ? "bg-oak-soft text-oak-deep" : "bg-foreground/5 text-muted"}`}>
+                      {u.role === "admin" ? "מנהלת" : "משתמשת"}
+                    </span>
                     {u.suspended && <span className="chip bg-red-50 text-red-700 ms-2">מושהית</span>}
                   </Td>
-                  <Td dir="ltr">
-                    <Link href={`/admin/users?q=${encodeURIComponent(u.email)}`} className="text-blue-deep hover:underline">
-                      {u.email}
-                    </Link>
-                  </Td>
-                  <Td className="max-w-[260px]">
-                    {u.lastPath ? (
-                      <Link href={u.lastPath} className="text-blue-deep hover:underline break-all" dir="ltr" target="_blank">
-                        {u.lastPath}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </Td>
-                  <Td className="font-mono text-xs" dir="ltr">
-                    {u.lastIp ?? "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap" title={fmtDateTime(u.lastSeenAt)}>
-                    {agoText(u.lastSeenAt)}
+                  <Td>{u.lastPath ? <TipLink href={u.lastPath} newTab /> : "—"}</Td>
+                  <Td dir="ltr">{u.lastIp ?? "—"}</Td>
+                  <Td className="whitespace-nowrap">
+                    <DT value={u.lastSeenAt} label={agoText(u.lastSeenAt)} />
                   </Td>
                   <Td>
-                    <Link href={`/admin/activity?user=${u.id}`} className="text-xs text-oak-deep hover:underline whitespace-nowrap">
-                      צפייה בפעילות
-                    </Link>
+                    <TipLink href={`/admin/activity?user=${u.id}`} tip="פעילות המשתמשת בעמוד הפעילות">
+                      פעילות
+                    </TipLink>
+                    {" "}
+                    <TipLink href={`/admin/users?q=${encodeURIComponent(u.email)}`} tip="פרטי המשתמשת בעמוד המשתמשות">
+                      פרטים
+                    </TipLink>
+                  </Td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="card p-3 sm:p-5 overflow-x-auto">
+        <h3 className="font-bold mb-1">אורחות לפי כתובת IP</h3>
+        <p className="text-xs text-muted mb-3">גולשות שלא התחברו, בחלון הזמן שלמעלה. כל שורה = כתובת IP אחת (כמה מכשירים ברשת אחת מופיעים יחד).</p>
+        <table className="w-full text-sm">
+          <thead className="text-muted text-right">
+            <tr>
+              <Th>כתובת IP</Th>
+              <Th>צפיות בדפים</Th>
+              <Th>גולשות שונות</Th>
+              <Th>העמוד האחרון</Th>
+              <Th>דפדפן</Th>
+              <Th>נראתה</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {guests.length === 0 ? (
+              <EmptyRow cols={6} text="אין אורחות פעילות כרגע." />
+            ) : (
+              guests.map((g) => (
+                <tr key={g.ip} className="border-t border-foreground/5">
+                  <Td dir="ltr">{g.ip}</Td>
+                  <Td className="tabular-nums">{g.views.toLocaleString("he-IL")}</Td>
+                  <Td className="tabular-nums">{g.sessions.size || 1}</Td>
+                  <Td>
+                    <TipLink href={g.lastPath} tip={`${labelOf(g.lastPath).full}
+${g.lastPath}`} newTab>
+                      {labelOf(g.lastPath).short}
+                    </TipLink>
+                  </Td>
+                  <Td className="whitespace-nowrap">{shortUA(g.userAgent)}</Td>
+                  <Td className="whitespace-nowrap">
+                    <DT value={g.lastAt} label={agoText(g.lastAt)} />
                   </Td>
                 </tr>
               ))

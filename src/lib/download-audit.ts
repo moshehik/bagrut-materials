@@ -15,6 +15,9 @@ import { sichaAccessEnd } from "@/lib/sicha-access-calc";
 /** מראות קטגוריות (העתק של CATEGORY_MIRRORS ב-data.ts; פונקציית ה-DB שלו תלויה במטמון ולכן מחושב כאן מחדש) */
 import { CATEGORY_MIRRORS } from "@/lib/data";
 
+const VIA_HE: Record<string, string> = { free: "חינם", single: "רכישה בודדת", bundle: "קובץ מורחב", subscription: "מנוי", sicha: "בזכות שיחה", admin: "מנהלת" };
+export const viaHe = (v: string) => VIA_HE[v] ?? (v || "—");
+
 const SUBS = new Set(["subject_monthly", "custom_monthly", "yearly", "substitute_3m", "substitute_daily"]);
 
 type CatRow = { id: number; parent_id: number | null; slug: string; title: string };
@@ -142,7 +145,7 @@ export async function runDownloadAudit(opts: { from?: Date | null; to?: Date | n
         checked++;
         firstAt = firstAt ?? t.toISOString();
         lastAt = t.toISOString();
-        const k = `${isView ? "צפייה" : "הורדה"} · ${via || "(ללא)"}`;
+        const k = `${isView ? "צפייה מלאה" : "הורדה"} · ${viaHe(via)}`;
         viaCount.set(k, (viaCount.get(k) ?? 0) + 1);
       }
     }

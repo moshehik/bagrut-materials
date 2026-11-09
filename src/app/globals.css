@@ -6914,3 +6914,37 @@ a.sicha-tag-video:hover {
   font-size: 2rem;
   color: #b9801f;
 }
+
+/* טבלאות הניהול (table.w-full בתוך .admin-area) – מראה אחיד וברור: אותו גופן וגודל בכל התאים, יישור זהה לכותרת (ימין),
+   מרכוז אנכי, קו הפרדה דק בין עמודות וכותרת מובחנת – כדי שיהיה ברור איזה תא שייך לאיזו עמודה.
+   תא עם dir="ltr" (מייל / IP) נשאר לועזי-נכון אבל מיושר לימין כמו הכותרת. פעולות ותגיות (chip/btn/input) שומרות על העיצוב שלהן. */
+.admin-area table.w-full {
+  border-collapse: collapse;
+}
+.admin-area table.w-full :is(td, th) {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  vertical-align: middle;
+  text-align: right;
+  padding: 0.6rem 0.75rem;
+}
+.admin-area table.w-full :is(td, th) + :is(td, th) {
+  border-inline-start: 1px solid rgb(0 0 0 / 0.06);
+}
+.admin-area table.w-full thead :is(td, th) {
+  font-weight: 600;
+  white-space: nowrap;
+  background: rgb(0 0 0 / 0.03);
+  border-bottom: 2px solid rgb(0 0 0 / 0.1);
+}
+.admin-area table.w-full td :is(span, div, a, p, time, code, b, strong, small, bdi):not(.chip):not(.btn) {
+  font-size: inherit;
+  font-family: inherit;
+}
+.admin-area table.w-full td[dir="ltr"] {
+  white-space: nowrap;
+}
+.admin-area table.w-full td :is(.font-mono, code) {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}

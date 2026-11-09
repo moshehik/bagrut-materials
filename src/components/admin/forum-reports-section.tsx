@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { forumThreads, forumPosts, forumReports, users } from "@/db/schema";
 import { ForumReportActions } from "@/components/admin/forum-report-actions";
 import { FORUM_LABEL, forumAuthor, isForumKind } from "@/lib/forum-utils";
+import { DT } from "@/components/admin/date-tip";
 
 /** דיווחים פתוחים על תוכן לא הולם בפורום – משותף ל-/admin/forum ול-/admin/inbox. כשאין דיווחים: `showEmpty` מציג הודעה, אחרת לא מוצג כלום */
 export async function ForumReportsSection({ showEmpty = false }: { showEmpty?: boolean }) {
@@ -62,7 +63,7 @@ export async function ForumReportsSection({ showEmpty = false }: { showEmpty?: b
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted">
                   {kindLabel} · כתבה: {code ? forumAuthor(code) : "—"} · דווח על ידי {forumAuthor(r.reporterCode)} ·{" "}
-                  {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
+                  <DT value={r.createdAt} />
                 </p>
                 {body ? (
                   <p className="text-sm mt-1 whitespace-pre-wrap">{body}</p>

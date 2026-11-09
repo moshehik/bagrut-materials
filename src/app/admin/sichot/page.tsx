@@ -6,6 +6,7 @@ import { driveLinkUrl } from "@/lib/drive-link";
 import { SICHA_SEMINARS } from "@/lib/constants";
 import { SeminarIcon } from "@/components/sichot/seminar-icon";
 import { SichaModerationButtons } from "@/components/admin/sicha-moderation-buttons";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function AdminSichotPage() {
                   <span>{r.teacherName}</span>
                   <span dir="ltr">{r.teacherEmail}</span>
                   {r.categoryTitle && <span>· {r.categoryTitle}</span>}
-                  <span>· {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
+                  <span>· <DT value={r.createdAt} /></span>
                 </div>
               </div>
               <SichaModerationButtons id={r.id} title={r.title} status={r.status} />
@@ -110,7 +111,7 @@ export default async function AdminSichotPage() {
                   {r.displayName && <span>(מוצגת כ: {r.displayName})</span>}
                   <span dir="ltr">{r.teacherEmail}</span>
                   {r.categoryTitle && <span>· {r.categoryTitle}</span>}
-                  <span>· {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
+                  <span>· <DT value={r.createdAt} /></span>
                 </div>
               </div>
               <SichaModerationButtons id={r.id} title={r.title} status={r.status} kind="video" />

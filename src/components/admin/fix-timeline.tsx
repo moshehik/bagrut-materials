@@ -1,4 +1,5 @@
 import type { FixTimelineEntry } from "@/lib/fix-events";
+import { DT } from "@/components/admin/date-tip";
 
 const LABELS: Record<string, string> = {
   "fix.general.received": "ההערה התקבלה מהמורה",
@@ -32,7 +33,7 @@ export function FixTimeline({ entries }: { entries: FixTimelineEntry[] }) {
         const reason = (e.details.why ?? e.details.note ?? e.details.reason) as string | undefined;
         return (
           <li key={e.id}>
-            <span className="text-muted">{e.createdAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}</span> · <b>{LABELS[e.action] ?? e.action}</b>
+            <span className="text-muted"><DT value={e.createdAt} time /></span> · <b>{LABELS[e.action] ?? e.action}</b>
             {e.actorId ? <span className="text-muted"> · משתמשת #{e.actorId}</span> : null}
             <div className="whitespace-pre-wrap">{e.summary}</div>
             {reason && <div className="text-muted">סיבה/הערה: {reason}</div>}

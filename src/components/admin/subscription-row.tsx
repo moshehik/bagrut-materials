@@ -11,6 +11,7 @@ import {
   refundPurchase,
   updatePurchaseNotes,
 } from "@/lib/actions/admin";
+import { DT } from "@/components/admin/date-tip";
 
 export type SubscriptionRowData = {
   id: number;
@@ -37,7 +38,7 @@ const STATUS: Record<PurchaseStatus, { label: string; className: string }> = {
 };
 
 function fmt(d: Date | null) {
-  return d ? d.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" }) : "—";
+  return <DT value={d} />;
 }
 
 /** תווית המסלול; שורת "פרימיום בלבד" ישנה (מלפני ביטול הפרימיום) = single בלי חומר ועם מכסה 0 */

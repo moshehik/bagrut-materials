@@ -19,6 +19,7 @@ import { getNumber } from "@/lib/settings";
 import { daysAgo, minutesAgo, startOfToday } from "@/lib/admin-analytics";
 import { isLoopEnabled, idleMinutes } from "@/lib/agentLoopStatus";
 import { AgentToggle } from "@/components/admin/agent-toggle";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +41,21 @@ export default async function AdminDashboard() {
 
   const [agentEnabled, agentIdle] = await Promise.all([isLoopEnabled().catch(() => false), idleMinutes().catch(() => -1)]);
 
-  const [onlineNow, dlToday, viewsToday, guestsToday, revenue30] = await Promise.all([
+  const [onlineNow, guestsNow, dlToday, viewsToday, guestsToday, revenue30] = await Promise.all([
     safeCount(db.select({ n: count() }).from(users).where(gte(users.lastSeenAt, since))),
+    // אורחות מחוברות עכשיו: גולשות שלא התחברו שפעילות בחלון הזמן (עוגיות שונות, בלי בוטים)
+    safeCount(
+      db
+        .select({ n: countDistinct(pageViews.sessionId) })
+        .from(pageViews)
+        .where(
+          and(
+            gte(pageViews.createdAt, since),
+            isNull(pageViews.userId),
+            sql`(${pageViews.userAgent} IS NULL OR ${pageViews.userAgent} !~* 'bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit')`,
+          ),
+        ),
+    ),
     safeCount(db.select({ n: count() }).from(downloads).where(gte(downloads.createdAt, today))),
     safeCount(db.select({ n: count() }).from(pageViews).where(gte(pageViews.createdAt, today))),
     // אורחות שונות היום: עוגיות-סשן אנונימיות שונות, בלי בוטים (כמו ב-api/track ובדף הסטטיסטיקות)
@@ -73,7 +87,8 @@ export default async function AdminDashboard() {
 
   const quick = [
     { label: "הודעות למנהלת", value: openReports + pendingFixes, href: "/admin/inbox", icon: Inbox, tone: "bg-red-50 text-red-700" },
-    { label: "מחוברות עכשיו", value: onlineNow, href: "/admin/online", icon: Radio, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "מחוברות עכשיו (רשומות)", value: onlineNow, href: "/admin/online", icon: Radio, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "אורחות מחוברות עכשיו", value: guestsNow, href: "/admin/online", icon: Users, tone: "bg-sky-50 text-sky-700" },
     { label: "הורדות היום", value: dlToday, href: "/admin/downloads", icon: Download, tone: "bg-gold-soft text-gold" },
     { label: "אורחות שונות היום", value: guestsToday, href: "/admin/stats", icon: Users, tone: "bg-sky-50 text-sky-700" },
     { label: "צפיות היום", value: viewsToday, href: "/admin/activity", icon: Activity, tone: "bg-pink-soft text-pink" },
@@ -177,7 +192,7 @@ export default async function AdminDashboard() {
                 {latest.map((r) => (
                   <tr key={r.id} className="border-t border-foreground/5">
                     <td className="py-2 pe-3 whitespace-nowrap">
-                      {r.createdAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}
+                      <DT value={r.createdAt} time />
                     </td>
                     <td className="py-2 pe-3">
                       {r.userName}{" "}

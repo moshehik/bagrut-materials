@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { users, downloads } from "@/db/schema";
 import { UserRoleForm } from "@/components/admin/user-role-form";
 import { getCurrentUser } from "@/lib/session";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -112,12 +113,12 @@ export default async function AdminUsersPage({
                         <span className="chip bg-oak-soft text-oak-deep">מנהלת</span>
                       )}
                       {u.googleId && (
-                        <span className="chip bg-blue-soft text-blue-deep" title="נרשמה עם גוגל">
+                        <span className="chip bg-blue-soft text-blue-deep" data-tip="נרשמה עם גוגל">
                           Google
                         </span>
                       )}
                       {u.suspended && (
-                        <span className="chip bg-red-100 text-red-700" title={u.suspendReason ?? ""}>
+                        <span className="chip bg-red-100 text-red-700" data-tip={u.suspendReason ?? undefined}>
                           מושהית
                         </span>
                       )}
@@ -139,7 +140,7 @@ export default async function AdminUsersPage({
                     <Link
                       href={`/admin/mail?to=${encodeURIComponent(u.email)}`}
                       className="ms-2 text-xs text-blue-deep hover:underline"
-                      title="שליחת מייל"
+                      data-tip="שליחת מייל"
                     >
                       ✉
                     </Link>
@@ -148,9 +149,9 @@ export default async function AdminUsersPage({
                     {u.personalCode}
                   </td>
                   <td className="py-2 pe-3 whitespace-nowrap">
-                    {u.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
+                    <DT value={u.createdAt} />
                   </td>
-                  <td className="py-2 pe-3 whitespace-nowrap text-xs">{fmtDateTime(u.lastSeenAt)}</td>
+                  <td className="py-2 pe-3 whitespace-nowrap text-xs"><DT value={u.lastSeenAt} time /></td>
                   <td className="py-2 pe-3">
                     {u.downloads}
                     {u.dailyDownloadLimit !== null && (

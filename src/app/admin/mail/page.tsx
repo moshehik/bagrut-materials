@@ -5,6 +5,7 @@ import { emailLogs, users } from "@/db/schema";
 import { BroadcastForm, EmailList, ManualMailForm } from "@/components/admin/mail-forms";
 import { Mail, ScrollText, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,7 @@ export default async function AdminMailPage({
                 {logs.map((l) => (
                   <tr key={l.id} className="border-t border-foreground/5 align-top">
                     <td className="py-2 pe-3 whitespace-nowrap text-muted">
-                      {l.sentAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" })}
+                      <DT value={l.sentAt} time />
                     </td>
                     <td className="py-2 pe-3" dir="ltr">
                       {l.to}
@@ -140,7 +141,7 @@ export default async function AdminMailPage({
                       {l.status === "success" ? (
                         <span className="chip bg-green-100 text-green-800">נשלח</span>
                       ) : (
-                        <span className="chip bg-red-100 text-red-700" title={l.errorMessage ?? ""}>
+                        <span className="chip bg-red-100 text-red-700" data-tip={l.errorMessage ?? undefined}>
                           שגיאה
                         </span>
                       )}

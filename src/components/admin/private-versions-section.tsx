@@ -6,6 +6,7 @@ import { listFixTimeline } from "@/lib/fix-events";
 import { parseArtifacts } from "@/lib/general-fix";
 import { RemovePrivateVersionButton } from "@/components/admin/private-version-buttons";
 import { FixTimeline } from "@/components/admin/fix-timeline";
+import { DT } from "@/components/admin/date-tip";
 
 /**
  * /admin/fixes: (1) גרסאות פרטיות מתוקנות (קובץ שהסוכן ערך רק עבור מורה אחת בעקבות הערה כללית שלה) – המנהלת רואה
@@ -61,7 +62,7 @@ export async function PrivateVersionsSection() {
                     {v.materialTitle} <span className="text-xs text-muted">· #{v.materialId} · {v.fileName}</span>
                   </div>
                   <div className="text-xs text-muted">
-                    למורה: {v.userName ?? `#${v.userId}`} · {v.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })} · הערה #{v.fixId ?? "—"} · {Math.round(v.size / 1024)}KB · גרסה #{v.id}
+                    למורה: {v.userName ?? `#${v.userId}`} · <DT value={v.createdAt} /> · הערה #{v.fixId ?? "—"} · {Math.round(v.size / 1024)}KB · גרסה #{v.id}
                   </div>
                   {v.note && <div className="mt-1 whitespace-pre-wrap text-xs">{v.note}</div>}
                   <a href={`/api/preview/${v.materialId}?pv=${v.id}`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs underline">
@@ -91,7 +92,7 @@ export async function PrivateVersionsSection() {
                     <span className="chip bg-blue-soft text-blue-deep">{statusLabel(r.status)}</span>
                     <b>{r.materialTitle}</b>
                     <span className="text-xs text-muted">
-                      #{r.materialId} · הערה #{r.id} · {r.userName ?? "—"} · {r.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}
+                      #{r.materialId} · הערה #{r.id} · {r.userName ?? "—"} · <DT value={r.createdAt} />
                       {pv ? ` · גרסה פרטית פעילה #${pv.id}` : ""}
                     </span>
                   </div>

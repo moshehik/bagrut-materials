@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { forumThreads, forumPosts, users, categories } from "@/db/schema";
 import { ForumReportsSection } from "@/components/admin/forum-reports-section";
 import { DeleteThreadButton } from "@/components/admin/delete-thread-button";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export default async function AdminForumPage() {
                   <span dir="ltr">{t.userEmail}</span>
                   {t.categoryTitle && <span>· {t.categoryTitle}</span>}
                   <span>· {t.posts} תגובות</span>
-                  <span>· {t.createdAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</span>
+                  <span>· <DT value={t.createdAt} /></span>
                 </div>
               </div>
               <DeleteThreadButton id={t.id} title={t.title} />

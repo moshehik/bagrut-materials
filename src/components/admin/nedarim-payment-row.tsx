@@ -7,6 +7,7 @@ import type { Plan } from "@/db/schema";
 import { PLANS, formatPrice } from "@/lib/constants";
 import { STATUS_LABEL_HE, VERIFY_LABEL_HE, isNedarimStatus, type VerifyMethod } from "@/lib/nedarim/logic";
 import { cancelNedarimPayment, manualSettleNedarimPayment, reverifyNedarimPayment } from "@/lib/actions/nedarim-admin";
+import { DT } from "@/components/admin/date-tip";
 
 export type NedarimPaymentRowData = {
   id: number;
@@ -54,7 +55,7 @@ const STATUS_CLS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-700",
 };
 
-const fmt = (d: Date | null) => (d ? d.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (d: Date | null) => <DT value={d} time />;
 
 export function NedarimPaymentRow({ p, hasApi, highlight }: { p: NedarimPaymentRowData; hasApi: boolean; highlight?: boolean }) {
   const [pending, startTransition] = useTransition();

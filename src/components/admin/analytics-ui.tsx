@@ -80,8 +80,12 @@ export function Pagination({
 /* ---------- טבלה ---------- */
 
 export function Th({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
-  return <th className={`py-2 pe-3 font-medium whitespace-nowrap ${className}`}>{children}</th>;
+  return <th className={`py-2 pe-3 font-medium whitespace-nowrap text-right align-top ${className}`}>{children}</th>;
 }
+/**
+ * תא טבלה. `dir="ltr"` (מייל/IP/נתיב) נשאר על התא עצמו כדי שהטקסט הלועזי יוצג נכון; היישור והריווח של תאים כאלה
+ * מתוקנים ב-CSS (.admin-area td[dir="ltr"] ב-globals.css) כך שיישרו לימין כמו הכותרת. `title` מוצג בטולטיפ של האתר (data-tip).
+ */
 export function Td({
   children,
   className = "",
@@ -94,9 +98,44 @@ export function Td({
   title?: string;
 }) {
   return (
-    <td className={`py-2 pe-3 align-top ${className}`} dir={dir} title={title}>
+    <td className={`py-2 pe-3 align-top ${className}`} dir={dir} data-tip={title || undefined}>
       {children}
     </td>
+  );
+}
+
+/**
+ * קישור במילה אחת; הכתובת עצמה (או `tip`) עולה בטולטיפ של האתר (data-tip) ולא מוצגת בטבלה.
+ * כתובת פנימית (מתחילה ב-/) = Link של Next; אחרת קישור רגיל.
+ */
+export function TipLink({
+  href,
+  tip,
+  children = "פתיחה",
+  className = "text-blue-deep hover:underline whitespace-nowrap",
+  newTab = false,
+}: {
+  href: string;
+  tip?: string;
+  children?: React.ReactNode;
+  className?: string;
+  newTab?: boolean;
+}) {
+  let shown = tip ?? href;
+  if (!tip) {
+    try {
+      shown = decodeURI(href);
+    } catch {}
+  }
+  const common = { className, "data-tip": shown, ...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {}) };
+  return href.startsWith("/") ? (
+    <Link href={href} {...common}>
+      {children}
+    </Link>
+  ) : (
+    <a href={href} {...common}>
+      {children}
+    </a>
   );
 }
 

@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="admin-area mx-auto max-w-7xl px-4 sm:px-6 py-8">
       {openReports > 0 && (
         <Link
           href="/admin/forum"

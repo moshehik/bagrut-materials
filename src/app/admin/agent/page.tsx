@@ -8,6 +8,7 @@ import { Pagination, Th, Td, EmptyRow, StatTile } from "@/components/admin/analy
 import { isLoopEnabled, idleMinutes } from "@/lib/agentLoopStatus";
 import { AgentToggle } from "@/components/admin/agent-toggle";
 import { AgentSystemPanel } from "@/components/admin/agent-system-panel";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +145,7 @@ export default async function AdminAgentPage({ searchParams }: { searchParams: P
           </h3>
           <span className="chip bg-oak-soft text-oak-deep">{total.toLocaleString("he-IL")} רשומות</span>
           <a href={`/admin/agent/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
-            ייצוא CSV
+            הורדה לאקסל
           </a>
         </div>
 
@@ -221,7 +222,7 @@ export default async function AdminAgentPage({ searchParams }: { searchParams: P
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className="border-t border-foreground/5">
-                    <Td className="whitespace-nowrap text-xs">{fmtDateTime(r.createdAt)}</Td>
+                    <Td className="whitespace-nowrap text-xs"><DT value={r.createdAt} time /></Td>
                     <Td className="text-xs whitespace-nowrap">
                       {SOURCE_LABEL[r.source] ?? r.source}
                       {r.actorName && <div className="text-muted">{r.actorName}</div>}

@@ -7,6 +7,7 @@ import { benefitText, parseSubjectIds } from "@/lib/private-coupons";
 import { revokePrivateCoupon } from "@/lib/actions/private-coupons";
 import { CouponForm } from "@/components/admin/coupon-form";
 import { CopyButton } from "@/components/admin/copy-button";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +74,8 @@ export default async function AdminCouponsPage() {
                       שויך ל: {claimerName} ({claimerEmail})
                     </div>
                   )}
-                  {c.expiresAt && <div className="text-muted">בתוקף עד {c.expiresAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</div>}
-                  {c.usedAt && <div className="text-muted">מומש ב-{c.usedAt.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" })}</div>}
+                  {c.expiresAt && <div className="text-muted">בתוקף עד <DT value={c.expiresAt} /></div>}
+                  {c.usedAt && <div className="text-muted">מומש ב-<DT value={c.usedAt} /></div>}
                   {c.note && <div className="text-muted">הערה: {c.note}</div>}
                 </div>
                 {c.status === "active" && (

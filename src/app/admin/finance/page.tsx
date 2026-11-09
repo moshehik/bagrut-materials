@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { transactions, users, purchases, txTypeEnum } from "@/db/schema";
 import { PLANS, formatPrice } from "@/lib/constants";
 import { TransactionForm, TX_TYPE_LABELS } from "@/components/admin/transaction-form";
+import { DT } from "@/components/admin/date-tip";
 
 export const dynamic = "force-dynamic";
 
@@ -177,7 +178,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           </span>
         )}
         <a href={exportHref} className="btn btn-ghost text-xs py-1 ms-auto">
-          <Download className="h-3.5 w-3.5" /> ייצוא CSV
+          <Download className="h-3.5 w-3.5" /> הורדה לאקסל
         </a>
       </div>
 
@@ -305,7 +306,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               {ledger.map((t) => (
                 <tr key={t.id} className="border-t border-foreground/5 align-top">
                   <td className="py-2 pe-3 whitespace-nowrap text-xs">
-                    {t.createdAt.toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" })}
+                    <DT value={t.createdAt} time />
                   </td>
                   <td className="py-2 pe-3">
                     {t.userId ? (
