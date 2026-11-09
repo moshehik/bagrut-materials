@@ -1255,3 +1255,54 @@ export type UserPreferences = typeof userPreferences.$inferSelect;
 export type NedarimTransaction = typeof nedarimTransactions.$inferSelect;
 export type NedarimSyncState = typeof nedarimSyncState.$inferSelect;
 export type CategoryModule = (typeof categoryModuleEnum.enumValues)[number];
+
+/**
+ * תור הפקת תמונות למצגות בנוטבוק (Oracle) – מחליף את Apps Script (gas/NotebookQueue.gs). כרון של Vercel (/api/cron/deck-queue,
+ * כל דקה) מקדם את ה-jobs; התמונות הגולמיות (images.pdf) נשמרות בדרייב ורק ה-fileId כאן. תכניות המצגות (טקסט המקור) בטבלה, לא בגיט.
+ * יצירה: scripts/create-deck-queue-tables.ts --apply
+ */
+export const deckJobs = pgTable(
+  "deck_jobs",
+  {
+    id: varchar("id", { length: 120 }).primaryKey(),
+    title: text("title").notNull().default(""),
+    sourceText: text("source_text").notNull(),
+    description: text("description").notNull(),
+    /** new → src (מקור נטען) → gen (מצגת נוצרת) → dl (הורדה) → done | failed; wait = המתנה אחרי כשל/מכסה עד retry_after */
+    stage: varchar("stage", { length: 12 }).notNull().default("new"),
+    notebookId: text("notebook_id"),
+    oracleJobId: text("oracle_job_id"),
+    /** מזהה ה-artifact של המצגת שנוצרה (לשליחה חוזרת של הורדה שנכשלה בלי ליצור מחדש) */
+    artifactId: text("artifact_id"),
+    /** כשלי polling רצופים של סטטוס (שגיאת רשת רגעית לא הורסת הפקה רצה) */
+    pollErrors: integer("poll_errors").notNull().default(0),
+    tries: integer("tries").notNull().default(0),
+    retryAfter: timestamp("retry_after"),
+    startedAt: timestamp("started_at"),
+    imagesFileId: text("images_file_id"),
+    imagesBytes: integer("images_bytes"),
+    error: text("error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    finishedAt: timestamp("finished_at"),
+  },
+  (t) => [index("deck_jobs_stage_idx").on(t.stage, t.createdAt)],
+);
+
+/** שורה יחידה (id=1): מתג חירום, נעילת tick (קריאה אחת בכל רגע גם בין instances) וסטטוס אחרון */
+export const deckQueueState = pgTable("deck_queue_state", {
+  id: integer("id").primaryKey(),
+  killSwitch: boolean("kill_switch").notNull().default(false),
+  maxConcurrent: integer("max_concurrent").notNull().default(5),
+  lockUntil: timestamp("lock_until"),
+  /** מי מחזיק בנעילה – כדי ש-tick אחד לא ישחרר נעילה של אחר */
+  lockOwner: text("lock_owner"),
+  lastTickAt: timestamp("last_tick_at"),
+  lastTickSummary: text("last_tick_summary"),
+  lastError: text("last_error"),
+  ticks: integer("ticks").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type DeckJob = typeof deckJobs.$inferSelect;
+export type DeckQueueState = typeof deckQueueState.$inferSelect;
