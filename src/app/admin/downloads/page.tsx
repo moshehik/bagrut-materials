@@ -115,7 +115,10 @@ export default async function AdminDownloadsPage({ searchParams }: { searchParam
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-2xl font-bold">היסטוריית הורדות</h2>
         <span className="chip bg-oak-soft text-oak-deep">{total.toLocaleString("he-IL")} רשומות</span>
-        <Link href="/admin/downloads/calendar" className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
+        <Link href="/admin/downloads/audit" className="btn btn-ghost !py-1.5 !px-3 text-xs ms-auto">
+          בדיקת הרשאות הורדה
+        </Link>
+        <Link href="/admin/downloads/calendar" className="btn btn-ghost !py-1.5 !px-3 text-xs">
           לוח שנה עברי
         </Link>
         <a href={`/admin/downloads/export${qs(params)}`} className="btn btn-ghost !py-1.5 !px-3 text-xs">
