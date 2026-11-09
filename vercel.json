@@ -1,4 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [{ "path": "/api/cron/deck-queue", "schedule": "* * * * *" }]
+  "crons": [
+    { "path": "/api/cron/deck-queue", "schedule": "* * * * *" },
+    { "path": "/api/cron/db-backup", "schedule": "0 1,7,13,19 * * *" }
+  ]
 }

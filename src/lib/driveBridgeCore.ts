@@ -465,13 +465,18 @@ export async function driveUploadRest({
   mimeType,
   bytes,
   onProgress,
+  parentId,
+  appProperties,
 }: {
   name: string;
   mimeType: string;
   bytes: Uint8Array;
   onProgress?: (p: { done: number; total: number }) => void;
+  /** תיקיית יעד (ברירת מחדל: שורש הארכיון) */
+  parentId?: string;
+  appProperties?: Record<string, string>;
 }): Promise<{ fileId: string; size: number }> {
-  const rootId = await getRootFolderId();
+  const rootId = parentId ?? (await getRootFolderId());
   const total = bytes.length;
   // פתיחת session להעלאה עוד לא יוצרת קובץ — בטוח לנסות שוב (וגם לרענן טוקן ב-401)
   const init = await driveFetchAuthed(
@@ -483,7 +488,7 @@ export async function driveUploadRest({
         "X-Upload-Content-Type": mimeType || "application/octet-stream",
         "X-Upload-Content-Length": String(total),
       },
-      body: JSON.stringify({ name, mimeType: mimeType || "application/octet-stream", parents: [rootId], description: "bagrut-materials-archive" }),
+      body: JSON.stringify({ name, mimeType: mimeType || "application/octet-stream", parents: [rootId], description: "bagrut-materials-archive", ...(appProperties ? { appProperties } : {}) }),
     },
     { tries: 3, timeoutMs: DRIVE_REST_META_TIMEOUT_MS },
   );
