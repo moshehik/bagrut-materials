@@ -325,7 +325,9 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ id: string }> }
             ? "אחד הקבצים כבר הורד את מספר הפעמים המותר"
             : r.denied.reason === "period_limit"
               ? "מכסת ההורדות ל-30 הימים האחרונים נוצלה"
-              : "המכסה היומית להורדות נוצלה";
+              : r.denied.reason === "rate_limit"
+                ? "יותר מדי הורדות בזמן קצר – נסי שוב בעוד כמה דקות"
+                : "המכסה היומית להורדות נוצלה";
       return NextResponse.json({ error }, { status: 403 });
     }
     reservation = r.reservation;

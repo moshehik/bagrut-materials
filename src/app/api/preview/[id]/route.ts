@@ -123,7 +123,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             ? "החומר הזה כבר הורד/נצפה את מספר הפעמים המותר"
             : r.denied.reason === "period_limit"
               ? "מכסת ההורדות והצפיות ל-30 הימים האחרונים נוצלה"
-              : "המכסה היומית להורדות וצפיות נוצלה – נסי שוב מחר";
+              : r.denied.reason === "rate_limit"
+                ? "יותר מדי הורדות וצפיות בזמן קצר – נסי שוב בעוד כמה דקות"
+                : "המכסה היומית להורדות וצפיות נוצלה – נסי שוב מחר";
       return fileRouteError(req, error, 403);
     }
     reservation = r.reservation;

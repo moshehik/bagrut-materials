@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { downloads, purchases, type Material, type User } from "@/db/schema";
 import { getNumber } from "./settings";
@@ -28,6 +28,7 @@ export type QuotaItem = { material: Material; ent: EntitlementOk };
 export type QuotaDenied =
   | { reason: "daily_limit"; dailyLimit: number; used: number; requested: number }
   | { reason: "period_limit"; periodLimit: number; used: number; requested: number }
+  | { reason: "rate_limit"; windowMin: number; rateLimit: number; used: number; requested: number }
   | { reason: "material_limit"; materialId: number; maxDownloadsPerUser: number }
   | { reason: "quota"; purchaseId: number };
 
@@ -53,10 +54,69 @@ function startOfToday() {
   return startOfIsraelDay(); // חצות בישראל, לא חצות UTC של השרת
 }
 
-/** המגבלה היומית שבתוקף למשתמשת (אישית, ואם אין – הכללית; 0 = ללא מגבלה) */
-export async function dailyLimitFor(user: Pick<User, "dailyDownloadLimit">) {
-  const globalLimit = await getNumber("daily_download_limit");
-  return user.dailyDownloadLimit ?? globalLimit;
+/** מסלולים בתשלום תקופתי שבהם אין מגבלת כמות – רק מגבלת קצב (נגד בוטים). ממלאת מקום יומית היא סל מוגבל בכוונה, ולכן לא כאן */
+const SUBSCRIBER_PLANS = ["yearly", "substitute_3m", "subject_monthly", "custom_monthly"] as const;
+
+/** האם למשתמשת יש מנוי פעיל (שנתי / ממלאת מקום 3 חודשים) שתקף כעת */
+export async function hasActiveSubscription(userId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ id: purchases.id })
+    .from(purchases)
+    .where(
+      and(
+        eq(purchases.userId, userId),
+        eq(purchases.status, "active"),
+        inArray(purchases.plan, [...SUBSCRIBER_PLANS]),
+        or(isNull(purchases.endsAt), gte(purchases.endsAt, new Date())),
+      ),
+    )
+    .limit(1);
+  return !!row;
+}
+
+/** חלונות הקצב למנויה (בדקות) */
+export const RATE_WINDOW_SHORT_MIN = 10;
+export const RATE_WINDOW_LONG_MIN = 60;
+
+export type EffectiveLimits = {
+  subscriber: boolean;
+  /** מכסה יומית בקבצים (0 = ללא) */
+  daily: number;
+  /** מכסה ל-30 יום (0 = ללא) */
+  period: number;
+  /** קצב: קבצים ב-10 דקות (0 = ללא; רק למנויה) */
+  rateShort: number;
+  /** קצב: קבצים בשעה (0 = ללא; רק למנויה) */
+  rateLong: number;
+};
+
+/**
+ * המגבלות שבתוקף למשתמשת. מנויה פעילה: אין מגבלת כמות (יומית/30 יום) – רק מגבלת קצב נגד הורדה אוטומטית של בוטים.
+ * בלי מנוי: מכסה יומית + מכסת 30 יום מההגדרות. מגבלה יומית אישית שנקבעה למשתמשת על ידי המנהלת גוברת תמיד.
+ */
+export async function limitsFor(user: Pick<User, "id" | "dailyDownloadLimit">): Promise<EffectiveLimits> {
+  const subscriber = await hasActiveSubscription(user.id);
+  if (subscriber) {
+    return {
+      subscriber,
+      daily: user.dailyDownloadLimit ?? 0,
+      period: 0,
+      rateShort: await getNumber("subscriber_rate_10min"),
+      rateLong: await getNumber("subscriber_rate_hour"),
+    };
+  }
+  return {
+    subscriber,
+    daily: user.dailyDownloadLimit ?? (await getNumber("daily_download_limit")),
+    period: await getNumber("monthly_download_limit"),
+    rateShort: 0,
+    rateLong: 0,
+  };
+}
+
+/** המגבלה היומית שבתוקף (0 = ללא מגבלה; למנויה – ללא, אלא אם נקבעה לה מגבלה אישית) */
+export async function dailyLimitFor(user: Pick<User, "id" | "dailyDownloadLimit">) {
+  return (await limitsFor(user)).daily;
 }
 
 /** כמה שורות downloads (הורדות + צפיות מלאות) נרשמו היום למשתמשת */
@@ -78,9 +138,9 @@ export async function dailyRemaining(user: Pick<User, "id" | "dailyDownloadLimit
 /** חלון המכסה ה"חודשית": 30 הימים האחרונים (מתגלגל) */
 export const PERIOD_DAYS = 30;
 
-/** המגבלה ל-30 הימים האחרונים (0 = ללא מגבלה) – מההגדרות */
-export async function periodLimitFor() {
-  return getNumber("monthly_download_limit");
+/** המגבלה ל-30 הימים האחרונים (0 = ללא מגבלה; למנויה – ללא) */
+export async function periodLimitFor(user: Pick<User, "id" | "dailyDownloadLimit">) {
+  return (await limitsFor(user)).period;
 }
 
 function periodStart() {
@@ -96,9 +156,18 @@ export async function countPeriod(userId: number) {
   return Number(row?.n ?? 0);
 }
 
+/** כמה שורות downloads נרשמו למשתמשת ב-N הדקות האחרונות (לבדיקת הקצב) */
+async function countLastMinutes(userId: number, minutes: number) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(downloads)
+    .where(and(eq(downloads.userId, userId), gte(downloads.createdAt, new Date(Date.now() - minutes * 60 * 1000))));
+  return Number(row?.n ?? 0);
+}
+
 /** כמה הורדות נותרו ב-30 הימים (null = ללא מגבלה) */
-export async function periodRemaining(user: Pick<User, "id">): Promise<number | null> {
-  const limit = await periodLimitFor();
+export async function periodRemaining(user: Pick<User, "id" | "dailyDownloadLimit">): Promise<number | null> {
+  const limit = await periodLimitFor(user);
   if (!(limit > 0)) return null;
   return Math.max(0, limit - (await countPeriod(user.id)));
 }
@@ -128,7 +197,17 @@ async function explainDenial(
   items: QuotaItem[],
   dailyLimit: number,
   periodLimit: number,
+  rateShort: number,
+  rateLong: number,
 ): Promise<QuotaDenied> {
+  for (const [rate, minutes] of [[rateShort, RATE_WINDOW_SHORT_MIN], [rateLong, RATE_WINDOW_LONG_MIN]] as const) {
+    if (rate > 0) {
+      const usedRate = await countLastMinutes(user.id, minutes);
+      if (usedRate + items.length > rate) {
+        return { reason: "rate_limit", windowMin: minutes, rateLimit: rate, used: usedRate, requested: items.length };
+      }
+    }
+  }
   const used = await countToday(user.id);
   if (dailyLimit > 0 && used + items.length > dailyLimit) {
     return { reason: "daily_limit", dailyLimit, used, requested: items.length };
@@ -221,9 +300,16 @@ export async function reserveDownloads(opts: {
   let insertedIds: number[] = [];
   let dailyLimit = 0;
   let periodLimit = 0;
+  let rateShort = 0;
+  let rateLong = 0;
   try {
-    dailyLimit = await dailyLimitFor(user);
-    periodLimit = await periodLimitFor();
+    const lim = await limitsFor(user);
+    dailyLimit = lim.daily;
+    periodLimit = lim.period;
+    rateShort = lim.rateShort;
+    rateLong = lim.rateLong;
+    const rsStart = new Date(Date.now() - RATE_WINDOW_SHORT_MIN * 60 * 1000).toISOString();
+    const rlStart = new Date(Date.now() - RATE_WINDOW_LONG_MIN * 60 * 1000).toISOString();
     const start = startOfToday().toISOString();
     const pStart = periodStart().toISOString();
     const n = items.length;
@@ -249,6 +335,14 @@ export async function reserveDownloads(opts: {
         OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.created_at >= ${pStart}::timestamp) + ${n}::int <= ${periodLimit}::int
       )
       AND (
+        ${rateShort}::int <= 0
+        OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.created_at >= ${rsStart}::timestamp) + ${n}::int <= ${rateShort}::int
+      )
+      AND (
+        ${rateLong}::int <= 0
+        OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.created_at >= ${rlStart}::timestamp) + ${n}::int <= ${rateLong}::int
+      )
+      AND (
         v.max_per_user IS NULL
         OR (SELECT count(*) FROM downloads d WHERE d.user_id = ${user.id}::int AND d.material_id = v.material_id) < v.max_per_user
       )
@@ -258,7 +352,7 @@ export async function reserveDownloads(opts: {
     if (insertedIds.length !== n) {
       if (insertedIds.length) await db.delete(downloads).where(inArray(downloads.id, insertedIds));
       await refundAll();
-      return { ok: false, denied: await explainDenial(user, items, dailyLimit, periodLimit) };
+      return { ok: false, denied: await explainDenial(user, items, dailyLimit, periodLimit, rateShort, rateLong) };
     }
     const byMaterial = new Map(res.rows.map((r) => [Number(r.material_id), Number(r.id)]));
     const entries = items.map((it) => ({

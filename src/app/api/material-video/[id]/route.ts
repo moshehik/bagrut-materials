@@ -115,6 +115,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
           return NextResponse.redirect(new URL("/pricing?reason=quota", origin));
         case "period_limit":
           return NextResponse.redirect(new URL("/account?limit=period", origin));
+        case "rate_limit":
+          return NextResponse.redirect(new URL("/account?limit=rate", origin));
         default:
           return NextResponse.redirect(new URL("/account?limit=1", origin));
       }
