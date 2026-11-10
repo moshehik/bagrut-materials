@@ -4,7 +4,7 @@ import Link from "next/link";
 import { BellRing } from "lucide-react";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { forumReports, materialFixes } from "@/db/schema";
+import { contactInquiries, forumReports, materialFixes } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { AdminNav } from "@/components/admin/admin-nav";
 
@@ -36,9 +36,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   // התראות פתוחות למנהלת – באנר בראש כל עמודי הניהול ומספר ליד הפריטים בתפריט
-  const [openReports, pendingFixes] = await Promise.all([
+  const [openReports, pendingFixes, openInquiries] = await Promise.all([
     safeCount(db.select({ n: count() }).from(forumReports).where(eq(forumReports.status, "open"))),
     safeCount(db.select({ n: count() }).from(materialFixes).where(eq(materialFixes.status, "pending"))),
+    // טבלת הפניות עוד לא קיימת ב-Neon? safeCount מחזיר 0
+    safeCount(db.select({ n: count() }).from(contactInquiries).where(eq(contactInquiries.status, "open"))),
   ]);
 
   return (
@@ -71,6 +73,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             "/admin/inbox": openReports + pendingFixes,
             "/admin/forum": openReports,
             "/admin/fixes": pendingFixes,
+            "/admin/inquiries": openInquiries,
           }}
         />
         <div className="min-w-0">{children}</div>

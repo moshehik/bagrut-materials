@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { and, gt, isNull, or, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { users, purchases } from "@/db/schema";
+import { users, purchases, contactInquiries, contactInquiryMessages } from "@/db/schema";
 import { requireAdmin, getCurrentUser } from "@/lib/session";
 import { adminEmail, sendMail, templates, type MailAttachment } from "@/lib/mail";
 import { logAudit } from "@/lib/audit";
@@ -184,7 +184,29 @@ export async function contactAction(_prev: MailState, form: FormData): Promise<M
   const admin = adminEmail();
   if (!admin) return { error: "כתובת המנהל לא מוגדרת" };
   const { name, email, message, topic } = parsed.data;
-  const r = await sendMail({ to: admin, ...templates.contact(name, email, message, topic), kind: "contact" });
+  // שמירת הפנייה כשיחה ב-/admin/inquiries (בנוסף למייל). כשל (למשל הטבלה עוד לא נוצרה ב-Neon) לא מפיל את הפנייה
+  let inquiryId: number | null = null;
+  try {
+    const me = await getCurrentUser();
+    const [row] = await db
+      .insert(contactInquiries)
+      .values({
+        name,
+        email,
+        topic: topic ?? null,
+        userId: me && me.email.toLowerCase() === email ? me.id : null,
+      })
+      .returning({ id: contactInquiries.id });
+    inquiryId = row?.id ?? null;
+    if (inquiryId) await db.insert(contactInquiryMessages).values({ inquiryId, direction: "in", body: message });
+  } catch (e) {
+    console.error("[contact] saving inquiry failed", e);
+  }
+  const r = await sendMail({
+    to: admin,
+    ...templates.contact(name, email, message, topic, inquiryId),
+    kind: "contact",
+  });
   return r.ok ? { ok: "הפנייה נשלחה, נחזור אלייך בהקדם" } : { error: "השליחה נכשלה, נסי שוב מאוחר יותר" };
 }
 

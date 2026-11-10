@@ -1306,3 +1306,50 @@ export const deckQueueState = pgTable("deck_queue_state", {
 
 export type DeckJob = typeof deckJobs.$inferSelect;
 export type DeckQueueState = typeof deckQueueState.$inferSelect;
+
+/**
+ * פניות מטופס "צרי קשר" (2026-11-10): כל פנייה נשמרת כשיחה, והמנהלת עונה מ-/admin/inquiries –
+ * התשובה יוצאת במייל לכתובת שהפונה השאירה (דרך sendMail) ונשמרת כאן. status: open | answered | closed | spam.
+ * שמירה נכשלת בשקט (למשל הטבלה עוד לא קיימת ב-Neon) – הפנייה עצמה עדיין נשלחת למנהלת במייל.
+ */
+export const contactInquiries = pgTable(
+  "contact_inquiries",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    topic: varchar("topic", { length: 120 }),
+    status: varchar("status", { length: 12 }).notNull().default("open"),
+    /** משתמשת מחוברת שכתובת המייל שלה זהה לכתובת הפנייה */
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    answeredAt: timestamp("answered_at"),
+    answeredBy: integer("answered_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    index("contact_inquiries_status_idx").on(t.status),
+    index("contact_inquiries_created_idx").on(t.createdAt),
+  ],
+);
+
+/** הודעות בשיחה: direction=in – מהפונה, out – תשובת המנהלת (sentOk=false אם המייל לא יצא) */
+export const contactInquiryMessages = pgTable(
+  "contact_inquiry_messages",
+  {
+    id: serial("id").primaryKey(),
+    inquiryId: integer("inquiry_id")
+      .notNull()
+      .references(() => contactInquiries.id, { onDelete: "cascade" }),
+    direction: varchar("direction", { length: 3 }).notNull(),
+    subject: varchar("subject", { length: 300 }),
+    body: text("body").notNull(),
+    sentOk: boolean("sent_ok").notNull().default(true),
+    emailLogId: integer("email_log_id"),
+    authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("contact_inquiry_messages_inquiry_idx").on(t.inquiryId, t.createdAt)],
+);
+
+export type ContactInquiry = typeof contactInquiries.$inferSelect;
+export type ContactInquiryMessage = typeof contactInquiryMessages.$inferSelect;

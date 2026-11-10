@@ -311,15 +311,27 @@ export const templates = {
       ),
     };
   },
-  contact(name: string, email: string, message: string, topic?: string) {
-    const topicText = topic ? `נושא: ${topic}\n` : "";
+  contact(name: string, email: string, message: string, topic?: string, inquiryId?: number | null) {
+    const topicText = topic ? `נושא: ${topic}
+` : "";
     const topicHtml = topic ? `<br>נושא: <b>${esc(topic)}</b>` : "";
+    // הפנייה נשמרה ב-/admin/inquiries – אפשר לענות משם (המייל יוצא ישירות לפונה); אחרת משיבים ידנית לכתובת
+    const replyUrl = inquiryId ? `${siteUrl()}/admin/inquiries?id=${inquiryId}` : null;
+    const replyText = replyUrl ? `לתשובה מהאתר: ${replyUrl}
+` : "";
     return {
       subject: `פנייה מהאתר${topic ? ` (${topic})` : ""}: ${name}`,
-      text: `פנייה חדשה מטופס צור קשר\nשם: ${name}\nמייל: ${email}\n${topicText}\n${message}`,
+      text: `השיבי ישירות ל: ${email}
+${replyText}
+פנייה חדשה מטופס צור קשר
+שם: ${name}
+מייל: ${email}
+${topicText}
+${message}`,
       html: layoutHtml(
         "פנייה חדשה מטופס צור קשר",
         `<p>שם: <b>${esc(name)}</b><br>מייל: <a href="mailto:${esc(email)}">${esc(email)}</a>${topicHtml}</p><p style="white-space:pre-wrap">${esc(message)}</p>`,
+        replyUrl ? { label: "מענה מהאתר", href: replyUrl } : undefined,
       ),
     };
   },

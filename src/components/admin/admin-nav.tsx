@@ -24,6 +24,7 @@ import {
   Bot,
   BotMessageSquare,
   Inbox,
+  MailQuestion,
   Ticket,
   Banknote,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
 const ITEMS = [
   { href: "/admin", label: "לוח בקרה", icon: LayoutDashboard, exact: true },
   { href: "/admin/inbox", label: "הודעות למנהלת", icon: Inbox },
+  { href: "/admin/inquiries", label: "פניות", icon: MailQuestion },
   { href: "/admin/categories", label: "עץ הקטגוריות", icon: FolderTree },
   { href: "/admin/materials", label: "חומרים", icon: FileStack },
   { href: "/admin/drive", label: "סייר דרייב", icon: HardDrive },
