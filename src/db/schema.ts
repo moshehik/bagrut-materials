@@ -1063,6 +1063,19 @@ export const userPreferences = pgTable("user_preferences", {
 });
 
 /**
+ * שיעורים במתנה: כמה פרקים (תיקיית פרק שלמה = "קובץ מורחב") מורה יכולה לפתוח בחינם לבחירתה.
+ * המימוש (src/lib/actions/lesson-gift.ts) מוריד 1 מהיתרה ויוצר רכישת bundle של 0 ₪. הוספת יתרה: scripts/grant-gift-lessons.ts.
+ * יצירה: scripts/create-lesson-gifts-table.ts --apply
+ */
+export const lessonGifts = pgTable("lesson_gifts", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  credits: integer("credits").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+/**
  * שער הקריאה הגלובלי ל-GetHistoryJson של נדרים (מוגבל ל-20 קריאות בשעה למוסד) – שורה יחידה (id = 1). ר' src/lib/nedarim/sync.ts:
  * נעילה אטומית (lock_until), מרווח מינימלי בין קריאות, LastId אינקרמנטלי, backoff בשגיאות.
  */

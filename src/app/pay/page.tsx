@@ -13,7 +13,9 @@ import { getBool } from "@/lib/settings";
 import { loadNedarimConfig } from "@/lib/nedarim/config";
 import { PAYABLE_PLANS, isPayablePlan, isValidReference, type PayablePlan } from "@/lib/nedarim/logic";
 import { itemCoverageFor, loadPayableItem } from "@/lib/nedarim/items";
-import { PayClient, type PayItemOption, type PayPlanOption } from "@/components/pay/pay-client";
+import { getGiftCredits, isGiftableFolder } from "@/lib/lesson-gifts";
+import { GiftLessonCard } from "@/components/gift-lesson-card";
+import { PayClient,type PayItemOption, type PayPlanOption } from "@/components/pay/pay-client";
 
 /*
  * /pay – דף התשלום דרך נדרים פלוס (מחוברות בלבד; מי שלא נרשמה מופנית להרשמה וחוזרת לכאן).
@@ -89,6 +91,7 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
 
   // --- פריט: הורדה בודדת / קובץ מורחב – המחיר והכללים בשרת (loadPayableItem), "כבר שלך" לפני שמציגים תשלום ---
   let item: PayItemOption | null = null;
+  let giftCard: { categoryId: number; title: string; credits: number } | null = null;
   if ((materialId || bundleId) && !isValidReference(sp.ref)) {
     const loaded = await loadPayableItem(materialId ? { kind: "single", materialId } : { kind: "bundle", categoryId: bundleId! });
     if (!loaded.ok) {
@@ -113,6 +116,11 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
       );
     }
     const it = loaded.item;
+    // שיעור במתנה: מורה עם יתרה יכולה לפתוח פרק (תיקיית עלה) בחינם, במקום לשלם
+    if (it.kind === "bundle") {
+      const credits = await getGiftCredits(user.id);
+      if (credits > 0 && (await isGiftableFolder(it.id))) giftCard = { categoryId: it.id, title: it.title, credits };
+    }
     item = {
       kind: it.kind,
       id: it.id,
@@ -167,6 +175,8 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
           <h1 className="text-4xl md:text-5xl">{item ? item.label : "תשלום והפעלת מנוי"}</h1>
         </div>
       </div>
+
+      {giftCard && <GiftLessonCard categoryId={giftCard.categoryId} title={giftCard.title} credits={giftCard.credits} />}
 
       {!cfg.ready ? (
         <section className="gate-panel mx-auto mt-8 max-w-2xl sm:!p-8">
